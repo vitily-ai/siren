@@ -1,4 +1,42 @@
-# Siren Project Management
+# Siren
+
+> **Project Management as Code** — Define projects as atomic milestones using an HCL-inspired grammar.
+
+[![CI](https://github.com/USERNAME/siren/actions/workflows/ci.yml/badge.svg)](https://github.com/USERNAME/siren/actions/workflows/ci.yml)
+
+## Quick Start
+
+```bash
+# Install dependencies
+yarn install
+
+# Build all packages
+yarn build
+
+# Run tests
+yarn test
+
+# Start web dev server
+yarn workspace @siren/web dev
+
+# Run CLI
+node apps/cli/dist/index.js
+```
+
+## Structure
+
+- **`packages/core`** — Environment-agnostic parsing, validation, IR, Mermaid emission
+- **`apps/web`** — Vite-based browser app
+- **`apps/cli`** — Node CLI (tsup/esbuild)
+
+## Requirements
+
+- Node.js ≥ 24
+- Yarn 4 (Berry) — enabled via Corepack
+
+## License
+
+GPL-3.0 Project Management
 
 ## Goals
 * Create a framework for defining and managing projects in terms of discrete atomic milestones

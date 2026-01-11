@@ -1,0 +1,27 @@
+{
+  "name": "@siren/cli",
+  "version": "0.1.0",
+  "description": "Siren command-line interface",
+  "license": "GPL-3.0",
+  "type": "module",
+  "bin": {
+    "siren": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@siren/core": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

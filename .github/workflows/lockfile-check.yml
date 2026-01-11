@@ -1,0 +1,33 @@
+name: Lockfile Check
+
+on:
+  pull_request:
+    paths:
+      - 'yarn.lock'
+      - '.yarnrc.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check-lockfile:
+    name: Verify yarn.lock is up-to-date
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4.2.0
+        with:
+          node-version: '24.x'
+
+      - name: Check lockfile validity
+        run: yarn install --immutable --immutable-cache

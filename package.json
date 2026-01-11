@@ -1,0 +1,25 @@
+{
+  "name": "siren-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Project Management as Code framework",
+  "license": "GPL-3.0",
+  "packageManager": "yarn@4.1.0",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "yarn workspaces foreach -Apt run build",
+    "test": "yarn workspaces foreach -Apt run test",
+    "lint": "yarn workspaces foreach -Apt run lint",
+    "clean": "yarn workspaces foreach -Apt run clean"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}
