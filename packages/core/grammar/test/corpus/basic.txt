@@ -1,0 +1,383 @@
+==================
+Empty document
+==================
+
+---
+
+(document)
+
+==================
+Simple task
+==================
+
+task example {
+  description = "test"
+}
+
+---
+
+(document
+  (resource
+    (identifier
+      (bare_identifier))
+    (attribute
+      (bare_identifier)
+      (expression
+        (literal
+          (string_literal))))))
+
+==================
+Task and milestone
+==================
+
+task t1 {
+}
+
+milestone m1 {
+}
+
+---
+
+(document
+  (resource
+    (identifier
+      (bare_identifier)))
+  (resource
+    (identifier
+      (bare_identifier))))
+
+==================
+Quoted identifier
+==================
+
+task "example 2" {
+}
+
+---
+
+(document
+  (resource
+    (identifier
+      (quoted_identifier))))
+
+==================
+Multiple attributes
+==================
+
+task example {
+  title = "Test"
+  count = 42
+  enabled = true
+  disabled = false
+}
+
+---
+
+(document
+  (resource
+    (identifier
+      (bare_identifier))
+    (attribute
+      (bare_identifier)
+      (expression
+        (literal
+          (string_literal))))
+    (attribute
+      (bare_identifier)
+      (expression
+        (literal
+          (number_literal))))
+    (attribute
+      (bare_identifier)
+      (expression
+        (literal
+          (boolean_literal))))
+    (attribute
+      (bare_identifier)
+      (expression
+        (literal
+          (boolean_literal))))))
+
+==================
+Reference dependency
+==================
+
+task A {
+}
+
+task B {
+  depends_on = A
+}
+
+---
+
+(document
+  (resource
+    (identifier
+      (bare_identifier)))
+  (resource
+    (identifier
+      (bare_identifier))
+    (attribute
+      (bare_identifier)
+      (expression
+        (reference
+          (bare_identifier))))))
+
+==================
+Array dependencies
+==================
+
+task C {
+  depends_on = [A, B]
+}
+
+---
+
+(document
+  (resource
+    (identifier
+      (bare_identifier))
+    (attribute
+      (bare_identifier)
+      (expression
+        (array
+          (expression
+            (reference
+              (bare_identifier)))
+          (expression
+            (reference
+              (bare_identifier))))))))
+
+==================
+Comments
+==================
+
+# Hash comment
+// Slash comment
+
+task example {
+  # Inline comment
+  value = "test"
+}
+
+---
+
+(document
+  (comment)
+  (comment)
+  (resource
+    (identifier
+      (bare_identifier))
+    (comment)
+    (attribute
+      (bare_identifier)
+      (expression
+        (literal
+          (string_literal))))))
+
+==================
+ERROR: Unclosed resource brace
+==================
+
+task broken {
+  value = "test"
+
+---
+
+(document
+  (resource
+    (identifier
+      (bare_identifier))
+    (attribute
+      (bare_identifier)
+      (expression
+        (literal
+          (string_literal))))
+    (MISSING "}")))
+
+==================
+ERROR: Unclosed string literal
+==================
+
+task bad {
+  description = "unclosed
+}
+
+---
+
+(document
+  (ERROR
+    (identifier
+      (bare_identifier))
+    (bare_identifier)))
+
+==================
+ERROR: Missing attribute value
+==================
+
+task incomplete {
+  key = 
+}
+
+---
+
+(document
+  (resource
+    (identifier
+      (bare_identifier))
+    (attribute
+      (bare_identifier)
+      (expression
+        (reference
+          (MISSING bare_identifier))))))
+
+==================
+ERROR: Invalid attribute syntax no key
+==================
+
+task no_key {
+  = "value"
+}
+
+---
+
+(document
+  (ERROR
+    (ERROR
+      (identifier
+        (bare_identifier)))
+    (identifier
+      (quoted_identifier))))
+
+==================
+ERROR: Mismatched quotes in identifier
+==================
+
+task "oops {
+}
+
+---
+
+(document
+  (ERROR))
+
+==================
+ERROR: Missing equals sign
+==================
+
+task missing_eq {
+  key "value"
+}
+
+---
+
+(document
+  (ERROR
+    (ERROR
+      (identifier
+        (bare_identifier))
+      (bare_identifier))
+    (identifier
+      (quoted_identifier))))
+
+==================
+ERROR: Incomplete array
+==================
+
+task partial {
+  deps = [A, B
+}
+
+---
+
+(document
+  (resource
+    (identifier
+      (bare_identifier))
+    (attribute
+      (bare_identifier)
+      (expression
+        (array
+          (expression
+            (reference
+              (bare_identifier)))
+          (expression
+            (reference
+              (bare_identifier)))
+          (MISSING "]"))))))
+
+==================
+ERROR: Invalid token in resource body
+==================
+
+task invalid {
+  @@@
+  valid = "test"
+}
+
+---
+
+(document
+  (ERROR
+    (ERROR
+      (identifier
+        (bare_identifier))
+      (UNEXPECTED '@'))
+    (identifier
+      (quoted_identifier))))
+
+==================
+ERROR: Multiple errors in document
+==================
+
+task err1 {
+  = "no key"
+}
+
+task err2 {
+  unclosed = "string
+
+task good {
+  value = 123
+}
+
+---
+
+(document
+  (ERROR
+    (ERROR
+      (identifier
+        (bare_identifier)))
+    (identifier
+      (quoted_identifier))
+    (identifier
+      (bare_identifier))
+    (bare_identifier)))
+
+==================
+ERROR: Unclosed array with nested errors
+==================
+
+task nested_err {
+  list = ["str1", , "str2"
+}
+
+---
+
+(document
+  (resource
+    (identifier
+      (bare_identifier))
+    (attribute
+      (bare_identifier)
+      (expression
+        (array
+          (expression
+            (literal
+              (string_literal)))
+          (ERROR)
+          (expression
+            (literal
+              (string_literal)))
+          (MISSING "]"))))))

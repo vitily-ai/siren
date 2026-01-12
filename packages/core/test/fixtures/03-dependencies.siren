@@ -1,0 +1,39 @@
+# Dependencies example - resources that reference each other
+# References are bare identifiers; validation happens semantically, not at parse time
+
+task A {
+    description = "Foundation work"
+}
+
+milestone B {
+    description = "Depends on task A"
+    depends_on = A
+}
+
+task C {
+    description = "Depends on multiple resources"
+    depends_on = [A, B]
+}
+
+# References to quoted IDs require quoted references
+task "setup environment" {
+    description = "Initial setup"
+}
+
+task deploy {
+    depends_on = "setup environment"
+}
+
+# Mixed: tasks can depend on milestones and vice versa
+milestone "v1.0" {
+    depends_on = [A, C, deploy]
+}
+
+# Forward references are syntactically valid (semantic validation later)
+task early {
+    depends_on = late
+}
+
+task late {
+    description = "Defined after reference"
+}

@@ -1,0 +1,7 @@
+{
+  "grammars": ["grammar.js"],
+  "grammar-path": ".",
+  "metadata": {
+    "version": "0.1.0"
+  }
+}

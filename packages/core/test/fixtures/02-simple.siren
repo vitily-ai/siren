@@ -1,0 +1,30 @@
+# Simple example - resources with attributes
+# Attributes are free-form tags; no schema enforcement at parse time
+
+task with_attributes {
+    description = "some description"
+    assignee = "Marcus"
+    points = 3
+}
+
+milestone "Q1 Launch" {
+    description = "Ship v1.0 to production"
+    quarter = "Q1"
+    year = 2026
+    critical = true
+}
+
+# Multiple attributes of various types
+task complex_example {
+    # Strings
+    title = "Implement authentication"
+    owner = "security-team"
+    
+    # Numbers
+    priority = 1
+    estimate_hours = 40
+    
+    # Booleans
+    blocking = true
+    optional = false
+}

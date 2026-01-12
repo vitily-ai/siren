@@ -1,0 +1,20 @@
+# Minimal example - simplest valid Siren file
+# Both 'task' and 'milestone' are valid resource types
+
+task example {
+
+}
+
+milestone "initial setup" {
+
+}
+
+# Identifiers can be bare (alphanumeric + underscore + hyphen)
+task setup-environment {
+
+}
+
+# Or quoted to support spaces and special characters
+task "example 2: with special chars!" {
+
+}
