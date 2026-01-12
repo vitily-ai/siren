@@ -13,7 +13,6 @@
  */
 export interface CSTNode {
   readonly type: string;
-  readonly text: string;
 }
 
 /**
@@ -39,6 +38,7 @@ export interface ResourceNode extends CSTNode {
  */
 export interface IdentifierNode extends CSTNode {
   readonly type: 'identifier';
+  readonly text: string;
   readonly value: string;
   readonly quoted: boolean;
 }
@@ -65,6 +65,7 @@ export type ExpressionNode =
  */
 export interface LiteralNode extends CSTNode {
   readonly type: 'literal';
+  readonly text: string;
   readonly literalType: 'string' | 'number' | 'boolean' | 'null';
   readonly value: string | number | boolean | null;
 }

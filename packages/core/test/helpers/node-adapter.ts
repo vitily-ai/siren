@@ -88,7 +88,6 @@ class NodeParserAdapter implements ParserAdapter {
     return {
       type: 'document',
       resources,
-      text: node.text,
     };
   }
 
@@ -123,7 +122,6 @@ class NodeParserAdapter implements ParserAdapter {
       resourceType,
       identifier,
       body: attributes,
-      text: node.text,
     };
   }
 
@@ -187,7 +185,6 @@ class NodeParserAdapter implements ParserAdapter {
       type: 'attribute',
       key,
       value,
-      text: node.text,
     };
   }
 
@@ -303,7 +300,6 @@ class NodeParserAdapter implements ParserAdapter {
     return {
       type: 'reference',
       identifier,
-      text: node.text,
     };
   }
 
@@ -323,7 +319,6 @@ class NodeParserAdapter implements ParserAdapter {
     return {
       type: 'array',
       elements,
-      text: node.text,
     };
   }
 
