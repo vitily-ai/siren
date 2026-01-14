@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build": "tsup",
-    "test": "vitest run",
+    "test": "npx vitest run",
     "clean": "rm -rf dist"
   },
   "dependencies": {
