@@ -1,6 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { version } from '@siren/core';
+import { fileURLToPath } from 'node:url';
+import { decode, version } from '@siren/core';
+import { getParser } from './parser.js';
 
 const SIREN_DIR = 'siren';
 const CONFIG_FILE = 'siren.config.yaml';
@@ -16,6 +18,7 @@ Usage: siren <command>
 
 Commands:
   init    Initialize a new Siren project in the current directory
+  list    List all milestone IDs from .siren files
 
 Options:
   --version    Show version number`);
@@ -73,7 +76,89 @@ export function runInit(cwd: string): void {
   }
 }
 
-export function main(args: string[] = process.argv.slice(2)): void {
+/**
+ * Recursively find all .siren files in a directory
+ */
+function findSirenFiles(dir: string): string[] {
+  if (!fs.existsSync(dir)) {
+    return [];
+  }
+
+  const results: string[] = [];
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...findSirenFiles(fullPath));
+    } else if (entry.isFile() && entry.name.endsWith('.siren')) {
+      results.push(fullPath);
+    }
+  }
+
+  return results;
+}
+
+export interface ListResult {
+  milestones: string[];
+  warnings: string[];
+}
+
+/**
+ * List all milestone IDs from .siren files in the siren/ directory
+ */
+export async function list(cwd: string): Promise<ListResult> {
+  const result: ListResult = { milestones: [], warnings: [] };
+  const sirenDir = path.join(cwd, SIREN_DIR);
+
+  const files = findSirenFiles(sirenDir);
+  if (files.length === 0) {
+    return result;
+  }
+
+  const parser = await getParser();
+
+  for (const filePath of files) {
+    const source = fs.readFileSync(filePath, 'utf-8');
+    const parseResult = await parser.parse(source);
+
+    if (!parseResult.success || !parseResult.tree) {
+      // Compute relative path for warning message
+      const relPath = path.relative(cwd, filePath);
+      result.warnings.push(`Warning: skipping ${relPath} (parse error)`);
+      continue;
+    }
+
+    const decodeResult = decode(parseResult.tree);
+    if (!decodeResult.document) {
+      continue;
+    }
+
+    for (const resource of decodeResult.document.resources) {
+      if (resource.type === 'milestone') {
+        result.milestones.push(resource.id);
+      }
+    }
+  }
+
+  return result;
+}
+
+export async function runList(cwd: string): Promise<void> {
+  const result = await list(cwd);
+
+  // Print warnings to stderr
+  for (const warning of result.warnings) {
+    console.error(warning);
+  }
+
+  // Print milestone IDs to stdout
+  for (const id of result.milestones) {
+    console.log(id);
+  }
+}
+
+export async function main(args: string[] = process.argv.slice(2)): Promise<void> {
   const command = args[0];
 
   if (command === '--version') {
@@ -86,28 +171,20 @@ export function main(args: string[] = process.argv.slice(2)): void {
     return;
   }
 
+  if (command === 'list') {
+    await runList(process.cwd());
+    return;
+  }
+
   printUsage();
 }
 
-import { realpathSync } from 'node:fs';
-// Only run when executed directly, not when imported for testing.
-// In ESM, we compare import.meta.url to the resolved real path of argv[1]
-// to handle symlinks (e.g., npm global bin links).
-import { fileURLToPath } from 'node:url';
+// Only run when executed directly, not when imported for testing
+const isMainModule =
+  typeof process !== 'undefined' &&
+  process.argv[1] &&
+  fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
 
-function isMain(): boolean {
-  if (typeof process === 'undefined' || !process.argv[1]) {
-    return false;
-  }
-  try {
-    const scriptPath = realpathSync(process.argv[1]);
-    const modulePath = fileURLToPath(import.meta.url);
-    return scriptPath === modulePath;
-  } catch {
-    return false;
-  }
-}
-
-if (isMain()) {
+if (isMainModule) {
   main();
 }

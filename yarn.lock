@@ -883,6 +883,7 @@ __metadata:
   dependencies:
     "@siren/core": "workspace:*"
     tsup: "npm:^8.3.5"
+    web-tree-sitter: "npm:^0.26.3"
   bin:
     siren: ./dist/index.js
   languageName: unknown

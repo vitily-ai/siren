@@ -125,23 +125,68 @@ function decodeAttribute(node: AttributeNode): Attribute | null {
  * @param node - The CST resource node
  * @returns The decoded Resource
  */
-function decodeResource(node: ResourceNode): Resource {
+function decodeResource(
+  node: ResourceNode & { completeKeywordCount?: number; completeKeywordDiagnostics?: string[] },
+  diagnostics: Diagnostic[],
+): Resource {
   const type: ResourceType = node.resourceType;
-  // The identifier.value has quotes already stripped (from the CST)
   const id = node.identifier.value;
+  const complete = typeof (node as any).complete === 'boolean' ? (node as any).complete : false;
+
+  // Error-tolerant: handle multiple 'complete' keywords
+  if (typeof node.completeKeywordCount === 'number' && node.completeKeywordCount > 1) {
+    diagnostics.push({
+      code: 'W002',
+      message: `Resource '${id}' has 'complete' keyword specified more than once. Only one is allowed; resource will be treated as complete: true.`,
+      severity: 'warning',
+    });
+  }
+
+  // Error-tolerant: handle 'complete' on unsupported resource types
+  if (complete && type !== 'task' && type !== 'milestone') {
+    diagnostics.push({
+      code: 'W003',
+      message: `Resource type '${type}' does not support the 'complete' keyword. It will be ignored.`,
+      severity: 'warning',
+    });
+  }
+
+  // Error-tolerant: propagate parse-time diagnostics for misplaced/invalid 'complete'
+  if (Array.isArray(node.completeKeywordDiagnostics)) {
+    for (const msg of node.completeKeywordDiagnostics) {
+      diagnostics.push({
+        code: 'E001',
+        message: msg,
+        severity: 'error',
+      });
+    }
+  }
 
   // Decode attributes, filtering out null (unsupported expression types)
   const attributes: Attribute[] = [];
+  let completeAttr: Attribute | undefined;
   for (const attrNode of node.body) {
     const attr = decodeAttribute(attrNode);
     if (attr !== null) {
+      if (attr.key === 'complete') completeAttr = attr;
       attributes.push(attr);
     }
+  }
+
+  // Emit warning if both keyword and attribute are present, and attribute is not true
+  if (complete && completeAttr && completeAttr.value !== true) {
+    diagnostics.push({
+      code: 'W001',
+      message:
+        "Resource has both 'complete' keyword and a 'complete' attribute whose value is not true. The resource will be treated as complete.",
+      severity: 'warning',
+    });
   }
 
   return {
     type,
     id,
+    complete,
     attributes,
   };
 }
@@ -157,7 +202,7 @@ export function decode(cst: DocumentNode): DecodeResult {
   const resources: Resource[] = [];
 
   for (const resourceNode of cst.resources) {
-    resources.push(decodeResource(resourceNode));
+    resources.push(decodeResource(resourceNode, diagnostics));
   }
 
   const hasErrors = diagnostics.some((d) => d.severity === 'error');

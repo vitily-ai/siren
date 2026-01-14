@@ -3,6 +3,25 @@
 ## Project Overview
 Siren is a "Project Management as Code" (PMaC) framework for defining projects as discrete atomic milestones using an HCL-inspired grammar. Text-based project definitions live alongside code in version control.
 
+## Grammar (HCL-inspired)
+```siren
+# Two resource types: task and milestone
+task my-task {
+    description = "A task with attributes"
+    depends_on = other-task          # single reference
+}
+
+milestone release-1 {
+    description = "Groups tasks into deliverables"
+    depends_on = [task-a, task-b]    # array of references
+}
+```
+
+**Values**: strings (`"..."`), numbers, booleans (`true`/`false`), `null`, references (bare identifiers), arrays (`[a, b]`).  
+**Identifiers**: bare (`my_task`, `cli-mvp`) or quoted (`"has spaces"`).  
+**Comments**: `#` or `//` style.  
+**Error-tolerant**: Parser recovers from incomplete input (e.g., missing `}`).
+
 ## Architecture
 - **Core library** (`packages/core`): Environment-agnostic TypeScript - parsing, decoding, semantic validation, Mermaid emission. No DOM or Node dependencies.
 - **Parser**: Tree-sitter WASM with adapters for browser/Node. Hide environment-specific loading behind interfaces.

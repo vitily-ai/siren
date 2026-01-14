@@ -51,6 +51,10 @@ export type ResourceType = 'task' | 'milestone';
 export interface Resource {
   readonly type: ResourceType;
   readonly id: string;
+  /**
+   * True if the resource is marked complete via the 'complete' keyword (not attribute)
+   */
+  readonly complete: boolean;
   readonly attributes: readonly Attribute[];
 }
 

@@ -23,11 +23,12 @@ module.exports = grammar({
     // Top-level document: zero or more resources
     document: ($) => repeat($.resource),
 
-    // Resource block: task/milestone + identifier + body
+    // Resource block: task/milestone + identifier + optional 'complete' + body
     resource: ($) =>
       seq(
         field('type', choice('task', 'milestone')),
         field('id', $.identifier),
+        optional(field('complete_modifier', 'complete')),
         '{',
         field('body', repeat($.attribute)),
         '}',
