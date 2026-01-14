@@ -1,17 +1,17 @@
 /**
  * Node adapter smoke tests
- * 
+ *
  * Verifies the real tree-sitter adapter correctly converts CST nodes
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { getTestAdapter } from '../helpers/parser.js';
 
 describe('NodeParserAdapter', () => {
   it('should parse an empty document', async () => {
     const adapter = await getTestAdapter();
     const result = await adapter.parse('');
-    
+
     expect(result.success).toBe(true);
     expect(result.errors).toHaveLength(0);
     expect(result.tree).not.toBeNull();
@@ -23,11 +23,11 @@ describe('NodeParserAdapter', () => {
     const adapter = await getTestAdapter();
     const source = `task example {}`;
     const result = await adapter.parse(source);
-    
+
     expect(result.success).toBe(true);
     expect(result.errors).toHaveLength(0);
     expect(result.tree?.resources).toHaveLength(1);
-    
+
     const task = result.tree?.resources[0];
     expect(task?.type).toBe('resource');
     expect(task?.resourceType).toBe('task');
@@ -40,7 +40,7 @@ describe('NodeParserAdapter', () => {
     const adapter = await getTestAdapter();
     const source = `milestone "setup phase" {}`;
     const result = await adapter.parse(source);
-    
+
     expect(result.success).toBe(true);
     const milestone = result.tree?.resources[0];
     expect(milestone?.resourceType).toBe('milestone');
@@ -54,16 +54,16 @@ describe('NodeParserAdapter', () => {
   description = "Hello, world!"
 }`;
     const result = await adapter.parse(source);
-    
+
     expect(result.success).toBe(true);
     const task = result.tree?.resources[0];
     expect(task?.body).toHaveLength(1);
-    
+
     const attr = task?.body[0];
     expect(attr?.type).toBe('attribute');
     expect(attr?.key.value).toBe('description');
     expect(attr?.value.type).toBe('literal');
-    
+
     const literal = attr?.value as any;
     expect(literal.literalType).toBe('string');
     expect(literal.value).toBe('Hello, world!');
@@ -76,15 +76,15 @@ describe('NodeParserAdapter', () => {
   effort = 3.14
 }`;
     const result = await adapter.parse(source);
-    
+
     expect(result.success).toBe(true);
     const task = result.tree?.resources[0];
     expect(task?.body).toHaveLength(2);
-    
+
     const priority = task?.body[0]?.value as any;
     expect(priority.literalType).toBe('number');
     expect(priority.value).toBe(42);
-    
+
     const effort = task?.body[1]?.value as any;
     expect(effort.literalType).toBe('number');
     expect(effort.value).toBe(3.14);
@@ -97,14 +97,14 @@ describe('NodeParserAdapter', () => {
   archived = false
 }`;
     const result = await adapter.parse(source);
-    
+
     expect(result.success).toBe(true);
     const task = result.tree?.resources[0];
-    
+
     const active = task?.body[0]?.value as any;
     expect(active.literalType).toBe('boolean');
     expect(active.value).toBe(true);
-    
+
     const archived = task?.body[1]?.value as any;
     expect(archived.literalType).toBe('boolean');
     expect(archived.value).toBe(false);
@@ -116,10 +116,10 @@ describe('NodeParserAdapter', () => {
   owner = null
 }`;
     const result = await adapter.parse(source);
-    
+
     expect(result.success).toBe(true);
     const task = result.tree?.resources[0];
-    
+
     const owner = task?.body[0]?.value as any;
     expect(owner.literalType).toBe('null');
     expect(owner.value).toBeNull();
@@ -131,10 +131,10 @@ describe('NodeParserAdapter', () => {
   depends_on = other_task
 }`;
     const result = await adapter.parse(source);
-    
+
     expect(result.success).toBe(true);
     const task = result.tree?.resources[0];
-    
+
     const ref = task?.body[0]?.value as any;
     expect(ref.type).toBe('reference');
     expect(ref.identifier.value).toBe('other_task');
@@ -147,16 +147,16 @@ describe('NodeParserAdapter', () => {
   numbers = [1, 2, 3]
 }`;
     const result = await adapter.parse(source);
-    
+
     expect(result.success).toBe(true);
     const task = result.tree?.resources[0];
-    
+
     const tags = task?.body[0]?.value as any;
     expect(tags.type).toBe('array');
     expect(tags.elements).toHaveLength(2);
     expect(tags.elements[0].value).toBe('urgent');
     expect(tags.elements[1].value).toBe('backend');
-    
+
     const numbers = task?.body[1]?.value as any;
     expect(numbers.type).toBe('array');
     expect(numbers.elements).toHaveLength(3);
@@ -169,7 +169,7 @@ describe('NodeParserAdapter', () => {
     const adapter = await getTestAdapter();
     const source = `task {}`; // Missing identifier
     const result = await adapter.parse(source);
-    
+
     expect(result.success).toBe(false);
     expect(result.errors.length).toBeGreaterThan(0);
     expect(result.errors[0]?.message).toBeDefined();
@@ -185,7 +185,7 @@ milestone second {}
 task third {}
 `;
     const result = await adapter.parse(source);
-    
+
     expect(result.success).toBe(true);
     expect(result.tree?.resources).toHaveLength(3);
     expect(result.tree?.resources[0]?.resourceType).toBe('task');

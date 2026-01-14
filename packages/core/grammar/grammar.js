@@ -1,7 +1,7 @@
 /**
  * @file Siren grammar for tree-sitter
  * @license GPL-3.0
- * 
+ *
  * Minimal grammar based on HCL syntax:
  * - Resources: task/milestone blocks with identifiers
  * - Attributes: key = value assignments
@@ -14,93 +14,70 @@
 module.exports = grammar({
   name: 'siren',
 
-  extras: $ => [
+  extras: ($) => [
     $.comment,
-    /\s/,  // whitespace
+    /\s/, // whitespace
   ],
 
   rules: {
     // Top-level document: zero or more resources
-    document: $ => repeat($.resource),
+    document: ($) => repeat($.resource),
 
     // Resource block: task/milestone + identifier + body
-    resource: $ => seq(
-      field('type', choice('task', 'milestone')),
-      field('id', $.identifier),
-      '{',
-      field('body', repeat($.attribute)),
-      '}',
-    ),
+    resource: ($) =>
+      seq(
+        field('type', choice('task', 'milestone')),
+        field('id', $.identifier),
+        '{',
+        field('body', repeat($.attribute)),
+        '}',
+      ),
 
     // Identifier: bare or quoted
-    identifier: $ => choice(
-      $.bare_identifier,
-      $.quoted_identifier,
-    ),
+    identifier: ($) => choice($.bare_identifier, $.quoted_identifier),
 
     // Bare identifier: alphanumeric, underscore, hyphen
     // Must start with letter or underscore
-    bare_identifier: $ => /[a-zA-Z_][a-zA-Z0-9_-]*/,
+    bare_identifier: ($) => /[a-zA-Z_][a-zA-Z0-9_-]*/,
 
     // Quoted identifier: anything within double quotes
-    quoted_identifier: $ => seq(
-      '"',
-      /[^"]*/,
-      '"',
-    ),
+    quoted_identifier: ($) => seq('"', /[^"]*/, '"'),
 
     // Attribute: key = value
-    attribute: $ => seq(
-      field('key', $.bare_identifier),
-      '=',
-      field('value', $.expression),
-    ),
+    attribute: ($) => seq(field('key', $.bare_identifier), '=', field('value', $.expression)),
 
     // Expression: any value type
-    expression: $ => choice(
-      $.literal,
-      $.reference,
-      $.array,
-    ),
+    expression: ($) => choice($.literal, $.reference, $.array),
 
     // Literal values
-    literal: $ => choice(
-      $.string_literal,
-      $.number_literal,
-      $.boolean_literal,
-      $.null_literal,
-    ),
+    literal: ($) => choice($.string_literal, $.number_literal, $.boolean_literal, $.null_literal),
 
-    string_literal: $ => seq(
-      '"',
-      /[^"]*/,
-      '"',
-    ),
+    string_literal: ($) => seq('"', /[^"]*/, '"'),
 
-    number_literal: $ => /[0-9]+(\.[0-9]+)?/,
+    number_literal: ($) => /[0-9]+(\.[0-9]+)?/,
 
-    boolean_literal: $ => choice('true', 'false'),
+    boolean_literal: ($) => choice('true', 'false'),
 
-    null_literal: $ => 'null',
+    null_literal: ($) => 'null',
 
     // Reference to another resource (bare identifier only)
-    reference: $ => $.bare_identifier,
+    reference: ($) => $.bare_identifier,
 
     // Array of expressions
-    array: $ => seq(
-      '[',
-      optional(seq(
-        $.expression,
-        repeat(seq(',', $.expression)),
-        optional(','),  // trailing comma allowed
-      )),
-      ']',
-    ),
+    array: ($) =>
+      seq(
+        '[',
+        optional(
+          seq(
+            $.expression,
+            repeat(seq(',', $.expression)),
+            optional(','), // trailing comma allowed
+          ),
+        ),
+        ']',
+      ),
 
     // Comments: # or // style
-    comment: $ => token(choice(
-      seq('#', /.*/),
-      seq('//', /.*/),
-    )),
+    comment: ($) => token(choice(seq('#', /.*/), seq('//', /.*/))),
   },
 });

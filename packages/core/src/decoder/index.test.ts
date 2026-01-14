@@ -1,7 +1,16 @@
-import { describe, it, expect } from 'vitest';
-import { decode, DecodeResult } from './index.js';
-import type { Attribute, ResourceReference, isReference } from '../ir/index.js';
-import type { DocumentNode, ResourceNode, LiteralNode, ReferenceNode, ArrayNode, AttributeNode, IdentifierNode, ExpressionNode } from '../parser/cst.js';
+import { describe, expect, it } from 'vitest';
+import type { Attribute } from '../ir/index.js';
+import type {
+  ArrayNode,
+  AttributeNode,
+  DocumentNode,
+  ExpressionNode,
+  IdentifierNode,
+  LiteralNode,
+  ReferenceNode,
+  ResourceNode,
+} from '../parser/cst.js';
+import { type DecodeResult, decode } from './index.js';
 
 /** Helper to create a minimal identifier node */
 function makeIdentifier(value: string, quoted = false): IdentifierNode {
@@ -16,11 +25,10 @@ function makeIdentifier(value: string, quoted = false): IdentifierNode {
 /** Helper to create a literal node */
 function makeLiteral<T extends string | number | boolean | null>(
   value: T,
-  literalType: 'string' | 'number' | 'boolean' | 'null'
+  literalType: 'string' | 'number' | 'boolean' | 'null',
 ): LiteralNode {
-  const text = literalType === 'string' ? `"${value}"` 
-    : literalType === 'null' ? 'null' 
-    : String(value);
+  const text =
+    literalType === 'string' ? `"${value}"` : literalType === 'null' ? 'null' : String(value);
   return {
     type: 'literal',
     text,
@@ -58,7 +66,7 @@ function makeAttribute(key: string, value: ExpressionNode): AttributeNode {
 function makeResource(
   resourceType: 'task' | 'milestone',
   id: string,
-  body: AttributeNode[] = []
+  body: AttributeNode[] = [],
 ): ResourceNode {
   return {
     type: 'resource',
@@ -111,9 +119,7 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [
-            makeAttribute('points', makeLiteral(42, 'number')),
-          ]),
+          makeResource('task', 'test', [makeAttribute('points', makeLiteral(42, 'number'))]),
         ],
       };
 
@@ -131,9 +137,7 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [
-            makeAttribute('blocking', makeLiteral(true, 'boolean')),
-          ]),
+          makeResource('task', 'test', [makeAttribute('blocking', makeLiteral(true, 'boolean'))]),
         ],
       };
 
@@ -151,9 +155,7 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [
-            makeAttribute('optional', makeLiteral(false, 'boolean')),
-          ]),
+          makeResource('task', 'test', [makeAttribute('optional', makeLiteral(false, 'boolean'))]),
         ],
       };
 
@@ -171,9 +173,7 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [
-            makeAttribute('assignee', makeLiteral(null, 'null')),
-          ]),
+          makeResource('task', 'test', [makeAttribute('assignee', makeLiteral(null, 'null'))]),
         ],
       };
 
@@ -212,9 +212,7 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [
-            makeAttribute('hours', makeLiteral(3.5, 'number')),
-          ]),
+          makeResource('task', 'test', [makeAttribute('hours', makeLiteral(3.5, 'number'))]),
         ],
       };
 
@@ -230,9 +228,7 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [
-            makeAttribute('offset', makeLiteral(-10, 'number')),
-          ]),
+          makeResource('task', 'test', [makeAttribute('offset', makeLiteral(-10, 'number'))]),
         ],
       };
 
@@ -247,9 +243,7 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [
-            makeAttribute('notes', makeLiteral('', 'string')),
-          ]),
+          makeResource('task', 'test', [makeAttribute('notes', makeLiteral('', 'string'))]),
         ],
       };
 
@@ -267,9 +261,7 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [
-            makeAttribute('depends_on', makeReference('other_task')),
-          ]),
+          makeResource('task', 'test', [makeAttribute('depends_on', makeReference('other_task'))]),
         ],
       };
 
@@ -305,9 +297,7 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [
-            makeAttribute('depends_on', makeReference('target')),
-          ]),
+          makeResource('task', 'test', [makeAttribute('depends_on', makeReference('target'))]),
         ],
       };
 

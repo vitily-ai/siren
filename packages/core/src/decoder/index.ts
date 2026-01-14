@@ -1,12 +1,26 @@
 /**
  * Decoder module - transforms CST to IR
- * 
+ *
  * Converts the raw parse tree (CST) into a semantic intermediate
  * representation (IR) with validation and diagnostics.
  */
 
-import type { Attribute, AttributeValue, Document, Resource, ResourceReference, ResourceType } from '../ir/index.js';
-import type { AttributeNode, DocumentNode, ExpressionNode, LiteralNode, ReferenceNode, ResourceNode } from '../parser/cst.js';
+import type {
+  Attribute,
+  AttributeValue,
+  Document,
+  Resource,
+  ResourceReference,
+  ResourceType,
+} from '../ir/index.js';
+import type {
+  AttributeNode,
+  DocumentNode,
+  ExpressionNode,
+  LiteralNode,
+  ReferenceNode,
+  ResourceNode,
+} from '../parser/cst.js';
 
 /**
  * Diagnostic message produced during decoding
@@ -48,7 +62,7 @@ function isReferenceNode(node: ExpressionNode): node is ReferenceNode {
 
 /**
  * Decode a literal node to a primitive AttributeValue
- * 
+ *
  * @param node - The CST literal node
  * @returns The primitive value (string, number, boolean, or null)
  */
@@ -63,7 +77,7 @@ function decodeLiteral(node: LiteralNode): AttributeValue {
 
 /**
  * Decode a reference node to a ResourceReference
- * 
+ *
  * @param node - The CST reference node
  * @returns The ResourceReference with target ID (quotes stripped if quoted)
  */
@@ -77,7 +91,7 @@ function decodeReference(node: ReferenceNode): ResourceReference {
 
 /**
  * Decode an attribute node from CST to IR
- * 
+ *
  * @param node - The CST attribute node
  * @returns The decoded Attribute, or null if expression type is not yet supported
  */
@@ -107,7 +121,7 @@ function decodeAttribute(node: AttributeNode): Attribute | null {
 
 /**
  * Decode a resource node from CST to IR
- * 
+ *
  * @param node - The CST resource node
  * @returns The decoded Resource
  */
@@ -134,7 +148,7 @@ function decodeResource(node: ResourceNode): Resource {
 
 /**
  * Decode a CST into an IR Document
- * 
+ *
  * @param cst - The parsed concrete syntax tree
  * @returns The decode result with document, diagnostics, and success flag
  */
@@ -146,7 +160,7 @@ export function decode(cst: DocumentNode): DecodeResult {
     resources.push(decodeResource(resourceNode));
   }
 
-  const hasErrors = diagnostics.some(d => d.severity === 'error');
+  const hasErrors = diagnostics.some((d) => d.severity === 'error');
 
   return {
     document: hasErrors ? null : { resources },

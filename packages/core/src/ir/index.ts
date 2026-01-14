@@ -2,14 +2,14 @@
  * IR module exports
  */
 
-export type { 
-  PrimitiveValue,
-  ResourceReference, 
-  ArrayValue, 
-  AttributeValue,
+export type {
+  ArrayValue,
   Attribute,
-  ResourceType,
-  Resource,
+  AttributeValue,
   Document,
+  PrimitiveValue,
+  Resource,
+  ResourceReference,
+  ResourceType,
 } from './types.js';
-export { isReference, isArray, isPrimitive } from './types.js';
+export { isArray, isPrimitive, isReference } from './types.js';

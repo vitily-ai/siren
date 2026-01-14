@@ -1,17 +1,17 @@
 /**
  * Test helper: Provides initialized ParserAdapter for tests
- * 
+ *
  * This is NOT shipped code - only used in tests.
  * Tests can use Node APIs and real WASM parsing.
  */
 /// <reference types="node" />
 
-import { Parser, Language, type Tree } from 'web-tree-sitter';
 import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createNodeAdapter } from './node-adapter.js';
+import { Language, Parser, type Tree } from 'web-tree-sitter';
 import type { ParserAdapter } from '../../src/parser/adapter.js';
+import { createNodeAdapter } from './node-adapter.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -20,7 +20,7 @@ let _adapter: ParserAdapter | null = null;
 
 /**
  * Get a cached ParserAdapter instance for tests.
- * 
+ *
  * This is the preferred way to get a parser in tests.
  * The adapter is initialized once and reused across tests.
  */
@@ -34,7 +34,7 @@ export async function getTestAdapter(): Promise<ParserAdapter> {
 /**
  * Initialize and return a tree-sitter parser for Siren grammar.
  * Caches the parser instance across tests.
- * 
+ *
  * @deprecated Use getTestAdapter() for new tests. This is kept for backward compatibility.
  */
 export async function getTestParser(): Promise<Parser> {
@@ -45,19 +45,19 @@ export async function getTestParser(): Promise<Parser> {
   // Initialize web-tree-sitter WASM runtime
   await Parser.init();
   const parser = new Parser();
-  
+
   // Load the committed WASM grammar
   const wasmPath = join(__dirname, '../../grammar/tree-sitter-siren.wasm');
   const language = await Language.load(wasmPath);
   parser.setLanguage(language);
-  
+
   _parser = parser;
   return parser;
 }
 
 /**
  * Parse a Siren source string using the real tree-sitter grammar.
- * 
+ *
  * @deprecated Use getTestAdapter() for new tests. This is kept for backward compatibility.
  */
 export async function parseSource(source: string): Promise<Tree> {
@@ -72,7 +72,7 @@ export async function parseSource(source: string): Promise<Tree> {
 /**
  * Parse a fixture file by name (without extension).
  * Example: parseFixture('01-minimal') loads test/fixtures/01-minimal.siren
- * 
+ *
  * @deprecated Use getTestAdapter() for new tests. This is kept for backward compatibility.
  */
 export async function parseFixture(name: string): Promise<Tree> {

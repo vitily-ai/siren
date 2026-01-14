@@ -1,0 +1,5 @@
+# Run lint-staged (lint + format only staged files)
+yarn lint-staged
+
+# Run unit tests across all workspaces
+yarn test

@@ -1,19 +1,18 @@
 /**
  * Decode Integration Tests
- * 
+ *
  * End-to-end tests: source file → parse → decode → assert on IR
  * Validates that fixtures decode to correct resource structure.
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getTestAdapter } from '../helpers/parser.js';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { decode } from '../../src/decoder/index.js';
 import { isReference } from '../../src/ir/index.js';
 import type { ParserAdapter } from '../../src/parser/adapter.js';
-import type { ResourceReference } from '../../src/ir/index.js';
+import { getTestAdapter } from '../helpers/parser.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixturesDir = join(__dirname, '../fixtures');
@@ -34,7 +33,7 @@ describe('Decode Integration: Fixtures', () => {
       const decodeResult = decode(parseResult.tree!);
 
       expect(decodeResult.success).toBe(true);
-      expect(decodeResult.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+      expect(decodeResult.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     });
 
     it('decodes correct number of resources (4)', async () => {
@@ -52,8 +51,8 @@ describe('Decode Integration: Fixtures', () => {
       const decodeResult = decode(parseResult.tree!);
 
       const resources = decodeResult.document!.resources;
-      const tasks = resources.filter(r => r.type === 'task');
-      const milestones = resources.filter(r => r.type === 'milestone');
+      const tasks = resources.filter((r) => r.type === 'task');
+      const milestones = resources.filter((r) => r.type === 'milestone');
 
       expect(tasks).toHaveLength(3);
       expect(milestones).toHaveLength(1);
@@ -64,7 +63,7 @@ describe('Decode Integration: Fixtures', () => {
       const parseResult = await adapter.parse(source);
       const decodeResult = decode(parseResult.tree!);
 
-      const ids = decodeResult.document!.resources.map(r => r.id);
+      const ids = decodeResult.document!.resources.map((r) => r.id);
 
       expect(ids).toContain('example');
       expect(ids).toContain('initial setup'); // stripped quotes
@@ -97,7 +96,7 @@ describe('Decode Integration: Fixtures', () => {
       const decodeResult = decode(parseResult.tree!);
 
       expect(decodeResult.success).toBe(true);
-      expect(decodeResult.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+      expect(decodeResult.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     });
 
     it('decodes correct number of resources (3)', async () => {
@@ -115,8 +114,8 @@ describe('Decode Integration: Fixtures', () => {
       const decodeResult = decode(parseResult.tree!);
 
       const resources = decodeResult.document!.resources;
-      const tasks = resources.filter(r => r.type === 'task');
-      const milestones = resources.filter(r => r.type === 'milestone');
+      const tasks = resources.filter((r) => r.type === 'task');
+      const milestones = resources.filter((r) => r.type === 'milestone');
 
       expect(tasks).toHaveLength(2);
       expect(milestones).toHaveLength(1);
@@ -127,7 +126,7 @@ describe('Decode Integration: Fixtures', () => {
       const parseResult = await adapter.parse(source);
       const decodeResult = decode(parseResult.tree!);
 
-      const ids = decodeResult.document!.resources.map(r => r.id);
+      const ids = decodeResult.document!.resources.map((r) => r.id);
 
       expect(ids).toContain('with_attributes');
       expect(ids).toContain('Q1 Launch'); // stripped quotes
@@ -153,8 +152,10 @@ describe('Decode Integration: Fixtures', () => {
       const parseResult = await adapter.parse(source);
       const decodeResult = decode(parseResult.tree!);
 
-      const withAttributes = decodeResult.document!.resources.find(r => r.id === 'with_attributes')!;
-      const description = withAttributes.attributes.find(a => a.key === 'description');
+      const withAttributes = decodeResult.document!.resources.find(
+        (r) => r.id === 'with_attributes',
+      )!;
+      const description = withAttributes.attributes.find((a) => a.key === 'description');
 
       expect(description).toBeDefined();
       expect(description!.value).toBe('some description');
@@ -168,8 +169,10 @@ describe('Decode Integration: Fixtures', () => {
       const parseResult = await adapter.parse(source);
       const decodeResult = decode(parseResult.tree!);
 
-      const withAttributes = decodeResult.document!.resources.find(r => r.id === 'with_attributes')!;
-      const points = withAttributes.attributes.find(a => a.key === 'points');
+      const withAttributes = decodeResult.document!.resources.find(
+        (r) => r.id === 'with_attributes',
+      )!;
+      const points = withAttributes.attributes.find((a) => a.key === 'points');
 
       expect(points).toBeDefined();
       expect(points!.value).toBe(3);
@@ -181,8 +184,8 @@ describe('Decode Integration: Fixtures', () => {
       const parseResult = await adapter.parse(source);
       const decodeResult = decode(parseResult.tree!);
 
-      const milestone = decodeResult.document!.resources.find(r => r.id === 'Q1 Launch')!;
-      const critical = milestone.attributes.find(a => a.key === 'critical');
+      const milestone = decodeResult.document!.resources.find((r) => r.id === 'Q1 Launch')!;
+      const critical = milestone.attributes.find((a) => a.key === 'critical');
 
       expect(critical).toBeDefined();
       expect(critical!.value).toBe(true);
@@ -194,20 +197,20 @@ describe('Decode Integration: Fixtures', () => {
       const parseResult = await adapter.parse(source);
       const decodeResult = decode(parseResult.tree!);
 
-      const complex = decodeResult.document!.resources.find(r => r.id === 'complex_example')!;
+      const complex = decodeResult.document!.resources.find((r) => r.id === 'complex_example')!;
       const attrs = complex.attributes;
 
       // String attributes
-      expect(attrs.find(a => a.key === 'title')!.value).toBe('Implement authentication');
-      expect(attrs.find(a => a.key === 'owner')!.value).toBe('security-team');
+      expect(attrs.find((a) => a.key === 'title')!.value).toBe('Implement authentication');
+      expect(attrs.find((a) => a.key === 'owner')!.value).toBe('security-team');
 
       // Number attributes
-      expect(attrs.find(a => a.key === 'priority')!.value).toBe(1);
-      expect(attrs.find(a => a.key === 'estimate_hours')!.value).toBe(40);
+      expect(attrs.find((a) => a.key === 'priority')!.value).toBe(1);
+      expect(attrs.find((a) => a.key === 'estimate_hours')!.value).toBe(40);
 
       // Boolean attributes
-      expect(attrs.find(a => a.key === 'blocking')!.value).toBe(true);
-      expect(attrs.find(a => a.key === 'optional')!.value).toBe(false);
+      expect(attrs.find((a) => a.key === 'blocking')!.value).toBe(true);
+      expect(attrs.find((a) => a.key === 'optional')!.value).toBe(false);
     });
 
     it('decodes milestone Q1 Launch with year as number', async () => {
@@ -215,8 +218,8 @@ describe('Decode Integration: Fixtures', () => {
       const parseResult = await adapter.parse(source);
       const decodeResult = decode(parseResult.tree!);
 
-      const milestone = decodeResult.document!.resources.find(r => r.id === 'Q1 Launch')!;
-      const year = milestone.attributes.find(a => a.key === 'year');
+      const milestone = decodeResult.document!.resources.find((r) => r.id === 'Q1 Launch')!;
+      const year = milestone.attributes.find((a) => a.key === 'year');
 
       expect(year).toBeDefined();
       expect(year!.value).toBe(2026);
@@ -233,7 +236,7 @@ describe('Decode Integration: Fixtures', () => {
       const decodeResult = decode(parseResult.tree!);
 
       expect(decodeResult.success).toBe(true);
-      expect(decodeResult.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+      expect(decodeResult.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     });
 
     it('decodes correct number of resources (8)', async () => {
@@ -251,8 +254,8 @@ describe('Decode Integration: Fixtures', () => {
       const decodeResult = decode(parseResult.tree!);
 
       const resources = decodeResult.document!.resources;
-      const tasks = resources.filter(r => r.type === 'task');
-      const milestones = resources.filter(r => r.type === 'milestone');
+      const tasks = resources.filter((r) => r.type === 'task');
+      const milestones = resources.filter((r) => r.type === 'milestone');
 
       expect(tasks).toHaveLength(6);
       expect(milestones).toHaveLength(2);
@@ -263,7 +266,7 @@ describe('Decode Integration: Fixtures', () => {
       const parseResult = await adapter.parse(source);
       const decodeResult = decode(parseResult.tree!);
 
-      const ids = decodeResult.document!.resources.map(r => r.id);
+      const ids = decodeResult.document!.resources.map((r) => r.id);
 
       // Bare identifiers
       expect(ids).toContain('A');
@@ -299,8 +302,8 @@ describe('Decode Integration: Fixtures', () => {
       const parseResult = await adapter.parse(source);
       const decodeResult = decode(parseResult.tree!);
 
-      const resourceB = decodeResult.document!.resources.find(r => r.id === 'B')!;
-      const dependsOn = resourceB.attributes.find(a => a.key === 'depends_on');
+      const resourceB = decodeResult.document!.resources.find((r) => r.id === 'B')!;
+      const dependsOn = resourceB.attributes.find((a) => a.key === 'depends_on');
 
       expect(dependsOn).toBeDefined();
       expect(isReference(dependsOn!.value)).toBe(true);
@@ -315,8 +318,8 @@ describe('Decode Integration: Fixtures', () => {
       const parseResult = await adapter.parse(source);
       const decodeResult = decode(parseResult.tree!);
 
-      const deploy = decodeResult.document!.resources.find(r => r.id === 'deploy')!;
-      const dependsOn = deploy.attributes.find(a => a.key === 'depends_on');
+      const deploy = decodeResult.document!.resources.find((r) => r.id === 'deploy')!;
+      const dependsOn = deploy.attributes.find((a) => a.key === 'depends_on');
 
       expect(dependsOn).toBeDefined();
       // This is a string literal, not a reference
@@ -329,8 +332,8 @@ describe('Decode Integration: Fixtures', () => {
       const parseResult = await adapter.parse(source);
       const decodeResult = decode(parseResult.tree!);
 
-      const early = decodeResult.document!.resources.find(r => r.id === 'early')!;
-      const dependsOn = early.attributes.find(a => a.key === 'depends_on');
+      const early = decodeResult.document!.resources.find((r) => r.id === 'early')!;
+      const dependsOn = early.attributes.find((a) => a.key === 'depends_on');
 
       expect(dependsOn).toBeDefined();
       expect(dependsOn!.value).toEqual({ kind: 'reference', id: 'late' });
@@ -345,8 +348,8 @@ describe('Decode Integration: Fixtures', () => {
       expect(decodeResult.success).toBe(true);
 
       // Resource C should exist but its array depends_on should be filtered out
-      const resourceC = decodeResult.document!.resources.find(r => r.id === 'C')!;
-      const dependsOn = resourceC.attributes.find(a => a.key === 'depends_on');
+      const resourceC = decodeResult.document!.resources.find((r) => r.id === 'C')!;
+      const dependsOn = resourceC.attributes.find((a) => a.key === 'depends_on');
 
       // Array attribute is skipped, so depends_on should not be present
       expect(dependsOn).toBeUndefined();
@@ -362,15 +365,15 @@ describe('Decode Integration: Fixtures', () => {
       // Resources with single references (should have depends_on decoded as ResourceReference)
       const singleRefResources = ['B', 'early'];
       for (const id of singleRefResources) {
-        const resource = resources.find(r => r.id === id)!;
-        const dependsOn = resource.attributes.find(a => a.key === 'depends_on');
+        const resource = resources.find((r) => r.id === id)!;
+        const dependsOn = resource.attributes.find((a) => a.key === 'depends_on');
         expect(dependsOn, `${id} should have depends_on attribute`).toBeDefined();
         expect(isReference(dependsOn!.value), `${id}.depends_on should be a reference`).toBe(true);
       }
 
       // deploy.depends_on is a string literal (not a reference)
-      const deploy = resources.find(r => r.id === 'deploy')!;
-      const deployDep = deploy.attributes.find(a => a.key === 'depends_on');
+      const deploy = resources.find((r) => r.id === 'deploy')!;
+      const deployDep = deploy.attributes.find((a) => a.key === 'depends_on');
       expect(deployDep).toBeDefined();
       expect(isReference(deployDep!.value)).toBe(false);
       expect(typeof deployDep!.value).toBe('string');
@@ -378,14 +381,14 @@ describe('Decode Integration: Fixtures', () => {
       // Resources with array references (depends_on should be skipped/filtered)
       const arrayRefResources = ['C', 'v1.0'];
       for (const id of arrayRefResources) {
-        const resource = resources.find(r => r.id === id)!;
-        const dependsOn = resource.attributes.find(a => a.key === 'depends_on');
+        const resource = resources.find((r) => r.id === id)!;
+        const dependsOn = resource.attributes.find((a) => a.key === 'depends_on');
         expect(dependsOn, `${id} should NOT have depends_on (array skipped)`).toBeUndefined();
       }
 
       // Resource A has no depends_on
-      const resourceA = resources.find(r => r.id === 'A')!;
-      expect(resourceA.attributes.find(a => a.key === 'depends_on')).toBeUndefined();
+      const resourceA = resources.find((r) => r.id === 'A')!;
+      expect(resourceA.attributes.find((a) => a.key === 'depends_on')).toBeUndefined();
     });
   });
 

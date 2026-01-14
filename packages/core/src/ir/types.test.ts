@@ -2,14 +2,14 @@
  * Tests for IR type guards and type safety
  */
 
-import { describe, it, expect } from 'vitest';
-import { 
-  isReference, 
-  isArray, 
-  isPrimitive,
-  type AttributeValue,
-  type ResourceReference,
+import { describe, expect, it } from 'vitest';
+import {
   type ArrayValue,
+  type AttributeValue,
+  isArray,
+  isPrimitive,
+  isReference,
+  type ResourceReference,
 } from '../ir/index.js';
 
 describe('IR Type System', () => {
@@ -39,7 +39,7 @@ describe('IR Type System', () => {
   describe('Type Discrimination', () => {
     it('should narrow types correctly', () => {
       const value: AttributeValue = { kind: 'reference', id: 'test' };
-      
+
       if (isReference(value)) {
         // Type should be narrowed to ResourceReference
         expect(value.id).toBe('test');

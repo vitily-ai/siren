@@ -1,6 +1,6 @@
 /**
  * Intermediate Representation (IR) types for Siren
- * 
+ *
  * These types represent the semantic model after parsing and validation.
  * They are environment-agnostic and used by all consumers of @siren/core.
  */
@@ -29,10 +29,7 @@ export interface ArrayValue {
 /**
  * All possible attribute value types
  */
-export type AttributeValue = 
-  | PrimitiveValue 
-  | ResourceReference 
-  | ArrayValue;
+export type AttributeValue = PrimitiveValue | ResourceReference | ArrayValue;
 
 /**
  * A single attribute (key-value pair)
@@ -70,7 +67,9 @@ export interface Document {
  * Type guards for AttributeValue discrimination
  */
 export function isReference(value: AttributeValue): value is ResourceReference {
-  return typeof value === 'object' && value !== null && 'kind' in value && value.kind === 'reference';
+  return (
+    typeof value === 'object' && value !== null && 'kind' in value && value.kind === 'reference'
+  );
 }
 
 export function isArray(value: AttributeValue): value is ArrayValue {

@@ -1,13 +1,13 @@
 /**
  * Concrete Syntax Tree (CST) node types
- * 
+ *
  * These types mirror the tree-sitter grammar structure.
  * They represent the raw parse tree before semantic analysis.
  */
 
 /**
  * Base interface for all CST nodes
- * 
+ *
  * Note: Position tracking (line/column) intentionally omitted until
  * diagnostics/error reporting are implemented. Will be added when needed.
  */
@@ -55,10 +55,7 @@ export interface AttributeNode extends CSTNode {
 /**
  * Expression types (right-hand side of attribute assignments)
  */
-export type ExpressionNode = 
-  | LiteralNode 
-  | ReferenceNode 
-  | ArrayNode;
+export type ExpressionNode = LiteralNode | ReferenceNode | ArrayNode;
 
 /**
  * Literal values (string, number, boolean, null)

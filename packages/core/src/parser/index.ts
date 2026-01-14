@@ -2,15 +2,15 @@
  * Parser module exports
  */
 
-export type { ParserAdapter, ParseResult, ParseError } from './adapter.js';
-export type { 
-  CSTNode, 
-  DocumentNode, 
-  ResourceNode, 
-  IdentifierNode, 
-  AttributeNode, 
+export type { ParseError, ParseResult, ParserAdapter } from './adapter.js';
+export type {
+  ArrayNode,
+  AttributeNode,
+  CSTNode,
+  DocumentNode,
   ExpressionNode,
+  IdentifierNode,
   LiteralNode,
   ReferenceNode,
-  ArrayNode,
+  ResourceNode,
 } from './cst.js';

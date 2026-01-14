@@ -12,12 +12,23 @@
   "scripts": {
     "build": "yarn workspaces foreach -Apt run build",
     "test": "yarn workspaces foreach -Apt run test",
-    "lint": "yarn workspaces foreach -Apt run lint",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
     "clean": "yarn workspaces foreach -Apt run clean",
     "siren": "node apps/cli/dist/index.js",
-    "cli:link": "cd apps/cli && npm link"
+    "cli:link": "cd apps/cli && npm link",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,ts,jsx,tsx,json}": [
+      "biome check --write --no-errors-on-unmatched"
+    ]
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.3.11",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   },

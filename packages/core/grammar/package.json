@@ -10,7 +10,9 @@
   "tree-sitter": [
     {
       "scope": "source.siren",
-      "file-types": ["siren"]
+      "file-types": [
+        "siren"
+      ]
     }
   ],
   "devDependencies": {

@@ -1,14 +1,7 @@
 // Minimal tree-sitter DSL shims for editor type-checking.
 // Runtime DSL helpers are injected by tree-sitter-cli.
 
-type DSLRule =
-  | string
-  | RegExp
-  | number
-  | boolean
-  | null
-  | undefined
-  | { __rule: true };
+type DSLRule = string | RegExp | number | boolean | null | undefined | { __rule: true };
 
 interface DSLGrammarSymbols {
   [name: string]: DSLRule;

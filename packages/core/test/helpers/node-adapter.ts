@@ -1,25 +1,24 @@
 /**
  * Node.js ParserAdapter implementation using web-tree-sitter
- * 
+ *
  * This is test infrastructure - NOT part of the public API.
  * Tests can use real WASM parsing without environment abstraction concerns.
  */
 
-import { Parser, Language } from 'web-tree-sitter';
-import type { Tree, Node as SyntaxNode } from 'web-tree-sitter';
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { ParserAdapter, ParseResult, ParseError } from '../../src/parser/adapter.js';
+import type { Node as SyntaxNode, Tree } from 'web-tree-sitter';
+import { Language, Parser } from 'web-tree-sitter';
+import type { ParseError, ParseResult, ParserAdapter } from '../../src/parser/adapter.js';
 import type {
-  DocumentNode,
-  ResourceNode,
-  IdentifierNode,
+  ArrayNode,
   AttributeNode,
+  DocumentNode,
   ExpressionNode,
+  IdentifierNode,
   LiteralNode,
   ReferenceNode,
-  ArrayNode,
+  ResourceNode,
 } from '../../src/parser/cst.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -32,7 +31,7 @@ class NodeParserAdapter implements ParserAdapter {
 
   /**
    * Create a fully-initialized NodeParserAdapter
-   * 
+   *
    * Loads tree-sitter WASM runtime and Siren grammar.
    */
   static async create(): Promise<NodeParserAdapter> {
@@ -127,7 +126,7 @@ class NodeParserAdapter implements ParserAdapter {
 
   /**
    * Convert tree-sitter identifier node to IdentifierNode
-   * 
+   *
    * identifier is a wrapper node containing bare_identifier or quoted_identifier
    */
   private convertIdentifier(node: SyntaxNode): IdentifierNode {
@@ -190,7 +189,7 @@ class NodeParserAdapter implements ParserAdapter {
 
   /**
    * Convert tree-sitter expression node to ExpressionNode
-   * 
+   *
    * expression is a wrapper node containing literal/reference/array child
    */
   private convertExpression(node: SyntaxNode): ExpressionNode | null {
@@ -349,7 +348,7 @@ class NodeParserAdapter implements ParserAdapter {
 
 /**
  * Create a fully-initialized Node ParserAdapter
- * 
+ *
  * Use this async factory to get a ready-to-use adapter.
  * Tests should cache this using the test helper.
  */
