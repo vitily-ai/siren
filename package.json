@@ -13,7 +13,9 @@
     "build": "yarn workspaces foreach -Apt run build",
     "test": "yarn workspaces foreach -Apt run test",
     "lint": "yarn workspaces foreach -Apt run lint",
-    "clean": "yarn workspaces foreach -Apt run clean"
+    "clean": "yarn workspaces foreach -Apt run clean",
+    "siren": "node apps/cli/dist/index.js",
+    "cli:link": "cd apps/cli && npm link"
   },
   "devDependencies": {
     "typescript": "^5.7.2",
