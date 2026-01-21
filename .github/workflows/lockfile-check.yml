@@ -31,12 +31,5 @@ jobs:
           node-version: '24.x'
           cache: 'yarn'
 
-      - name: Disable hardened mode
-        run: yarn config set enableHardenedMode false
-          cache: 'yarn'
-
-      - name: Disable hardened mode
-        run: yarn config set enableHardenedMode false
-
       - name: Check lockfile validity
         run: yarn install --immutable --immutable-cache
