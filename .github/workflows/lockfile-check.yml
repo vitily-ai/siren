@@ -5,6 +5,7 @@ on:
     paths:
       - 'yarn.lock'
       - '.yarnrc.yml'
+      - '**/package.json'
 
 permissions:
   contents: read
@@ -28,6 +29,7 @@ jobs:
         uses: actions/setup-node@v4.2.0
         with:
           node-version: '24.x'
+          cache: 'yarn'
 
       - name: Check lockfile validity
         run: yarn install --immutable --immutable-cache

@@ -31,6 +31,10 @@ export interface ResourceNode extends CSTNode {
   readonly resourceType: 'task' | 'milestone';
   readonly identifier: IdentifierNode;
   readonly body: readonly AttributeNode[];
+  /**
+   * True if the 'complete' keyword is present on this resource (set by parser)
+   */
+  readonly complete?: boolean;
 }
 
 /**

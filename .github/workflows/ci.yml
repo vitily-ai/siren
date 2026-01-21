@@ -44,6 +44,9 @@ jobs:
       - name: Build
         run: yarn build
 
+      - name: CLI smoke test
+        run: node ./apps/cli/dist/index.js --version
+
       - name: Test
         run: yarn test
 

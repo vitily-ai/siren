@@ -1,0 +1,18 @@
+task status-complete {
+
+    description = "add to the grammar a first-class way to mark a task or milestone as complete"
+    suggested_example = "task some-task complete { ... }"
+
+}
+
+task array-optional-brackets {
+
+    description = "make brackets wrapping arrays optional - treating anything comma-separated as a tuple"
+
+}
+
+task duplicate-ids {
+
+    description = "milestone and tasks that share an id should emit a warning, and only one should be loaded. milestones should be prioritized over tasks, but the last of 'equal' entries will be the one that gets acknowledged. the warning should highlight which of the identified duplicates is the one that is loaded, including file and number number."
+
+}

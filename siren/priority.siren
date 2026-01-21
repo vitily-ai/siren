@@ -1,0 +1,43 @@
+task sort-check {
+
+    description = "add a command to sort by priority, descending. on doing so, it should discover all tasks/milestones in the system and get their priority (0 if undefined or invalid)."
+
+}
+
+task priority-invalid {
+
+    description = "non-integer values should be treated as unset, but a warning should be displayed"
+    depends_on = sort-check
+
+}
+
+task sort-order {
+
+    description = "can define which order to sort in"
+    depends_on = sort-check
+
+}
+
+task arbitrary-sort-attribute {
+
+    description = "user can supply an attribute other than 'priority' to sort on. same constraints apply"
+    depends_on = sort-check
+
+}
+
+task project-sort-attribute {
+    description = "user can define the alternative sort attribute in project settings to be used as default"
+    depends_on = [arbitrary-sort-attribute, config-grammar]
+}
+
+task show-priority {
+    description = "priority should be displayed to the left of milestone and task names when listed"
+    depends_on = [sort-check]
+}
+
+milestone sort-by-priority {
+
+    description = "add the ability to define priority on tasks/milestones and sort by it" 
+    depends_on = [project-sort-attribute, sort-order, priority-invalid, show-priority]
+
+}

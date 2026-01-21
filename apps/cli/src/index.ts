@@ -1,6 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { version } from '@siren/core';
+import { getLoadedContext, loadProject } from './project.js';
 
 const SIREN_DIR = 'siren';
 const CONFIG_FILE = 'siren.config.yaml';
@@ -16,6 +18,7 @@ Usage: siren <command>
 
 Commands:
   init    Initialize a new Siren project in the current directory
+  list    List all milestone IDs from .siren files
 
 Options:
   --version    Show version number`);
@@ -73,7 +76,37 @@ export function runInit(cwd: string): void {
   }
 }
 
-export function main(args: string[] = process.argv.slice(2)): void {
+export interface ListResult {
+  milestones: string[];
+  warnings: string[];
+}
+
+/**
+ * List all milestone IDs from .siren files in the siren/ directory
+ */
+export async function list(): Promise<ListResult> {
+  const ctx = getLoadedContext();
+  if (!ctx) {
+    throw new Error('Project context not loaded');
+  }
+  return { milestones: ctx.milestones, warnings: ctx.warnings };
+}
+
+export async function runList(): Promise<void> {
+  const result = await list();
+
+  // Print warnings to stderr
+  for (const warning of result.warnings) {
+    console.error(warning);
+  }
+
+  // Print milestone IDs to stdout
+  for (const id of result.milestones) {
+    console.log(id);
+  }
+}
+
+export async function main(args: string[] = process.argv.slice(2)): Promise<void> {
   const command = args[0];
 
   if (command === '--version') {
@@ -81,33 +114,36 @@ export function main(args: string[] = process.argv.slice(2)): void {
     return;
   }
 
+  // Preload project context
+  const ctx = await loadProject(process.cwd());
+
+  // Print warnings and errors to stderr
+  for (const warning of ctx.warnings) {
+    console.error(warning);
+  }
+  for (const error of ctx.errors) {
+    console.error(error);
+  }
+
   if (command === 'init') {
     runInit(process.cwd());
+    return;
+  }
+
+  if (command === 'list') {
+    await runList();
     return;
   }
 
   printUsage();
 }
 
-import { realpathSync } from 'node:fs';
-// Only run when executed directly, not when imported for testing.
-// In ESM, we compare import.meta.url to the resolved real path of argv[1]
-// to handle symlinks (e.g., npm global bin links).
-import { fileURLToPath } from 'node:url';
+// Only run when executed directly, not when imported for testing
+const isMainModule =
+  typeof process !== 'undefined' &&
+  process.argv[1] &&
+  fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
 
-function isMain(): boolean {
-  if (typeof process === 'undefined' || !process.argv[1]) {
-    return false;
-  }
-  try {
-    const scriptPath = realpathSync(process.argv[1]);
-    const modulePath = fileURLToPath(import.meta.url);
-    return scriptPath === modulePath;
-  } catch {
-    return false;
-  }
-}
-
-if (isMain()) {
+if (isMainModule) {
   main();
 }

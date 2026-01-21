@@ -36,7 +36,6 @@ task t1 {
 milestone m1 {
 }
 
----
 
 (document
   (resource
@@ -46,6 +45,15 @@ milestone m1 {
     (identifier
       (bare_identifier))))
 
+
+# Task with complete modifier
+task bar complete {
+  description = "done"
+}
+
+# Milestone with complete modifier
+milestone release-1 complete {
+  description = "shipped"
 ==================
 Quoted identifier
 ==================

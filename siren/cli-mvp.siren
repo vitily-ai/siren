@@ -1,0 +1,49 @@
+task cli-new-milestone {
+
+    description = "cli tool to create milestone"
+
+}
+
+task recursive-search-up {
+
+    description = "invoking siren cli looks up directory tree until a project root has been identified, and uses that as the basis for discovery"
+
+}
+
+task cli-add-task-basic {
+
+    description = "`siren task new <name> <milestone>` - adds a task, upon which the given milestone will depend, within the same file as the milestone. If the milestone doesn't exist, create it in a new file matching the milestone name under `siren/`."
+
+}
+
+task cli-add-task-no-milestone {
+
+    description = "`siren task new <name> --no-milestone` - adds a task without a milestone into `siren/misc.siren`"
+    depends_on = cli-add-task-basic
+
+}
+
+milestone cli-mvp {
+
+    description = "Minimum features to make the cli usable"
+    depends_on = [cli-new-milestone, recursive-search-up]
+
+}
+
+task query-complete {
+
+    description = "Given a task/milestone id, determine if it complete or not"
+    depends_on = [status-complete]
+
+}
+
+task complete-duplicates {
+
+    description = "attempting to 'complete' a task that has a duplicated id should fail, explicitly highliting the duplication"
+    depends_on = [status-complete, duplicate-ids]
+
+}
+
+task ensure-load complete {
+    description = "ensure that invoking the cli always 'loads' the project to shared memory before handling the command - including parsing, registering IR, and raising warnings/errors"
+}
