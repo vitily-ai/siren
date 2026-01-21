@@ -47,3 +47,10 @@ task complete-duplicates {
 task ensure-load complete {
     description = "ensure that invoking the cli always 'loads' the project to shared memory before handling the command - including parsing, registering IR, and raising warnings/errors"
 }
+
+task list-ready {
+
+    example = "siren list ready"
+    depends_on = task-readiness
+
+}
