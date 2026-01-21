@@ -1,4 +1,4 @@
-task status-complete {
+task status-complete complete {
 
     description = "add to the grammar a first-class way to mark a task or milestone as complete"
     suggested_example = "task some-task complete { ... }"

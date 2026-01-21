@@ -192,4 +192,16 @@ task third {}
     expect(result.tree?.resources[1]?.resourceType).toBe('milestone');
     expect(result.tree?.resources[2]?.resourceType).toBe('task');
   });
+
+  it('should parse complete modifier', async () => {
+    const adapter = await getTestAdapter();
+    const source = `task done complete { description = "finished" }`;
+    const result = await adapter.parse(source);
+
+    expect(result.success).toBe(true);
+    expect(result.tree?.resources).toHaveLength(1);
+    const task = result.tree?.resources[0];
+    expect(task?.complete).toBe(true);
+    expect(task?.body).toHaveLength(1);
+  });
 });

@@ -414,4 +414,37 @@ describe('Decode Integration: Fixtures', () => {
       }
     });
   });
+
+  describe('04-complete.siren', () => {
+    const fixturePath = join(fixturesDir, '04-complete.siren');
+
+    it('decodes successfully with no errors', async () => {
+      const source = readFileSync(fixturePath, 'utf-8');
+      const parseResult = await adapter.parse(source);
+      const decodeResult = decode(parseResult.tree!);
+
+      expect(decodeResult.success).toBe(true);
+      expect(decodeResult.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
+    });
+
+    it('decodes correct number of resources (3)', async () => {
+      const source = readFileSync(fixturePath, 'utf-8');
+      const parseResult = await adapter.parse(source);
+      const decodeResult = decode(parseResult.tree!);
+
+      expect(decodeResult.document).not.toBeNull();
+      expect(decodeResult.document!.resources).toHaveLength(3);
+    });
+
+    it('decodes complete status correctly', async () => {
+      const source = readFileSync(fixturePath, 'utf-8');
+      const parseResult = await adapter.parse(source);
+      const decodeResult = decode(parseResult.tree!);
+
+      const resources = decodeResult.document!.resources;
+      expect(resources[0].complete).toBe(true); // task done complete
+      expect(resources[1].complete).toBe(true); // milestone shipped complete
+      expect(resources[2].complete).toBe(false); // task incomplete
+    });
+  });
 });

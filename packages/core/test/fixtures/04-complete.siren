@@ -1,0 +1,12 @@
+# Test complete modifier
+task done complete {
+  description = "finished task"
+}
+
+milestone shipped complete {
+  description = "released milestone"
+}
+
+task incomplete {
+  description = "not done"
+}
