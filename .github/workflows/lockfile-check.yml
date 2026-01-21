@@ -29,6 +29,14 @@ jobs:
         uses: actions/setup-node@v4.2.0
         with:
           node-version: '24.x'
+          cache: 'yarn'
+
+      - name: Disable hardened mode
+        run: yarn config set enableHardenedMode false
+          cache: 'yarn'
+
+      - name: Disable hardened mode
+        run: yarn config set enableHardenedMode false
 
       - name: Check lockfile validity
         run: yarn install --immutable --immutable-cache
