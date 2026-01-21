@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { decode, version } from '@siren/core';
-import { getParser } from './parser.js';
+import { version } from '@siren/core';
+import { getLoadedContext, loadProject } from './project.js';
 
 const SIREN_DIR = 'siren';
 const CONFIG_FILE = 'siren.config.yaml';
@@ -76,29 +76,6 @@ export function runInit(cwd: string): void {
   }
 }
 
-/**
- * Recursively find all .siren files in a directory
- */
-function findSirenFiles(dir: string): string[] {
-  if (!fs.existsSync(dir)) {
-    return [];
-  }
-
-  const results: string[] = [];
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      results.push(...findSirenFiles(fullPath));
-    } else if (entry.isFile() && entry.name.endsWith('.siren')) {
-      results.push(fullPath);
-    }
-  }
-
-  return results;
-}
-
 export interface ListResult {
   milestones: string[];
   warnings: string[];
@@ -107,45 +84,16 @@ export interface ListResult {
 /**
  * List all milestone IDs from .siren files in the siren/ directory
  */
-export async function list(cwd: string): Promise<ListResult> {
-  const result: ListResult = { milestones: [], warnings: [] };
-  const sirenDir = path.join(cwd, SIREN_DIR);
-
-  const files = findSirenFiles(sirenDir);
-  if (files.length === 0) {
-    return result;
+export async function list(): Promise<ListResult> {
+  const ctx = getLoadedContext();
+  if (!ctx) {
+    throw new Error('Project context not loaded');
   }
-
-  const parser = await getParser();
-
-  for (const filePath of files) {
-    const source = fs.readFileSync(filePath, 'utf-8');
-    const parseResult = await parser.parse(source);
-
-    if (!parseResult.success || !parseResult.tree) {
-      // Compute relative path for warning message
-      const relPath = path.relative(cwd, filePath);
-      result.warnings.push(`Warning: skipping ${relPath} (parse error)`);
-      continue;
-    }
-
-    const decodeResult = decode(parseResult.tree);
-    if (!decodeResult.document) {
-      continue;
-    }
-
-    for (const resource of decodeResult.document.resources) {
-      if (resource.type === 'milestone') {
-        result.milestones.push(resource.id);
-      }
-    }
-  }
-
-  return result;
+  return { milestones: ctx.milestones, warnings: ctx.warnings };
 }
 
-export async function runList(cwd: string): Promise<void> {
-  const result = await list(cwd);
+export async function runList(): Promise<void> {
+  const result = await list();
 
   // Print warnings to stderr
   for (const warning of result.warnings) {
@@ -166,13 +114,24 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
     return;
   }
 
+  // Preload project context
+  const ctx = await loadProject(process.cwd());
+
+  // Print warnings and errors to stderr
+  for (const warning of ctx.warnings) {
+    console.error(warning);
+  }
+  for (const error of ctx.errors) {
+    console.error(error);
+  }
+
   if (command === 'init') {
     runInit(process.cwd());
     return;
   }
 
   if (command === 'list') {
-    await runList(process.cwd());
+    await runList();
     return;
   }
 

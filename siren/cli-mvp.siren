@@ -44,6 +44,6 @@ task complete-duplicates {
 
 }
 
-task ensure-load {
+task ensure-load complete {
     description = "ensure that invoking the cli always 'loads' the project to shared memory before handling the command - including parsing, registering IR, and raising warnings/errors"
 }
