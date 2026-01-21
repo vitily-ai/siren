@@ -16,7 +16,8 @@
     "@siren/core": "workspace:*"
   },
   "devDependencies": {
-    "vite": "^6.0.7"
+    "vite": "^6.0.7",
+    "vitest": "^4.0.16"
   },
   "engines": {
     "node": ">=24.0.0"

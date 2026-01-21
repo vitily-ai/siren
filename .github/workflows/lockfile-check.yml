@@ -5,6 +5,7 @@ on:
     paths:
       - 'yarn.lock'
       - '.yarnrc.yml'
+      - '**/package.json'
 
 permissions:
   contents: read
