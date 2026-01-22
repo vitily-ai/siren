@@ -32,10 +32,11 @@ milestone release-1 {
 ## Monorepo Structure
 ```
 packages/
-  core/       # parsing, validation, IR, Mermaid emission (env-agnostic)
+  core/         # parsing, validation, IR, Mermaid emission (env-agnostic)
+    utilities/  # shared utility and API functions used by core and its frontends
 apps/
-  web/        # Vite browser app
-  cli/        # Node CLI (tsup/esbuild)
+  web/          # Vite browser app
+  cli/          # Node CLI (tsup/esbuild)
 ```
 
 ## Runtime & Tooling
@@ -49,6 +50,7 @@ apps/
 2. **No pre-building core**: Apps compile core as part of their own build; only build core artifacts when publishing standalone
 3. **Tree-sitter adapters**: Browser and Node loading hidden behind interface - core logic stays testable
 4. **Workspace linking**: Import core as source via pnpm/yarn/npm workspaces, not as pre-built package
+5. **Maximum core**: Core contains high level utility logic (example: listing milestones) in addition to parsing/decoding. The idea is that a utility that is useful for one frontend is likely useful for others.
 
 ## Testing
 - **Vitest** repo-wide for unit tests

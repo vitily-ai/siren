@@ -48,9 +48,28 @@ task ensure-load complete {
     description = "ensure that invoking the cli always 'loads' the project to shared memory before handling the command - including parsing, registering IR, and raising warnings/errors"
 }
 
-task list-ready {
+task list-with-tasks complete {
 
-    example = "siren list ready"
+    description = "using a -t switch or --tasks flag should show incomplete tasks associated with each given milestone"
+    example = "siren list -t"
+    example_output = "some_milestone_1\n\tsome_task_1\n\tsome_task_2\nsome_milestone_2"
+
+    depends_on = list-to-core
+
+}
+
+task list-with-status {
+
+    example = "siren list -s; siren list --status"
+    example_output = "some_milestone COMPLETE"
     depends_on = task-readiness
+
+    depends_on = list-with-tasks
+
+}
+
+task list-to-core complete {
+
+    description = "move utility logic out of cli and into core, aligning with 'Maximum core' instruction"
 
 }

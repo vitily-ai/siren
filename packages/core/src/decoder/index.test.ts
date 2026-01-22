@@ -637,8 +637,8 @@ describe('decode', () => {
     });
   });
 
-  describe('array attribute decoding (skipped for now)', () => {
-    it('skips array attributes without error', () => {
+  describe('array attribute decoding', () => {
+    it('decodes array attributes', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
@@ -654,13 +654,22 @@ describe('decode', () => {
 
       expect(result.success).toBe(true);
       const attrs = getFirstResourceAttrs(result);
-      // Array attribute is filtered out
-      expect(attrs).toHaveLength(2);
+      expect(attrs).toHaveLength(3);
       expect(attrs[0]).toEqual({ key: 'description', value: 'Some work' });
-      expect(attrs[1]).toEqual({ key: 'priority', value: 1 });
+      expect(attrs[1]).toEqual({
+        key: 'depends_on',
+        value: {
+          kind: 'array',
+          elements: [
+            { kind: 'reference', id: 'A' },
+            { kind: 'reference', id: 'B' },
+          ],
+        },
+      });
+      expect(attrs[2]).toEqual({ key: 'priority', value: 1 });
     });
 
-    it('resource with only array attribute has empty attributes', () => {
+    it('resource with only array attribute has the attribute', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
@@ -674,7 +683,11 @@ describe('decode', () => {
 
       expect(result.success).toBe(true);
       const attrs = getFirstResourceAttrs(result);
-      expect(attrs).toHaveLength(0);
+      expect(attrs).toHaveLength(1);
+      expect(attrs[0]).toEqual({
+        key: 'depends_on',
+        value: { kind: 'array', elements: [{ kind: 'reference', id: 'A' }] },
+      });
     });
   });
 });
