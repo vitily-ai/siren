@@ -35,11 +35,7 @@ describe('error recovery', () => {
     return /invalid value|type|repeated property/i.test(diagMsgs);
   })();
 
-  xfailIf(
-    it,
-    !diagnosticsImplemented,
-    'Diagnostics for repeated property/invalid value not yet implemented',
-  )(
+  xfailIf(it, !diagnosticsImplemented)(
     'recovers from repeated property and invalid value errors, parses subsequent valid resources, and emits diagnostics',
     () => {
       const cst: DocumentNode = {
@@ -168,9 +164,12 @@ describe('complete keyword handling', () => {
             "'complete' keyword found in invalid position for resource 'bad-task'. It will be ignored.",
           ],
         } as any,
-        makeResourceWithComplete('task', 'good-task', true, [
-          makeAttribute('description', makeLiteral('good', 'string')),
-        ]),
+        makeResource(
+          'task',
+          'good-task',
+          [makeAttribute('description', makeLiteral('good', 'string'))],
+          true,
+        ),
       ],
     };
     const result = decode(cst);
@@ -199,25 +198,10 @@ describe('complete keyword handling', () => {
     expect(result.diagnostics.some((d) => d.code === 'W002')).toBe(true);
     expect(result.document).not.toBeNull();
   });
-  function makeResourceWithComplete(
-    resourceType: 'task' | 'milestone',
-    id: string,
-    complete: boolean,
-    body: AttributeNode[] = [],
-  ): ResourceNode {
-    return {
-      type: 'resource',
-      resourceType,
-      identifier: makeIdentifier(id),
-      body,
-      complete,
-    };
-  }
-
   it('sets complete: true in IR when complete keyword is present (task)', () => {
     const cst: DocumentNode = {
       type: 'document',
-      resources: [makeResourceWithComplete('task', 'done-task', true)],
+      resources: [makeResource('task', 'done-task', [], true)],
     };
     const result = decode(cst);
     expect(result.success).toBe(true);
@@ -227,7 +211,7 @@ describe('complete keyword handling', () => {
   it('sets complete: true in IR when complete keyword is present (milestone)', () => {
     const cst: DocumentNode = {
       type: 'document',
-      resources: [makeResourceWithComplete('milestone', 'done-ms', true)],
+      resources: [makeResource('milestone', 'done-ms', [], true)],
     };
     const result = decode(cst);
     expect(result.success).toBe(true);
@@ -237,7 +221,7 @@ describe('complete keyword handling', () => {
   it('sets complete: false in IR when complete keyword is absent', () => {
     const cst: DocumentNode = {
       type: 'document',
-      resources: [makeResourceWithComplete('task', 'not-done', false)],
+      resources: [makeResource('task', 'not-done', [], false)],
     };
     const result = decode(cst);
     expect(result.success).toBe(true);
@@ -248,9 +232,12 @@ describe('complete keyword handling', () => {
     const cst: DocumentNode = {
       type: 'document',
       resources: [
-        makeResourceWithComplete('task', 'done-task', true, [
-          makeAttribute('complete', makeLiteral(false, 'boolean')),
-        ]),
+        makeResource(
+          'task',
+          'done-task',
+          [makeAttribute('complete', makeLiteral(false, 'boolean'))],
+          true,
+        ),
       ],
     };
     const result = decode(cst);
@@ -272,9 +259,12 @@ describe('complete keyword handling', () => {
     const cst: DocumentNode = {
       type: 'document',
       resources: [
-        makeResourceWithComplete('task', 'done-task', true, [
-          makeAttribute('complete', makeLiteral(true, 'boolean')),
-        ]),
+        makeResource(
+          'task',
+          'done-task',
+          [makeAttribute('complete', makeLiteral(true, 'boolean'))],
+          true,
+        ),
       ],
     };
     const result = decode(cst);
@@ -291,9 +281,12 @@ describe('complete keyword handling', () => {
     const cst: DocumentNode = {
       type: 'document',
       resources: [
-        makeResourceWithComplete('task', 'not-done', false, [
-          makeAttribute('complete', makeLiteral(true, 'boolean')),
-        ]),
+        makeResource(
+          'task',
+          'not-done',
+          [makeAttribute('complete', makeLiteral(true, 'boolean'))],
+          false,
+        ),
       ],
     };
     const result = decode(cst);
@@ -374,13 +367,18 @@ function makeResource(
   resourceType: 'task' | 'milestone',
   id: string,
   body: AttributeNode[] = [],
+  complete?: boolean,
 ): ResourceNode {
-  return {
+  const resource: ResourceNode = {
     type: 'resource',
     resourceType,
     identifier: makeIdentifier(id),
     body,
   };
+  if (complete !== undefined) {
+    (resource as any).complete = complete;
+  }
+  return resource;
 }
 
 /** Helper to get attributes from first resource in result */
