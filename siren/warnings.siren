@@ -1,0 +1,5 @@
+task circular-references {
+
+    description = "detect cirular references during IR construction. ensure these situations are handled gracefully, but frontends should surface the warnings."
+
+}
