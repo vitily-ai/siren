@@ -68,7 +68,7 @@ task list-with-status {
 
 }
 
-task list-to-core {
+task list-to-core complete {
 
     description = "move utility logic out of cli and into core, aligning with 'Maximum core' instruction"
 
