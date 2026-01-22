@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { version } from '@siren/core';
+import { getTasksByMilestone, version } from '@siren/core';
 import { getLoadedContext, loadProject } from './project.js';
 
 const SIREN_DIR = 'siren';
@@ -19,6 +19,7 @@ Usage: siren <command>
 Commands:
   init    Initialize a new Siren project in the current directory
   list    List all milestone IDs from .siren files
+    -t, --tasks    Show incomplete tasks under each milestone
 
 Options:
   --version    Show version number`);
@@ -78,31 +79,53 @@ export function runInit(cwd: string): void {
 
 export interface ListResult {
   milestones: string[];
+  tasksByMilestone?: Map<string, string[]>;
   warnings: string[];
 }
 
 /**
  * List all milestone IDs from .siren files in the siren/ directory
  */
-export async function list(): Promise<ListResult> {
+export async function list(showTasks: boolean = false): Promise<ListResult> {
   const ctx = getLoadedContext();
   if (!ctx) {
     throw new Error('Project context not loaded');
   }
-  return { milestones: ctx.milestones, warnings: ctx.warnings };
+  const result: ListResult = { milestones: ctx.milestones, warnings: ctx.warnings };
+  if (showTasks) {
+    const tasksByMilestone = getTasksByMilestone(ctx.resources);
+    result.tasksByMilestone = new Map(
+      Array.from(tasksByMilestone.entries()).map(([milestoneId, tasks]) => [
+        milestoneId,
+        tasks.map((task) => task.id),
+      ]),
+    );
+  }
+  return result;
 }
 
-export async function runList(): Promise<void> {
-  const result = await list();
+export async function runList(showTasks: boolean = false): Promise<void> {
+  const result = await list(showTasks);
 
   // Print warnings to stderr
   for (const warning of result.warnings) {
     console.error(warning);
   }
 
-  // Print milestone IDs to stdout
-  for (const id of result.milestones) {
-    console.log(id);
+  if (showTasks && result.tasksByMilestone) {
+    // Print milestone IDs with tasks
+    for (const milestoneId of result.milestones) {
+      console.log(milestoneId);
+      const tasks = result.tasksByMilestone.get(milestoneId) || [];
+      for (const taskId of tasks) {
+        console.log(`\t${taskId}`);
+      }
+    }
+  } else {
+    // Print milestone IDs to stdout
+    for (const id of result.milestones) {
+      console.log(id);
+    }
   }
 }
 
@@ -131,7 +154,8 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
   }
 
   if (command === 'list') {
-    await runList();
+    const showTasks = args.includes('-t') || args.includes('--tasks');
+    await runList(showTasks);
     return;
   }
 

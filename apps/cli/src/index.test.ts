@@ -301,6 +301,49 @@ milestone "émojis-and-accénts" {}`,
 
     expect(result.milestones).toEqual(['test']);
   });
+
+  it('lists tasks by milestone when showTasks is true', async () => {
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    fs.writeFileSync(
+      path.join(sirenDir, 'main.siren'),
+      `milestone alpha {}
+task task1 {
+  depends_on = alpha
+}
+task task2 complete {
+  depends_on = alpha
+}
+milestone beta {}`,
+    );
+
+    await loadProject(tempDir);
+    const result = await list(true);
+
+    expect(result.milestones).toEqual(['alpha', 'beta']);
+    expect(result.tasksByMilestone).toBeDefined();
+    expect(result.tasksByMilestone!.get('alpha')).toEqual(['task1']);
+    expect(result.tasksByMilestone!.get('beta')).toEqual([]);
+  });
+
+  it('handles array depends_on in tasks', async () => {
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    fs.writeFileSync(
+      path.join(sirenDir, 'main.siren'),
+      `milestone alpha {}
+milestone gamma {}
+task task1 {
+  depends_on = [alpha, gamma]
+}`,
+    );
+
+    await loadProject(tempDir);
+    const result = await list(true);
+
+    expect(result.tasksByMilestone!.get('alpha')).toEqual(['task1']);
+    expect(result.tasksByMilestone!.get('gamma')).toEqual(['task1']);
+  });
 });
 
 describe('siren main', () => {
@@ -421,6 +464,46 @@ describe('siren main', () => {
     expect(consoleErrorSpy.mock.invocationCallOrder[0]).toBeLessThan(
       consoleLogSpy.mock.invocationCallOrder[0],
     );
+    expect(loadProjectSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs list -t command', async () => {
+    // Setup: create siren dir with milestones and tasks
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    fs.writeFileSync(
+      path.join(sirenDir, 'main.siren'),
+      `milestone alpha {}
+task task1 {
+  depends_on = alpha
+}
+milestone beta {}`,
+    );
+
+    await main(['list', '-t']);
+
+    expect(consoleLogSpy).toHaveBeenCalledWith('alpha');
+    expect(consoleLogSpy).toHaveBeenCalledWith('\ttask1');
+    expect(consoleLogSpy).toHaveBeenCalledWith('beta');
+    expect(loadProjectSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs list --tasks command', async () => {
+    // Setup: create siren dir with milestones and tasks
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    fs.writeFileSync(
+      path.join(sirenDir, 'main.siren'),
+      `milestone alpha {}
+task task1 {
+  depends_on = alpha
+}`,
+    );
+
+    await main(['list', '--tasks']);
+
+    expect(consoleLogSpy).toHaveBeenCalledWith('alpha');
+    expect(consoleLogSpy).toHaveBeenCalledWith('\ttask1');
     expect(loadProjectSpy).toHaveBeenCalledTimes(1);
   });
 });

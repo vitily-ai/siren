@@ -100,6 +100,7 @@ class NodeParserAdapter implements ParserAdapter {
   private convertResource(node: SyntaxNode): ResourceNode | null {
     const typeNode = node.childForFieldName('type');
     const idNode = node.childForFieldName('id');
+    const completeModifierNode = node.childForFieldName('complete_modifier');
 
     if (!typeNode || !idNode) {
       return null;
@@ -107,6 +108,7 @@ class NodeParserAdapter implements ParserAdapter {
 
     const resourceType = typeNode.text as 'task' | 'milestone';
     const identifier = this.convertIdentifier(idNode);
+    const complete = completeModifierNode !== null;
     const attributes: AttributeNode[] = [];
 
     // Body is a repeat field - use childrenForFieldName to get all body attributes
@@ -124,6 +126,7 @@ class NodeParserAdapter implements ParserAdapter {
       type: 'resource',
       resourceType,
       identifier,
+      complete,
       body: attributes,
     };
   }

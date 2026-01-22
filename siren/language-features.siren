@@ -41,3 +41,9 @@ task naked-description {
     depends_on = multiline-strings
 
 }
+
+milestone milestone-files {
+
+    description = "treat .siren files without an explicit milestone inside as an implicit milestone"
+
+}

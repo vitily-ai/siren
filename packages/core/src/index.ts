@@ -13,4 +13,4 @@ export * from './ir/index.js';
 // Parser types and interfaces
 export * from './parser/index.js';
 // Utilities
-export { getMilestoneIds } from './utilities/milestone.js';
+export { getMilestoneIds, getTasksByMilestone } from './utilities/milestone.js';

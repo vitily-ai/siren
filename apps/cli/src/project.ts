@@ -10,6 +10,7 @@ export interface ProjectContext {
   rootDir: string;
   sirenDir: string;
   files: string[];
+  resources: Resource[];
   milestones: string[];
   warnings: string[];
   errors: string[];
@@ -53,6 +54,7 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
     rootDir,
     sirenDir,
     files: [],
+    resources: [],
     milestones: [],
     warnings: [],
     errors: [],
@@ -90,6 +92,7 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
     allResources.push(...decodeResult.document.resources);
   }
 
+  ctx.resources = allResources;
   ctx.milestones = getMilestoneIds(allResources);
 
   loadedContext = ctx;

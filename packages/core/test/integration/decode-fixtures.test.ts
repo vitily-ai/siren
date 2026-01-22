@@ -339,7 +339,7 @@ describe('Decode Integration: Fixtures', () => {
       expect(dependsOn!.value).toEqual({ kind: 'reference', id: 'late' });
     });
 
-    it('skips array references without error (C.depends_on = [A, B])', async () => {
+    it('decodes array references (C.depends_on = [A, B])', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
       const decodeResult = decode(parseResult.tree!);
@@ -347,12 +347,19 @@ describe('Decode Integration: Fixtures', () => {
       // Decode should succeed
       expect(decodeResult.success).toBe(true);
 
-      // Resource C should exist but its array depends_on should be filtered out
+      // Resource C should exist and its array depends_on should be decoded
       const resourceC = decodeResult.document!.resources.find((r) => r.id === 'C')!;
       const dependsOn = resourceC.attributes.find((a) => a.key === 'depends_on');
 
-      // Array attribute is skipped, so depends_on should not be present
-      expect(dependsOn).toBeUndefined();
+      // Array attribute is decoded
+      expect(dependsOn).toBeDefined();
+      expect(dependsOn!.value).toEqual({
+        kind: 'array',
+        elements: [
+          { kind: 'reference', id: 'A' },
+          { kind: 'reference', id: 'B' },
+        ],
+      });
     });
 
     it('identifies which resources have single vs array references', async () => {
@@ -378,12 +385,30 @@ describe('Decode Integration: Fixtures', () => {
       expect(isReference(deployDep!.value)).toBe(false);
       expect(typeof deployDep!.value).toBe('string');
 
-      // Resources with array references (depends_on should be skipped/filtered)
+      // Resources with array references (should have depends_on decoded as ArrayValue)
       const arrayRefResources = ['C', 'v1.0'];
       for (const id of arrayRefResources) {
         const resource = resources.find((r) => r.id === id)!;
         const dependsOn = resource.attributes.find((a) => a.key === 'depends_on');
-        expect(dependsOn, `${id} should NOT have depends_on (array skipped)`).toBeUndefined();
+        expect(dependsOn, `${id} should have depends_on attribute`).toBeDefined();
+        if (id === 'C') {
+          expect(dependsOn!.value).toEqual({
+            kind: 'array',
+            elements: [
+              { kind: 'reference', id: 'A' },
+              { kind: 'reference', id: 'B' },
+            ],
+          });
+        } else if (id === 'v1.0') {
+          expect(dependsOn!.value).toEqual({
+            kind: 'array',
+            elements: [
+              { kind: 'reference', id: 'A' },
+              { kind: 'reference', id: 'C' },
+              { kind: 'reference', id: 'deploy' },
+            ],
+          });
+        }
       }
 
       // Resource A has no depends_on

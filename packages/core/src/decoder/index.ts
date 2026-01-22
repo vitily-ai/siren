@@ -6,6 +6,7 @@
  */
 
 import type {
+  ArrayValue,
   Attribute,
   AttributeValue,
   Document,
@@ -14,6 +15,7 @@ import type {
   ResourceType,
 } from '../ir/index.js';
 import type {
+  ArrayNode,
   AttributeNode,
   DocumentNode,
   ExpressionNode,
@@ -61,6 +63,13 @@ function isReferenceNode(node: ExpressionNode): node is ReferenceNode {
 }
 
 /**
+ * Check if an expression node is an array
+ */
+function isArrayNode(node: ExpressionNode): node is ArrayNode {
+  return node.type === 'array';
+}
+
+/**
  * Decode a literal node to a primitive AttributeValue
  *
  * @param node - The CST literal node
@@ -90,6 +99,31 @@ function decodeReference(node: ReferenceNode): ResourceReference {
 }
 
 /**
+ * Decode an array node to an ArrayValue
+ *
+ * @param node - The CST array node
+ * @returns The ArrayValue with decoded elements
+ */
+function decodeArray(node: ArrayNode): ArrayValue {
+  const elements: AttributeValue[] = [];
+  for (const element of node.elements) {
+    if (isLiteralNode(element)) {
+      elements.push(decodeLiteral(element));
+    } else if (isReferenceNode(element)) {
+      elements.push(decodeReference(element));
+    } else if (isArrayNode(element)) {
+      elements.push(decodeArray(element));
+    } else {
+      // Skip unsupported element types for now
+    }
+  }
+  return {
+    kind: 'array',
+    elements,
+  };
+}
+
+/**
  * Decode an attribute node from CST to IR
  *
  * @param node - The CST attribute node
@@ -115,7 +149,14 @@ function decodeAttribute(node: AttributeNode): Attribute | null {
     };
   }
 
-  // Skip ArrayNode expressions for now (to be handled later)
+  // Handle ArrayNode → ArrayValue
+  if (isArrayNode(expr)) {
+    return {
+      key,
+      value: decodeArray(expr),
+    };
+  }
+
   return null;
 }
 

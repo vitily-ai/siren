@@ -48,7 +48,7 @@ task ensure-load complete {
     description = "ensure that invoking the cli always 'loads' the project to shared memory before handling the command - including parsing, registering IR, and raising warnings/errors"
 }
 
-task list-with-tasks {
+task list-with-tasks complete {
 
     description = "using a -t switch or --tasks flag should show incomplete tasks associated with each given milestone"
     example = "siren list -t"
