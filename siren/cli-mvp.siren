@@ -73,3 +73,9 @@ task list-to-core complete {
     description = "move utility logic out of cli and into core, aligning with 'Maximum core' instruction"
 
 }
+
+task list-indentation {
+
+    descriptions = "replace tab-indents with ASCII line characters to represent heirarchy"
+
+}
