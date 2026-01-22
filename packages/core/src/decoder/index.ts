@@ -6,6 +6,7 @@
  */
 
 import type {
+  ArrayValue,
   Attribute,
   AttributeValue,
   Document,
@@ -15,6 +16,7 @@ import type {
 } from '../ir/index.js';
 import { isArray, isReference } from '../ir/index.js';
 import type {
+  ArrayNode,
   AttributeNode,
   DocumentNode,
   ExpressionNode,
@@ -91,6 +93,38 @@ function decodeReference(node: ReferenceNode): ResourceReference {
 }
 
 /**
+ * Decode an array node to an ArrayValue
+ *
+ * @param node - The CST array node
+ * @returns The ArrayValue with decoded elements
+ */
+function decodeArray(node: ArrayNode): ArrayValue {
+  return {
+    kind: 'array',
+    elements: node.elements.map(decodeExpression).filter((v): v is AttributeValue => v !== null),
+  };
+}
+
+/**
+ * Decode an expression node to an AttributeValue
+ *
+ * @param node - The CST expression node
+ * @returns The decoded AttributeValue, or null if unsupported
+ */
+function decodeExpression(node: ExpressionNode): AttributeValue | null {
+  if (isLiteralNode(node)) {
+    return decodeLiteral(node);
+  }
+  if (isReferenceNode(node)) {
+    return decodeReference(node);
+  }
+  if (node.type === 'array') {
+    return decodeArray(node);
+  }
+  return null;
+}
+
+/**
  * Decode an attribute node from CST to IR
  *
  * @param node - The CST attribute node
@@ -98,26 +132,9 @@ function decodeReference(node: ReferenceNode): ResourceReference {
  */
 function decodeAttribute(node: AttributeNode): Attribute | null {
   const key = node.key.value;
-  const expr = node.value;
-
-  // Handle LiteralNode → primitive value
-  if (isLiteralNode(expr)) {
-    return {
-      key,
-      value: decodeLiteral(expr),
-    };
-  }
-
-  // Handle ReferenceNode → ResourceReference
-  if (isReferenceNode(expr)) {
-    return {
-      key,
-      value: decodeReference(expr),
-    };
-  }
-
-  // Skip ArrayNode expressions for now (to be handled later)
-  return null;
+  const value = decodeExpression(node.value);
+  if (value === null && node.value.type !== 'literal') return null; // Only filter unsupported expressions, not null literals
+  return { key, value };
 }
 
 /**

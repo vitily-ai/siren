@@ -168,4 +168,65 @@ milestone m {
     expect(resource).toBeDefined();
     expect(resource!.ready).toBe(true);
   });
+
+  it('resource with multiple complete dependencies (array) is ready', async () => {
+    const source = `
+task complete_a complete {}
+task complete_b complete {}
+task c {
+  depends_on = [complete_a, complete_b]
+}
+`;
+    const parseResult = await adapter.parse(source);
+    const decodeResult = decode(parseResult.tree!);
+    expect(decodeResult.success).toBe(true);
+    const resource = decodeResult.document!.resources.find((r) => r.id === 'c');
+    expect(resource).toBeDefined();
+    expect(resource!.ready).toBe(true);
+  });
+
+  it('resource with mixed complete/incomplete dependencies (array) is not ready', async () => {
+    const source = `
+task complete_a complete {}
+task incomplete_b {}
+task c {
+  depends_on = [complete_a, incomplete_b]
+}
+`;
+    const parseResult = await adapter.parse(source);
+    const decodeResult = decode(parseResult.tree!);
+    expect(decodeResult.success).toBe(true);
+    const resource = decodeResult.document!.resources.find((r) => r.id === 'c');
+    expect(resource).toBeDefined();
+    expect(resource!.ready).toBe(false);
+  });
+
+  it('resource with empty array dependencies is ready', async () => {
+    const source = `
+task d {
+  depends_on = []
+}
+`;
+    const parseResult = await adapter.parse(source);
+    const decodeResult = decode(parseResult.tree!);
+    expect(decodeResult.success).toBe(true);
+    const resource = decodeResult.document!.resources.find((r) => r.id === 'd');
+    expect(resource).toBeDefined();
+    expect(resource!.ready).toBe(true);
+  });
+
+  it('ready computation handles forward references correctly', async () => {
+    const source = `
+task forward_dep {
+  depends_on = later_task
+}
+task later_task complete {}
+`;
+    const parseResult = await adapter.parse(source);
+    const decodeResult = decode(parseResult.tree!);
+    expect(decodeResult.success).toBe(true);
+    const resource = decodeResult.document!.resources.find((r) => r.id === 'forward_dep');
+    expect(resource).toBeDefined();
+    expect(resource!.ready).toBe(true);
+  });
 });
