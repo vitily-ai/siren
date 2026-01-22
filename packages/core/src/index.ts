@@ -12,3 +12,5 @@ export { decode } from './decoder/index.js';
 export * from './ir/index.js';
 // Parser types and interfaces
 export * from './parser/index.js';
+// Utilities
+export { getMilestoneIds } from './utilities/milestone.js';

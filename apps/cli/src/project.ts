@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { decode } from '@siren/core';
+import { decode, getMilestoneIds, type Resource } from '@siren/core';
 import { getParser } from './parser.js';
 
 const SIREN_DIR = 'siren';
@@ -70,6 +70,7 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
   }
 
   const parser = await getParser();
+  const allResources: Resource[] = [];
 
   for (const filePath of ctx.files) {
     const source = fs.readFileSync(filePath, 'utf-8');
@@ -86,12 +87,10 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
       continue;
     }
 
-    for (const resource of decodeResult.document.resources) {
-      if (resource.type === 'milestone') {
-        ctx.milestones.push(resource.id);
-      }
-    }
+    allResources.push(...decodeResult.document.resources);
   }
+
+  ctx.milestones = getMilestoneIds(allResources);
 
   loadedContext = ctx;
   return ctx;

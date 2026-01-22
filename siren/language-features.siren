@@ -23,7 +23,7 @@ task duplicate-ids {
 
 }
 
-task task-readiness {
+task task-readiness complete {
 
     description = "during ir construction, determine if an entry is 'ready' - meaning it has no incomplete dependencies"
 
