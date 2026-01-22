@@ -13,6 +13,7 @@ import type {
   ResourceReference,
   ResourceType,
 } from '../ir/index.js';
+import { isArray, isReference } from '../ir/index.js';
 import type {
   AttributeNode,
   DocumentNode,
@@ -187,16 +188,54 @@ function decodeResource(
     type,
     id,
     complete,
+    ready: false, // Will be computed after all resources are decoded
     attributes,
   };
 }
 
 /**
- * Decode a CST into an IR Document
- *
- * @param cst - The parsed concrete syntax tree
- * @returns The decode result with document, diagnostics, and success flag
+ * Extract dependency IDs from a depends_on attribute value
  */
+function extractDependencyIds(value: AttributeValue): string[] {
+  if (isReference(value)) {
+    return [value.id];
+  }
+  if (isArray(value)) {
+    return value.elements.flatMap(extractDependencyIds);
+  }
+  return [];
+}
+
+/**
+ * Compute readiness for a resource based on its dependencies
+ */
+function computeReady(
+  resource: Resource,
+  resourceMap: Map<string, Resource>,
+  diagnostics: Diagnostic[],
+): boolean {
+  const dependsOnAttr = resource.attributes.find((a) => a.key === 'depends_on');
+  if (!dependsOnAttr) {
+    return true; // no dependencies
+  }
+
+  const deps = extractDependencyIds(dependsOnAttr.value);
+  for (const depId of deps) {
+    const dep = resourceMap.get(depId);
+    if (!dep) {
+      diagnostics.push({
+        code: 'W004',
+        message: `Resource '${resource.id}' depends on '${depId}' which is not loaded. Resource will not be ready.`,
+        severity: 'warning',
+      });
+      return false;
+    }
+    if (!dep.complete) {
+      return false;
+    }
+  }
+  return true;
+}
 export function decode(cst: DocumentNode): DecodeResult {
   const diagnostics: Diagnostic[] = [];
   const resources: Resource[] = [];
@@ -205,10 +244,23 @@ export function decode(cst: DocumentNode): DecodeResult {
     resources.push(decodeResource(resourceNode, diagnostics));
   }
 
+  // Compute readiness after all resources are decoded
+  const resourceMap = new Map(resources.map((r) => [r.id, r]));
+  const updatedResources = resources.map((resource) => {
+    const ready = computeReady(resource, resourceMap, diagnostics);
+    return {
+      type: resource.type,
+      id: resource.id,
+      complete: resource.complete,
+      ready,
+      attributes: resource.attributes,
+    };
+  });
+
   const hasErrors = diagnostics.some((d) => d.severity === 'error');
 
   return {
-    document: hasErrors ? null : { resources },
+    document: hasErrors ? null : { resources: updatedResources },
     diagnostics,
     success: !hasErrors,
   };

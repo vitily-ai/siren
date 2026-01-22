@@ -47,6 +47,10 @@ export type ResourceType = 'task' | 'milestone';
 
 /**
  * A Siren resource (task or milestone)
+ *
+ * The `ready` field indicates whether the resource's direct dependencies are all loaded and marked complete.
+ * A resource is ready if it has no dependencies or all its `depends_on` references resolve to complete resources.
+ * See ../../../../siren/language-features.siren for usage examples.
  */
 export interface Resource {
   readonly type: ResourceType;
@@ -55,6 +59,10 @@ export interface Resource {
    * True if the resource is marked complete via the 'complete' keyword (not attribute)
    */
   readonly complete: boolean;
+  /**
+   * True if all direct dependencies are loaded and complete
+   */
+  readonly ready: boolean;
   readonly attributes: readonly Attribute[];
 }
 

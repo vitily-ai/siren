@@ -162,6 +162,8 @@ interface Document {
 interface Resource {
   readonly type: 'task' | 'milestone';
   readonly id: string;
+  readonly complete: boolean;
+  readonly ready: boolean; // True if all direct dependencies are loaded and complete
   readonly attributes: readonly Attribute[];
 }
 
@@ -174,3 +176,7 @@ type AttributeValue = PrimitiveValue | ResourceReference | ArrayValue;
 
 // Use type guards: isReference(), isArray(), isPrimitive()
 ```
+
+### Readiness Semantics
+
+The `ready` field on each `Resource` indicates whether the resource's direct dependencies (from `depends_on` attributes) are all loaded and explicitly marked complete. A resource is ready if it has no dependencies or all its `depends_on` references resolve to complete resources in the IR. Missing dependencies result in `ready = false` and a warning diagnostic. See [siren/language-features.siren](siren/language-features.siren) for usage examples.
