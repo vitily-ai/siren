@@ -21,3 +21,9 @@ task cli-list-long-names {
     description = "Verify that tab-indented task output in 'siren list -t' handles long milestone/task names gracefully in terminals"
 
 }
+
+task handle-circular-references {
+
+    description = "circular references should emit a warning, but should not panic or fail to parse/load"
+
+}
