@@ -1,0 +1,6 @@
+milestone alpha {
+  depends_on = task1
+}
+task task1 {}
+task task2 complete {}
+milestone beta {}

@@ -1,10 +1,20 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { init, list, main } from './index.js';
 import * as project from './project.js';
 import { loadProject } from './project.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const fixturesDir = path.join(__dirname, '..', 'test', 'fixtures');
+
+function copyFixture(fixtureName: string, targetDir: string) {
+  const fixturePath = path.join(fixturesDir, fixtureName, 'siren');
+  const targetSirenDir = path.join(targetDir, 'siren');
+  fs.cpSync(fixturePath, targetSirenDir, { recursive: true });
+}
 
 describe('siren init', () => {
   let tempDir: string;
@@ -132,13 +142,7 @@ describe('siren list', () => {
   });
 
   it('returns empty when siren/ has .siren files but no milestones', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(
-      path.join(sirenDir, 'tasks.siren'),
-      `task alpha {}
-task beta {}`,
-    );
+    copyFixture('no-milestones-only-tasks', tempDir);
 
     await loadProject(tempDir);
     const result = await list();
@@ -148,14 +152,7 @@ task beta {}`,
   });
 
   it('lists milestones from valid .siren files', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(
-      path.join(sirenDir, 'main.siren'),
-      `milestone alpha {}
-milestone beta {}
-task not_a_milestone {}`,
-    );
+    copyFixture('list-milestones', tempDir);
 
     await loadProject(tempDir);
     const result = await list();
@@ -165,10 +162,7 @@ task not_a_milestone {}`,
   });
 
   it('lists milestones from multiple .siren files', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(path.join(sirenDir, 'a.siren'), 'milestone alpha {}');
-    fs.writeFileSync(path.join(sirenDir, 'b.siren'), 'milestone beta {}');
+    copyFixture('multiple-files', tempDir);
 
     await loadProject(tempDir);
     const result = await list();
@@ -180,11 +174,7 @@ task not_a_milestone {}`,
   });
 
   it('recursively finds .siren files in subdirectories', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    const subDir = path.join(sirenDir, 'subdir');
-    fs.mkdirSync(subDir, { recursive: true });
-    fs.writeFileSync(path.join(sirenDir, 'root.siren'), 'milestone root {}');
-    fs.writeFileSync(path.join(subDir, 'nested.siren'), 'milestone nested {}');
+    copyFixture('recursive', tempDir);
 
     await loadProject(tempDir);
     const result = await list();
@@ -196,10 +186,7 @@ task not_a_milestone {}`,
   });
 
   it('skips files with parse errors and emits warning', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(path.join(sirenDir, 'valid.siren'), 'milestone valid {}');
-    fs.writeFileSync(path.join(sirenDir, 'broken.siren'), 'this is not valid siren syntax!!!');
+    copyFixture('parse-errors', tempDir);
 
     await loadProject(tempDir);
     const result = await list();
@@ -210,13 +197,7 @@ task not_a_milestone {}`,
   });
 
   it('handles quoted milestone identifiers', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(
-      path.join(sirenDir, 'quoted.siren'),
-      `milestone "Q1 Launch" {}
-milestone "MVP Release" {}`,
-    );
+    copyFixture('quoted-identifiers', tempDir);
 
     await loadProject(tempDir);
     const result = await list();
@@ -226,10 +207,7 @@ milestone "MVP Release" {}`,
   });
 
   it('handles empty .siren files gracefully', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(path.join(sirenDir, 'empty.siren'), '');
-    fs.writeFileSync(path.join(sirenDir, 'whitespace.siren'), '   \n  \n  ');
+    copyFixture('empty-files', tempDir);
 
     await loadProject(tempDir);
     const result = await list();
@@ -239,14 +217,7 @@ milestone "MVP Release" {}`,
   });
 
   it('handles Unicode in milestone names', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(
-      path.join(sirenDir, 'unicode.siren'),
-      `milestone "🚀 Launch" {}
-milestone "日本語マイルストーン" {}
-milestone "émojis-and-accénts" {}`,
-    );
+    copyFixture('unicode', tempDir);
 
     await loadProject(tempDir);
     const result = await list();
@@ -259,12 +230,7 @@ milestone "émojis-and-accénts" {}`,
   });
 
   it('handles deeply nested directories', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    const deepPath = path.join(sirenDir, 'a', 'b', 'c', 'd', 'e');
-    fs.mkdirSync(deepPath, { recursive: true });
-    fs.writeFileSync(path.join(sirenDir, 'root.siren'), 'milestone root {}');
-    fs.writeFileSync(path.join(sirenDir, 'a', 'level1.siren'), 'milestone level1 {}');
-    fs.writeFileSync(path.join(deepPath, 'deep.siren'), 'milestone deep {}');
+    copyFixture('deep-nested', tempDir);
 
     await loadProject(tempDir);
     const result = await list();
@@ -277,11 +243,7 @@ milestone "émojis-and-accénts" {}`,
   });
 
   it('handles multiple files with parse errors', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(path.join(sirenDir, 'valid.siren'), 'milestone valid {}');
-    fs.writeFileSync(path.join(sirenDir, 'broken1.siren'), '!!! syntax error');
-    fs.writeFileSync(path.join(sirenDir, 'broken2.siren'), '@@@ another error');
+    copyFixture('multiple-parse-errors', tempDir);
 
     await loadProject(tempDir);
     const result = await list();
@@ -292,9 +254,7 @@ milestone "émojis-and-accénts" {}`,
   });
 
   it('uses the loaded project context', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(path.join(sirenDir, 'test.siren'), 'milestone test {}');
+    copyFixture('loaded-project', tempDir);
 
     await loadProject(tempDir);
     const result = await list();
@@ -303,17 +263,7 @@ milestone "émojis-and-accénts" {}`,
   });
 
   it('lists tasks by milestone when showTasks is true', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(
-      path.join(sirenDir, 'main.siren'),
-      `milestone alpha {
-  depends_on = task1
-}
-task task1 {}
-task task2 complete {}
-milestone beta {}`,
-    );
+    copyFixture('tasks-by-milestone', tempDir);
 
     await loadProject(tempDir);
     const result = await list(true);
@@ -325,18 +275,7 @@ milestone beta {}`,
   });
 
   it('handles array depends_on in tasks', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(
-      path.join(sirenDir, 'main.siren'),
-      `milestone alpha {
-  depends_on = task1
-}
-milestone gamma {
-  depends_on = task1
-}
-task task1 {}`,
-    );
+    copyFixture('array-depends', tempDir);
 
     await loadProject(tempDir);
     const result = await list(true);
@@ -405,9 +344,7 @@ describe('siren main', () => {
 
   it('init command outputs warnings to stderr before command output', async () => {
     // Setup: create siren dir with broken file
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(path.join(sirenDir, 'broken.siren'), '!!! broken');
+    copyFixture('init-with-broken', tempDir);
 
     await main(['init']);
 
@@ -425,9 +362,7 @@ describe('siren main', () => {
 
   it('runs list command', async () => {
     // Setup: create siren dir with milestones
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(path.join(sirenDir, 'main.siren'), 'milestone test_milestone {}');
+    copyFixture('list-single-milestone', tempDir);
 
     await main(['list']);
 
@@ -437,9 +372,7 @@ describe('siren main', () => {
 
   it('list command outputs warnings to stderr', async () => {
     // Setup: create siren dir with broken file
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(path.join(sirenDir, 'broken.siren'), '!!! broken');
+    copyFixture('list-with-broken', tempDir);
 
     await main(['list']);
 
@@ -450,10 +383,7 @@ describe('siren main', () => {
 
   it('list command outputs warnings before milestones', async () => {
     // Setup: create siren dir with broken and valid files
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(path.join(sirenDir, 'broken.siren'), '!!! broken');
-    fs.writeFileSync(path.join(sirenDir, 'valid.siren'), 'milestone test {}');
+    copyFixture('list-with-broken-and-valid', tempDir);
 
     await main(['list']);
 
@@ -469,16 +399,7 @@ describe('siren main', () => {
 
   it('runs list -t command', async () => {
     // Setup: create siren dir with milestones and tasks
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(
-      path.join(sirenDir, 'main.siren'),
-      `milestone alpha {
-  depends_on = task1
-}
-task task1 {}
-milestone beta {}`,
-    );
+    copyFixture('tasks-by-milestone', tempDir);
 
     await main(['list', '-t']);
 
@@ -490,15 +411,7 @@ milestone beta {}`,
 
   it('runs list --tasks command', async () => {
     // Setup: create siren dir with milestones and tasks
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(
-      path.join(sirenDir, 'main.siren'),
-      `milestone alpha {
-  depends_on = task1
-}
-task task1 {}`,
-    );
+    copyFixture('list-tasks-alpha-only', tempDir);
 
     await main(['list', '--tasks']);
 
