@@ -23,6 +23,34 @@ import type {
   ReferenceNode,
   ResourceNode,
 } from '../parser/cst.js';
+import { DirectedGraph } from '../utilities/graph.js';
+
+/**
+ * Extracts dependency IDs from a resource's depends_on attribute.
+ * @param resource The resource to extract dependencies from
+ * @returns Array of dependency IDs
+ */
+function getDependsOn(resource: Resource): string[] {
+  const attr = resource.attributes.find((a) => a.key === 'depends_on');
+  if (!attr) return [];
+
+  const value = attr.value;
+  if (value === null) return [];
+  if (typeof value === 'object' && 'kind' in value) {
+    if (value.kind === 'reference') {
+      return [value.id];
+    }
+    if (value.kind === 'array') {
+      return value.elements
+        .filter(
+          (el): el is ResourceReference =>
+            typeof el === 'object' && el !== null && 'kind' in el && el.kind === 'reference',
+        )
+        .map((ref: ResourceReference) => ref.id);
+    }
+  }
+  return [];
+}
 
 /**
  * Diagnostic message produced during decoding
@@ -244,6 +272,23 @@ export function decode(cst: DocumentNode): DecodeResult {
 
   for (const resourceNode of cst.resources) {
     resources.push(decodeResource(resourceNode, diagnostics));
+  }
+
+  // Build dependency graph and check for cycles
+  const graph = new DirectedGraph();
+  for (const resource of resources) {
+    graph.addNode(resource.id);
+    const dependsOn = getDependsOn(resource);
+    for (const depId of dependsOn) {
+      graph.addEdge(resource.id, depId);
+    }
+  }
+  if (graph.hasCycle()) {
+    diagnostics.push({
+      code: 'W004',
+      message: 'Circular dependency detected in resource dependencies.',
+      severity: 'warning',
+    });
   }
 
   const hasErrors = diagnostics.some((d) => d.severity === 'error');

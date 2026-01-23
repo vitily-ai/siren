@@ -1,5 +1,6 @@
 import type { Resource } from '../ir/types.js';
 import { isArray, isReference } from '../ir/types.js';
+import { DirectedGraph } from './graph.js';
 
 /**
  * Extracts milestone IDs from an array of resources.
@@ -21,11 +22,14 @@ export function getTasksByMilestone(resources: Resource[]): Map<string, Resource
   const taskMap = new Map(resources.filter((r) => r.type === 'task').map((r) => [r.id, r]));
   const tasksByMilestone = new Map<string, Resource[]>();
 
+  // Build dependency graph
+  const graph = buildDependencyGraph(resources);
+
   // Initialize map with all milestones
   const milestones = resources.filter((r) => r.type === 'milestone');
   for (const milestone of milestones) {
-    const dependsOn = getDependsOn(milestone);
-    const tasks = dependsOn
+    const dependsOnIds = graph.getSuccessors(milestone.id);
+    const tasks = dependsOnIds
       .map((id) => taskMap.get(id))
       .filter((task): task is Resource => task !== undefined && !task.complete);
     tasksByMilestone.set(milestone.id, tasks);
@@ -51,4 +55,23 @@ function getDependsOn(resource: Resource): string[] {
     return value.elements.filter(isReference).map((ref) => ref.id);
   }
   return [];
+}
+
+/**
+ * Build a directed graph of resource dependencies from depends_on attributes.
+ * @param resources Array of Siren resources
+ * @returns DirectedGraph where edges represent dependencies
+ */
+function buildDependencyGraph(resources: Resource[]): DirectedGraph {
+  const graph = new DirectedGraph();
+
+  for (const resource of resources) {
+    graph.addNode(resource.id);
+    const dependsOn = getDependsOn(resource);
+    for (const depId of dependsOn) {
+      graph.addEdge(resource.id, depId);
+    }
+  }
+
+  return graph;
 }
