@@ -404,7 +404,7 @@ describe('siren main', () => {
     await main(['list', '-t']);
 
     expect(consoleLogSpy).toHaveBeenCalledWith('alpha');
-    expect(consoleLogSpy).toHaveBeenCalledWith('\ttask1');
+    expect(consoleLogSpy).toHaveBeenCalledWith('└─ task1');
     expect(consoleLogSpy).toHaveBeenCalledWith('beta');
     expect(loadProjectSpy).toHaveBeenCalledTimes(1);
   });
@@ -416,7 +416,7 @@ describe('siren main', () => {
     await main(['list', '--tasks']);
 
     expect(consoleLogSpy).toHaveBeenCalledWith('alpha');
-    expect(consoleLogSpy).toHaveBeenCalledWith('\ttask1');
+    expect(consoleLogSpy).toHaveBeenCalledWith('└─ task1');
     expect(loadProjectSpy).toHaveBeenCalledTimes(1);
   });
 });

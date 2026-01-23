@@ -117,8 +117,10 @@ export async function runList(showTasks: boolean = false): Promise<void> {
     for (const milestoneId of result.milestones) {
       console.log(milestoneId);
       const tasks = result.tasksByMilestone.get(milestoneId) || [];
-      for (const taskId of tasks) {
-        console.log(`\t${taskId}`);
+      for (let i = 0; i < tasks.length; i++) {
+        const isLast = i === tasks.length - 1;
+        const prefix = isLast ? '└─' : '├─';
+        console.log(`${prefix} ${tasks[i]}`);
       }
     }
   } else {

@@ -52,7 +52,7 @@ task list-with-tasks complete {
 
     description = "using a -t switch or --tasks flag should show incomplete tasks associated with each given milestone"
     example = "siren list -t"
-    example_output = "some_milestone_1\n\tsome_task_1\n\tsome_task_2\nsome_milestone_2"
+    example_output = "some_milestone_1\n├─ some_task_1\n└─ some_task_2\nsome_milestone_2"
 
     depends_on = list-to-core
 
@@ -74,8 +74,8 @@ task list-to-core complete {
 
 }
 
-task list-indentation {
+task list-indentation complete {
 
-    descriptions = "replace tab-indents with ASCII line characters to represent heirarchy"
+    description = "replace tab-indents with ASCII line characters to represent hierarchy"
 
 }
