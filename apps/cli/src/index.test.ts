@@ -307,13 +307,11 @@ milestone "émojis-and-accénts" {}`,
     fs.mkdirSync(sirenDir);
     fs.writeFileSync(
       path.join(sirenDir, 'main.siren'),
-      `milestone alpha {}
-task task1 {
-  depends_on = alpha
+      `milestone alpha {
+  depends_on = task1
 }
-task task2 complete {
-  depends_on = alpha
-}
+task task1 {}
+task task2 complete {}
 milestone beta {}`,
     );
 
@@ -331,11 +329,13 @@ milestone beta {}`,
     fs.mkdirSync(sirenDir);
     fs.writeFileSync(
       path.join(sirenDir, 'main.siren'),
-      `milestone alpha {}
-milestone gamma {}
-task task1 {
-  depends_on = [alpha, gamma]
-}`,
+      `milestone alpha {
+  depends_on = task1
+}
+milestone gamma {
+  depends_on = task1
+}
+task task1 {}`,
     );
 
     await loadProject(tempDir);
@@ -473,10 +473,10 @@ describe('siren main', () => {
     fs.mkdirSync(sirenDir);
     fs.writeFileSync(
       path.join(sirenDir, 'main.siren'),
-      `milestone alpha {}
-task task1 {
-  depends_on = alpha
+      `milestone alpha {
+  depends_on = task1
 }
+task task1 {}
 milestone beta {}`,
     );
 
@@ -494,10 +494,10 @@ milestone beta {}`,
     fs.mkdirSync(sirenDir);
     fs.writeFileSync(
       path.join(sirenDir, 'main.siren'),
-      `milestone alpha {}
-task task1 {
-  depends_on = alpha
-}`,
+      `milestone alpha {
+  depends_on = task1
+}
+task task1 {}`,
     );
 
     await main(['list', '--tasks']);

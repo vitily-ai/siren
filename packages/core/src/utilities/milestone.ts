@@ -13,31 +13,22 @@ export function getMilestoneIds(resources: Resource[]): string[] {
 }
 
 /**
- * Returns a Map where keys are milestone IDs and values are arrays of incomplete tasks that depend on that milestone.
+ * Returns a Map where keys are milestone IDs and values are arrays of incomplete tasks that the milestone depends on.
  * @param resources Array of Siren resources
  * @returns Map<string, Resource[]>
  */
 export function getTasksByMilestone(resources: Resource[]): Map<string, Resource[]> {
-  const milestoneIds = new Set(getMilestoneIds(resources));
+  const taskMap = new Map(resources.filter((r) => r.type === 'task').map((r) => [r.id, r]));
   const tasksByMilestone = new Map<string, Resource[]>();
 
   // Initialize map with all milestones
-  for (const id of milestoneIds) {
-    tasksByMilestone.set(id, []);
-  }
-
-  // Find incomplete tasks and their dependencies
-  const incompleteTasks = resources.filter(
-    (resource) => resource.type === 'task' && !resource.complete,
-  );
-
-  for (const task of incompleteTasks) {
-    const dependsOn = getDependsOn(task);
-    for (const depId of dependsOn) {
-      if (milestoneIds.has(depId)) {
-        tasksByMilestone.get(depId)!.push(task);
-      }
-    }
+  const milestones = resources.filter((r) => r.type === 'milestone');
+  for (const milestone of milestones) {
+    const dependsOn = getDependsOn(milestone);
+    const tasks = dependsOn
+      .map((id) => taskMap.get(id))
+      .filter((task): task is Resource => task !== undefined && !task.complete);
+    tasksByMilestone.set(milestone.id, tasks);
   }
 
   return tasksByMilestone;

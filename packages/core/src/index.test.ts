@@ -43,27 +43,37 @@ describe('@siren/core', () => {
 
   it('ignores complete tasks', () => {
     const resources: Resource[] = [
-      { type: 'milestone', id: 'milestone1', complete: false, attributes: [] },
+      {
+        type: 'milestone',
+        id: 'milestone1',
+        complete: false,
+        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'task1' } }],
+      },
       {
         type: 'task',
         id: 'task1',
         complete: true,
-        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'milestone1' } }],
+        attributes: [],
       },
     ];
     const result = getTasksByMilestone(resources);
     expect(result.get('milestone1')).toEqual([]);
   });
 
-  it('includes incomplete tasks that depend on milestone', () => {
+  it('includes incomplete tasks that the milestone depends on', () => {
     const task: Resource = {
       type: 'task',
       id: 'task1',
       complete: false,
-      attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'milestone1' } }],
+      attributes: [],
     };
     const resources: Resource[] = [
-      { type: 'milestone', id: 'milestone1', complete: false, attributes: [] },
+      {
+        type: 'milestone',
+        id: 'milestone1',
+        complete: false,
+        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'task1' } }],
+      },
       task,
     ];
     const result = getTasksByMilestone(resources);
@@ -75,35 +85,45 @@ describe('@siren/core', () => {
       type: 'task',
       id: 'task1',
       complete: false,
-      attributes: [
-        {
-          key: 'depends_on',
-          value: {
-            kind: 'array',
-            elements: [
-              { kind: 'reference', id: 'milestone1' },
-              { kind: 'reference', id: 'other' },
-            ],
-          },
-        },
-      ],
+      attributes: [],
     };
     const resources: Resource[] = [
-      { type: 'milestone', id: 'milestone1', complete: false, attributes: [] },
+      {
+        type: 'milestone',
+        id: 'milestone1',
+        complete: false,
+        attributes: [
+          {
+            key: 'depends_on',
+            value: {
+              kind: 'array',
+              elements: [
+                { kind: 'reference', id: 'task1' },
+                { kind: 'reference', id: 'other' },
+              ],
+            },
+          },
+        ],
+      },
       task,
     ];
     const result = getTasksByMilestone(resources);
     expect(result.get('milestone1')).toEqual([task]);
   });
 
-  it('ignores tasks that depend on non-milestones', () => {
+  it('ignores dependencies that are not tasks', () => {
     const resources: Resource[] = [
-      { type: 'milestone', id: 'milestone1', complete: false, attributes: [] },
+      {
+        type: 'milestone',
+        id: 'milestone1',
+        complete: false,
+        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'other_milestone' } }],
+      },
       {
         type: 'task',
         id: 'task1',
         complete: false,
-        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'other_task' } }],
+        attributes: [],
       },
     ];
     const result = getTasksByMilestone(resources);
