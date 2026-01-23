@@ -6,7 +6,11 @@ describe('error recovery', () => {
     const cst: DocumentNode = {
       type: 'document',
       resources: [
-        makeResource('task', 'foo', [makeAttribute('description', makeLiteral('ok', 'string'))]),
+        makeResource({
+          resourceType: 'task',
+          id: 'foo',
+          body: [makeAttribute('description', makeLiteral('ok', 'string'))],
+        }),
         {
           type: 'resource',
           resourceType: 'task',
@@ -16,18 +20,22 @@ describe('error recovery', () => {
             makeAttribute('description', makeLiteral('repeat', 'string')),
           ],
         } as any,
-        makeResource('milestone', 'baz', [
-          makeAttribute('description', makeLiteral('milestone ok', 'string')),
-        ]),
+        makeResource({
+          resourceType: 'milestone',
+          id: 'baz',
+          body: [makeAttribute('description', makeLiteral('milestone ok', 'string'))],
+        }),
         {
           type: 'resource',
           resourceType: 'task',
           identifier: makeIdentifier('invalid'),
           body: [makeAttribute('depends_on', makeLiteral(123, 'number'))],
         } as any,
-        makeResource('task', 'after_error', [
-          makeAttribute('description', makeLiteral('should be present', 'string')),
-        ]),
+        makeResource({
+          resourceType: 'task',
+          id: 'after_error',
+          body: [makeAttribute('description', makeLiteral('should be present', 'string'))],
+        }),
       ],
     };
     const result = decode(cst);
@@ -41,7 +49,11 @@ describe('error recovery', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'foo', [makeAttribute('description', makeLiteral('ok', 'string'))]),
+          makeResource({
+            resourceType: 'task',
+            id: 'foo',
+            body: [makeAttribute('description', makeLiteral('ok', 'string'))],
+          }),
           {
             type: 'resource',
             resourceType: 'task',
@@ -51,18 +63,22 @@ describe('error recovery', () => {
               makeAttribute('description', makeLiteral('repeat', 'string')),
             ],
           } as any,
-          makeResource('milestone', 'baz', [
-            makeAttribute('description', makeLiteral('milestone ok', 'string')),
-          ]),
+          makeResource({
+            resourceType: 'milestone',
+            id: 'baz',
+            body: [makeAttribute('description', makeLiteral('milestone ok', 'string'))],
+          }),
           {
             type: 'resource',
             resourceType: 'task',
             identifier: makeIdentifier('invalid'),
             body: [makeAttribute('depends_on', makeLiteral(123, 'number'))],
           } as any,
-          makeResource('task', 'after_error', [
-            makeAttribute('description', makeLiteral('should be present', 'string')),
-          ]),
+          makeResource({
+            resourceType: 'task',
+            id: 'after_error',
+            body: [makeAttribute('description', makeLiteral('should be present', 'string'))],
+          }),
         ],
       };
       const result = decode(cst);
@@ -164,12 +180,12 @@ describe('complete keyword handling', () => {
             "'complete' keyword found in invalid position for resource 'bad-task'. It will be ignored.",
           ],
         } as any,
-        makeResource(
-          'task',
-          'good-task',
-          [makeAttribute('description', makeLiteral('good', 'string'))],
-          true,
-        ),
+        makeResource({
+          resourceType: 'task',
+          id: 'good-task',
+          body: [makeAttribute('description', makeLiteral('good', 'string'))],
+          complete: true,
+        }),
       ],
     };
     const result = decode(cst);
@@ -201,7 +217,9 @@ describe('complete keyword handling', () => {
   it('sets complete: true in IR when complete keyword is present (task)', () => {
     const cst: DocumentNode = {
       type: 'document',
-      resources: [makeResource('task', 'done-task', [], true)],
+      resources: [
+        makeResource({ resourceType: 'task', id: 'done-task', body: [], complete: true }),
+      ],
     };
     const result = decode(cst);
     expect(result.success).toBe(true);
@@ -211,7 +229,9 @@ describe('complete keyword handling', () => {
   it('sets complete: true in IR when complete keyword is present (milestone)', () => {
     const cst: DocumentNode = {
       type: 'document',
-      resources: [makeResource('milestone', 'done-ms', [], true)],
+      resources: [
+        makeResource({ resourceType: 'milestone', id: 'done-ms', body: [], complete: true }),
+      ],
     };
     const result = decode(cst);
     expect(result.success).toBe(true);
@@ -221,7 +241,9 @@ describe('complete keyword handling', () => {
   it('sets complete: false in IR when complete keyword is absent', () => {
     const cst: DocumentNode = {
       type: 'document',
-      resources: [makeResource('task', 'not-done', [], false)],
+      resources: [
+        makeResource({ resourceType: 'task', id: 'not-done', body: [], complete: false }),
+      ],
     };
     const result = decode(cst);
     expect(result.success).toBe(true);
@@ -232,12 +254,12 @@ describe('complete keyword handling', () => {
     const cst: DocumentNode = {
       type: 'document',
       resources: [
-        makeResource(
-          'task',
-          'done-task',
-          [makeAttribute('complete', makeLiteral(false, 'boolean'))],
-          true,
-        ),
+        makeResource({
+          resourceType: 'task',
+          id: 'done-task',
+          body: [makeAttribute('complete', makeLiteral(false, 'boolean'))],
+          complete: true,
+        }),
       ],
     };
     const result = decode(cst);
@@ -259,12 +281,12 @@ describe('complete keyword handling', () => {
     const cst: DocumentNode = {
       type: 'document',
       resources: [
-        makeResource(
-          'task',
-          'done-task',
-          [makeAttribute('complete', makeLiteral(true, 'boolean'))],
-          true,
-        ),
+        makeResource({
+          resourceType: 'task',
+          id: 'done-task',
+          body: [makeAttribute('complete', makeLiteral(true, 'boolean'))],
+          complete: true,
+        }),
       ],
     };
     const result = decode(cst);
@@ -281,12 +303,12 @@ describe('complete keyword handling', () => {
     const cst: DocumentNode = {
       type: 'document',
       resources: [
-        makeResource(
-          'task',
-          'not-done',
-          [makeAttribute('complete', makeLiteral(true, 'boolean'))],
-          false,
-        ),
+        makeResource({
+          resourceType: 'task',
+          id: 'not-done',
+          body: [makeAttribute('complete', makeLiteral(true, 'boolean'))],
+          complete: false,
+        }),
       ],
     };
     const result = decode(cst);
@@ -363,22 +385,20 @@ function makeAttribute(key: string, value: ExpressionNode): AttributeNode {
 }
 
 /** Helper to create a resource node with attributes */
-function makeResource(
-  resourceType: 'task' | 'milestone',
-  id: string,
-  body: AttributeNode[] = [],
-  complete?: boolean,
-): ResourceNode {
-  const resource: ResourceNode = {
+type MakeResourceOptions = {
+  resourceType: 'task' | 'milestone';
+  id: string;
+  body?: AttributeNode[];
+} & Record<string, any>;
+
+function makeResource({ resourceType, id, body = [], ...rest }: MakeResourceOptions): ResourceNode {
+  return {
     type: 'resource',
     resourceType,
     identifier: makeIdentifier(id),
     body,
+    ...rest,
   };
-  if (complete !== undefined) {
-    (resource as any).complete = complete;
-  }
-  return resource;
 }
 
 /** Helper to get attributes from first resource in result */
@@ -404,9 +424,11 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [
-            makeAttribute('description', makeLiteral('hello world', 'string')),
-          ]),
+          makeResource({
+            resourceType: 'task',
+            id: 'test',
+            body: [makeAttribute('description', makeLiteral('hello world', 'string'))],
+          }),
         ],
       };
 
@@ -424,7 +446,11 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [makeAttribute('points', makeLiteral(42, 'number'))]),
+          makeResource({
+            resourceType: 'task',
+            id: 'test',
+            body: [makeAttribute('points', makeLiteral(42, 'number'))],
+          }),
         ],
       };
 
@@ -442,7 +468,11 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [makeAttribute('blocking', makeLiteral(true, 'boolean'))]),
+          makeResource({
+            resourceType: 'task',
+            id: 'test',
+            body: [makeAttribute('blocking', makeLiteral(true, 'boolean'))],
+          }),
         ],
       };
 
@@ -460,7 +490,11 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [makeAttribute('optional', makeLiteral(false, 'boolean'))]),
+          makeResource({
+            resourceType: 'task',
+            id: 'test',
+            body: [makeAttribute('optional', makeLiteral(false, 'boolean'))],
+          }),
         ],
       };
 
@@ -478,7 +512,11 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [makeAttribute('assignee', makeLiteral(null, 'null'))]),
+          makeResource({
+            resourceType: 'task',
+            id: 'test',
+            body: [makeAttribute('assignee', makeLiteral(null, 'null'))],
+          }),
         ],
       };
 
@@ -495,11 +533,15 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [
-            makeAttribute('title', makeLiteral('Test Task', 'string')),
-            makeAttribute('priority', makeLiteral(1, 'number')),
-            makeAttribute('active', makeLiteral(true, 'boolean')),
-          ]),
+          makeResource({
+            resourceType: 'task',
+            id: 'test',
+            body: [
+              makeAttribute('title', makeLiteral('Test Task', 'string')),
+              makeAttribute('priority', makeLiteral(1, 'number')),
+              makeAttribute('active', makeLiteral(true, 'boolean')),
+            ],
+          }),
         ],
       };
 
@@ -517,7 +559,11 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [makeAttribute('hours', makeLiteral(3.5, 'number'))]),
+          makeResource({
+            resourceType: 'task',
+            id: 'test',
+            body: [makeAttribute('hours', makeLiteral(3.5, 'number'))],
+          }),
         ],
       };
 
@@ -533,7 +579,11 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [makeAttribute('offset', makeLiteral(-10, 'number'))]),
+          makeResource({
+            resourceType: 'task',
+            id: 'test',
+            body: [makeAttribute('offset', makeLiteral(-10, 'number'))],
+          }),
         ],
       };
 
@@ -548,7 +598,11 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [makeAttribute('notes', makeLiteral('', 'string'))]),
+          makeResource({
+            resourceType: 'task',
+            id: 'test',
+            body: [makeAttribute('notes', makeLiteral('', 'string'))],
+          }),
         ],
       };
 
@@ -566,7 +620,11 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [makeAttribute('depends_on', makeReference('other_task'))]),
+          makeResource({
+            resourceType: 'task',
+            id: 'test',
+            body: [makeAttribute('depends_on', makeReference('other_task'))],
+          }),
         ],
       };
 
@@ -583,9 +641,11 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [
-            makeAttribute('depends_on', makeReference('setup environment', true)),
-          ]),
+          makeResource({
+            resourceType: 'task',
+            id: 'test',
+            body: [makeAttribute('depends_on', makeReference('setup environment', true))],
+          }),
         ],
       };
 
@@ -602,7 +662,11 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [makeAttribute('depends_on', makeReference('target'))]),
+          makeResource({
+            resourceType: 'task',
+            id: 'test',
+            body: [makeAttribute('depends_on', makeReference('target'))],
+          }),
         ],
       };
 
@@ -616,11 +680,15 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [
-            makeAttribute('description', makeLiteral('Some work', 'string')),
-            makeAttribute('depends_on', makeReference('other')),
-            makeAttribute('priority', makeLiteral(1, 'number')),
-          ]),
+          makeResource({
+            resourceType: 'task',
+            id: 'test',
+            body: [
+              makeAttribute('description', makeLiteral('Some work', 'string')),
+              makeAttribute('depends_on', makeReference('other')),
+              makeAttribute('priority', makeLiteral(1, 'number')),
+            ],
+          }),
         ],
       };
 
@@ -640,11 +708,15 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [
-            makeAttribute('description', makeLiteral('Some work', 'string')),
-            makeAttribute('depends_on', makeArray([makeReference('A'), makeReference('B')])),
-            makeAttribute('priority', makeLiteral(1, 'number')),
-          ]),
+          makeResource({
+            resourceType: 'task',
+            id: 'test',
+            body: [
+              makeAttribute('description', makeLiteral('Some work', 'string')),
+              makeAttribute('depends_on', makeArray([makeReference('A'), makeReference('B')])),
+              makeAttribute('priority', makeLiteral(1, 'number')),
+            ],
+          }),
         ],
       };
 
@@ -671,9 +743,11 @@ describe('decode', () => {
       const cst: DocumentNode = {
         type: 'document',
         resources: [
-          makeResource('task', 'test', [
-            makeAttribute('depends_on', makeArray([makeReference('A')])),
-          ]),
+          makeResource({
+            resourceType: 'task',
+            id: 'test',
+            body: [makeAttribute('depends_on', makeArray([makeReference('A')]))],
+          }),
         ],
       };
 
