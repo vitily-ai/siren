@@ -57,6 +57,14 @@ apps/
 - Per-package environments: `node` for core/CLI, `jsdom` for web
 - **Playwright** only for browser E2E tests requiring real WASM loading
 
+### Testing guidelines for code changes
+
+- **Core changes**: Any change to `packages/core` that affects parsing or decoding should include an associated `snippets` fixture under `packages/core/test/fixtures/snippets/` demonstrating the grammar case being modified or added.
+- **IR changes**: Changes that affect the intermediate representation (IR) must include a corresponding `projects` fixture under `packages/core/test/fixtures/projects/` that exercises the IR behavior or decoding path.
+- **CLI changes**: Any change to the CLI behavior (commands, output formatting, warnings ordering) should include a golden-file test under `apps/cli/test/expected/` asserting stdout and, where applicable, stderr output. Use the `fixture-utils` helper to copy `projects` fixtures into temporary directories for CLI tests.
+
+These rules make it easier to review behavioral changes and keep parity between `core` and `cli` tests.
+
 ## Design Principles
 - **Error tolerance**: Grammar must be recoverable and composable, not fail on first error
 - **JIT rendering**: Changes reflect immediately without separate compilation
