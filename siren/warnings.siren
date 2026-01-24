@@ -1,5 +1,5 @@
 task circular-references {
 
-    description = "detect cirular references during IR construction. ensure these situations are handled gracefully, but frontends should surface the warnings."
+    description = "detect cirular references during IR construction. ensure these situations are handled gracefully, but frontends should surface the warnings. identified cycles need to be persisted in IR for easy retrieval and checking later, such as when listing dependency chains (upcoming feature)"
 
 }

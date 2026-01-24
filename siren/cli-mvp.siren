@@ -111,4 +111,6 @@ task list-nested {
         "output should show both milestone and task dependencies"
     ]
 
+    depends_on = circular-references
+
 }
