@@ -26,7 +26,7 @@ task cli-add-task-no-milestone {
 milestone cli-mvp {
 
     description = "Minimum features to make the cli usable"
-    depends_on = [cli-new-milestone, recursive-search-up]
+    depends_on = [cli-new-milestone, recursive-search-up, cli-add-task-basic, cli-add-task-no-milestone, query-complete, complete-duplicates, ensure-load, list-with-tasks, list-with-status, list-to-core, list-indentation, list-nested]
 
 }
 
@@ -77,5 +77,38 @@ task list-to-core complete {
 task list-indentation complete {
 
     description = "replace tab-indents with ASCII line characters to represent hierarchy"
+
+}
+
+task list-nested {
+
+    description = "`siren list -t` should show dependency chains to complete depth - truncated if chain is longer than 2. The focus should be on presenting the incomplete leaf dependencies for a milestone."
+
+    example_output = "
+        milestone_with_dependency_chain_len_2
+        └─ chain_dep_a
+           └─ leaf_dep_a
+        milestone_with_dependency_chain_len_10
+        └─ ... (9 intermediate dependencies)
+            └─ leaf_dep_c
+        milestone_with_two_dependency_chains
+        ├─ chain_dep_d
+        │  ├─ leaf_dep_d
+        │  └─ leaf_dep_e
+        └─ chain_dep_f
+           ├─ ... (2 intermediate dependencies)
+           │  └─ leaf_dep_f
+           └─ leaf_dep_g
+        milestone_with_many_long_dependency_chains
+        └─ ... (multiple dependency branches)
+           ├─ leaf_dependency_depth_1
+           └─ leaf_dependency_depth_10
+    "
+
+    completeness_criteria = [
+        "one or more project fixture tests in core ensuring deep dependencies are indexed (check if one isn't already defined)",
+        "one or more golden file snapshots in cli tests verifying complex output similar to example",
+        "output should show both milestone and task dependencies"
+    ]
 
 }
