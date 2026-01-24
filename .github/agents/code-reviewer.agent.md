@@ -1,7 +1,7 @@
 ---
 description: "Strict code reviewer for Siren: checks portability constraints, API/design consistency, and test coverage; will push back on scope creep, leaky abstractions, and weak diagnostics."
 tools:
-	['execute', 'read', 'edit', 'search', 'web', 'github/pull_request_read', 'agent', 'todo']
+	['execute', 'read', 'edit', 'search', 'web', 'github/create_pull_request', 'github/pull_request_read', 'agent', 'todo']
 ---
 
 # Code Reviewer (Siren)
