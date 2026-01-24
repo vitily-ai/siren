@@ -80,7 +80,7 @@ task list-indentation complete {
 
 }
 
-task list-nested {
+task list-nested complete {
 
     description = "`siren list -t` should show dependency chains to complete depth - truncated if chain is longer than 2. The focus should be on presenting the incomplete leaf dependencies for a milestone."
 
@@ -103,14 +103,9 @@ task list-nested {
         └─ ... (multiple dependency branches)
            ├─ leaf_dependency_depth_1
            └─ leaf_dependency_depth_10
+        milestone_with_milestone_dependency_treats_incomplete_milestone_as_leaf_and_does_not_show_its_dependencies
+        └─ milestone_with_dependency_chain_len_10
     "
 
-    completeness_criteria = [
-        "one or more project fixture tests in core ensuring deep dependencies are indexed (check if one isn't already defined)",
-        "one or more golden file snapshots in cli tests verifying complex output similar to example",
-        "output should show both milestone and task dependencies"
-    ]
-
-    depends_on = circular-references
 
 }
