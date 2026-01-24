@@ -22,7 +22,7 @@ task cli-list-long-names {
 
 }
 
-task handle-circular-references {
+task handle-circular-references siren {
 
     description = "circular references should emit a warning, but should not panic or fail to parse/load"
 
