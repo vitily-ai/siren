@@ -89,10 +89,12 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
     }
 
     // Collect decoding warnings (e.g., circular dependencies)
-    for (const diagnostic of decodeResult.diagnostics) {
-      if (diagnostic.severity === 'warning') {
-        const relPath = path.relative(rootDir, filePath);
-        ctx.warnings.push(`Warning: ${relPath}: ${diagnostic.message}`);
+    if (decodeResult.diagnostics) {
+      for (const diagnostic of decodeResult.diagnostics) {
+        if (diagnostic.severity === 'warning') {
+          const relPath = path.relative(rootDir, filePath);
+          ctx.warnings.push(`Warning: ${relPath}: ${diagnostic.message}`);
+        }
       }
     }
 

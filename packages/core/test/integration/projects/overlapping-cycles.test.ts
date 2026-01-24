@@ -19,7 +19,6 @@ describe('project:overlapping-cycles', () => {
   it('detects overlapping circular dependencies and emits warnings', async () => {
     const { diagnostics } = await parseAndDecodeAll(adapter, 'overlapping-cycles');
     const cycleWarnings = diagnostics.filter((d) => d.code === 'W004' && d.severity === 'warning');
-    console.log('Cycle warnings:', cycleWarnings);
     expect(cycleWarnings).toHaveLength(2);
     // The warnings should contain the cycle paths
     const messages = cycleWarnings.map((w) => w.message);
@@ -34,7 +33,6 @@ describe('project:overlapping-cycles', () => {
     const parseResult = await adapterLocal.parse(src);
     expect(parseResult.success).toBe(true);
     const decodeResult = decode(parseResult.tree!);
-    console.log('Cycles in IR:', decodeResult.document!.cycles);
     expect(decodeResult.document!.cycles).toHaveLength(2);
     const cycleNodes = decodeResult.document!.cycles.map((c) => c.nodes);
     expect(cycleNodes).toContainEqual(['a', 'b', 'c', 'a']);
