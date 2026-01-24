@@ -1,0 +1,42 @@
+milestone decoder-completion {
+    description = "Complete remaining decoder work after demo"
+    depends_on = [add-array-support, empty-array-test]
+}
+
+task add-array-support {
+    description = "Add array support in decoder: decode ArrayNode -> ArrayValue"
+}
+
+task empty-array-test {
+    description = "Add fixture & test for empty arrays (depends_on = [])"
+}
+
+milestone validation-layer {
+    description = "Add semantic validation layer"
+    depends_on = [create-validator, reference-resolution, position-tracking]
+}
+
+task create-validator {
+    description = "Create `packages/core/src/validator/index.ts` and validation APIs"
+}
+
+task reference-resolution {
+    description = "Implement reference resolution and undefined reference checks"
+}
+
+task position-tracking {
+    description = "Add source position tracking to diagnostics (line/column)
+}
+
+milestone app-adapters {
+    description = "Wire ParserAdapter implementations for apps"
+    depends_on = [browser-adapter, cli-adapter]
+}
+
+task browser-adapter {
+    description = "Copy/implement `ParserAdapter` for browser (apps/web) and integrate WASM loading for Vite"
+}
+
+task cli-adapter {
+    description = "Add Node `ParserAdapter` for CLI (apps/cli) and ensure WASM path resolution"
+}
