@@ -52,44 +52,49 @@ export class DirectedGraph {
   }
 
   /**
-   * Get all cycles in the graph as arrays of node IDs
+   * Get all elementary cycles in the graph as arrays of node IDs
    */
   getCycles(): string[][] {
     const cycles: string[][] = [];
-    const visited = new Set<string>();
-    const recStack = new Set<string>();
-    const path: string[] = [];
 
-    const dfs = (node: string): void => {
-      if (recStack.has(node)) {
-        // Cycle detected: from node back to node in path
-        const cycleStart = path.indexOf(node);
-        if (cycleStart !== -1) {
-          const cycle = path.slice(cycleStart).concat(node);
-          cycles.push(cycle);
+    for (const start of this.getNodes()) {
+      const path: string[] = [];
+      const pathSet = new Set<string>();
+
+      const dfs = (node: string): void => {
+        path.push(node);
+        pathSet.add(node);
+
+        for (const successor of this.getSuccessors(node)) {
+          if (pathSet.has(successor)) {
+            // Cycle found: successor is in current path
+            const cycleStart = path.indexOf(successor);
+            const cycle = path.slice(cycleStart).concat(successor);
+            // Normalize cycle: rotate to start with the lexicographically smallest node
+            const cycleNodes = cycle.slice(0, -1); // exclude the closing duplicate
+            const minNode = cycleNodes.reduce((min, curr) => (curr < min ? curr : min));
+            const minIndex = cycleNodes.indexOf(minNode);
+            const normalized = cycleNodes
+              .slice(minIndex)
+              .concat(cycleNodes.slice(0, minIndex), minNode);
+            cycles.push(normalized);
+          } else {
+            dfs(successor);
+          }
         }
-        return;
-      }
-      if (visited.has(node)) return;
 
-      visited.add(node);
-      recStack.add(node);
-      path.push(node);
+        path.pop();
+        pathSet.delete(node);
+      };
 
-      for (const successor of this.getSuccessors(node)) {
-        dfs(successor);
-      }
-
-      path.pop();
-      recStack.delete(node);
-    };
-
-    for (const node of this.getNodes()) {
-      if (!visited.has(node)) {
-        dfs(node);
-      }
+      dfs(start);
     }
 
-    return cycles;
+    // Deduplicate cycles
+    const uniqueCycles = Array.from(new Set(cycles.map((c) => JSON.stringify(c)))).map((s) =>
+      JSON.parse(s),
+    );
+
+    return uniqueCycles;
   }
 }

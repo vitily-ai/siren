@@ -1,0 +1,20 @@
+milestone reusable-discovery-code {
+
+    description = "code for discovery currently owned by cli. is useful and needs to be extracted, likely to core"
+    depends_on = [node-loader-package, project-loader-interface]
+
+}
+
+task node-loader-package {
+
+    description = "Create a Node-only package `packages/node-loader` that implements filesystem discovery and a `loadProject(cwd)` helper for Node frontends (CLI, MCP). This centralizes Node-specific FS logic while keeping `@siren/core` environment-agnostic."
+    depends_on = [project-loader-interface]
+
+}
+
+task project-loader-interface {
+
+    description = "Add a `ProjectLoader` interface and a `mergeDocuments()` utility to `@siren/core` to define a stable contract for loaders and an environment-agnostic way to merge parsed documents."
+    depends_on = reusable-discovery-code
+
+}
