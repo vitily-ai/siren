@@ -1,0 +1,9 @@
+# list --tasks
+milestone1
+└─ task10
+   └─ … (8 intermediate dependencies)
+      └─ task1
+milestone2
+└─ task10
+   └─ … (8 intermediate dependencies)
+      └─ task1

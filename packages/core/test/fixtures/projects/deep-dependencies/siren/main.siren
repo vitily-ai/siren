@@ -1,0 +1,85 @@
+# Deep Dependencies Fixture
+# This fixture exercises deep dependency chains for testing core traversal logic.
+# Includes chains of depths 2, 10, multiple branches, milestone leaves, incomplete deps, and cycles.
+
+# Chain of depth 10: task10 -> ... -> task1
+task task1 {
+  description = "Leaf task in deep chain"
+}
+
+task task2 {
+  depends_on = task1
+}
+
+task task3 {
+  depends_on = task2
+}
+
+task task4 {
+  depends_on = task3
+}
+
+task task5 {
+  depends_on = task4
+}
+
+task task6 {
+  depends_on = task5
+}
+
+task task7 {
+  depends_on = task6
+}
+
+task task8 {
+  depends_on = task7
+}
+
+task task9 {
+  depends_on = task8
+}
+
+task task10 {
+  depends_on = task9
+}
+
+# Multiple branches: taskA depends on taskB and taskC
+task taskB {
+  depends_on = task10  # Branch from deep chain
+}
+
+task taskC {
+  depends_on = task9   # Another branch
+}
+
+task taskA {
+  depends_on = [taskB, taskC]
+}
+
+# Milestone as leaf
+milestone milestone1 {
+  depends_on = task10
+}
+
+# Milestone with multiple dependencies
+milestone milestone2 {
+  depends_on = [taskA, task10]
+}
+
+# Incomplete leaf dependency
+task incompleteTask {
+  depends_on = nonExistentTask
+}
+
+# Overlapping cycles for completeness
+task cycleX {
+  depends_on = cycleY
+}
+
+task cycleY {
+  depends_on = cycleZ
+}
+
+task cycleZ {
+  depends_on = cycleX
+}

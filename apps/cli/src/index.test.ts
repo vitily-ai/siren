@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { copyProjectFixture } from '../test/helpers/fixture-utils.js';
-import { init, list, main } from './index.js';
+import { init, list, main, renderDependencyChains, runList } from './index.js';
 import * as project from './project.js';
 import { loadProject } from './project.js';
 
@@ -283,9 +283,9 @@ describe('siren list', () => {
     const result = await list(true);
 
     expect(result.milestones).toEqual(['alpha', 'beta']);
-    expect(result.tasksByMilestone).toBeDefined();
-    expect(result.tasksByMilestone!.get('alpha')).toEqual(['task1']);
-    expect(result.tasksByMilestone!.get('beta')).toEqual([]);
+    expect(result.chainsByMilestone).toBeDefined();
+    expect(result.chainsByMilestone!.get('alpha')).toEqual([['alpha', 'task1']]);
+    expect(result.chainsByMilestone!.get('beta')).toEqual([]);
   });
 
   it('handles array depends_on in tasks', async () => {
@@ -294,8 +294,55 @@ describe('siren list', () => {
     await loadProject(tempDir);
     const result = await list(true);
 
-    expect(result.tasksByMilestone!.get('alpha')).toEqual(['task1']);
-    expect(result.tasksByMilestone!.get('gamma')).toEqual(['task1']);
+    expect(result.chainsByMilestone!.get('alpha')).toEqual([['alpha', 'task1']]);
+    expect(result.chainsByMilestone!.get('gamma')).toEqual([['gamma', 'task1']]);
+  });
+});
+
+describe('renderDependencyChains', () => {
+  it('renders empty chains', () => {
+    expect(renderDependencyChains([])).toEqual([]);
+  });
+
+  it('renders single chain with depth 1', () => {
+    const chains = [['milestone', 'task1']];
+    expect(renderDependencyChains(chains)).toEqual(['└─ task1']);
+  });
+
+  it('renders single chain with depth 2', () => {
+    const chains = [['milestone', 'dep1', 'task1']];
+    expect(renderDependencyChains(chains)).toEqual(['└─ dep1', '   └─ task1']);
+  });
+
+  it('renders truncated chain', () => {
+    const chains = [['milestone', 'dep1', 'dep2', 'dep3', 'dep4', 'task1']];
+    expect(renderDependencyChains(chains)).toEqual([
+      '└─ dep1',
+      '   └─ … (3 intermediate dependencies)',
+      '      └─ task1',
+    ]);
+  });
+
+  it('renders multiple chains', () => {
+    const chains = [
+      ['milestone', 'dep1', 'task1'],
+      ['milestone', 'dep1', 'task2'],
+    ];
+    expect(renderDependencyChains(chains)).toEqual(['└─ dep1', '   ├─ task1', '   └─ task2']);
+  });
+
+  it('renders branching chains', () => {
+    const chains = [
+      ['milestone', 'dep1', 'sub1', 'task1'],
+      ['milestone', 'dep1', 'sub2', 'task2'],
+    ];
+    expect(renderDependencyChains(chains)).toEqual([
+      '└─ dep1',
+      '   ├─ sub1',
+      '   │  └─ task1',
+      '   └─ sub2',
+      '      └─ task2',
+    ]);
   });
 });
 
@@ -446,5 +493,34 @@ describe('siren main', () => {
     // The milestone output itself is validated by golden tests; ensure something was logged.
     expect(consoleLogSpy).toHaveBeenCalled();
     expect(loadProjectSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('list -t command matches golden file for deep-dependencies', async () => {
+    // Setup: create siren dir with deep dependencies
+    copyFixture('deep-dependencies', tempDir);
+    const originalCwd = process.cwd();
+    process.chdir(tempDir);
+
+    try {
+      await main(['list', '-t']);
+
+      const raw = fs.readFileSync(
+        path.join(__dirname, '..', 'test', 'expected', 'deep-dependencies.txt'),
+        'utf-8',
+      );
+      const lines = raw.split(/\r?\n/);
+      let expectedContent: string;
+      if (lines.length > 0 && lines[0].startsWith('#')) {
+        expectedContent = lines.slice(1).join('\n');
+      } else {
+        expectedContent = raw;
+      }
+      const expected = expectedContent.trim();
+      const actual = consoleLogSpy.mock.calls.map((call) => call[0]).join('\n');
+      expect(actual).toBe(expected);
+      expect(loadProjectSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      process.chdir(originalCwd);
+    }
   });
 });

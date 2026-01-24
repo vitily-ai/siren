@@ -1,3 +1,6 @@
-milestone alpha {}
+milestone alpha {
+  depends_on = task1
+}
 milestone beta {}
+task task1 {}
 task not_a_milestone {}
