@@ -4,6 +4,25 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getLoadedContext, loadProject } from './project.js';
 
+const __dirname = path.dirname(new URL(import.meta.url).pathname);
+const fixturesDir = path.join(
+  __dirname,
+  '..',
+  '..',
+  '..',
+  'packages',
+  'core',
+  'test',
+  'fixtures',
+  'projects',
+);
+
+function copyFixture(fixtureName: string, targetDir: string) {
+  const fixturePath = path.join(fixturesDir, fixtureName, 'siren');
+  const targetSirenDir = path.join(targetDir, 'siren');
+  fs.cpSync(fixturePath, targetSirenDir, { recursive: true });
+}
+
 describe('project loading', () => {
   let tempDir: string;
 
@@ -141,5 +160,15 @@ milestone "MVP Release" {}`,
     const loaded = getLoadedContext();
 
     expect(loaded).toBe(ctx);
+  });
+
+  it('collects decoding warnings from core', async () => {
+    copyFixture('circular-depends', tempDir);
+
+    const ctx = await loadProject(tempDir);
+
+    expect(ctx.warnings).toHaveLength(1);
+    expect(ctx.warnings[0]).toContain('Warning: siren/main.siren: Circular dependency detected');
+    expect(ctx.warnings[0]).toContain('task1 -> task2 -> task3 -> task1');
   });
 });

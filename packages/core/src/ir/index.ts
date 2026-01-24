@@ -6,6 +6,7 @@ export type {
   ArrayValue,
   Attribute,
   AttributeValue,
+  Cycle,
   Document,
   PrimitiveValue,
   Resource,
