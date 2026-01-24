@@ -25,7 +25,7 @@ describe('Decode Integration: Fixtures', () => {
   });
 
   describe('01-minimal.siren', () => {
-    const fixturePath = join(fixturesDir, '01-minimal.siren');
+    const fixturePath = join(fixturesDir, 'snippets', '01-minimal.siren');
 
     it('decodes successfully with no errors', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
@@ -88,7 +88,7 @@ describe('Decode Integration: Fixtures', () => {
   });
 
   describe('02-simple.siren', () => {
-    const fixturePath = join(fixturesDir, '02-simple.siren');
+    const fixturePath = join(fixturesDir, 'snippets', '02-simple.siren');
 
     it('decodes successfully with no errors', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
@@ -228,7 +228,7 @@ describe('Decode Integration: Fixtures', () => {
   });
 
   describe('03-dependencies.siren', () => {
-    const fixturePath = join(fixturesDir, '03-dependencies.siren');
+    const fixturePath = join(fixturesDir, 'snippets', '03-dependencies.siren');
 
     it('decodes successfully with no errors', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
@@ -419,7 +419,7 @@ describe('Decode Integration: Fixtures', () => {
 
   describe('Attribute initialization behavior', () => {
     it('01-minimal resources have empty attributes (no attributes in source)', async () => {
-      const source = readFileSync(join(fixturesDir, '01-minimal.siren'), 'utf-8');
+      const source = readFileSync(join(fixturesDir, 'snippets', '01-minimal.siren'), 'utf-8');
       const parseResult = await adapter.parse(source);
       const decodeResult = decode(parseResult.tree!);
 
@@ -429,7 +429,7 @@ describe('Decode Integration: Fixtures', () => {
     });
 
     it('02-simple resources have decoded attributes', async () => {
-      const source = readFileSync(join(fixturesDir, '02-simple.siren'), 'utf-8');
+      const source = readFileSync(join(fixturesDir, 'snippets', '02-simple.siren'), 'utf-8');
       const parseResult = await adapter.parse(source);
       const decodeResult = decode(parseResult.tree!);
 
@@ -441,7 +441,7 @@ describe('Decode Integration: Fixtures', () => {
   });
 
   describe('04-complete.siren', () => {
-    const fixturePath = join(fixturesDir, '04-complete.siren');
+    const fixturePath = join(fixturesDir, 'snippets', '04-complete.siren');
 
     it('decodes successfully with no errors', async () => {
       const source = readFileSync(fixturePath, 'utf-8');

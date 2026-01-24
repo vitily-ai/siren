@@ -3,12 +3,23 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { init, list, main } from './index.js';
+import { copyProjectFixture } from '../test/helpers/fixture-utils.js';
+import { init, list, main, runList } from './index.js';
 import * as project from './project.js';
 import { loadProject } from './project.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const fixturesDir = path.join(__dirname, '..', 'test', 'fixtures');
+const fixturesDir = path.join(
+  __dirname,
+  '..',
+  '..',
+  '..',
+  'packages',
+  'core',
+  'test',
+  'fixtures',
+  'projects',
+);
 
 function copyFixture(fixtureName: string, targetDir: string) {
   const fixturePath = path.join(fixturesDir, fixtureName, 'siren');
@@ -152,13 +163,33 @@ describe('siren list', () => {
   });
 
   it('lists milestones from valid .siren files', async () => {
-    copyFixture('list-milestones', tempDir);
+    const sirenDir = await copyProjectFixture('list-milestones');
+    const cwd = path.dirname(sirenDir);
 
-    await loadProject(tempDir);
+    await loadProject(cwd);
     const result = await list();
 
     expect(result.milestones).toEqual(['alpha', 'beta']);
     expect(result.warnings).toEqual([]);
+  });
+
+  it('runList outputs milestones to console', async () => {
+    const sirenDir = await copyProjectFixture('list-milestones');
+    const cwd = path.dirname(sirenDir);
+
+    await loadProject(cwd);
+
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await runList();
+
+    expect(consoleSpy).toHaveBeenCalledWith('alpha');
+    expect(consoleSpy).toHaveBeenCalledWith('beta');
+    expect(errorSpy).not.toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+    errorSpy.mockRestore();
   });
 
   it('lists milestones from multiple .siren files', async () => {

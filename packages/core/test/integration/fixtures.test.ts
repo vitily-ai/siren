@@ -14,7 +14,7 @@ describe('Fixture Integration Tests', () => {
     let tree: Parser.Tree;
 
     beforeAll(async () => {
-      tree = await parseFixture('01-minimal');
+      tree = await parseFixture('snippets/01-minimal');
     });
 
     it('should parse successfully without errors', () => {
@@ -88,7 +88,7 @@ describe('Fixture Integration Tests', () => {
     let tree: Parser.Tree;
 
     beforeAll(async () => {
-      tree = await parseFixture('02-simple');
+      tree = await parseFixture('snippets/02-simple');
     });
 
     it('should parse successfully without errors', () => {
@@ -190,7 +190,7 @@ describe('Fixture Integration Tests', () => {
     let tree: Parser.Tree;
 
     beforeAll(async () => {
-      tree = await parseFixture('03-dependencies');
+      tree = await parseFixture('snippets/03-dependencies');
     });
 
     it('should parse successfully without errors', () => {
