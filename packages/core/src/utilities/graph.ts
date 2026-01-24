@@ -69,11 +69,16 @@ export class DirectedGraph {
           if (pathSet.has(successor)) {
             // Cycle found: successor is in current path
             const cycleStart = path.indexOf(successor);
+            // `cycle` temporarily includes the closing duplicate (successor)
+            // e.g. path slice -> ['a','b','c'] + successor -> ['a','b','c','a']
             const cycle = path.slice(cycleStart).concat(successor);
             // Normalize cycle: rotate to start with the lexicographically smallest node
-            const cycleNodes = cycle.slice(0, -1); // exclude the closing duplicate
+            // Exclude the temporary closing duplicate for rotation calculations
+            const cycleNodes = cycle.slice(0, -1);
             const minNode = cycleNodes.reduce((min, curr) => (curr < min ? curr : min));
             const minIndex = cycleNodes.indexOf(minNode);
+            // Re-add the starting node at the end to produce the canonical
+            // representation that explicitly closes the cycle, e.g. ['a','b','c','a']
             const normalized = cycleNodes
               .slice(minIndex)
               .concat(cycleNodes.slice(0, minIndex), minNode);
@@ -91,8 +96,8 @@ export class DirectedGraph {
     }
 
     // Deduplicate cycles
-    const uniqueCycles = Array.from(new Set(cycles.map((c) => JSON.stringify(c)))).map((s) =>
-      JSON.parse(s),
+    const uniqueCycles = Array.from(new Set(cycles.map((c) => c.join(',')))).map((s) =>
+      s.split(','),
     );
 
     return uniqueCycles;

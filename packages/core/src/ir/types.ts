@@ -63,6 +63,12 @@ export interface Resource {
  */
 export interface Cycle {
   /** Nodes involved in the cycle, in order */
+  /**
+   * Nodes involved in the cycle, in order.
+   *
+   * NOTE: the canonical representation includes the starting node again
+   * at the end to make the cycle explicit (e.g. ['a', 'b', 'c', 'a']).
+   */
   readonly nodes: readonly string[];
   /** Edges in the cycle (optional, for detailed analysis) */
   readonly edges?: readonly [string, string][];

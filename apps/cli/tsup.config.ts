@@ -6,7 +6,6 @@ export default defineConfig({
   dts: true,
   clean: true,
   shims: true,
-  external: ['@siren/core'],
   banner: {
     js: '#!/usr/bin/env node',
   },
