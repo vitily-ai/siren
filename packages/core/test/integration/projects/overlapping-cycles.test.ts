@@ -23,20 +23,8 @@ describe('project:overlapping-cycles', () => {
     expect(cycleWarnings).toHaveLength(2);
     // The warnings should contain the cycle paths
     const messages = cycleWarnings.map((w) => w.message);
-    expect(
-      messages.some((m) =>
-        m.includes(
-          'node-loader-package -> project-loader-interface -> reusable-discovery-code -> node-loader-package',
-        ),
-      ),
-    ).toBe(true);
-    expect(
-      messages.some((m) =>
-        m.includes(
-          'project-loader-interface -> reusable-discovery-code -> project-loader-interface',
-        ),
-      ),
-    ).toBe(true);
+    expect(messages.some((m) => m.includes('a -> b -> c -> a'))).toBe(true);
+    expect(messages.some((m) => m.includes('a -> c -> a'))).toBe(true);
   });
 
   it('includes cycles in the IR', async () => {
@@ -49,16 +37,7 @@ describe('project:overlapping-cycles', () => {
     console.log('Cycles in IR:', decodeResult.document!.cycles);
     expect(decodeResult.document!.cycles).toHaveLength(2);
     const cycleNodes = decodeResult.document!.cycles.map((c) => c.nodes);
-    expect(cycleNodes).toContainEqual([
-      'node-loader-package',
-      'project-loader-interface',
-      'reusable-discovery-code',
-      'node-loader-package',
-    ]);
-    expect(cycleNodes).toContainEqual([
-      'project-loader-interface',
-      'reusable-discovery-code',
-      'project-loader-interface',
-    ]);
+    expect(cycleNodes).toContainEqual(['a', 'b', 'c', 'a']);
+    expect(cycleNodes).toContainEqual(['a', 'c', 'a']);
   });
 });

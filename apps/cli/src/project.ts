@@ -38,7 +38,7 @@ function findSirenFiles(dir: string): string[] {
     }
   }
 
-  return results;
+  return results.sort();
 }
 
 export function getLoadedContext(): ProjectContext | null {
