@@ -48,28 +48,48 @@ export class DirectedGraph {
    * Check if the graph has cycles using DFS
    */
   hasCycle(): boolean {
+    return this.getCycles().length > 0;
+  }
+
+  /**
+   * Get all cycles in the graph as arrays of node IDs
+   */
+  getCycles(): string[][] {
+    const cycles: string[][] = [];
     const visited = new Set<string>();
     const recStack = new Set<string>();
+    const path: string[] = [];
 
-    const dfs = (node: string): boolean => {
-      if (recStack.has(node)) return true;
-      if (visited.has(node)) return false;
+    const dfs = (node: string): void => {
+      if (recStack.has(node)) {
+        // Cycle detected: from node back to node in path
+        const cycleStart = path.indexOf(node);
+        if (cycleStart !== -1) {
+          const cycle = path.slice(cycleStart).concat(node);
+          cycles.push(cycle);
+        }
+        return;
+      }
+      if (visited.has(node)) return;
 
       visited.add(node);
       recStack.add(node);
+      path.push(node);
 
       for (const successor of this.getSuccessors(node)) {
-        if (dfs(successor)) return true;
+        dfs(successor);
       }
 
+      path.pop();
       recStack.delete(node);
-      return false;
     };
 
     for (const node of this.getNodes()) {
-      if (dfs(node)) return true;
+      if (!visited.has(node)) {
+        dfs(node);
+      }
     }
 
-    return false;
+    return cycles;
   }
 }

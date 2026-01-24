@@ -9,6 +9,7 @@ import type {
   ArrayValue,
   Attribute,
   AttributeValue,
+  Cycle,
   Document,
   Resource,
   ResourceReference,
@@ -283,10 +284,14 @@ export function decode(cst: DocumentNode): DecodeResult {
       graph.addEdge(resource.id, depId);
     }
   }
-  if (graph.hasCycle()) {
+  const cycles = graph.getCycles();
+  const cyclesIr: Cycle[] = cycles.map((cycle) => ({ nodes: cycle }));
+
+  // Add warnings for each cycle
+  for (const cycle of cycles) {
     diagnostics.push({
       code: 'W004',
-      message: 'Circular dependency detected in resource dependencies.',
+      message: `Circular dependency detected: ${cycle.join(' -> ')}`,
       severity: 'warning',
     });
   }
@@ -294,7 +299,7 @@ export function decode(cst: DocumentNode): DecodeResult {
   const hasErrors = diagnostics.some((d) => d.severity === 'error');
 
   return {
-    document: hasErrors ? null : { resources },
+    document: hasErrors ? null : { resources, cycles: cyclesIr },
     diagnostics,
     success: !hasErrors,
   };

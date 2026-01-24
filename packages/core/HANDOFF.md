@@ -29,7 +29,7 @@
 | Primitive attributes | ✅ | string, number, boolean, null |
 | Single references | ✅ | `depends_on = other_task` |
 | Arrays | ⏸️ Deferred | Skipped, not decoded |
-| Circular dependency warning | ⏸️ Deferred | Not implemented |
+| Circular dependency detection | ✅ | Cycles persisted in IR, warnings emitted |
 | Position tracking | ⏸️ Deferred | Not implemented |
 
 ### What's NOT Implemented
@@ -82,7 +82,7 @@ Source (.siren) → ParserAdapter.parse() → CST → decode() → IR (Document)
 
 | Behavior | Decision | Status |
 |----------|----------|--------|
-| Circular dependencies | Warning, not error | ⏸️ Not implemented |
+| Circular dependencies | Warning, not error | ✅ Implemented |
 | Empty arrays | Valid | ⏸️ Skipped (arrays deferred) |
 | String literals | Strip quotes | ✅ Implemented |
 | Forward references | TBD | — |
@@ -98,8 +98,7 @@ Source (.siren) → ParserAdapter.parse() → CST → decode() → IR (Document)
 ### To complete decoder (post-demo):
 
 1. **Add array support** — decode `ArrayNode` → `ArrayValue`
-2. **Circular dependency warning** — detect cycles in `depends_on`, emit diagnostic
-3. **Empty array test** — verify `depends_on = []` decodes
+2. **Empty array test** — verify `depends_on = []` decodes
 
 ### To add validation layer:
 
@@ -157,6 +156,11 @@ if (parseResult.success && parseResult.tree) {
 ```typescript
 interface Document {
   readonly resources: readonly Resource[];
+  readonly cycles: readonly Cycle[];
+}
+
+interface Cycle {
+  readonly nodes: readonly string[];
 }
 
 interface Resource {
