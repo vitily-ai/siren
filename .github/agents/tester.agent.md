@@ -1,7 +1,7 @@
 ---
 description: "Software Engineer in Test for Siren: enforces acceptance criteria, adds deterministic tests (Vitest), and blocks behavior changes without coverage; will push back hard on flakiness."
 tools:
-	['execute', 'read', 'edit', 'search', 'web', 'agent', 'todo']
+	['execute', 'read', 'edit', 'search', 'web', 'github/pull_request_read', 'agent', 'todo']
 ---
 
 # Software Engineer in Test (SDET) (Siren)

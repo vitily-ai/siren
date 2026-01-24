@@ -48,28 +48,58 @@ export class DirectedGraph {
    * Check if the graph has cycles using DFS
    */
   hasCycle(): boolean {
-    const visited = new Set<string>();
-    const recStack = new Set<string>();
+    return this.getCycles().length > 0;
+  }
 
-    const dfs = (node: string): boolean => {
-      if (recStack.has(node)) return true;
-      if (visited.has(node)) return false;
+  /**
+   * Get all elementary cycles in the graph as arrays of node IDs
+   */
+  getCycles(): string[][] {
+    const cycles: string[][] = [];
 
-      visited.add(node);
-      recStack.add(node);
+    for (const start of this.getNodes()) {
+      const path: string[] = [];
+      const pathSet = new Set<string>();
 
-      for (const successor of this.getSuccessors(node)) {
-        if (dfs(successor)) return true;
-      }
+      const dfs = (node: string): void => {
+        path.push(node);
+        pathSet.add(node);
 
-      recStack.delete(node);
-      return false;
-    };
+        for (const successor of this.getSuccessors(node)) {
+          if (pathSet.has(successor)) {
+            // Cycle found: successor is in current path
+            const cycleStart = path.indexOf(successor);
+            // `cycle` temporarily includes the closing duplicate (successor)
+            // e.g. path slice -> ['a','b','c'] + successor -> ['a','b','c','a']
+            const cycle = path.slice(cycleStart).concat(successor);
+            // Normalize cycle: rotate to start with the lexicographically smallest node
+            // Exclude the temporary closing duplicate for rotation calculations
+            const cycleNodes = cycle.slice(0, -1);
+            const minNode = cycleNodes.reduce((min, curr) => (curr < min ? curr : min));
+            const minIndex = cycleNodes.indexOf(minNode);
+            // Re-add the starting node at the end to produce the canonical
+            // representation that explicitly closes the cycle, e.g. ['a','b','c','a']
+            const normalized = cycleNodes
+              .slice(minIndex)
+              .concat(cycleNodes.slice(0, minIndex), minNode);
+            cycles.push(normalized);
+          } else {
+            dfs(successor);
+          }
+        }
 
-    for (const node of this.getNodes()) {
-      if (dfs(node)) return true;
+        path.pop();
+        pathSet.delete(node);
+      };
+
+      dfs(start);
     }
 
-    return false;
+    // Deduplicate cycles
+    const uniqueCycles = Array.from(new Set(cycles.map((c) => c.join(',')))).map((s) =>
+      s.split(','),
+    );
+
+    return uniqueCycles;
   }
 }

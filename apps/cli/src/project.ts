@@ -38,7 +38,7 @@ function findSirenFiles(dir: string): string[] {
     }
   }
 
-  return results;
+  return results.sort();
 }
 
 export function getLoadedContext(): ProjectContext | null {
@@ -77,7 +77,6 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
   for (const filePath of ctx.files) {
     const source = fs.readFileSync(filePath, 'utf-8');
     const parseResult = await parser.parse(source);
-
     if (!parseResult.success || !parseResult.tree) {
       const relPath = path.relative(rootDir, filePath);
       ctx.warnings.push(`Warning: skipping ${relPath} (parse error)`);
@@ -87,6 +86,16 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
     const decodeResult = decode(parseResult.tree);
     if (!decodeResult.document) {
       continue;
+    }
+
+    // Collect decoding warnings (e.g., circular dependencies)
+    if (decodeResult.diagnostics) {
+      for (const diagnostic of decodeResult.diagnostics) {
+        if (diagnostic.severity === 'warning') {
+          const relPath = path.relative(rootDir, filePath);
+          ctx.warnings.push(`Warning: ${relPath}: ${diagnostic.message}`);
+        }
+      }
     }
 
     allResources.push(...decodeResult.document.resources);

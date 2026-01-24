@@ -450,4 +450,23 @@ describe('siren main', () => {
     expect(consoleLogSpy).toHaveBeenCalledWith('└─ task1');
     expect(loadProjectSpy).toHaveBeenCalledTimes(1);
   });
+
+  it('list command outputs multiple circular dependency warnings', async () => {
+    // Setup: create siren dir with overlapping cycles
+    copyFixture('overlapping-cycles', tempDir);
+
+    await main(['list']);
+
+    expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
+    expect(consoleErrorSpy).toHaveBeenNthCalledWith(
+      1,
+      'Warning: siren/main.siren: Circular dependency detected: a -> b -> c -> a',
+    );
+    expect(consoleErrorSpy).toHaveBeenNthCalledWith(
+      2,
+      'Warning: siren/main.siren: Circular dependency detected: a -> c -> a',
+    );
+    expect(consoleLogSpy).toHaveBeenCalledWith('a');
+    expect(loadProjectSpy).toHaveBeenCalledTimes(1);
+  });
 });

@@ -58,12 +58,14 @@ describe('DirectedGraph', () => {
     it('detects no cycle in empty graph', () => {
       const graph = new DirectedGraph();
       expect(graph.hasCycle()).toBe(false);
+      expect(graph.getCycles()).toEqual([]);
     });
 
     it('detects no cycle in single node', () => {
       const graph = new DirectedGraph();
       graph.addNode('a');
       expect(graph.hasCycle()).toBe(false);
+      expect(graph.getCycles()).toEqual([]);
     });
 
     it('detects no cycle in DAG', () => {
@@ -72,12 +74,14 @@ describe('DirectedGraph', () => {
       graph.addEdge('b', 'c');
       graph.addEdge('a', 'c');
       expect(graph.hasCycle()).toBe(false);
+      expect(graph.getCycles()).toEqual([]);
     });
 
     it('detects self-loop cycle', () => {
       const graph = new DirectedGraph();
       graph.addEdge('a', 'a');
       expect(graph.hasCycle()).toBe(true);
+      expect(graph.getCycles()).toEqual([['a', 'a']]);
     });
 
     it('detects simple cycle', () => {
@@ -85,6 +89,7 @@ describe('DirectedGraph', () => {
       graph.addEdge('a', 'b');
       graph.addEdge('b', 'a');
       expect(graph.hasCycle()).toBe(true);
+      expect(graph.getCycles()).toEqual([['a', 'b', 'a']]);
     });
 
     it('detects cycle in larger graph', () => {
@@ -93,6 +98,7 @@ describe('DirectedGraph', () => {
       graph.addEdge('b', 'c');
       graph.addEdge('c', 'a');
       expect(graph.hasCycle()).toBe(true);
+      expect(graph.getCycles()).toEqual([['a', 'b', 'c', 'a']]);
     });
 
     it('handles disconnected components with cycles', () => {
@@ -101,6 +107,7 @@ describe('DirectedGraph', () => {
       graph.addEdge('c', 'd');
       graph.addEdge('d', 'c'); // cycle in second component
       expect(graph.hasCycle()).toBe(true);
+      expect(graph.getCycles()).toEqual([['c', 'd', 'c']]);
     });
 
     it('no cycle in disconnected DAGs', () => {
@@ -108,6 +115,20 @@ describe('DirectedGraph', () => {
       graph.addEdge('a', 'b');
       graph.addEdge('c', 'd');
       expect(graph.hasCycle()).toBe(false);
+      expect(graph.getCycles()).toEqual([]);
+    });
+
+    it('detects multiple cycles', () => {
+      const graph = new DirectedGraph();
+      graph.addEdge('a', 'b');
+      graph.addEdge('b', 'a');
+      graph.addEdge('c', 'd');
+      graph.addEdge('d', 'c');
+      expect(graph.hasCycle()).toBe(true);
+      expect(graph.getCycles()).toEqual([
+        ['a', 'b', 'a'],
+        ['c', 'd', 'c'],
+      ]);
     });
   });
 });

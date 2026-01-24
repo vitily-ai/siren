@@ -59,12 +59,30 @@ export interface Resource {
 }
 
 /**
+ * A detected cycle in the dependency graph
+ */
+export interface Cycle {
+  /** Nodes involved in the cycle, in order */
+  /**
+   * Nodes involved in the cycle, in order.
+   *
+   * NOTE: the canonical representation includes the starting node again
+   * at the end to make the cycle explicit (e.g. ['a', 'b', 'c', 'a']).
+   */
+  readonly nodes: readonly string[];
+  /** Edges in the cycle (optional, for detailed analysis) */
+  readonly edges?: readonly [string, string][];
+}
+
+/**
  * Top-level document containing all resources
  */
 export interface Document {
   readonly resources: readonly Resource[];
   /** Source file path (if any) */
   readonly source?: string;
+  /** Detected cycles in the dependency graph */
+  readonly cycles: readonly Cycle[];
 }
 
 /**

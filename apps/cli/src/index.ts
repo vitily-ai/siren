@@ -107,10 +107,7 @@ export async function list(showTasks: boolean = false): Promise<ListResult> {
 export async function runList(showTasks: boolean = false): Promise<void> {
   const result = await list(showTasks);
 
-  // Print warnings to stderr
-  for (const warning of result.warnings) {
-    console.error(warning);
-  }
+  // Note: warnings are already printed by main()
 
   if (showTasks && result.tasksByMilestone) {
     // Print milestone IDs with tasks
