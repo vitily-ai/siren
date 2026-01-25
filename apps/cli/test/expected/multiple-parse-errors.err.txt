@@ -1,2 +1,3 @@
+# list
 Warning: skipping siren/broken1.siren (parse error)
 Warning: skipping siren/broken2.siren (parse error)
