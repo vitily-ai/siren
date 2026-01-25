@@ -1,4 +1,4 @@
-task cli-new-milestone {
+task cli-new-entry {
 
     description = "cli tool to create milestone"
 
@@ -26,7 +26,7 @@ task cli-add-task-no-milestone {
 milestone cli-mvp {
 
     description = "Minimum features to make the cli usable"
-    depends_on = [cli-new-milestone, recursive-search-up, cli-add-task-basic, cli-add-task-no-milestone, query-complete, complete-duplicates, ensure-load, list-with-tasks, list-with-status, list-to-core, list-indentation, list-nested]
+    depends_on = [cli-new-entry, recursive-search-up, cli-add-task-basic, cli-add-task-no-milestone, query-complete, complete-duplicates, ensure-load, list-with-tasks, list-with-status, list-to-core, list-indentation, list-nested]
 
 }
 
