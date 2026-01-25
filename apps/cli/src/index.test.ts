@@ -498,5 +498,4 @@ describe('siren main', () => {
     expect(consoleLogSpy).toHaveBeenCalled();
     expect(loadProjectSpy).toHaveBeenCalledTimes(1);
   });
-
 });
