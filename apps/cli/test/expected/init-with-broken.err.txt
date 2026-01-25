@@ -1,2 +1,2 @@
-# init
+# siren init
 Warning: skipping siren/broken.siren (parse error)

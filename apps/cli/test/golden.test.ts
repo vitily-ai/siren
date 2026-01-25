@@ -36,12 +36,28 @@ describe('golden CLI tests (expected/)', () => {
       // Tests should fail if no command is provided in the golden file.
       let cmdLine: string;
       let expectedContent: string;
-      if (lines.length > 0 && lines[0].startsWith('#')) {
-        cmdLine = lines[0].replace(/^#\s?/, '').trim();
-        expectedContent = lines.slice(1).join('\n');
-      } else {
+      // Collect all comment lines. The first comment is the command header;
+      // other comment lines are allowed anywhere in the file and should
+      // be ignored from the expected output.
+      const commentLines = lines.filter((l) => l.startsWith('#'));
+      if (commentLines.length === 0) {
+        throw new Error('NO COMMAND HEADER IN GOLDEN FILE');
+      }
+      cmdLine = commentLines[0].replace(/^#\s?/, '').trim();
+
+      // Expected content is the file with all comment lines removed.
+      expectedContent = lines.filter((l) => !l.startsWith('#')).join('\n');
+
+      
+
+      // Split the command header into args and validate it begins with `siren`.
+      const args = splitArgs(cmdLine);
+      if (args.length === 0) {
+        throw new Error(`INVALID COMMAND HEADER IN GOLDEN FILE ${file}: empty command`);
+      }
+      if (args[0].toLowerCase() !== 'siren') {
         throw new Error(
-          `Missing command in golden file ${file}: add a first-line comment like '# list'`,
+          `INVALID COMMAND HEADER IN GOLDEN FILE ${file}: command must begin with 'siren'`,
         );
       }
 
@@ -58,8 +74,8 @@ describe('golden CLI tests (expected/)', () => {
       try {
         process.chdir(cwd);
 
-        const args = splitArgs(cmdLine);
-        await main(args);
+        // Call `main` with the tokens after the initial `siren` token.
+        await main(args.slice(1));
 
         const outCalls = logSpy.mock.calls
           .map((c) => (c[0] !== undefined ? String(c[0]) : ''))
