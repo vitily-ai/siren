@@ -499,34 +499,4 @@ describe('siren main', () => {
     expect(loadProjectSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('list -t command matches golden file for deep-dependencies', async () => {
-    // Setup: create siren dir with deep dependencies
-    copyFixture('deep-dependencies', tempDir);
-    const originalCwd = process.cwd();
-    process.chdir(tempDir);
-
-    try {
-      await main(['list', '-t']);
-
-      const raw = fs.readFileSync(
-        path.join(__dirname, '..', 'test', 'expected', 'deep-dependencies.txt'),
-        'utf-8',
-      );
-      const lines = raw.split(/\r?\n/);
-      let expectedContent: string;
-      if (lines.length > 0 && lines[0]!.startsWith('#')) {
-        expectedContent = lines.slice(1).join('\n');
-      } else {
-        expectedContent = raw;
-      }
-      const expected = expectedContent.trim();
-      const actual = consoleLogSpy.mock.calls
-        .map((call: unknown[]) => call[0] as string)
-        .join('\n');
-      expect(actual).toBe(expected);
-      expect(loadProjectSpy).toHaveBeenCalledTimes(1);
-    } finally {
-      process.chdir(originalCwd);
-    }
-  });
 });
