@@ -1,2 +1,3 @@
+# list
 Warning: siren/main.siren: Circular dependency detected: a -> b -> c -> a
 Warning: siren/main.siren: Circular dependency detected: a -> c -> a
