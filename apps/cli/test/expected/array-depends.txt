@@ -1,4 +1,4 @@
-# list --tasks
+# siren list --tasks
 alpha
 └─ task1
 gamma
