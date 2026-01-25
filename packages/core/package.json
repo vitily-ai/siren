@@ -16,7 +16,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "node ./scripts/build.js",
+    "build": "tsc -b",
     "test": "vitest run",
     "test:watch": "vitest",
     "clean": "rm -rf dist *.tsbuildinfo"
@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.0.6",
+    "typescript": "^5.7.2",
     "vitest": "^4.0.16",
     "web-tree-sitter": "^0.26.3"
   }

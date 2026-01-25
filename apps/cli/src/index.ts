@@ -83,6 +83,13 @@ export interface ListResult {
   warnings: string[];
 }
 
+// Minimal recursive tree node type for dependency rendering. Keys map to
+// child subtrees or `undefined` for absent entries. Keep `| undefined`
+// to work cleanly with `noUncheckedIndexedAccess` in strict TS.
+interface TreeNode {
+  [id: string]: TreeNode | undefined;
+}
+
 /**
  * List all milestone IDs from .siren files in the siren/ directory
  */
@@ -121,27 +128,28 @@ export function renderDependencyChains(chains: string[][]): string[] {
   });
 
   // Build a tree from the processed chains
-  const tree: Record<string, Record<string, any>> = {};
+  const tree: TreeNode = {};
   for (const chain of processedChains) {
     let current = tree;
     for (const id of chain) {
       if (!current[id]) current[id] = {};
-      current = current[id];
+      current = current[id]!;
     }
   }
 
   // Recursively render the tree
-  function renderTree(node: Record<string, Record<string, any>>, prefix: string = ''): string[] {
+  function renderTree(node: TreeNode, prefix: string = ''): string[] {
     const lines: string[] = [];
-    const keys = Object.keys(node).sort(); // Sort for consistent output
-    for (let i = 0; i < keys.length; i++) {
-      const key = keys[i];
-      const isLast = i === keys.length - 1;
+    const entries = Object.entries(node).sort((a, b) => a[0].localeCompare(b[0])) as Array<
+      [string, TreeNode | undefined]
+    >;
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i]!;
+      const [key, subNode] = entry;
+      const isLast = i === entries.length - 1;
       const connector = isLast ? '└─' : '├─';
       const extend = isLast ? '   ' : '│  ';
       lines.push(`${prefix}${connector} ${key}`);
-      // @ts-expect-error
-      const subNode = node[key];
       if (subNode && Object.keys(subNode).length > 0) {
         const subLines = renderTree(subNode, prefix + extend);
         lines.push(...subLines);
