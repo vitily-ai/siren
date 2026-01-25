@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawnSync } from 'child_process';
+import { spawnSync } from 'node:child_process';
 
 function die(message) {
   console.error(message);

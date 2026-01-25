@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { copyProjectFixture } from '../test/helpers/fixture-utils.js';
-import { init, list, main, renderDependencyChains, runList } from './index.js';
+import { init, list, main, renderDependencyChains } from './index.js';
 import * as project from './project.js';
 import { loadProject } from './project.js';
 
@@ -284,8 +284,8 @@ describe('siren list', () => {
 
     expect(result.milestones).toEqual(['alpha', 'beta']);
     expect(result.chainsByMilestone).toBeDefined();
-    expect(result.chainsByMilestone!.get('alpha')).toEqual([['alpha', 'task1']]);
-    expect(result.chainsByMilestone!.get('beta')).toEqual([]);
+    expect(result.chainsByMilestone?.get('alpha')).toEqual([['alpha', 'task1']]);
+    expect(result.chainsByMilestone?.get('beta')).toEqual([]);
   });
 
   it('handles array depends_on in tasks', async () => {
@@ -294,8 +294,8 @@ describe('siren list', () => {
     await loadProject(tempDir);
     const result = await list(true);
 
-    expect(result.chainsByMilestone!.get('alpha')).toEqual([['alpha', 'task1']]);
-    expect(result.chainsByMilestone!.get('gamma')).toEqual([['gamma', 'task1']]);
+    expect(result.chainsByMilestone?.get('alpha')).toEqual([['alpha', 'task1']]);
+    expect(result.chainsByMilestone?.get('gamma')).toEqual([['gamma', 'task1']]);
   });
 });
 
@@ -411,7 +411,11 @@ describe('siren main', () => {
     expect(consoleErrorSpy).toHaveBeenCalled();
     expect(consoleErrorSpy.mock.calls[0][0]).toContain('Warning: skipping');
     expect(consoleLogSpy).toHaveBeenCalled();
-    expect(consoleLogSpy.mock.calls.some((call) => call[0].includes('Skipped siren'))).toBe(true);
+    expect(
+      consoleLogSpy.mock.calls.some((call: unknown[]) =>
+        (call[0] as string).includes('Skipped siren'),
+      ),
+    ).toBe(true);
     // Since error is called in main before runInit, and runInit calls log
     expect(consoleErrorSpy.mock.invocationCallOrder[0]).toBeLessThan(
       consoleLogSpy.mock.invocationCallOrder[0],
@@ -510,13 +514,15 @@ describe('siren main', () => {
       );
       const lines = raw.split(/\r?\n/);
       let expectedContent: string;
-      if (lines.length > 0 && lines[0].startsWith('#')) {
+      if (lines.length > 0 && lines[0]!.startsWith('#')) {
         expectedContent = lines.slice(1).join('\n');
       } else {
         expectedContent = raw;
       }
       const expected = expectedContent.trim();
-      const actual = consoleLogSpy.mock.calls.map((call) => call[0]).join('\n');
+      const actual = consoleLogSpy.mock.calls
+        .map((call: unknown[]) => call[0] as string)
+        .join('\n');
       expect(actual).toBe(expected);
       expect(loadProjectSpy).toHaveBeenCalledTimes(1);
     } finally {
