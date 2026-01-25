@@ -9,3 +9,9 @@ task dangling-dependencies {
     description = "declaring dependencies to entries that don't exist should surface a warning during IR construction. Missing dependencies should not be collected by or returned from listing APIs."
 
 }
+
+task complete-before-dependencies {
+
+    description = "an entry that is explicitly marked 'complete' while having dependencies that are not complete should surface a warning during IR construction"
+
+}
