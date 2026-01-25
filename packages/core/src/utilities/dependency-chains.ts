@@ -59,7 +59,23 @@ export function getIncompleteLeafDependencyChains(
     } else if (depth < maxDepth && !isMissing) {
       // Only expand if not missing and within depth
       for (const successor of graph.getSuccessors(currentId)) {
-        if (!path.includes(successor)) {
+        if (path.includes(successor)) {
+          // Detected a cycle. Only emit a sentinel chain when the original
+          // traversal root is a milestone so callers (CLI) can present a
+          // concise loop indicator for milestones. For task-root cycles,
+          // do not emit anything (preserve previous behavior of returning
+          // no chains for pure cycles).
+          const rootResource = resourceMap.get(rootId);
+          if (rootResource?.type === 'milestone') {
+            const sentinel = '... (dependency loop - check warnings)';
+            const firstDep = path[1];
+            if (firstDep) {
+              chains.push([rootId, firstDep, sentinel]);
+            } else {
+              chains.push([rootId, sentinel]);
+            }
+          }
+        } else {
           dfs(successor, path, depth + 1);
         }
       }

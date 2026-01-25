@@ -35,6 +35,16 @@ Run all tests:
 yarn test
 ```
 
+Why we run a root build before tests
+-----------------------------------
+
+The repository defines a root-level `pretest` that runs `yarn build` before `yarn test`.
+This ensures workspace packages' compiled `dist` artifacts are up-to-date when tests
+import package entrypoints (many packages export their runtime from `dist`). Running
+tests without building can cause suites to load stale built files and fail unpredictably
+depending on the `workspaces foreach` scheduling. The root `pretest` makes `yarn test`
+deterministic by building first.
+
 Run core package tests:
 
 ```bash

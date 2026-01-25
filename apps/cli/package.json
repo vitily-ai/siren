@@ -12,6 +12,7 @@
   ],
   "scripts": {
     "build": "tsup",
+    "pretest": "yarn workspace @siren/core build",
     "test": "npx vitest run",
     "clean": "rm -rf dist"
   },

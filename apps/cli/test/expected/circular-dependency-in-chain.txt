@@ -1,0 +1,4 @@
+# list --tasks
+ms
+└─ a
+   └─ ... (dependency loop - check warnings)

@@ -11,6 +11,7 @@
   ],
   "scripts": {
     "build": "yarn workspaces foreach -Apt run build",
+    "pretest": "yarn build",
     "test": "yarn workspaces foreach -Apt run test",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
