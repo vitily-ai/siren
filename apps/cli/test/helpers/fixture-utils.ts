@@ -1,6 +1,6 @@
-import { cp, mkdtemp } from 'fs/promises';
-import { tmpdir } from 'os';
-import { dirname, join } from 'path';
+import { cp, mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 
 const fixturesDir = join(dirname(__dirname), '../../../packages/core/test/fixtures/projects');
 

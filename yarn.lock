@@ -733,6 +733,7 @@ __metadata:
   resolution: "@siren/core@workspace:packages/core"
   dependencies:
     "@types/node": "npm:^25.0.6"
+    typescript: "npm:^5.7.2"
     vitest: "npm:^4.0.16"
     web-tree-sitter: "npm:^0.26.3"
   languageName: unknown

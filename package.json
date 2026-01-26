@@ -10,8 +10,8 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "yarn workspaces foreach -Apt run build",
-    "test": "yarn workspaces foreach -Apt run test",
+    "build": "yarn workspaces foreach --all --topological run build",
+    "test": "yarn build && yarn workspaces foreach --all --topological run test",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",

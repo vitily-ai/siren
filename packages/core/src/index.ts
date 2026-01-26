@@ -12,5 +12,6 @@ export { decode } from './decoder/index.js';
 export * from './ir/index.js';
 // Parser types and interfaces
 export * from './parser/index.js';
+export { getIncompleteLeafDependencyChains } from './utilities/dependency-chains.js';
 // Utilities
 export { getMilestoneIds, getTasksByMilestone } from './utilities/milestone.js';

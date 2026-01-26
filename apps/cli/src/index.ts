@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getTasksByMilestone, version } from '@siren/core';
+import { getIncompleteLeafDependencyChains, version } from '@siren/core';
 import { getLoadedContext, loadProject } from './project.js';
 
 const SIREN_DIR = 'siren';
@@ -79,8 +79,15 @@ export function runInit(cwd: string): void {
 
 export interface ListResult {
   milestones: string[];
-  tasksByMilestone?: Map<string, string[]>;
+  chainsByMilestone?: Map<string, string[][]>;
   warnings: string[];
+}
+
+// Minimal recursive tree node type for dependency rendering. Keys map to
+// child subtrees or `undefined` for absent entries. Keep `| undefined`
+// to work cleanly with `noUncheckedIndexedAccess` in strict TS.
+interface TreeNode {
+  [id: string]: TreeNode | undefined;
 }
 
 /**
@@ -93,15 +100,65 @@ export async function list(showTasks: boolean = false): Promise<ListResult> {
   }
   const result: ListResult = { milestones: ctx.milestones, warnings: ctx.warnings };
   if (showTasks) {
-    const tasksByMilestone = getTasksByMilestone(ctx.resources);
-    result.tasksByMilestone = new Map(
-      Array.from(tasksByMilestone.entries()).map(([milestoneId, tasks]) => [
-        milestoneId,
-        tasks.map((task) => task.id),
-      ]),
-    );
+    const chainsByMilestone = new Map<string, string[][]>();
+    for (const milestoneId of ctx.milestones) {
+      const chains = getIncompleteLeafDependencyChains(milestoneId, ctx.resources, 10); // Use a high maxDepth to get all
+      chainsByMilestone.set(milestoneId, chains);
+    }
+    result.chainsByMilestone = chainsByMilestone;
   }
   return result;
+}
+
+/**
+ * Render dependency chains with ASCII tree characters, truncating chains longer than depth 2.
+ */
+export function renderDependencyChains(chains: string[][]): string[] {
+  if (chains.length === 0) return [];
+
+  // Process chains: remove milestone from start, truncate if too long
+  const processedChains: string[][] = chains.map((chain) => {
+    const deps = chain.slice(1); // Remove milestone
+    if (deps.length <= 4) return deps; // No truncation if <=4 deps (intermediate <=2)
+    // Truncate: keep first, replace middle with '… (N intermediate)', keep last
+    const first = deps[0]!;
+    const last = deps[deps.length - 1]!;
+    const intermediateCount = deps.length - 2;
+    return [first, `… (${intermediateCount} intermediate dependencies)`, last];
+  });
+
+  // Build a tree from the processed chains
+  const tree: TreeNode = {};
+  for (const chain of processedChains) {
+    let current = tree;
+    for (const id of chain) {
+      if (!current[id]) current[id] = {};
+      current = current[id]!;
+    }
+  }
+
+  // Recursively render the tree
+  function renderTree(node: TreeNode, prefix: string = ''): string[] {
+    const lines: string[] = [];
+    const entries = Object.entries(node).sort((a, b) => a[0].localeCompare(b[0])) as Array<
+      [string, TreeNode | undefined]
+    >;
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i]!;
+      const [key, subNode] = entry;
+      const isLast = i === entries.length - 1;
+      const connector = isLast ? '└─' : '├─';
+      const extend = isLast ? '   ' : '│  ';
+      lines.push(`${prefix}${connector} ${key}`);
+      if (subNode && Object.keys(subNode).length > 0) {
+        const subLines = renderTree(subNode, prefix + extend);
+        lines.push(...subLines);
+      }
+    }
+    return lines;
+  }
+
+  return renderTree(tree);
 }
 
 export async function runList(showTasks: boolean = false): Promise<void> {
@@ -109,15 +166,14 @@ export async function runList(showTasks: boolean = false): Promise<void> {
 
   // Note: warnings are already printed by main()
 
-  if (showTasks && result.tasksByMilestone) {
-    // Print milestone IDs with tasks
+  if (showTasks && result.chainsByMilestone) {
+    // Print milestone IDs with dependency chains
     for (const milestoneId of result.milestones) {
       console.log(milestoneId);
-      const tasks = result.tasksByMilestone.get(milestoneId) || [];
-      for (let i = 0; i < tasks.length; i++) {
-        const isLast = i === tasks.length - 1;
-        const prefix = isLast ? '└─' : '├─';
-        console.log(`${prefix} ${tasks[i]}`);
+      const chains = result.chainsByMilestone.get(milestoneId) || [];
+      const rendered = renderDependencyChains(chains);
+      for (const line of rendered) {
+        console.log(line);
       }
     }
   } else {
