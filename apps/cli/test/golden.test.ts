@@ -48,8 +48,6 @@ describe('golden CLI tests (expected/)', () => {
       // Expected content is the file with all comment lines removed.
       expectedContent = lines.filter((l) => !l.startsWith('#')).join('\n');
 
-      
-
       // Split the command header into args and validate it begins with `siren`.
       const args = splitArgs(cmdLine);
       if (args.length === 0) {
