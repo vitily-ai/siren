@@ -1,4 +1,9 @@
-# siren list --tasks
+{
+  "fixture": "milestone-dependency",
+  "command": "siren list --tasks",
+  "expect": "stdout"
+}
+---
 shows_as_leaf_dep_of_root
 └─ does_not_show_as_root_dep
 root

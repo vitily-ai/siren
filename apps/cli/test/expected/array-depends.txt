@@ -1,4 +1,8 @@
-# siren list --tasks
+{
+	"fixture": "array-depends",
+	"command": "siren list --tasks"
+}
+---
 alpha
 └─ task1
 gamma

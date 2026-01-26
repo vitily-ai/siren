@@ -1,4 +1,9 @@
-# siren list
+{
+	"fixture": "deep-nested",
+	"command": "siren list",
+	"expect": "stdout"
+}
+---
 deep
 level1
 root

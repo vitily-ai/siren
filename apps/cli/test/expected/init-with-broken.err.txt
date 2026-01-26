@@ -1,2 +1,7 @@
-# siren init
+{
+	"fixture": "init-with-broken",
+	"command": "siren init",
+	"expect": "stderr"
+}
+---
 Warning: skipping siren/broken.siren (parse error)
