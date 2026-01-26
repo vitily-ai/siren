@@ -1,4 +1,4 @@
 # siren list --tasks
 ms
 └─ a
-   └─ ... (dependency loop - check warnings)
+   └─ … (dependency loop - check warnings)

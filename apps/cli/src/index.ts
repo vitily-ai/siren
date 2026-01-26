@@ -120,7 +120,7 @@ export function renderDependencyChains(chains: string[][]): string[] {
   const processedChains: string[][] = chains.map((chain) => {
     const deps = chain.slice(1); // Remove milestone
     if (deps.length <= 4) return deps; // No truncation if <=4 deps (intermediate <=2)
-    // Truncate: keep first, replace middle with '... (N intermediate)', keep last
+    // Truncate: keep first, replace middle with '… (N intermediate)', keep last
     const first = deps[0]!;
     const last = deps[deps.length - 1]!;
     const intermediateCount = deps.length - 2;

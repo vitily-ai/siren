@@ -67,7 +67,7 @@ export function getIncompleteLeafDependencyChains(
           // no chains for pure cycles).
           const rootResource = resourceMap.get(rootId);
           if (rootResource?.type === 'milestone') {
-            const sentinel = '... (dependency loop - check warnings)';
+            const sentinel = '… (dependency loop - check warnings)';
             const firstDep = path[1];
             if (firstDep) {
               chains.push([rootId, firstDep, sentinel]);

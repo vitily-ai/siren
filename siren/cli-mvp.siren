@@ -89,18 +89,18 @@ task list-nested complete {
         └─ chain_dep_a
            └─ leaf_dep_a
         milestone_with_dependency_chain_len_10
-        └─ ... (9 intermediate dependencies)
+        └─ … (9 intermediate dependencies)
             └─ leaf_dep_c
         milestone_with_two_dependency_chains
         ├─ chain_dep_d
         │  ├─ leaf_dep_d
         │  └─ leaf_dep_e
         └─ chain_dep_f
-           ├─ ... (2 intermediate dependencies)
+           ├─ … (2 intermediate dependencies)
            │  └─ leaf_dep_f
            └─ leaf_dep_g
         milestone_with_many_long_dependency_chains
-        └─ ... (multiple dependency branches)
+        └─ … (multiple dependency branches)
            ├─ leaf_dependency_depth_1
            └─ leaf_dependency_depth_10
         milestone_with_milestone_dependency_treats_incomplete_milestone_as_leaf_and_does_not_show_its_dependencies
