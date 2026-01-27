@@ -1,1 +1,6 @@
-# siren list
+{
+	"fixture": "empty-files",
+	"command": "siren list",
+	"expect": "stdout"
+}
+---

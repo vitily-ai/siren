@@ -1,2 +1,7 @@
-# siren list
+{
+	"fixture": "list-single-milestone",
+	"command": "siren list",
+	"expect": "stdout"
+}
+---
 test_milestone

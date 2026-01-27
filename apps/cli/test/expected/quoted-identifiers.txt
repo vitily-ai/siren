@@ -1,3 +1,8 @@
-# siren list
+{
+	"fixture": "quoted-identifiers",
+	"command": "siren list",
+	"expect": "stdout"
+}
+---
 Q1 Launch
 MVP Release

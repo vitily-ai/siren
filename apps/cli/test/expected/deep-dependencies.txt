@@ -1,4 +1,9 @@
-# siren list --tasks
+{
+  "fixture": "deep-dependencies",
+  "command": "siren list --tasks",
+  "expect": "stdout"
+}
+---
 milestone1
 └─ task10
    └─ … (8 intermediate dependencies)

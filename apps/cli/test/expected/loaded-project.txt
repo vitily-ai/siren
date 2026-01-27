@@ -1,2 +1,7 @@
-# siren list
+{
+	"fixture": "loaded-project",
+	"command": "siren list",
+	"expect": "stdout"
+}
+---
 test

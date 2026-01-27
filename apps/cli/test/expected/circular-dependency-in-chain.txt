@@ -1,4 +1,9 @@
-# siren list --tasks
+{
+  "fixture": "circular-dependency-in-chain",
+  "command": "siren list --tasks",
+  "expect": "stdout"
+}
+---
 ms
 └─ a
    └─ … (dependency loop - check warnings)
