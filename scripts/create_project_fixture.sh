@@ -30,13 +30,17 @@ printf 'Created fixture directory: %s\n' "$fixture_siren_dir"
 if command -v siren >/dev/null 2>&1; then
   if (cd "$fixture_siren_dir" && siren init); then
     printf 'Initialized project with siren in %s\n' "$fixture_siren_dir"
+    mv "$fixture_siren_dir/siren/main.siren" "$fixture_siren_dir/$slug.siren"
+    printf 'Renamed main.siren to %s.siren\n' "$slug"
+    rm -f "$fixture_siren_dir/siren.config.yaml"
+    printf 'Removed generated config file if present\n'
   else
-    printf 'siren init failed; creating fallback main.siren\n'
-    printf "# %s fixture\n" "$slug" > "$fixture_siren_dir/main.siren"
+    printf 'siren init failed; creating fallback %s.siren\n' "$slug"
+    printf "# %s fixture\n" "$slug" > "$fixture_siren_dir/$slug.siren"
   fi
 else
-  printf 'siren CLI not found; writing fallback main.siren\n'
-  printf "# %s fixture\n" "$slug" > "$fixture_siren_dir/main.siren"
+  printf 'siren CLI not found; writing fallback %s.siren\n' "$slug"
+  printf "# %s fixture\n" "$slug" > "$fixture_siren_dir/$slug.siren"
 fi
 
 exit 0
