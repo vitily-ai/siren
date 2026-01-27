@@ -1,5 +1,5 @@
 {
-	"fixture": "init-with-broken",
+	"fixture": "list-with-broken",
 	"command": "siren init",
 	"expect": "stderr"
 }
