@@ -403,7 +403,7 @@ describe('siren main', () => {
 
   it('init command outputs warnings to stderr before command output', async () => {
     // Setup: create siren dir with broken file
-    copyFixture('list-with-broken', tempDir);
+    copyFixture('broken', tempDir);
 
     await main(['init']);
 
@@ -434,7 +434,7 @@ describe('siren main', () => {
 
   it('list command outputs warnings to stderr', async () => {
     // Setup: create siren dir with broken file
-    copyFixture('list-with-broken', tempDir);
+    copyFixture('broken', tempDir);
 
     await main(['list']);
 
