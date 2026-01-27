@@ -19,6 +19,7 @@
     "siren": "node apps/cli/dist/index.js",
     "cli:link": "cd apps/cli && npm link",
     "create-fixture": "bash scripts/create_project_fixture.sh",
+    "create-golden": "bash scripts/create-golden.sh",
     "prepare": "husky"
   },
   "lint-staged": {
