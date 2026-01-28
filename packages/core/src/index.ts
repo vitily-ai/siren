@@ -12,8 +12,8 @@ export { decode } from './decoder/index.js';
 export * from './ir/index.js';
 // Parser types and interfaces
 export * from './parser/index.js';
-// TODO should not export MAX_DEPTH - should be opaque
-export { getIncompleteLeafDependencyChains, MAX_DEPTH } from './utilities/dependency-chains.js';
+// MAX_DEPTH is now opaque, not exported
+export { getIncompleteLeafDependencyChains } from './utilities/dependency-chains.js';
 export { findResourceById } from './utilities/entry.js';
 // Utilities
 export { getMilestoneIds, getTasksByMilestone } from './utilities/milestone.js';

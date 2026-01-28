@@ -1,12 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  findResourceById,
-  getIncompleteLeafDependencyChains,
-  MAX_DEPTH,
-  version,
-} from '@siren/core';
+import { findResourceById, getIncompleteLeafDependencyChains, version } from '@siren/core';
+
 import { getLoadedContext, loadProject } from './project.js';
 
 const SIREN_DIR = 'siren';
@@ -292,6 +288,7 @@ export async function runShow(entryId: string): Promise<void> {
     // Recompute chains locally with same rules to compare
     const resourceMap = new Map(ctx.resources.map((r: any) => [r.id, r]));
     const localChains: string[][] = [];
+    const MAX_DEPTH = 10000;
     function localDfs(currentId: string, path: string[], depth: number) {
       path.push(currentId);
       const resource = resourceMap.get(currentId);
