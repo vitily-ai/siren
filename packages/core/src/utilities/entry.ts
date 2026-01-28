@@ -14,3 +14,5 @@ export function findResourceById(resources: Resource[], id: string): Resource {
   }
   return resource;
 }
+
+// TODO expose this as a method on an object oriented IR context

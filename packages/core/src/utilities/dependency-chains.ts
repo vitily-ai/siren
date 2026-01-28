@@ -30,15 +30,22 @@ import { DirectedGraph } from './graph.js';
  * @param comparator - Optional comparator function to sort the returned chains
  * @returns Array of dependency chains, each chain is an array of resource IDs from root to leaf
  */
+export const MAX_DEPTH = 10000;
+
 export function getIncompleteLeafDependencyChains(
   rootId: string,
   resources: readonly Resource[],
-  maxDepth: number,
+  maxDepth: number = MAX_DEPTH,
   comparator?: (a: string[], b: string[]) => number,
+  options?: { onWarning?: (message: string) => void },
 ): string[][] {
+  // DEBUG: trace invocation (temporary)
+  // eslint-disable-next-line no-console
+  // console.error('DBG getChains', { rootId, maxDepth, resources: resources.map((r) => r.id) });
   const graph = buildDependencyGraph(resources);
   const resourceMap = new Map(resources.map((r) => [r.id, r]));
   const chains: string[][] = [];
+  const prunedRoots = new Set<string>();
 
   function dfs(currentId: string, path: string[], depth: number): void {
     path.push(currentId);
@@ -78,6 +85,13 @@ export function getIncompleteLeafDependencyChains(
         } else {
           dfs(successor, path, depth + 1);
         }
+      }
+    } else if (depth >= maxDepth && !isMissing) {
+      // We hit the configured depth limit and there are still successors.
+      // Emit a single warning for this root if an onWarning handler was provided.
+      if (!prunedRoots.has(rootId)) {
+        prunedRoots.add(rootId);
+        options?.onWarning?.(`Dependency tree for '${rootId}' pruned at max depth ${maxDepth}`);
       }
     }
 

@@ -5,7 +5,10 @@
 ---
 milestone2
 ├─ taskA
-│  └─ … (multiple dependency branches)
+│  ├─ … (10 intermediate dependencies)
+│  │  └─ task1
+│  └─ … (9 intermediate dependencies)
+│     └─ task1
 └─ task10
    └─ … (8 intermediate dependencies)
       └─ task1

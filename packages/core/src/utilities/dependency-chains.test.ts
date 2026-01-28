@@ -116,4 +116,43 @@ describe('getIncompleteLeafDependencyChains', () => {
     expect(chains).toHaveLength(1);
     expect(chains[0]).toEqual(['task1']);
   });
+
+  it('emits a pruning warning when maxDepth is exceeded', () => {
+    // Build a tiny chain: root -> a -> b -> c -> d
+    const resources: any[] = [
+      {
+        type: 'milestone',
+        id: 'root',
+        complete: false,
+        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'a' } }],
+      },
+      {
+        type: 'task',
+        id: 'a',
+        complete: false,
+        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'b' } }],
+      },
+      {
+        type: 'task',
+        id: 'b',
+        complete: false,
+        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'c' } }],
+      },
+      {
+        type: 'task',
+        id: 'c',
+        complete: false,
+        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'd' } }],
+      },
+      { type: 'task', id: 'd', complete: false, attributes: [] },
+    ];
+
+    const warnings: string[] = [];
+    const chains = getIncompleteLeafDependencyChains('root', resources, 2, undefined, {
+      onWarning: (m) => warnings.push(m),
+    });
+
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings[0]).toContain('pruned at max depth 2');
+  });
 });
