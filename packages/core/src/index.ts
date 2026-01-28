@@ -12,7 +12,6 @@ export { decode } from './decoder/index.js';
 export * from './ir/index.js';
 // Parser types and interfaces
 export * from './parser/index.js';
-// MAX_DEPTH is now opaque, not exported
 export { getIncompleteLeafDependencyChains } from './utilities/dependency-chains.js';
 export { findResourceById } from './utilities/entry.js';
 // Utilities

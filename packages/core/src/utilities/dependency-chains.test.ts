@@ -12,7 +12,7 @@ describe('getIncompleteLeafDependencyChains', () => {
   });
 
   it('collects chains for task10 (deep chain root)', () => {
-    const chains = getIncompleteLeafDependencyChains('task10', resources, 10);
+    const chains = getIncompleteLeafDependencyChains('task10', resources);
     // task10 -> task9 -> ... -> task1
     // All tasks are incomplete, task1 is leaf
     expect(chains).toHaveLength(1);
@@ -30,15 +30,8 @@ describe('getIncompleteLeafDependencyChains', () => {
     ]);
   });
 
-  it('respects max depth limit', () => {
-    const chains = getIncompleteLeafDependencyChains('task10', resources, 3);
-    // Should stop at depth 3: task10 -> task9 -> task8 -> task7 (but task7 not leaf)
-    // So no chains collected since task7 is not leaf
-    expect(chains).toHaveLength(0);
-  });
-
   it('expands root milestone dependencies', () => {
-    const chains = getIncompleteLeafDependencyChains('milestone1', resources, 10);
+    const chains = getIncompleteLeafDependencyChains('milestone1', resources);
     // milestone1 depends on task10, expands to the deep chain
     expect(chains).toHaveLength(1);
     expect(chains[0]).toEqual([
@@ -57,11 +50,23 @@ describe('getIncompleteLeafDependencyChains', () => {
   });
 
   it('handles multiple branches (taskA)', () => {
-    const chains = getIncompleteLeafDependencyChains('taskA', resources, 10);
-    // taskA -> taskC -> task9 -> ... -> task1 (10 edges, within 10)
-    // taskA -> taskB -> task10 -> ... -> task1 (11 edges, exceeds 10)
-    expect(chains).toHaveLength(1);
-    expect(chains[0]).toEqual([
+    const chains = getIncompleteLeafDependencyChains('taskA', resources);
+    // With MAX_DEPTH now internal and large, both branches are returned.
+    const branchB = [
+      'taskA',
+      'taskB',
+      'task10',
+      'task9',
+      'task8',
+      'task7',
+      'task6',
+      'task5',
+      'task4',
+      'task3',
+      'task2',
+      'task1',
+    ];
+    const branchC = [
       'taskA',
       'taskC',
       'task9',
@@ -73,28 +78,43 @@ describe('getIncompleteLeafDependencyChains', () => {
       'task3',
       'task2',
       'task1',
-    ]);
+    ];
+    expect(chains).toHaveLength(2);
+    expect(chains).toEqual(expect.arrayContaining([branchB, branchC]));
   });
 
   it('handles incomplete dependencies (incompleteTask)', () => {
-    const chains = getIncompleteLeafDependencyChains('incompleteTask', resources, 10);
+    const chains = getIncompleteLeafDependencyChains('incompleteTask', resources);
     // incompleteTask -> nonExistentTask (missing, treated as incomplete leaf)
     expect(chains).toHaveLength(1);
     expect(chains[0]).toEqual(['incompleteTask', 'nonExistentTask']);
   });
 
   it('avoids cycles', () => {
-    const chains = getIncompleteLeafDependencyChains('cycleX', resources, 10);
+    const chains = getIncompleteLeafDependencyChains('cycleX', resources);
     // cycleX -> cycleY -> cycleZ -> cycleX, but since cycle, no leaf reached
     expect(chains).toHaveLength(0);
   });
 
   it('sorts chains with comparator', () => {
-    const chains = getIncompleteLeafDependencyChains('taskA', resources, 10, (a, b) =>
+    const chains = getIncompleteLeafDependencyChains('taskA', resources, (a, b) =>
       a.join(',').localeCompare(b.join(',')),
     );
-    expect(chains).toHaveLength(1);
-    expect(chains[0]).toEqual([
+    const branchB = [
+      'taskA',
+      'taskB',
+      'task10',
+      'task9',
+      'task8',
+      'task7',
+      'task6',
+      'task5',
+      'task4',
+      'task3',
+      'task2',
+      'task1',
+    ];
+    const branchC = [
       'taskA',
       'taskC',
       'task9',
@@ -106,13 +126,17 @@ describe('getIncompleteLeafDependencyChains', () => {
       'task3',
       'task2',
       'task1',
-    ]);
+    ];
+    // Comparator sorts 'taskB' branch before 'taskC' branch
+    expect(chains).toHaveLength(2);
+    expect(chains[0]).toEqual(branchB);
+    expect(chains[1]).toEqual(branchC);
   });
 
   it('returns empty for complete task leaf', () => {
     // Assuming no complete tasks in fixture, but if there were, they wouldn't be collected
     // Since all tasks are incomplete, test with a task that has no deps
-    const chains = getIncompleteLeafDependencyChains('task1', resources, 10);
+    const chains = getIncompleteLeafDependencyChains('task1', resources);
     expect(chains).toHaveLength(1);
     expect(chains[0]).toEqual(['task1']);
   });
@@ -148,11 +172,12 @@ describe('getIncompleteLeafDependencyChains', () => {
     ];
 
     const warnings: string[] = [];
-    const chains = getIncompleteLeafDependencyChains('root', resources, 2, undefined, {
+    const chains = getIncompleteLeafDependencyChains('root', resources, undefined, {
       onWarning: (m) => warnings.push(m),
     });
 
-    expect(warnings.length).toBeGreaterThan(0);
-    expect(warnings[0]).toContain('pruned at max depth 2');
+    // MAX_DEPTH is an internal implementation detail now; small test chains
+    // won't trigger pruning. Assert no pruning warning is emitted for this tiny chain.
+    expect(warnings.length).toBe(0);
   });
 });

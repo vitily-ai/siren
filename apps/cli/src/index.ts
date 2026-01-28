@@ -2,7 +2,6 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { findResourceById, getIncompleteLeafDependencyChains, version } from '@siren/core';
-
 import { getLoadedContext, loadProject } from './project.js';
 
 const SIREN_DIR = 'siren';
@@ -11,6 +10,8 @@ const MAIN_FILE = 'main.siren';
 
 const CONFIG_CONTENTS = `# project_name: Siren Project
 `;
+
+const DEBUG_MAX_DEPTH = 10000;
 
 function printUsage(): void {
   console.log(`Siren CLI v${version}
@@ -104,15 +105,9 @@ export async function list(showTasks: boolean = false): Promise<ListResult> {
   if (showTasks) {
     const chainsByMilestone = new Map<string, string[][]>();
     for (const milestoneId of ctx.milestones) {
-      const chains = getIncompleteLeafDependencyChains(
-        milestoneId,
-        ctx.resources,
-        undefined,
-        undefined,
-        {
-          onWarning: (m) => ctx.warnings.push(`Warning: ${m}`),
-        },
-      );
+      const chains = getIncompleteLeafDependencyChains(milestoneId, ctx.resources, undefined, {
+        onWarning: (m) => ctx.warnings.push(`Warning: ${m}`),
+      });
       chainsByMilestone.set(milestoneId, chains);
     }
     result.chainsByMilestone = chainsByMilestone;
@@ -288,7 +283,6 @@ export async function runShow(entryId: string): Promise<void> {
     // Recompute chains locally with same rules to compare
     const resourceMap = new Map(ctx.resources.map((r: any) => [r.id, r]));
     const localChains: string[][] = [];
-    const MAX_DEPTH = 10000;
     function localDfs(currentId: string, path: string[], depth: number) {
       path.push(currentId);
       const resource = resourceMap.get(currentId);
@@ -312,7 +306,7 @@ export async function runShow(entryId: string): Promise<void> {
       if (isLeaf && isIncomplete) {
         console.error('PUSH_CHAIN', JSON.stringify(path));
         localChains.push([...path]);
-      } else if (depth < MAX_DEPTH && !isMissing) {
+      } else if (depth < DEBUG_MAX_DEPTH && !isMissing) {
         for (const s of adj.get(currentId) || []) {
           if (path.includes(s)) continue;
           localDfs(s, path, depth + 1);
@@ -323,7 +317,7 @@ export async function runShow(entryId: string): Promise<void> {
     localDfs(entryId, [], 0);
     console.error('LOCAL_CHAINS:', JSON.stringify(localChains, null, 2));
   }
-  const chains = getIncompleteLeafDependencyChains(entryId, ctx.resources, undefined, undefined, {
+  const chains = getIncompleteLeafDependencyChains(entryId, ctx.resources, undefined, {
     onWarning: (m) => ctx.warnings.push(`Warning: ${m}`),
   });
 

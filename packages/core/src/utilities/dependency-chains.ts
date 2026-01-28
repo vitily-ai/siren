@@ -30,12 +30,11 @@ import { DirectedGraph } from './graph.js';
  * @param comparator - Optional comparator function to sort the returned chains
  * @returns Array of dependency chains, each chain is an array of resource IDs from root to leaf
  */
-export const MAX_DEPTH = 10000;
+const MAX_DEPTH = 10000;
 
 export function getIncompleteLeafDependencyChains(
   rootId: string,
   resources: readonly Resource[],
-  maxDepth: number = MAX_DEPTH,
   comparator?: (a: string[], b: string[]) => number,
   options?: { onWarning?: (message: string) => void },
 ): string[][] {
@@ -63,7 +62,7 @@ export function getIncompleteLeafDependencyChains(
 
     if (isLeaf && isIncomplete) {
       chains.push([...path]);
-    } else if (depth < maxDepth && !isMissing) {
+    } else if (depth < MAX_DEPTH && !isMissing) {
       // Only expand if not missing and within depth
       for (const successor of graph.getSuccessors(currentId)) {
         if (path.includes(successor)) {
@@ -86,12 +85,12 @@ export function getIncompleteLeafDependencyChains(
           dfs(successor, path, depth + 1);
         }
       }
-    } else if (depth >= maxDepth && !isMissing) {
+    } else if (depth >= MAX_DEPTH && !isMissing) {
       // We hit the configured depth limit and there are still successors.
       // Emit a single warning for this root if an onWarning handler was provided.
       if (!prunedRoots.has(rootId)) {
         prunedRoots.add(rootId);
-        options?.onWarning?.(`Dependency tree for '${rootId}' pruned at max depth ${maxDepth}`);
+        options?.onWarning?.(`Dependency tree for '${rootId}' pruned at max depth ${MAX_DEPTH}`);
       }
     }
 

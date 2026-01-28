@@ -17,17 +17,13 @@ describe('project:milestone-dependency', () => {
   });
 
   it('treats milestone dependencies as leaves when expanded from a root milestone', () => {
-    const chains = getIncompleteLeafDependencyChains('root', resources, 10);
+    const chains = getIncompleteLeafDependencyChains('root', resources);
     expect(chains).toHaveLength(1);
     expect(chains[0]).toEqual(['root', 'shows_as_root_dep', 'shows_as_leaf_dep_of_root']);
   });
 
   it('does not expand the inner milestone when listing root dependencies', () => {
-    const innerChains = getIncompleteLeafDependencyChains(
-      'shows_as_leaf_dep_of_root',
-      resources,
-      10,
-    );
+    const innerChains = getIncompleteLeafDependencyChains('shows_as_leaf_dep_of_root', resources);
     expect(innerChains).toHaveLength(1);
     expect(innerChains[0]).toEqual(['shows_as_leaf_dep_of_root', 'does_not_show_as_root_dep']);
   });
