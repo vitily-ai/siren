@@ -13,4 +13,5 @@ milestone2
 │  └─ … (8 intermediate dependencies)
 │     └─ task1
 └─ taskA
+# TODO this should list the leaves nested below it
    └─ … (multiple dependency branches)
