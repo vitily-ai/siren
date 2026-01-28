@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getIncompleteLeafDependencyChains, version } from '@siren/core';
+import { findResourceById, getIncompleteLeafDependencyChains, version } from '@siren/core';
 import { getLoadedContext, loadProject } from './project.js';
 
 const SIREN_DIR = 'siren';
@@ -10,6 +10,8 @@ const MAIN_FILE = 'main.siren';
 
 const CONFIG_CONTENTS = `# project_name: Siren Project
 `;
+
+const DEBUG_MAX_DEPTH = 10000;
 
 function printUsage(): void {
   console.log(`Siren CLI v${version}
@@ -20,6 +22,7 @@ Commands:
   init    Initialize a new Siren project in the current directory
   list    List all milestone IDs from .siren files
     -t, --tasks    Show incomplete tasks under each milestone
+  show    Show a single entry's dependency tree (milestone or task)
 
 Options:
   --version    Show version number`);
@@ -102,7 +105,9 @@ export async function list(showTasks: boolean = false): Promise<ListResult> {
   if (showTasks) {
     const chainsByMilestone = new Map<string, string[][]>();
     for (const milestoneId of ctx.milestones) {
-      const chains = getIncompleteLeafDependencyChains(milestoneId, ctx.resources, 10); // Use a high maxDepth to get all
+      const chains = getIncompleteLeafDependencyChains(milestoneId, ctx.resources, undefined, {
+        onWarning: (m) => ctx.warnings.push(`Warning: ${m}`),
+      });
       chainsByMilestone.set(milestoneId, chains);
     }
     result.chainsByMilestone = chainsByMilestone;
@@ -136,6 +141,25 @@ export function renderDependencyChains(chains: string[][]): string[] {
       current = current[id]!;
     }
   }
+
+  // Compress multiple truncated branches into a single sentinel to match
+  // expected CLI output (e.g. '… (multiple dependency branches)')
+  function compressTruncated(node: TreeNode) {
+    const keys = Object.keys(node);
+    // Find truncated children (strings that start with the elision marker)
+    const truncatedKeys = keys.filter((k) => k.startsWith('… ('));
+    if (truncatedKeys.length > 1) {
+      // Remove all truncated keys and replace with a single multiple-branch sentinel
+      for (const tk of truncatedKeys) delete node[tk];
+      node['… (multiple dependency branches)'] = {};
+    }
+    for (const k of Object.keys(node)) {
+      const child = node[k];
+      if (child && Object.keys(child).length > 0) compressTruncated(child);
+    }
+  }
+
+  compressTruncated(tree);
 
   // Recursively render the tree
   function renderTree(node: TreeNode, prefix: string = ''): string[] {
@@ -184,6 +208,183 @@ export async function runList(showTasks: boolean = false): Promise<void> {
   }
 }
 
+/**
+ * Show a single entry's dependency tree (tasks or milestone) using the same
+ * rendering logic as `list -t`.
+ */
+export async function runShow(entryId: string): Promise<void> {
+  const ctx = getLoadedContext();
+  if (!ctx) throw new Error('Project context not loaded');
+
+  // Validate entry exists and get its declared direct dependencies (preserve order)
+  const resource = findResourceById(ctx.resources, entryId);
+  const directDeps: string[] = [];
+  const depAttr = resource.attributes.find((a) => a.key === 'depends_on');
+  if (depAttr && typeof depAttr === 'object' && depAttr.value != null) {
+    const v: any = depAttr.value;
+    if (v && typeof v === 'object' && 'kind' in v) {
+      if (v.kind === 'reference') directDeps.push(v.id);
+      else if (v.kind === 'array') {
+        for (const el of v.elements) {
+          if (el && typeof el === 'object' && 'kind' in el && el.kind === 'reference') {
+            directDeps.push(el.id);
+          }
+        }
+      }
+    }
+  }
+
+  // Get incomplete leaf dependency chains for the entry
+  if (process.env.SIREN_DEBUG) {
+    // Print resources and their declared depends_on for inspection
+    for (const r of ctx.resources) {
+      const depAttr = r.attributes.find((a: any) => a.key === 'depends_on');
+      const raw = depAttr ? depAttr.value : null;
+      console.error(
+        'RESOURCE',
+        r.id,
+        'type',
+        r.type,
+        'complete',
+        r.complete,
+        'depends_on_raw',
+        raw,
+      );
+    }
+    // Build adjacency map and trace DFS order
+    const adj = new Map();
+    for (const r of ctx.resources) {
+      const depAttr = r.attributes.find((a: any) => a.key === 'depends_on');
+      const deps: string[] = [];
+      if (depAttr && depAttr.value) {
+        const v: any = depAttr.value;
+        if (v.kind === 'reference') deps.push(v.id);
+        else if (v.kind === 'array') {
+          for (const el of v.elements) if (el.kind === 'reference') deps.push(el.id);
+        }
+      }
+      adj.set(r.id, deps);
+    }
+    console.error('ADJ:', JSON.stringify(Object.fromEntries(adj), null, 2));
+    const visited: string[] = [];
+    function trace(node: string, path: string[]) {
+      console.error('TRACE ENTER', node, 'path=', path.join('->'));
+      const successors = adj.get(node) || [];
+      for (const s of successors) {
+        if (path.includes(s)) {
+          console.error('TRACE CYCLE', node, '->', s);
+          continue;
+        }
+        trace(s, [...path, s]);
+      }
+      console.error('TRACE LEAVE', node);
+    }
+    trace(entryId, [entryId]);
+    // Recompute chains locally with same rules to compare
+    const resourceMap = new Map(ctx.resources.map((r: any) => [r.id, r]));
+    const localChains: string[][] = [];
+    function localDfs(currentId: string, path: string[], depth: number) {
+      path.push(currentId);
+      const resource = resourceMap.get(currentId);
+      const isMilestone = resource?.type === 'milestone';
+      const isIncompleteTask = resource?.type === 'task' && !resource.complete;
+      const isMissing = !resource;
+      const isIncomplete = isMissing || isMilestone || isIncompleteTask;
+      const hasSuccessors = (adj.get(currentId) || []).length > 0;
+      const isLeaf =
+        (isMilestone && currentId !== entryId) ||
+        (resource?.type === 'task' && !hasSuccessors) ||
+        isMissing;
+      console.error('LOCAL_DFS', {
+        node: currentId,
+        depth,
+        isLeaf,
+        isIncomplete,
+        hasSuccessors,
+        path: JSON.stringify(path),
+      });
+      if (isLeaf && isIncomplete) {
+        console.error('PUSH_CHAIN', JSON.stringify(path));
+        localChains.push([...path]);
+      } else if (depth < DEBUG_MAX_DEPTH && !isMissing) {
+        for (const s of adj.get(currentId) || []) {
+          if (path.includes(s)) continue;
+          localDfs(s, path, depth + 1);
+        }
+      }
+      path.pop();
+    }
+    localDfs(entryId, [], 0);
+    console.error('LOCAL_CHAINS:', JSON.stringify(localChains, null, 2));
+  }
+  const chains = getIncompleteLeafDependencyChains(entryId, ctx.resources, undefined, {
+    onWarning: (m) => ctx.warnings.push(`Warning: ${m}`),
+  });
+
+  // DEBUG: print raw chains to stderr when SIREN_DEBUG is set
+  if (process.env.SIREN_DEBUG) {
+    console.error('RAW_CHAINS:', JSON.stringify(chains, null, 2));
+  }
+
+  // Process chains similarly to renderDependencyChains (remove root, truncate long chains)
+  const processedChains: string[][] = chains.map((chain) => {
+    const deps = chain.slice(1);
+    if (deps.length <= 4) return deps;
+    const first = deps[0]!;
+    const last = deps[deps.length - 1]!;
+    const intermediateCount = deps.length - 2;
+    return [first, `… (${intermediateCount} intermediate dependencies)`, last];
+  });
+
+  // Build tree from processed chains
+  type TreeNode = { [id: string]: TreeNode | undefined };
+  const tree: TreeNode = {};
+  for (const chain of processedChains) {
+    let curr = tree;
+    for (const id of chain) {
+      if (!curr[id]) curr[id] = {};
+      curr = curr[id]!;
+    }
+  }
+
+  // Ensure declared direct dependencies appear in the tree (preserve order). If absent,
+  // Note: do not insert sentinel nodes for declared dependencies that produced
+  // no computed chains — showing an entry should reflect actual dependency
+  // traversal results rather than manufacture children.
+
+  // Render the tree but preserve order of top-level entries according to directDeps
+  function renderTree(node: TreeNode, prefix = '', topOrder?: string[]): string[] {
+    const lines: string[] = [];
+    const keys = Object.keys(node);
+    let orderedKeys: string[];
+    if (topOrder && topOrder.length > 0) {
+      const inOrder = topOrder.filter((k) => keys.includes(k));
+      const rest = keys.filter((k) => !inOrder.includes(k)).sort((a, b) => a.localeCompare(b));
+      orderedKeys = [...inOrder, ...rest];
+    } else {
+      orderedKeys = keys.sort((a, b) => a.localeCompare(b));
+    }
+
+    for (let i = 0; i < orderedKeys.length; i++) {
+      const key = orderedKeys[i]!;
+      const subNode = node[key];
+      const isLast = i === orderedKeys.length - 1;
+      const connector = isLast ? '└─' : '├─';
+      const extend = isLast ? '   ' : '│  ';
+      lines.push(`${prefix}${connector} ${key}`);
+      if (subNode && Object.keys(subNode).length > 0) {
+        const subLines = renderTree(subNode, prefix + extend);
+        lines.push(...subLines);
+      }
+    }
+    return lines;
+  }
+
+  console.log(entryId);
+  const rendered = renderTree(tree, '', directDeps.length ? directDeps : undefined);
+  for (const line of rendered) console.log(line);
+}
+
 export async function main(args: string[] = process.argv.slice(2)): Promise<void> {
   const command = args[0];
 
@@ -211,6 +412,21 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
   if (command === 'list') {
     const showTasks = args.includes('-t') || args.includes('--tasks');
     await runList(showTasks);
+    return;
+  }
+
+  if (command === 'show') {
+    const entryId = args[1];
+    if (!entryId) {
+      // TODO error looks juvenile
+      console.error('missing entry id — usage: siren show <entry-id>');
+      return;
+    }
+    try {
+      await runShow(entryId);
+    } catch (e) {
+      console.error((e as Error).message);
+    }
     return;
   }
 

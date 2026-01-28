@@ -1,0 +1,14 @@
+{
+	"fixture": "deep-dependencies",
+	"command": "siren show milestone2"
+}
+---
+milestone2
+├─ taskA
+│  ├─ … (10 intermediate dependencies)
+│  │  └─ task1
+│  └─ … (9 intermediate dependencies)
+│     └─ task1
+└─ task10
+   └─ … (8 intermediate dependencies)
+      └─ task1

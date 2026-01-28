@@ -1,21 +1,24 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { describe, expect, it, vi } from 'vitest';
 import { main } from '../src/index.js';
 import { copyProjectFixture } from './helpers/fixture-utils.js';
-import * as fs from 'node:fs';
-import { describe, expect, it, vi } from 'vitest';
 
-import * as path from 'node:path';
 const expectedDir = path.join(__dirname, 'expected');
 
 /**
  * Parse golden file frontmatter (metadata) delimited by a line of 3+ hyphens (---).
  * Returns { metadata, content } or throws if not found/invalid.
  */
-function parseGoldenFileWithMetadata(raw: string, file: string): { metadata: any, content: string } {
+function parseGoldenFileWithMetadata(
+  raw: string,
+  file: string,
+): { metadata: any; content: string } {
   const lines = raw.split(/\r?\n/);
   let metaEnd = -1;
   // Find the first line that is only hyphens (--- or more)
   for (let i = 0; i < lines.length; ++i) {
-    if (/^---+$/.test(lines[i].trim())) {
+    if (/^---+$/.test(lines?.[i]?.trim() ?? '')) {
       metaEnd = i;
       break;
     }
@@ -66,7 +69,11 @@ describe('golden CLI tests (expected/)', () => {
         throw new Error(`missing or invalid 'command' in metadata for ${relPath}`);
       }
       // Validate fixture exists
-      const fixturePath = path.join(__dirname, '../../../packages/core/test/fixtures/projects', metadata.fixture);
+      const fixturePath = path.join(
+        __dirname,
+        '../../../packages/core/test/fixtures/projects',
+        metadata.fixture,
+      );
       if (!fs.existsSync(fixturePath)) {
         throw new Error(`fixture not found: ${metadata.fixture} (from ${relPath})`);
       }
@@ -83,8 +90,12 @@ describe('golden CLI tests (expected/)', () => {
       try {
         process.chdir(cwd);
         await main(args.slice(1));
-        const outCalls = logSpy.mock.calls.map((c) => (c[0] !== undefined ? String(c[0]) : '')).join('\n');
-        const errCalls = errSpy.mock.calls.map((c) => (c[0] !== undefined ? String(c[0]) : '')).join('\n');
+        const outCalls = logSpy.mock.calls
+          .map((c) => (c[0] !== undefined ? String(c[0]) : ''))
+          .join('\n');
+        const errCalls = errSpy.mock.calls
+          .map((c) => (c[0] !== undefined ? String(c[0]) : ''))
+          .join('\n');
         const actual = isErr ? errCalls : outCalls;
         // Support comments in expected output: ignore lines starting with #
         function stripComments(s: string): string {

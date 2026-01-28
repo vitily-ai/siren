@@ -26,7 +26,7 @@ describe('project:complete-flag', () => {
 
     // The milestone depends on task_root, which depends on both a completed task
     // and an incomplete task. Only the incomplete leaf should be collected.
-    const chains = getIncompleteLeafDependencyChains('milestone1', resources, 10);
+    const chains = getIncompleteLeafDependencyChains('milestone1', resources);
     expect(chains).toHaveLength(1);
     expect(chains[0]).toEqual(['milestone1', 'task_root', 'task_incomplete']);
   });
