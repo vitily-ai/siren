@@ -1,4 +1,9 @@
-# siren list --tasks
+{
+  "fixture": "complete-flag",
+  "command": "siren list --tasks",
+  "expect": "stdout"
+}
+---
 milestone1
 └─ task_root
    └─ task_incomplete

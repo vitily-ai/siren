@@ -1,2 +1,7 @@
-# siren list
+{
+	"fixture": "parse-errors",
+	"command": "siren list",
+	"expect": "stderr"
+}
+---
 Warning: skipping siren/broken.siren (parse error)

@@ -1,3 +1,8 @@
-# siren list --tasks
+{
+	"fixture": "list-tasks-alpha-only",
+	"command": "siren list --tasks",
+	"expect": "stdout"
+}
+---
 alpha
 └─ task1

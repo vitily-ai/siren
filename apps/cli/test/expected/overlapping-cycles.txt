@@ -1,2 +1,7 @@
-# siren list
+{
+	"fixture": "overlapping-cycles",
+	"command": "siren list",
+	"expect": "stdout"
+}
+---
 a
