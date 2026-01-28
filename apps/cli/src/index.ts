@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getIncompleteLeafDependencyChains, version } from '@siren/core';
+import { findResourceById, getIncompleteLeafDependencyChains, version } from '@siren/core';
 import { getLoadedContext, loadProject } from './project.js';
 
 const SIREN_DIR = 'siren';
@@ -184,6 +184,97 @@ export async function runList(showTasks: boolean = false): Promise<void> {
   }
 }
 
+/**
+ * Show a single entry's dependency tree (tasks or milestone) using the same
+ * rendering logic as `list -t`.
+ */
+export async function runShow(entryId: string): Promise<void> {
+  const ctx = getLoadedContext();
+  if (!ctx) throw new Error('Project context not loaded');
+
+  // Validate entry exists and get its declared direct dependencies (preserve order)
+  const resource = findResourceById(ctx.resources, entryId);
+  const directDeps: string[] = [];
+  const depAttr = resource.attributes.find((a) => a.key === 'depends_on');
+  if (depAttr && typeof depAttr === 'object' && depAttr.value != null) {
+    const v: any = depAttr.value;
+    if (v && typeof v === 'object' && 'kind' in v) {
+      if (v.kind === 'reference') directDeps.push(v.id);
+      else if (v.kind === 'array') {
+        for (const el of v.elements) {
+          if (el && typeof el === 'object' && 'kind' in el && el.kind === 'reference') {
+            directDeps.push(el.id);
+          }
+        }
+      }
+    }
+  }
+
+  // Get incomplete leaf dependency chains for the entry
+  const chains = getIncompleteLeafDependencyChains(entryId, ctx.resources, 10);
+
+  // Process chains similarly to renderDependencyChains (remove root, truncate long chains)
+  const processedChains: string[][] = chains.map((chain) => {
+    const deps = chain.slice(1);
+    if (deps.length <= 4) return deps;
+    const first = deps[0]!;
+    const last = deps[deps.length - 1]!;
+    const intermediateCount = deps.length - 2;
+    return [first, `… (${intermediateCount} intermediate dependencies)`, last];
+  });
+
+  // Build tree from processed chains
+  type TreeNode = { [id: string]: TreeNode | undefined };
+  const tree: TreeNode = {};
+  for (const chain of processedChains) {
+    let curr = tree;
+    for (const id of chain) {
+      if (!curr[id]) curr[id] = {};
+      curr = curr[id]!;
+    }
+  }
+
+  // Ensure declared direct dependencies appear in the tree (preserve order). If absent,
+  // insert a sentinel child indicating multiple branches.
+  for (const d of directDeps) {
+    if (!Object.hasOwn(tree, d)) {
+      tree[d] = { '… (multiple dependency branches)': {} };
+    }
+  }
+
+  // Render the tree but preserve order of top-level entries according to directDeps
+  function renderTree(node: TreeNode, prefix = '', topOrder?: string[]): string[] {
+    const lines: string[] = [];
+    const keys = Object.keys(node);
+    let orderedKeys: string[];
+    if (topOrder && topOrder.length > 0) {
+      const inOrder = topOrder.filter((k) => keys.includes(k));
+      const rest = keys.filter((k) => !inOrder.includes(k)).sort((a, b) => a.localeCompare(b));
+      orderedKeys = [...inOrder, ...rest];
+    } else {
+      orderedKeys = keys.sort((a, b) => a.localeCompare(b));
+    }
+
+    for (let i = 0; i < orderedKeys.length; i++) {
+      const key = orderedKeys[i]!;
+      const subNode = node[key];
+      const isLast = i === orderedKeys.length - 1;
+      const connector = isLast ? '└─' : '├─';
+      const extend = isLast ? '   ' : '│  ';
+      lines.push(`${prefix}${connector} ${key}`);
+      if (subNode && Object.keys(subNode).length > 0) {
+        const subLines = renderTree(subNode, prefix + extend);
+        lines.push(...subLines);
+      }
+    }
+    return lines;
+  }
+
+  console.log(entryId);
+  const rendered = renderTree(tree, '', directDeps.length ? directDeps : undefined);
+  for (const line of rendered) console.log(line);
+}
+
 export async function main(args: string[] = process.argv.slice(2)): Promise<void> {
   const command = args[0];
 
@@ -211,6 +302,20 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
   if (command === 'list') {
     const showTasks = args.includes('-t') || args.includes('--tasks');
     await runList(showTasks);
+    return;
+  }
+
+  if (command === 'show') {
+    const entryId = args[1];
+    if (!entryId) {
+      console.error('missing entry id');
+      return;
+    }
+    try {
+      await runShow(entryId);
+    } catch (e) {
+      console.error((e as Error).message);
+    }
     return;
   }
 

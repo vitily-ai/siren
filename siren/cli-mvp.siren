@@ -128,7 +128,7 @@ task core-entry-lookup complete {
 # CLI command implementation for 'siren show <entry-id>'
 task cli-show-command {
     description = "Implement CLI command parsing and handler for 'siren show <entry-id>', delegating to core utilities for tree generation."
-    depends_on = [cli-arg-parse-show, cli-show-output-formatting]
+    depends_on = [cli-arg-parse-show]
 }
 
 # CLI argument parsing for 'show' command
@@ -138,23 +138,18 @@ task cli-arg-parse-show {
 
 # CLI error handling for 'show' command
 task cli-show-error-handling {
-    description = "Implement error handling for 'siren show <entry-id>' (e.g., entry not found, circular dependencies)."
+    description = "Implement error handling for 'siren show <entry-id>' (e.g., entry not found)."
     depend_on = cli-show-command
 }
 
-# CLI output formatting for 'show' command
-task cli-show-output-formatting {
-    description = "Ensure CLI output for 'siren show <entry-id>' matches list-nested formatting and truncation rules."
-}
-
 # Golden-file tests for CLI output
-task cli-show-golden-tests {
+task cli-show-golden-tests complete {
     description = "Add golden-file tests for 'siren show <entry-id>' CLI output, ensuring output matches list-nested formatting and truncation rules."
     depends_on = [cli-show-command, cli-show-test-fixtures, cli-show-test-cases]
 }
 
 # Test fixtures for CLI 'show' command
-task cli-show-test-fixtures {
+task cli-show-test-fixtures complete {
     description = "Add or extend test fixtures for dependency trees to cover 'siren show <entry-id>' cases."
 }
 
