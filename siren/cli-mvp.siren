@@ -163,3 +163,28 @@ task cli-show-test-cases {
     description = "Add golden-file test cases for 'siren show <entry-id>' output, including edge cases (truncation, incomplete leaves, errors)."
     depends_on = cli-show-test-fixtures
 }
+
+milestone get-next {
+
+    description = "`siren next <entry-id>`: returns the next available dependency that must be completed before the given entry"
+
+    depends_on = get-next-cli
+
+}
+
+task get-next-cli {
+
+    depends_on = get-next-core-api
+
+}
+
+task get-next-core-api {
+
+    description = "api takes entry id and returns the deepest incomplete dependency that would show in the `siren show` tree"
+
+}
+
+task show-next {
+    description = "`siren show` also includes the results of `next`"
+    depends_on = [get-next, show-entry]
+}
