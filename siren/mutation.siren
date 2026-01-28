@@ -1,0 +1,30 @@
+# Mutation feature milestone and next steps
+
+milestone mutation-mvp {
+    description = "Add opinionated file-mutation support (full-file replacements)"
+    depends_on = [format-project-files, design-mutation-format, implement-core-mutations, adapter-and-cli, tests-fixtures]
+}
+
+# Next-step subtasks tracked as tasks
+task design-mutation-format {
+    description = "Design mutation format, structured diagnostics and edit model"
+}
+
+task format-project-files {
+    description = "Load project files and write them back (base formatter, full-file replacements)"
+}
+
+task implement-core-mutations {
+    description = "Implement pure generators in `@siren/core` that return file edits and diagnostics"
+    depends_on = [design-mutation-format]
+}
+
+task adapter-and-cli {
+    description = "Create a file-adapter to apply full-file edits safely and wire CLI flags"
+    depends_on = [implement-core-mutations]
+}
+
+task tests-fixtures {
+    description = "Add unit and golden tests + fixtures that exercise mutation behavior"
+    depends_on = [implement-core-mutations]
+}
