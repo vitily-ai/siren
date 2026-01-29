@@ -12,6 +12,8 @@ export { decode } from './decoder/index.js';
 export * from './export/index.js';
 // IR types (intermediate representation)
 export * from './ir/index.js';
+// Export the parser factory so hosts (CLI/Web) can inject WASM loaders.
+export { createParserFactory } from './parser/factory.js';
 // Parser types and interfaces
 // NOTE: parser types were intentionally not re-exported previously. The CLI
 // needs a small set of parser type declarations; re-export them as a
