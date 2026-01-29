@@ -1,0 +1,7 @@
+{"fixture":"multiple-files","command":"siren format --dry-run"}
+---
+milestone alpha {
+}
+
+milestone beta {
+}

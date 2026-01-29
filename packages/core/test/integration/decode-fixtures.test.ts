@@ -10,7 +10,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { decode } from '../../src/decoder/index.js';
-import { isReference } from '../../src/ir/index.js';
+import { isReference } from '../../src/ir/types.js';
 import type { ParserAdapter } from '../../src/parser/adapter.js';
 import { getTestAdapter } from '../helpers/parser.js';
 
