@@ -9,7 +9,20 @@ export function formatPrimitive(value: unknown): string {
   return String(value);
 }
 
-export function formatAttributeValue(value: AttributeValue): string {
+function isSafeRaw(raw: string): boolean {
+  const t = raw.trim();
+  if (t.length === 0) return false;
+  if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith('[') && t.endsWith(']'))) return true;
+  if (/^[A-Za-z_][A-Za-z0-9_-]*$/.test(t)) return true;
+  if (/^-?\d+(?:\.\d+)?$/.test(t)) return true;
+  if (t === 'true' || t === 'false' || t === 'null') return true;
+  return false;
+}
+
+export function formatAttributeValue(value: AttributeValue, raw?: string): string {
+  // If raw textual form is provided and appears safe, prefer it verbatim
+  if (typeof raw === 'string' && isSafeRaw(raw)) return raw;
+
   // Discriminate by shape
   // Reference: { kind: 'reference', id }
   // Array: { kind: 'array', elements }
@@ -28,8 +41,8 @@ export function formatAttributeValue(value: AttributeValue): string {
   return formatPrimitive(value as unknown);
 }
 
-export function formatAttributeLine(key: string, value: AttributeValue): string {
-  return `${INDENT}${key} = ${formatAttributeValue(value)}`;
+export function formatAttributeLine(key: string, value: AttributeValue, raw?: string): string {
+  return `${INDENT}${key} = ${formatAttributeValue(value, raw)}`;
 }
 
 export function wrapResourceBlock(

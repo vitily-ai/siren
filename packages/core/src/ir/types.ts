@@ -37,6 +37,11 @@ export type AttributeValue = PrimitiveValue | ResourceReference | ArrayValue;
 export interface Attribute {
   readonly key: string;
   readonly value: AttributeValue;
+  /**
+   * Optional raw text from the source CST for this attribute's value
+   * (includes quotes for string literals when available).
+   */
+  readonly raw?: string;
 }
 
 /**
