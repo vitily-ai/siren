@@ -11,8 +11,6 @@ export { decode } from './decoder/index.js';
 // IR types (intermediate representation)
 export * from './ir/index.js';
 // Parser types and interfaces
-export * from './parser/index.js';
-export { getIncompleteLeafDependencyChains } from './utilities/dependency-chains.js';
-export { findResourceById } from './utilities/entry.js';
-// Utilities
-export { getMilestoneIds, getTasksByMilestone } from './utilities/milestone.js';
+// NOTE: parser types and internal utilities are intentionally not re-exported
+// here. Consumers should interact with the library via `IRContext` and the
+// exported IR types.

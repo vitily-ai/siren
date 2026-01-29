@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getMilestoneIds, getTasksByMilestone, type Resource, version } from './index.js';
+import { IRContext, type Resource, version } from './index.js';
 
 describe('@siren/core', () => {
   it('exports version', () => {
@@ -8,7 +8,8 @@ describe('@siren/core', () => {
 
   describe('getMilestoneIds', () => {
     it('returns empty array for no resources', () => {
-      expect(getMilestoneIds([])).toEqual([]);
+      const ir = IRContext.fromResources([]);
+      expect(ir.getMilestoneIds()).toEqual([]);
     });
 
     it('returns empty array for only tasks', () => {
@@ -16,7 +17,8 @@ describe('@siren/core', () => {
         { type: 'task', id: 'task1', complete: false, attributes: [] },
         { type: 'task', id: 'task2', complete: true, attributes: [] },
       ];
-      expect(getMilestoneIds(resources)).toEqual([]);
+      const ir = IRContext.fromResources(resources);
+      expect(ir.getMilestoneIds()).toEqual([]);
     });
 
     it('returns milestone IDs', () => {
@@ -26,18 +28,21 @@ describe('@siren/core', () => {
         { type: 'task', id: 'task2', complete: true, attributes: [] },
         { type: 'milestone', id: 'milestone2', complete: true, attributes: [] },
       ];
-      expect(getMilestoneIds(resources)).toEqual(['milestone1', 'milestone2']);
+      const ir = IRContext.fromResources(resources);
+      expect(ir.getMilestoneIds()).toEqual(['milestone1', 'milestone2']);
     });
   });
   it('returns empty map for no resources', () => {
-    expect(getTasksByMilestone([])).toEqual(new Map());
+    const ir = IRContext.fromResources([]);
+    expect(ir.getTasksByMilestone()).toEqual(new Map());
   });
 
   it('returns empty arrays for milestones with no tasks', () => {
     const resources: Resource[] = [
       { type: 'milestone', id: 'milestone1', complete: false, attributes: [] },
     ];
-    const result = getTasksByMilestone(resources);
+    const ir = IRContext.fromResources(resources);
+    const result = ir.getTasksByMilestone();
     expect(result.get('milestone1')).toEqual([]);
   });
 
@@ -56,7 +61,8 @@ describe('@siren/core', () => {
         attributes: [],
       },
     ];
-    const result = getTasksByMilestone(resources);
+    const ir = IRContext.fromResources(resources);
+    const result = ir.getTasksByMilestone();
     expect(result.get('milestone1')).toEqual([]);
   });
 
@@ -76,7 +82,8 @@ describe('@siren/core', () => {
       },
       task,
     ];
-    const result = getTasksByMilestone(resources);
+    const ir = IRContext.fromResources(resources);
+    const result = ir.getTasksByMilestone();
     expect(result.get('milestone1')).toEqual([task]);
   });
 
@@ -107,7 +114,8 @@ describe('@siren/core', () => {
       },
       task,
     ];
-    const result = getTasksByMilestone(resources);
+    const ir = IRContext.fromResources(resources);
+    const result = ir.getTasksByMilestone();
     expect(result.get('milestone1')).toEqual([task]);
   });
 
@@ -126,7 +134,8 @@ describe('@siren/core', () => {
         attributes: [],
       },
     ];
-    const result = getTasksByMilestone(resources);
+    const ir = IRContext.fromResources(resources);
+    const result = ir.getTasksByMilestone();
     expect(result.get('milestone1')).toEqual([]);
   });
 });
