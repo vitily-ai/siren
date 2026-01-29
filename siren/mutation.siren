@@ -1,6 +1,6 @@
-# Mutation feature milestone and next steps
-
 milestone mutation-mvp {
-    description = "Add opinionated file-mutation support (full-file replacements)"
-    depends_on = [format-project-files, design-mutation-format, implement-core-mutations, adapter-and-cli, tests-fixtures]
+  description = "Add opinionated file-mutation support (full-file replacements)"
+  depends_on = [format-project-files, design-mutation-format, implement-core-mutations, adapter-and-cli, tests-fixtures]
 }
+
+# TODO BUG format is deleting comments like this!

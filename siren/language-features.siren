@@ -1,49 +1,33 @@
 task status-complete complete {
-
-    description = "add to the grammar a first-class way to mark a task or milestone as complete"
-    suggested_example = "task some-task complete { ... }"
-
+  description = "add to the grammar a first-class way to mark a task or milestone as complete"
+  suggested_example = "task some-task complete { ... }"
 }
 
 task milestone-complete-implicit {
-
-    description = "a milestone that has dependencies should be implicitly complete if all of its dependencies are complete. orphan milestones should not be implicitly completed."
-
+  description = "a milestone that has dependencies should be implicitly complete if all of its dependencies are complete. orphan milestones should not be implicitly completed."
 }
 
 task array-optional-brackets {
-
-    description = "make brackets wrapping arrays optional - treating anything comma-separated as a tuple"
-
+  description = "make brackets wrapping arrays optional - treating anything comma-separated as a tuple"
 }
 
 task duplicate-ids {
-
-    description = "milestone and tasks that share an id should emit a warning, and only one should be loaded. milestones should be prioritized over tasks, but the last of 'equal' entries will be the one that gets acknowledged. the warning should highlight which of the identified duplicates is the one that is loaded, including file and number number."
-
+  description = "milestone and tasks that share an id should emit a warning, and only one should be loaded. milestones should be prioritized over tasks, but the last of 'equal' entries will be the one that gets acknowledged. the warning should highlight which of the identified duplicates is the one that is loaded, including file and number number."
 }
 
 task task-readiness complete {
-
-    description = "during ir construction, determine if an entry is 'ready' - meaning it has no incomplete dependencies"
-
+  description = "during ir construction, determine if an entry is 'ready' - meaning it has no incomplete dependencies"
 }
 
 task multiline-strings {
-
-    description = "support for multiline strings. consider heredoc syntax and alternatives"
-
+  description = "support for multiline strings. consider heredoc syntax and alternatives"
 }
 
 task naked-description {
-
-    description = "entries may begin with an unquoted or naked multiline string as a standin for `description = ...`. Naked in this sense means it would not necessarily be restricted to the multiline syntax (heredoc or otherwise), but be 'bare'."
-    depends_on = multiline-strings
-
+  description = "entries may begin with an unquoted or naked multiline string as a standin for `description = ...`. Naked in this sense means it would not necessarily be restricted to the multiline syntax (heredoc or otherwise), but be 'bare'."
+  depends_on = multiline-strings
 }
 
 milestone milestone-files {
-
-    description = "treat .siren files as implicit simple milestones where every contained entry is a dependency"
-
+  description = "treat .siren files as implicit simple milestones where every contained entry is a dependency"
 }
