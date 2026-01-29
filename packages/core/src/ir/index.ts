@@ -2,6 +2,7 @@
  * IR module exports
  */
 
+export { IRContext } from './context.js';
 export type {
   ArrayValue,
   Attribute,
@@ -13,4 +14,3 @@ export type {
   ResourceReference,
   ResourceType,
 } from './types.js';
-export { isArray, isPrimitive, isReference } from './types.js';

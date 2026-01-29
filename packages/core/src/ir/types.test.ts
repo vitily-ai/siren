@@ -10,7 +10,7 @@ import {
   isPrimitive,
   isReference,
   type ResourceReference,
-} from '../ir/index.js';
+} from './types.js';
 
 describe('IR Type System', () => {
   describe('Type Guards', () => {

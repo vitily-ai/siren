@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { decode, getMilestoneIds, type Resource } from '@siren/core';
+import { decode, IRContext, type Resource } from '@siren/core';
 import { getParser } from './parser.js';
 
 const SIREN_DIR = 'siren';
@@ -12,6 +12,7 @@ export interface ProjectContext {
   files: string[];
   resources: Resource[];
   milestones: string[];
+  ir?: IRContext;
   warnings: string[];
   errors: string[];
 }
@@ -102,7 +103,10 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
   }
 
   ctx.resources = allResources;
-  ctx.milestones = getMilestoneIds(allResources);
+  // Build an immutable IR context for the project and derive milestones
+  const ir = IRContext.fromResources(allResources);
+  ctx.ir = ir;
+  ctx.milestones = ir.getMilestoneIds();
 
   loadedContext = ctx;
   return ctx;

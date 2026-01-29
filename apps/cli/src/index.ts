@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { findResourceById, getIncompleteLeafDependencyChains, version } from '@siren/core';
+import { version } from '@siren/core';
 import { getLoadedContext, loadProject } from './project.js';
 
 const SIREN_DIR = 'siren';
@@ -105,9 +105,10 @@ export async function list(showTasks: boolean = false): Promise<ListResult> {
   if (showTasks) {
     const chainsByMilestone = new Map<string, string[][]>();
     for (const milestoneId of ctx.milestones) {
-      const chains = getIncompleteLeafDependencyChains(milestoneId, ctx.resources, undefined, {
-        onWarning: (m) => ctx.warnings.push(`Warning: ${m}`),
-      });
+      const chains =
+        ctx.ir?.getIncompleteLeafDependencyChains(milestoneId, undefined, {
+          onWarning: (m) => ctx.warnings.push(`Warning: ${m}`),
+        }) || [];
       chainsByMilestone.set(milestoneId, chains);
     }
     result.chainsByMilestone = chainsByMilestone;
@@ -217,7 +218,11 @@ export async function runShow(entryId: string): Promise<void> {
   if (!ctx) throw new Error('Project context not loaded');
 
   // Validate entry exists and get its declared direct dependencies (preserve order)
-  const resource = findResourceById(ctx.resources, entryId);
+  const resource =
+    ctx.ir?.findResourceById(entryId) ??
+    (() => {
+      throw new Error(`Resource with ID '${entryId}' not found`);
+    })();
   const directDeps: string[] = [];
   const depAttr = resource.attributes.find((a) => a.key === 'depends_on');
   if (depAttr && typeof depAttr === 'object' && depAttr.value != null) {
@@ -317,9 +322,10 @@ export async function runShow(entryId: string): Promise<void> {
     localDfs(entryId, [], 0);
     console.error('LOCAL_CHAINS:', JSON.stringify(localChains, null, 2));
   }
-  const chains = getIncompleteLeafDependencyChains(entryId, ctx.resources, undefined, {
-    onWarning: (m) => ctx.warnings.push(`Warning: ${m}`),
-  });
+  const chains =
+    ctx.ir?.getIncompleteLeafDependencyChains(entryId, undefined, {
+      onWarning: (m) => ctx.warnings.push(`Warning: ${m}`),
+    }) || [];
 
   // DEBUG: print raw chains to stderr when SIREN_DEBUG is set
   if (process.env.SIREN_DEBUG) {
