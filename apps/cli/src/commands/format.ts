@@ -8,6 +8,7 @@ import { loadProject } from '../project.js';
 export interface FormatOptions {
   dryRun?: boolean;
   backup?: boolean;
+  verbose?: boolean;
 }
 
 function resourcesEqual(a: readonly Resource[], b: readonly Resource[]): boolean {
@@ -23,6 +24,10 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
   const ctx = await loadProject(process.cwd());
   if (!ctx) throw new Error('Project context not loaded');
   const parser = await getParser();
+
+  const totalFiles = ctx.files.length;
+  const updatedFiles: string[] = [];
+  const updatedFilesWouldEdit: string[] = [];
 
   for (const filePath of ctx.files) {
     const source = fs.readFileSync(filePath, 'utf-8');
@@ -57,14 +62,29 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
       continue;
     }
 
+    // If exported equals original source, do not write or count as updated.
+    if (exported === source) {
+      continue;
+    }
+
     if (opts.dryRun) {
+      // Preserve existing behavior: print exported content for dry-run
       console.log(exported);
+      updatedFilesWouldEdit.push(path.relative(process.cwd(), filePath));
     } else {
+      // Create backup only when requested, before writing
       if (opts.backup) {
         fs.writeFileSync(`${filePath}.bak`, source, 'utf-8');
       }
       fs.writeFileSync(filePath, exported, 'utf-8');
-      console.log(`Wrote ${path.relative(process.cwd(), filePath)}`);
+      updatedFiles.push(path.relative(process.cwd(), filePath));
     }
+  }
+  // Print summary
+  const updatedCount = opts.dryRun ? updatedFilesWouldEdit.length : updatedFiles.length;
+  console.log(`Updated ${updatedCount} files out of ${totalFiles}`);
+  if (opts.verbose) {
+    const list = opts.dryRun ? updatedFilesWouldEdit : updatedFiles;
+    for (const p of list) console.log(`- ${p}`);
   }
 }

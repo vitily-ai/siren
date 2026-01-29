@@ -440,8 +440,9 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
   if (command === 'format') {
     const dryRun = args.includes('--dry-run');
     const backup = args.includes('--backup');
+    const verbose = args.includes('--verbose');
     try {
-      await runFormat({ dryRun, backup });
+      await runFormat({ dryRun, backup, verbose });
     } catch (e) {
       console.error((e as Error).message);
     }
