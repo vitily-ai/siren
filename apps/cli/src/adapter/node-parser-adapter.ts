@@ -5,6 +5,7 @@
  * inside `apps/cli` rather than leaking into `packages/core`.
  */
 
+import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type {
@@ -32,8 +33,30 @@ export class NodeParserAdapter implements ParserAdapter {
     await Parser.init();
     const parser = new Parser();
 
-    // Resolve WASM shipped in packages/core/grammar
-    const wasmPath = join(__dirname, '../../../../packages/core/grammar/tree-sitter-siren.wasm');
+    // Resolve WASM shipped in packages/core/grammar. Built output (`dist`) may
+    // sit in a different sibling (dist vs src) so try a small set of candidate
+    // relative paths and pick the first that exists. This keeps the CLI
+    // resilient to the ESM build output layout.
+    const candidates = [
+      join(__dirname, '../../../../packages/core/grammar/tree-sitter-siren.wasm'), // source layout
+      join(__dirname, '../../../packages/core/grammar/tree-sitter-siren.wasm'), // built (dist) layout
+      join(__dirname, '../../packages/core/grammar/tree-sitter-siren.wasm'),
+    ];
+
+    let wasmPath: string | undefined;
+    for (const c of candidates) {
+      if (existsSync(c)) {
+        wasmPath = c;
+        break;
+      }
+    }
+    if (!wasmPath) {
+      // Fall back to the first candidate; Language.load will surface a clear
+      // error if the file is missing. This preserves the previous behavior
+      // while making success more likely in common layouts.
+      wasmPath = candidates[0];
+    }
+
     const language = await Language.load(wasmPath);
     parser.setLanguage(language);
 
