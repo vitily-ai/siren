@@ -1,7 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { decode, IRContext, type Resource } from '@siren/core';
-import { exportToSiren } from '../../../../packages/core/src/export/index.js';
+import { decode, exportToSiren, IRContext, type Resource } from '@siren/core';
 import { getParser } from '../parser.js';
 import { loadProject } from '../project.js';
 

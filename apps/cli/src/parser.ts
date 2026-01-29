@@ -7,8 +7,6 @@
 
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { Node as SyntaxNode, Tree } from 'web-tree-sitter';
-import { Language, Parser } from 'web-tree-sitter';
 import type {
   ArrayNode,
   AttributeNode,
@@ -21,7 +19,9 @@ import type {
   ParserAdapter,
   ReferenceNode,
   ResourceNode,
-} from '../../../packages/core/src/parser/index.js';
+} from '@siren/core';
+import type { Node as SyntaxNode, Tree } from 'web-tree-sitter';
+import { Language, Parser } from 'web-tree-sitter';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

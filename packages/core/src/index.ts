@@ -13,6 +13,20 @@ export * from './export/index.js';
 // IR types (intermediate representation)
 export * from './ir/index.js';
 // Parser types and interfaces
-// NOTE: parser types and internal utilities are intentionally not re-exported
-// here. Consumers should interact with the library via `IRContext` and the
-// exported IR types.
+// NOTE: parser types were intentionally not re-exported previously. The CLI
+// needs a small set of parser type declarations; re-export them as a
+// type-only API to avoid importing from internal source paths.
+// Re-export parser types (type-only) - minimal and non-breaking.
+export type {
+  ArrayNode,
+  AttributeNode,
+  DocumentNode,
+  ExpressionNode,
+  IdentifierNode,
+  LiteralNode,
+  ParseError,
+  ParseResult,
+  ParserAdapter,
+  ReferenceNode,
+  ResourceNode,
+} from './parser/index.js';
