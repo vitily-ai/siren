@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { version } from '@siren/core';
+import { runFormat } from './commands/format.js';
 import { getLoadedContext, loadProject } from './project.js';
 
 const SIREN_DIR = 'siren';
@@ -261,7 +262,7 @@ export async function runShow(entryId: string): Promise<void> {
     for (const r of ctx.resources) {
       const depAttr = r.attributes.find((a: any) => a.key === 'depends_on');
       const deps: string[] = [];
-      if (depAttr && depAttr.value) {
+      if (depAttr?.value) {
         const v: any = depAttr.value;
         if (v.kind === 'reference') deps.push(v.id);
         else if (v.kind === 'array') {
@@ -271,7 +272,7 @@ export async function runShow(entryId: string): Promise<void> {
       adj.set(r.id, deps);
     }
     console.error('ADJ:', JSON.stringify(Object.fromEntries(adj), null, 2));
-    const visited: string[] = [];
+    const _visited: string[] = [];
     function trace(node: string, path: string[]) {
       console.error('TRACE ENTER', node, 'path=', path.join('->'));
       const successors = adj.get(node) || [];
@@ -430,6 +431,17 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
     }
     try {
       await runShow(entryId);
+    } catch (e) {
+      console.error((e as Error).message);
+    }
+    return;
+  }
+
+  if (command === 'format') {
+    const dryRun = args.includes('--dry-run');
+    const backup = args.includes('--backup');
+    try {
+      await runFormat({ dryRun, backup });
     } catch (e) {
       console.error((e as Error).message);
     }
