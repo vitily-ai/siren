@@ -47,9 +47,27 @@ export interface ParserFactoryInit {
  * rest of the core package.
  */
 export async function createParserFactory(init: ParserFactoryInit): Promise<ParserAdapter> {
-  // Default to package-relative path; hosts (CLI/Web) should provide a concrete
-  // path when running in Node or browser bundlers via `init.wasmPath`.
-  const wasmPath = init.wasmPath ?? '../../grammar/tree-sitter-siren.wasm';
+  // Default to a package-relative URL based on this module's location.
+  // Hosts (CLI/Web) should prefer to pass a concrete `wasmPath` appropriate
+  // for their runtime (filesystem path or asset URL). This fallback is a
+  // best-effort convenience for local/dev runs and ESM-aware environments.
+  // `import.meta.url` and the global `URL` constructor may not have TypeScript
+  // types available in all environments (core is environment-agnostic). Use
+  // runtime-safe access via `any` to avoid TS errors while still computing a
+  // sensible package-relative fallback in ESM-capable runtimes.
+  let defaultWasmUrl: string | undefined;
+  try {
+    const metaUrl = (import.meta as any).url;
+    const URLCtor = (globalThis as any).URL;
+    if (metaUrl && URLCtor) {
+      defaultWasmUrl = new URLCtor('../../grammar/tree-sitter-siren.wasm', metaUrl).href;
+    }
+  } catch {
+    // ignore and leave defaultWasmUrl undefined; fallback to raw relative
+    // string to preserve tolerant UX in non-ESM environments.
+  }
+
+  const wasmPath = init.wasmPath ?? defaultWasmUrl ?? '../../grammar/tree-sitter-siren.wasm';
 
   const language = await init.loadWasm(wasmPath);
   const parser = language.createParser();
