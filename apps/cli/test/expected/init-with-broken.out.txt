@@ -1,8 +1,8 @@
 {
-	"fixture": "parse-errors",
-	"command": "siren list"
+	"fixture": "broken",
+	"command": "siren init"
 }
 ---
-valid
+
 ---
 Warning: skipping siren/broken.siren (parse error)
