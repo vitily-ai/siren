@@ -75,7 +75,7 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
   // Conversion helpers adapted from the Node test adapter. Keep logic here
   // so core owns the CST shape while the runtime provides parsing only.
   function convertIdentifier(node: any): IdentifierNode {
-    const child = node && node.namedChildren && node.namedChildren[0];
+    const child = node?.namedChildren?.[0];
     if (!child) {
       return {
         type: 'identifier',
@@ -141,7 +141,7 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
   }
 
   function convertLiteral(node: any): LiteralNode | null {
-    const child = node && node.namedChildren && node.namedChildren[0];
+    const child = node?.namedChildren?.[0];
     if (!child) return null;
     return convertLiteralDirect(child);
   }
@@ -149,7 +149,7 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
   function convertExpression(node: any): ExpressionNode | null {
     if (!node) return null;
     if (node.type === 'expression') {
-      const child = node.namedChildren && node.namedChildren[0];
+      const child = node.namedChildren?.[0];
       if (!child) return null;
       return convertExpression(child);
     }
@@ -174,8 +174,8 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
   }
 
   function convertAttribute(node: any): AttributeNode | null {
-    const keyNode = node && node.childForFieldName && node.childForFieldName('key');
-    const valueNode = node && node.childForFieldName && node.childForFieldName('value');
+    const keyNode = node?.childForFieldName?.('key');
+    const valueNode = node?.childForFieldName?.('value');
     if (!keyNode || !valueNode) return null;
 
     const key: IdentifierNode = {
@@ -190,10 +190,9 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
   }
 
   function convertResource(node: any): ResourceNode | null {
-    const typeNode = node && node.childForFieldName && node.childForFieldName('type');
-    const idNode = node && node.childForFieldName && node.childForFieldName('id');
-    const completeModifierNode =
-      node && node.childForFieldName && node.childForFieldName('complete_modifier');
+    const typeNode = node?.childForFieldName?.('type');
+    const idNode = node?.childForFieldName?.('id');
+    const completeModifierNode = node?.childForFieldName?.('complete_modifier');
     if (!typeNode || !idNode) return null;
 
     const resourceType = String(typeNode.text) as 'task' | 'milestone';

@@ -272,7 +272,6 @@ export async function runShow(entryId: string): Promise<void> {
       adj.set(r.id, deps);
     }
     console.error('ADJ:', JSON.stringify(Object.fromEntries(adj), null, 2));
-    const _visited: string[] = [];
     function trace(node: string, path: string[]) {
       console.error('TRACE ENTER', node, 'path=', path.join('->'));
       const successors = adj.get(node) || [];
