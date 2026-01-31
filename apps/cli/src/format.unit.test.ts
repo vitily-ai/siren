@@ -9,13 +9,10 @@ describe('runFormat unit', () => {
     const cwd = path.basename(sirenDir) === 'siren' ? path.dirname(sirenDir) : sirenDir;
     const originalCwd = process.cwd();
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    try {
-      process.chdir(cwd);
-      await runFormat({ dryRun: true });
-      expect(logSpy.mock.calls.length).toBeGreaterThan(0);
-    } finally {
-      process.chdir(originalCwd);
-      logSpy.mockRestore();
-    }
+    process.chdir(cwd);
+    await runFormat({ dryRun: true });
+    expect(logSpy.mock.calls.length).toBeGreaterThan(0);
+    process.chdir(originalCwd);
+    logSpy.mockRestore();
   });
 });

@@ -1,4 +1,3 @@
-import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { expect } from 'vitest';
@@ -14,12 +13,7 @@ function toRegexFromGlob(glob: string): RegExp {
 }
 
 export function readFileNormalized(filePath: string): string {
-  const buf = fs.readFileSync(filePath);
-  // If file contains NUL, return base64 to avoid encoding issues (binary)
-  if (Buffer.from(buf).includes(0)) {
-    return buf.toString('base64');
-  }
-  const s = buf.toString('utf8');
+  const s = fs.readFileSync(filePath, 'utf8');
   return s.replace(/\r\n/g, '\n');
 }
 
@@ -45,10 +39,6 @@ export function listFiles(dir: string, options?: { ignoreGlobs?: string[] }): st
   walk(base);
   results.sort();
   return results;
-}
-
-function sha256(buf: Buffer): string {
-  return crypto.createHash('sha256').update(buf).digest('hex');
 }
 
 export async function assertDirMatchesExpected(
@@ -81,23 +71,12 @@ export async function assertDirMatchesExpected(
   for (const rel of expectedList) {
     const aPath = path.join(actualDir, rel);
     const ePath = path.join(expectedDir, rel);
-    const aBuf = fs.readFileSync(aPath);
-    const eBuf = fs.readFileSync(ePath);
-    const aIsBinary = aBuf.includes(0);
-    const eIsBinary = eBuf.includes(0);
-    if (aIsBinary || eIsBinary) {
-      // compare hashes for binary
-      const aHash = sha256(aBuf);
-      const eHash = sha256(eBuf);
-      expect(aHash, `binary file mismatch: ${rel}`).toBe(eHash);
-    } else {
-      const aText = aBuf.toString('utf8').replace(/\r\n/g, '\n');
-      const eText = eBuf.toString('utf8').replace(/\r\n/g, '\n');
-      // Normalize single trailing newline differences (common across editors)
-      const aNorm = aText.endsWith('\n') ? aText : `${aText}\n`;
-      const eNorm = eText.endsWith('\n') ? eText : `${eText}\n`;
-      expect(aNorm, `file contents differ: ${rel}`).toBe(eNorm);
-    }
+    const aText = fs.readFileSync(aPath, 'utf8').replace(/\r\n/g, '\n');
+    const eText = fs.readFileSync(ePath, 'utf8').replace(/\r\n/g, '\n');
+    // Normalize single trailing newline differences (common across editors)
+    const aNorm = aText.endsWith('\n') ? aText : `${aText}\n`;
+    const eNorm = eText.endsWith('\n') ? eText : `${eText}\n`;
+    expect(aNorm, `file contents differ: ${rel}`).toBe(eNorm);
   }
 }
 
