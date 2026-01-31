@@ -77,11 +77,15 @@ describe('golden CLI tests (expected/)', () => {
   files.forEach((full) => {
     const relPath = path.relative(expectedDir, full);
     it(`matches ${relPath}`, async () => {
-      // Skip .out.txt files - they're consumed by directory-based golden tests
-      if (path.basename(relPath) === '.out.txt') return;
-      // Special-case the format-multiple-files scenario to assert FS mutations
-      if (relPath === 'format-multiple-files.txt') {
-        const outDir = path.join(expectedDir, 'format-multiple-files');
+      const dirname = path.dirname(relPath);
+      const basename = path.basename(relPath);
+
+      // Case A: directory-level golden: a file named `.out.txt` inside a subdirectory
+      // The `.out.txt` contains JSON metadata, stdout and stderr and describes
+      // a command to run against the copied fixture. After running we assert the
+      // filesystem state of that directory (parent of `.out.txt`) matches expected.
+      if (basename === '.out.txt' && dirname !== '.') {
+        const outDir = path.join(expectedDir, dirname);
         const outFile = path.join(outDir, '.out.txt');
         const rawOut = fs.readFileSync(outFile, 'utf8');
         const {
@@ -134,7 +138,8 @@ describe('golden CLI tests (expected/)', () => {
           if (normExpectedStderr.length > 0) {
             expect(normErrCalls).toBe(normExpectedStderr);
           }
-          // Now assert filesystem state matches expected directory (compare project root)
+          // Assert filesystem state matches expected directory (compare project root)
+          // Ignore only the `.out.txt` file inside the compared directory.
           await assertDirMatchesExpected(cwd, outDir, { ignoreGlobs: ['.out.txt'] });
         } finally {
           process.chdir(originalCwd);
@@ -144,7 +149,8 @@ describe('golden CLI tests (expected/)', () => {
         return;
       }
 
-      // Support top-level combined out files: <name>.out.txt containing JSON meta, stdout, then stderr
+      // Case B: top-level combined out files: <name>.out.txt containing JSON meta, stdout, then stderr
+      // These live directly in `expected/` (not inside a subdirectory) and are run as before.
       if (relPath.endsWith('.out.txt')) {
         const rawOut = fs.readFileSync(full, 'utf8');
         const {
