@@ -6,7 +6,6 @@ import { loadProject } from '../project.js';
 
 export interface FormatOptions {
   dryRun?: boolean;
-  backup?: boolean;
   verbose?: boolean;
 }
 
@@ -71,10 +70,6 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
       console.log(exported);
       updatedFilesWouldEdit.push(path.relative(process.cwd(), filePath));
     } else {
-      // Create backup only when requested, before writing
-      if (opts.backup) {
-        fs.writeFileSync(`${filePath}.bak`, source, 'utf-8');
-      }
       fs.writeFileSync(filePath, exported, 'utf-8');
       updatedFiles.push(path.relative(process.cwd(), filePath));
     }

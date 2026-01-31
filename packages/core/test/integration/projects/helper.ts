@@ -12,28 +12,8 @@ export async function getAdapter() {
 }
 
 export async function parseAndDecodeAll(adapter: any, projectName: string) {
-  // Support fixtures that either place .siren files under a nested `siren/`
-  // directory (legacy) or directly under the fixture root.
-  const nestedPath = join(projectsDir, projectName, 'siren');
-  let projectPath = nestedPath;
-  try {
-    const entries = readdirSync(nestedPath, { withFileTypes: true });
-    if (entries.length) {
-      // If nested contains one or more non-empty .siren files, use it. Otherwise
-      // fall back to fixture root.
-      const hasNonEmpty = entries.some(
-        (e) =>
-          e.isFile() &&
-          e.name.endsWith('.siren') &&
-          readFileSync(join(nestedPath, e.name), 'utf-8').trim().length > 0,
-      );
-      if (!hasNonEmpty) projectPath = join(projectsDir, projectName);
-    } else {
-      projectPath = join(projectsDir, projectName);
-    }
-  } catch {
-    projectPath = join(projectsDir, projectName);
-  }
+  // Treat the fixture root as the project root; do not expect a nested `siren/` dir.
+  const projectPath = join(projectsDir, projectName);
   const files: string[] = [];
 
   function walk(dir: string) {

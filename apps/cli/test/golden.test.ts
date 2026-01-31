@@ -77,22 +77,21 @@ describe('golden CLI tests (expected/)', () => {
   files.forEach((full) => {
     const relPath = path.relative(expectedDir, full);
     it(`matches ${relPath}`, async () => {
-      const dirname = path.dirname(relPath);
-      const basename = path.basename(relPath);
+      // Two special golden patterns supported:
+      // 1) Directory-level golden: expected/.../.out.txt — apply metadata and
+      //    assert the *expected directory* matches the project directory.
+      // 2) Top-level combined golden: expected/name.out.txt — assert stdout/stderr output.
+      // Otherwise: regular per-file golden with JSON frontmatter.
 
-      // Case A: directory-level golden: a file named `.out.txt` inside a subdirectory
-      // The `.out.txt` contains JSON metadata, stdout and stderr and describes
-      // a command to run against the copied fixture. After running we assert the
-      // filesystem state of that directory (parent of `.out.txt`) matches expected.
-      if (basename === '.out.txt' && dirname !== '.') {
-        const outDir = path.join(expectedDir, dirname);
-        const outFile = path.join(outDir, '.out.txt');
-        const rawOut = fs.readFileSync(outFile, 'utf8');
+      // Directory-level: a file literally named `.out.txt` inside a subdirectory.
+      if (path.basename(relPath) === '.out.txt') {
+        const outDir = path.dirname(full);
+        const rawOut = fs.readFileSync(full, 'utf8');
         const {
           metadata,
           stdout: expectedStdout,
           stderr: expectedStderr,
-        } = parseOutWithStdErr(rawOut, '.out.txt');
+        } = parseOutWithStdErr(rawOut, full);
         if (!metadata || typeof metadata !== 'object') {
           throw new Error(`missing or invalid metadata in ${relPath}`);
         }
@@ -106,7 +105,6 @@ describe('golden CLI tests (expected/)', () => {
         if (args.length === 0 || args[0].toLowerCase() !== 'siren') {
           throw new Error(`command must begin with 'siren' in ${relPath}`);
         }
-        const isErr = relPath.includes('.err.');
         const sirenDir = await copyProjectFixture(metadata.fixture);
         const cwd = path.basename(sirenDir) === 'siren' ? path.dirname(sirenDir) : sirenDir;
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -138,8 +136,7 @@ describe('golden CLI tests (expected/)', () => {
           if (normExpectedStderr.length > 0) {
             expect(normErrCalls).toBe(normExpectedStderr);
           }
-          // Assert filesystem state matches expected directory (compare project root)
-          // Ignore only the `.out.txt` file inside the compared directory.
+          // Assert filesystem state matches expected directory; ignore this .out.txt only
           await assertDirMatchesExpected(cwd, outDir, { ignoreGlobs: ['.out.txt'] });
         } finally {
           process.chdir(originalCwd);
@@ -149,8 +146,7 @@ describe('golden CLI tests (expected/)', () => {
         return;
       }
 
-      // Case B: top-level combined out files: <name>.out.txt containing JSON meta, stdout, then stderr
-      // These live directly in `expected/` (not inside a subdirectory) and are run as before.
+      // Top-level combined out files: <name>.out.txt containing JSON meta, stdout, then stderr
       if (relPath.endsWith('.out.txt')) {
         const rawOut = fs.readFileSync(full, 'utf8');
         const {
@@ -171,7 +167,6 @@ describe('golden CLI tests (expected/)', () => {
         if (args.length === 0 || args[0].toLowerCase() !== 'siren') {
           throw new Error(`command must begin with 'siren' in ${relPath}`);
         }
-        const isErr = relPath.includes('.err.');
         const sirenDir = await copyProjectFixture(metadata.fixture);
         const cwd = path.basename(sirenDir) === 'siren' ? path.dirname(sirenDir) : sirenDir;
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
