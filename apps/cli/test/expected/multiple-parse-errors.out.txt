@@ -1,8 +1,9 @@
 {
 	"fixture": "multiple-parse-errors",
-	"command": "siren list",
-	"expect": "stderr"
+	"command": "siren list"
 }
+---
+
 ---
 Warning: skipping siren/broken1.siren (parse error)
 Warning: skipping siren/broken2.siren (parse error)

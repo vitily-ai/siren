@@ -1,92 +1,65 @@
 task cli-new-entry {
-
-    description = "cli tool to create milestone"
-
+  description = "cli tool to create milestone"
 }
 
 task recursive-search-up {
-
-    description = "invoking siren cli looks up directory tree until a project root has been identified, and uses that as the basis for discovery"
-
+  description = "invoking siren cli looks up directory tree until a project root has been identified, and uses that as the basis for discovery"
 }
 
 task cli-add-task-basic {
-
-    description = "`siren task new <name> <milestone>` - adds a task, upon which the given milestone will depend, within the same file as the milestone. If the milestone doesn't exist, create it in a new file matching the milestone name under `siren/`."
-
+  description = "`siren task new <name> <milestone>` - adds a task, upon which the given milestone will depend, within the same file as the milestone. If the milestone doesn't exist, create it in a new file matching the milestone name under `siren/`."
 }
 
 task cli-add-task-no-milestone {
-
-    description = "`siren task new <name> --no-milestone` - adds a task without a milestone into `siren/misc.siren`"
-    depends_on = cli-add-task-basic
-
+  description = "`siren task new <name> --no-milestone` - adds a task without a milestone into `siren/misc.siren`"
+  depends_on = cli-add-task-basic
 }
 
 milestone cli-mvp {
-
-    description = "Minimum features to make the cli usable"
-    depends_on = [cli-new-entry, recursive-search-up, cli-add-task-basic, cli-add-task-no-milestone, query-complete, complete-duplicates, ensure-load, list-with-tasks, list-with-status, list-to-core, list-indentation, list-nested]
-
+  description = "Minimum features to make the cli usable"
+  depends_on = [cli-new-entry, recursive-search-up, cli-add-task-basic, cli-add-task-no-milestone, query-complete, complete-duplicates, ensure-load, list-with-tasks, list-with-status, list-to-core, list-indentation, list-nested]
 }
 
 task query-complete {
-
-    description = "Given a task/milestone id, determine if it complete or not"
-    depends_on = [status-complete]
-
+  description = "Given a task/milestone id, determine if it complete or not"
+  depends_on = [status-complete]
 }
 
 task complete-duplicates {
-
-    description = "attempting to 'complete' an entry that has a duplicated id via `siren complete` should fail, explicitly highliting the duplication"
-    depends_on = [status-complete, duplicate-ids]
-
+  description = "attempting to 'complete' an entry that has a duplicated id via `siren complete` should fail, explicitly highliting the duplication"
+  depends_on = [status-complete, duplicate-ids]
 }
 
 task ensure-load complete {
-    description = "ensure that invoking the cli always 'loads' the project to shared memory before handling the command - including parsing, registering IR, and raising warnings/errors"
+  description = "ensure that invoking the cli always 'loads' the project to shared memory before handling the command - including parsing, registering IR, and raising warnings/errors"
 }
 
 task list-with-tasks complete {
-
-    description = "using a -t switch or --tasks flag should show incomplete tasks associated with each given milestone"
-    example = "siren list -t"
-    example_output = "some_milestone_1\n├─ some_task_1\n└─ some_task_2\nsome_milestone_2"
-
-    depends_on = list-to-core
-
+  description = "using a -t switch or --tasks flag should show incomplete tasks associated with each given milestone"
+  example = "siren list -t"
+  example_output = "some_milestone_1\n├─ some_task_1\n└─ some_task_2\nsome_milestone_2"
+  depends_on = list-to-core
 }
 
 task list-with-status complete {
-
-    // TASK IS CANCELLED BECAUSE LIST ONLY SHOWS INCOMPLETE DEPS
-    cancelled = true
-    example = "siren list -s; siren list --status"
-    example_output = "some_milestone COMPLETE"
-    depends_on = task-readiness
-
-    depends_on = list-with-tasks
-
+  cancelled = true
+  example = "siren list -s; siren list --status"
+  example_output = "some_milestone COMPLETE"
+  depends_on = task-readiness
+  depends_on = list-with-tasks
 }
 
 task list-to-core complete {
-
-    description = "move utility logic out of cli and into core, aligning with 'Maximum core' instruction"
-
+  description = "move utility logic out of cli and into core, aligning with 'Maximum core' instruction"
 }
 
 task list-indentation complete {
-
-    description = "replace tab-indents with ASCII line characters to represent hierarchy"
-
+  description = "replace tab-indents with ASCII line characters to represent hierarchy"
 }
 
 task list-nested complete {
-
-    description = "`siren list -t` should show dependency chains to complete depth - truncated if chain is longer than 2. The focus should be on presenting the incomplete leaf dependencies for a milestone."
-
-    example_output = "
+  description = "`siren list -t` should show dependency chains to complete depth - truncated if chain is longer than 2. The focus should be on presenting the incomplete leaf dependencies for a milestone."
+  example_output = "
         milestone_with_dependency_chain_len_2
         └─ chain_dep_a
            └─ leaf_dep_a
@@ -108,78 +81,59 @@ task list-nested complete {
         milestone_with_milestone_dependency_treats_incomplete_milestone_as_leaf_and_does_not_show_its_dependencies
         └─ milestone_with_dependency_chain_len_10
     "
-
 }
 
 milestone show-entry complete {
-
-
-    description = "command `siren show <entry-id>` which displays information about the given entry. Currently, it just shows its dependency tree with the same logic as `siren list -t`"
-
-    depends_on = [core-entry-lookup, cli-show-command, cli-show-golden-tests]
-
+  description = "command `siren show <entry-id>` which displays information about the given entry. Currently, it just shows its dependency tree with the same logic as `siren list -t`"
+  depends_on = [core-entry-lookup, cli-show-command, cli-show-golden-tests]
 }
 
-# Entry lookup logic in core
 task core-entry-lookup complete {
-    description = "Implement or refactor entry lookup logic in core utilities to find tasks or milestones by ID."
+  description = "Implement or refactor entry lookup logic in core utilities to find tasks or milestones by ID."
 }
 
-# CLI command implementation for 'siren show <entry-id>'
 task cli-show-command complete {
-    description = "Implement CLI command parsing and handler for 'siren show <entry-id>', delegating to core utilities for tree generation."
-    depends_on = [cli-arg-parse-show]
+  description = "Implement CLI command parsing and handler for 'siren show <entry-id>', delegating to core utilities for tree generation."
+  depends_on = [cli-arg-parse-show]
 }
 
-# CLI argument parsing for 'show' command
 task cli-arg-parse-show complete {
-    description = "Implement argument parsing for 'siren show <entry-id>' in CLI."
+  description = "Implement argument parsing for 'siren show <entry-id>' in CLI."
 }
 
-# CLI error handling for 'show' command
 task cli-show-error-handling complete {
-    description = "Implement error handling for 'siren show <entry-id>' (e.g., entry not found)."
-    depend_on = cli-show-command
+  description = "Implement error handling for 'siren show <entry-id>' (e.g., entry not found)."
+  depend_on = cli-show-command
 }
 
-# Golden-file tests for CLI output
 task cli-show-golden-tests complete {
-    description = "Add golden-file tests for 'siren show <entry-id>' CLI output, ensuring output matches list-nested formatting and truncation rules."
-    depends_on = [cli-show-command, cli-show-test-fixtures, cli-show-test-cases]
+  description = "Add golden-file tests for 'siren show <entry-id>' CLI output, ensuring output matches list-nested formatting and truncation rules."
+  depends_on = [cli-show-command, cli-show-test-fixtures, cli-show-test-cases]
 }
 
-# Test fixtures for CLI 'show' command
 task cli-show-test-fixtures complete {
-    description = "Add or extend test fixtures for dependency trees to cover 'siren show <entry-id>' cases."
+  description = "Add or extend test fixtures for dependency trees to cover 'siren show <entry-id>' cases."
 }
 
-# Golden-file test cases for CLI 'show' command
 task cli-show-test-cases complete {
-    description = "Add golden-file test cases for 'siren show <entry-id>' output, including edge cases (truncation, incomplete leaves, errors)."
-    depends_on = cli-show-test-fixtures
+  description = "Add golden-file test cases for 'siren show <entry-id>' output, including edge cases (truncation, incomplete leaves, errors)."
+  depends_on = cli-show-test-fixtures
 }
 
 milestone get-next {
-
-    description = "`siren next <entry-id>`: returns the next available dependency that must be completed before the given entry"
-
-    depends_on = get-next-cli
-
+  description = "`siren next <entry-id>`: returns the next available dependency that must be completed before the given entry"
+  depends_on = get-next-cli
 }
 
 task get-next-cli {
-
-    depends_on = get-next-core-api
-
+  depends_on = get-next-core-api
 }
 
 task get-next-core-api {
-
-    description = "api takes entry id and returns the deepest incomplete dependency that would show in the `siren show` tree"
-
+  description = "api takes entry id and returns the deepest incomplete dependency that would show in the `siren show` tree"
 }
 
 task show-next {
-    description = "`siren show` also includes the results of `next`"
-    depends_on = [get-next, show-entry]
+  description = "`siren show` also includes the results of `next`"
+  depends_on = [get-next, show-entry]
 }

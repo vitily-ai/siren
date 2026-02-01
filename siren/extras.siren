@@ -1,19 +1,13 @@
 milestone reusable-discovery-code {
-
-    description = "code for discovery currently owned by cli. is useful and needs to be extracted, likely to core"
-    depends_on = [node-loader-package, project-loader-interface]
-
+  description = "code for discovery currently owned by cli. is useful and needs to be extracted, likely to core"
+  depends_on = [node-loader-package, project-loader-interface]
 }
 
 task node-loader-package {
-
-    description = "Create a Node-only package `packages/node-loader` that implements filesystem discovery and a `loadProject(cwd)` helper for Node frontends (CLI, MCP). This centralizes Node-specific FS logic while keeping `@siren/core` environment-agnostic."
-    depends_on = project-loader-interface
-
+  description = "Create a Node-only package `packages/node-loader` that implements filesystem discovery and a `loadProject(cwd)` helper for Node frontends (CLI, MCP). This centralizes Node-specific FS logic while keeping `@siren/core` environment-agnostic.\n\nThe package should also provide the Node runtime glue for parsing: supply a WASM loader (`loadWasm()` or similar) and a thin Node `ParserAdapter` that uses `web-tree-sitter`. It should resolve and include the committed WASM at `packages/core/grammar/tree-sitter-siren.wasm`, wire the loaded language into the parser factory exposed by `@siren/core`, and expose a single `loadProject(cwd)` that returns the merged IR/context."
+  depends_on = project-loader-interface
 }
 
 task project-loader-interface {
-
-    description = "Add a `ProjectLoader` interface and a `mergeDocuments()` utility to `@siren/core` to define a stable contract for loaders and an environment-agnostic way to merge parsed documents."
-
+  description = "Add a `ProjectLoader` interface and a `mergeDocuments()` utility to `@siren/core` to define a stable contract for loaders and an environment-agnostic way to merge parsed documents.\n\nAdditionally, define a parser factory API that supports WASM injection (example shape: `createParser({ loadWasm: (wasmPath) => Promise<LanguageLike> })`) so that core contains the parsing logic (string -> CST) but does not perform WASM loading itself. The Node-only package will provide the concrete `loadWasm` implementation and a `ProjectLoader` that reads files, calls the core parser, merges documents, and returns the IR."
 }

@@ -12,5 +12,6 @@ export async function copyProjectFixture(name: string): Promise<string> {
   const src = join(fixturesDir, name);
   const dest = await mkdtemp(join(tmpdir(), 'siren-fixture-'));
   await cp(src, dest, { recursive: true });
-  return join(dest, 'siren');
+  // Treat the fixture root as the project root; do not enforce a nested `siren/` directory.
+  return dest;
 }

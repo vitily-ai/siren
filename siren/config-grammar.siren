@@ -1,5 +1,3 @@
 milestone config-grammar {
-
-    description = "Project config should be supported by a custom grammar instead of external yaml." 
-
+  description = "Project config should be supported by a custom grammar instead of external yaml."
 }

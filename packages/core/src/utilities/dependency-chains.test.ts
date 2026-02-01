@@ -172,7 +172,7 @@ describe('getIncompleteLeafDependencyChains', () => {
     ];
 
     const warnings: string[] = [];
-    const chains = getIncompleteLeafDependencyChains('root', resources, undefined, {
+    getIncompleteLeafDependencyChains('root', resources, undefined, {
       onWarning: (m) => warnings.push(m),
     });
 

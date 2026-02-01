@@ -14,3 +14,6 @@ export type {
   ReferenceNode,
   ResourceNode,
 } from './cst.js';
+
+// Parser factory that allows WASM loader injection from hosts.
+export { createParserFactory } from './factory.js';

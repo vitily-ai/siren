@@ -1,7 +1,0 @@
-{
-	"fixture": "broken",
-	"command": "siren list",
-	"expect": "stderr"
-}
----
-Warning: skipping siren/broken.siren (parse error)

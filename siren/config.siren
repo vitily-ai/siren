@@ -1,5 +1,4 @@
 task project-config {
-    description = "Allow setting project-level maxDepth for dependency traversal"
-    # Depends on the config-grammar entry (see siren/language-features.siren)
-    depends_on = config-grammar
+  description = "Allow setting project-level maxDepth for dependency traversal"
+  depends_on = config-grammar
 }

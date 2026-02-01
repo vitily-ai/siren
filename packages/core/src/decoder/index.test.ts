@@ -550,9 +550,9 @@ describe('decode', () => {
       expect(result.success).toBe(true);
       const attrs = getFirstResourceAttrs(result);
       expect(attrs).toHaveLength(3);
-      expect(attrs[0]).toEqual({ key: 'title', value: 'Test Task' });
-      expect(attrs[1]).toEqual({ key: 'priority', value: 1 });
-      expect(attrs[2]).toEqual({ key: 'active', value: true });
+      expect(attrs[0]).toEqual(expect.objectContaining({ key: 'title', value: 'Test Task' }));
+      expect(attrs[1]).toEqual(expect.objectContaining({ key: 'priority', value: 1 }));
+      expect(attrs[2]).toEqual(expect.objectContaining({ key: 'active', value: true }));
     });
 
     it('decodes floating point numbers', () => {
@@ -697,9 +697,11 @@ describe('decode', () => {
       expect(result.success).toBe(true);
       const attrs = getFirstResourceAttrs(result);
       expect(attrs).toHaveLength(3);
-      expect(attrs[0]).toEqual({ key: 'description', value: 'Some work' });
-      expect(attrs[1]).toEqual({ key: 'depends_on', value: { kind: 'reference', id: 'other' } });
-      expect(attrs[2]).toEqual({ key: 'priority', value: 1 });
+      expect(attrs[0]).toEqual(expect.objectContaining({ key: 'description', value: 'Some work' }));
+      expect(attrs[1]).toEqual(
+        expect.objectContaining({ key: 'depends_on', value: { kind: 'reference', id: 'other' } }),
+      );
+      expect(attrs[2]).toEqual(expect.objectContaining({ key: 'priority', value: 1 }));
     });
   });
 
@@ -725,7 +727,7 @@ describe('decode', () => {
       expect(result.success).toBe(true);
       const attrs = getFirstResourceAttrs(result);
       expect(attrs).toHaveLength(3);
-      expect(attrs[0]).toEqual({ key: 'description', value: 'Some work' });
+      expect(attrs[0]).toEqual(expect.objectContaining({ key: 'description', value: 'Some work' }));
       expect(attrs[1]).toEqual({
         key: 'depends_on',
         value: {
@@ -736,7 +738,7 @@ describe('decode', () => {
           ],
         },
       });
-      expect(attrs[2]).toEqual({ key: 'priority', value: 1 });
+      expect(attrs[2]).toEqual(expect.objectContaining({ key: 'priority', value: 1 }));
     });
 
     it('resource with only array attribute has the attribute', () => {

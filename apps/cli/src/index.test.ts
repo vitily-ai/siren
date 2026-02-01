@@ -22,7 +22,8 @@ const fixturesDir = path.join(
 );
 
 function copyFixture(fixtureName: string, targetDir: string) {
-  const fixturePath = path.join(fixturesDir, fixtureName, 'siren');
+  const nested = path.join(fixturesDir, fixtureName, 'siren');
+  const fixturePath = fs.existsSync(nested) ? nested : path.join(fixturesDir, fixtureName);
   const targetSirenDir = path.join(targetDir, 'siren');
   fs.cpSync(fixturePath, targetSirenDir, { recursive: true });
 }
@@ -164,7 +165,7 @@ describe('siren list', () => {
 
   it('lists milestones from valid .siren files', async () => {
     const sirenDir = await copyProjectFixture('list-milestones');
-    const cwd = path.dirname(sirenDir);
+    const cwd = path.basename(sirenDir) === 'siren' ? path.dirname(sirenDir) : sirenDir;
 
     await loadProject(cwd);
     const result = await list();

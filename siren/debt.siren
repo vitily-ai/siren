@@ -1,23 +1,15 @@
 task attribute-structure {
-
-    description = "Currently entry attributes are registered in ir under an `attributes` list. Should we just treat it as a TS Record instead, optimizing for key looup?"
-
+  description = "Currently entry attributes are registered in ir under an `attributes` list. Should we just treat it as a TS Record instead, optimizing for key looup?"
 }
 
 task getTasksByMilestone-single-pass {
-
-    description = "Consider optimizing getTasksByMilestone to use single-pass approach for better performance with large projects"
-
+  description = "Consider optimizing getTasksByMilestone to use single-pass approach for better performance with large projects"
 }
 
 task getDependsOn-comment {
-
-    description = "Update getDependsOn function to emit warnings when encountering non-reference elements in depends_on arrays, while still processing valid references (error tolerance with diagnostics)"
-
+  description = "Update getDependsOn function to emit warnings when encountering non-reference elements in depends_on arrays, while still processing valid references (error tolerance with diagnostics)"
 }
 
 task cli-list-long-names {
-
-    description = "Verify that tab-indented task output in 'siren list -t' handles long milestone/task names gracefully in terminals"
-
+  description = "Verify that tab-indented task output in 'siren list -t' handles long milestone/task names gracefully in terminals"
 }
