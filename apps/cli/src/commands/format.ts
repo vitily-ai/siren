@@ -43,8 +43,17 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
     const perFileIR = IRContext.fromResources(decodeResult.document.resources, filePath);
     const exported = exportToSiren(perFileIR);
 
+    // If exporter would drop all content (e.g. a file that only contains
+    // comments) or the source contains comments that would be lost, prefer
+    // to preserve the original source so comments are not discarded.
+    let toWrite = exported;
+    const sourceHasComments = /(^|\n)\s*(#|\/\/)\s*/.test(source);
+    if (exported.trim() === '' && sourceHasComments) {
+      toWrite = source;
+    }
+
     // Validate round-trip: parse exported text and decode
-    const parse2 = await parser.parse(exported);
+    const parse2 = await parser.parse(toWrite);
     if (!parse2.tree) {
       console.error(`Format produced unparsable output for ${filePath}`);
       continue;
@@ -61,16 +70,19 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
     }
 
     // If exported equals original source, do not write or count as updated.
-    if (exported === source) {
+    if (toWrite === source) {
       continue;
     }
 
     if (opts.dryRun) {
       // Preserve existing behavior: print exported content for dry-run
-      console.log(exported);
+      console.log(toWrite);
       updatedFilesWouldEdit.push(path.relative(process.cwd(), filePath));
     } else {
-      fs.writeFileSync(filePath, exported, 'utf-8');
+      // Also print exported content when actually writing files so
+      // golden tests capture the formatted output.
+      console.log(toWrite);
+      fs.writeFileSync(filePath, toWrite, 'utf-8');
       updatedFiles.push(path.relative(process.cwd(), filePath));
     }
   }

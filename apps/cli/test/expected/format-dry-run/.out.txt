@@ -1,10 +1,13 @@
 {"fixture":"multiple-files","command":"siren format --dry-run"}
 ---
+# this is a comment
 milestone alpha {
+    # this is a comment
 }
 
 milestone beta {
 }
+# this is a comment
 
 Updated 2 files out of 2
 ---
