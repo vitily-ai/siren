@@ -130,10 +130,6 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
       console.log(toPrint);
       updatedFilesWouldEdit.push(path.relative(process.cwd(), filePath));
     } else {
-      // Also print exported content when actually writing files so
-      // golden tests capture the formatted output.
-      const toPrint = toWrite.endsWith('\n') ? toWrite : `${toWrite}\n`;
-      console.log(toPrint);
       fs.writeFileSync(filePath, toWrite, 'utf-8');
       updatedFiles.push(path.relative(process.cwd(), filePath));
     }
