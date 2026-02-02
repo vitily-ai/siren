@@ -1,6 +1,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { decode, exportToSiren, IRContext, type Resource } from '@siren/core';
+import {
+  decode,
+  exportToSiren,
+  exportWithComments,
+  IRContext,
+  type Resource,
+  SourceIndex,
+} from '@siren/core';
 import { getParser } from '../parser.js';
 import { loadProject } from '../project.js';
 
@@ -11,7 +18,18 @@ export interface FormatOptions {
 
 function resourcesEqual(a: readonly Resource[], b: readonly Resource[]): boolean {
   try {
-    return JSON.stringify(a) === JSON.stringify(b);
+    // Compare semantics only, ignoring origin field (which may differ between parses)
+    const stripOrigin = (r: Resource) => {
+      const { origin, ...rest } = r;
+      return {
+        ...rest,
+        attributes: r.attributes.map((attr) => {
+          const { raw, ...attrRest } = attr;
+          return attrRest;
+        }),
+      };
+    };
+    return JSON.stringify(a.map(stripOrigin)) === JSON.stringify(b.map(stripOrigin));
   } catch (_e) {
     return false;
   }
@@ -41,7 +59,16 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
     }
 
     const perFileIR = IRContext.fromResources(decodeResult.document.resources, filePath);
-    const exported = exportToSiren(perFileIR);
+
+    // Build SourceIndex from parse result for comment preservation
+    const sourceIndex = parseResult.comments
+      ? new SourceIndex(parseResult.comments, source)
+      : undefined;
+
+    // Export with comment preservation if available
+    const exported = sourceIndex
+      ? exportWithComments(perFileIR, sourceIndex)
+      : exportToSiren(perFileIR);
 
     // If exporter would drop all content (e.g. a file that only contains
     // comments) or the source contains comments that would be lost, prefer

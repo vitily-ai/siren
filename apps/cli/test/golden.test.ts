@@ -126,8 +126,8 @@ describe('golden CLI tests (expected/)', () => {
               .join('\n')
               .replace(/\s+$/u, '');
           }
-          const normOutCalls = outCalls.replace(/\s+$/u, '');
-          const normErrCalls = errCalls.replace(/\s+$/u, '');
+          const normOutCalls = stripComments(outCalls);
+          const normErrCalls = stripComments(errCalls);
           const normExpectedStdout = stripComments(expectedStdout);
           const normExpectedStderr = stripComments(expectedStderr);
           if (normExpectedStdout.length > 0) {

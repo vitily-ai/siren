@@ -260,6 +260,7 @@ function decodeResource(
     id,
     complete,
     attributes,
+    origin: node.origin,
   };
 }
 
