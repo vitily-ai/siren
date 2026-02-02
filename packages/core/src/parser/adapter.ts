@@ -8,6 +8,20 @@
 import type { DocumentNode } from './cst.js';
 
 /**
+ * Comment token from source code
+ *
+ * Represents a single comment extracted by the parser.
+ * Used by formatters to preserve comments during output.
+ */
+export interface CommentToken {
+  readonly startByte: number;
+  readonly endByte: number;
+  readonly startRow: number;
+  readonly endRow: number;
+  readonly text: string;
+}
+
+/**
  * Result of a parse operation
  */
 export interface ParseResult {
@@ -19,6 +33,13 @@ export interface ParseResult {
 
   /** Whether the parse was successful (no errors) */
   readonly success: boolean;
+
+  /**
+   * Comments extracted from the source code.
+   * Optional field for backward compatibility. Used by formatters
+   * to preserve comments during export. Early code doesn't require this.
+   */
+  readonly comments?: readonly CommentToken[];
 }
 
 /**

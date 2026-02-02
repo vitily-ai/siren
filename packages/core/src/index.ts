@@ -22,10 +22,12 @@ export { createParserFactory } from './parser/factory.js';
 export type {
   ArrayNode,
   AttributeNode,
+  CommentToken,
   DocumentNode,
   ExpressionNode,
   IdentifierNode,
   LiteralNode,
+  Origin,
   ParseError,
   ParseResult,
   ParserAdapter,
