@@ -132,8 +132,8 @@ export class SourceIndex {
 
   /**
    * Get leading comments for a node
-   * Comments are "leading" if they appear before the node's starting byte
-   * and are on a different line than the previous semantic token
+   * Comments are "leading" if they appear before the node's starting byte,
+   * on a different line, and the line before the comment is not blank (not detached)
    */
   getLeadingComments(origin: Origin): readonly ClassifiedComment[] {
     const result: ClassifiedComment[] = [];
@@ -144,8 +144,21 @@ export class SourceIndex {
         break;
       }
 
-      // Check if this is a leading comment (on different line from previous token)
-      // For leading, we just need comments before the node
+      // Must not be on the same line as the node start
+      if (this.isOnSameLine(comment.startRow, origin.startByte)) {
+        continue;
+      }
+
+      // Check if the comment is detached (blank line before it)
+      if (comment.startRow > 0) {
+        const prevLineStart = this.lineStarts[comment.startRow - 1] ?? 0;
+        const prevLineEnd = this.lineEnds.get(comment.startRow - 1) ?? this.source.length;
+        const prevLineContent = this.source.substring(prevLineStart, prevLineEnd).trim();
+        if (prevLineContent === '') {
+          continue; // Detached, not leading
+        }
+      }
+
       const classified: ClassifiedComment = {
         token: comment,
         classification: 'leading',
@@ -199,7 +212,9 @@ export class SourceIndex {
 
     for (const comment of this.comments) {
       const blankLinesBefore =
-        prevCommentEnd >= 0 ? this.countBlankLinesBetween(prevCommentEnd, comment.startByte) : 0;
+        prevCommentEnd >= 0
+          ? this.countBlankLinesBetween(prevCommentEnd, comment.startByte)
+          : this.countBlankLinesBetween(0, comment.startByte);
 
       // If there are blank lines before this comment, it's detached
       if (blankLinesBefore > 0) {
@@ -246,14 +261,31 @@ export class SourceIndex {
   getEOFComments(): readonly ClassifiedComment[] {
     const result: ClassifiedComment[] = [];
 
+    // Sort comments by start byte to process in order
+    const sortedComments = this.comments.slice().sort((a, b) => a.startByte - b.startByte);
+
+    // Find the last byte of semantic content (not inside any comment)
+    let lastSemanticByte = -1;
+    let prevEnd = 0;
+    for (const comment of sortedComments) {
+      if (prevEnd + 1 < comment.startByte) {
+        lastSemanticByte = Math.max(lastSemanticByte, comment.startByte - 1);
+      }
+      prevEnd = Math.max(prevEnd, comment.endByte);
+    }
+    if (prevEnd < this.source.length) {
+      lastSemanticByte = Math.max(lastSemanticByte, this.source.length - 1);
+    }
+
+    // Collect comments that start after the last semantic byte
     for (const comment of this.comments) {
-      // Collect all comments that appear after actual nodes
-      // In this simple implementation, we'll collect detached blocks at EOF
-      const classified: ClassifiedComment = {
-        token: comment,
-        classification: 'detached',
-      };
-      result.push(classified);
+      if (comment.startByte > lastSemanticByte) {
+        const classified: ClassifiedComment = {
+          token: comment,
+          classification: 'detached',
+        };
+        result.push(classified);
+      }
     }
 
     return result;
