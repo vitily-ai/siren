@@ -18,3 +18,7 @@ export type {
 
 // Parser factory that allows WASM loader injection from hosts.
 export { createParserFactory } from './factory.js';
+
+// SourceIndex for comment classification
+export type { ClassifiedComment } from './source-index.js';
+export { SourceIndex } from './source-index.js';
