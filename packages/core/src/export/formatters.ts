@@ -41,8 +41,17 @@ export function formatAttributeValue(value: AttributeValue, raw?: string): strin
   return formatPrimitive(value as unknown);
 }
 
-export function formatAttributeLine(key: string, value: AttributeValue, raw?: string): string {
-  return `${INDENT}${key} = ${formatAttributeValue(value, raw)}`;
+export function formatAttributeLine(
+  key: string,
+  value: AttributeValue,
+  raw?: string,
+  trailingComment?: string,
+): string {
+  const line = `${INDENT}${key} = ${formatAttributeValue(value, raw)}`;
+  if (trailingComment) {
+    return `${line}  ${trailingComment}`; // Two spaces before comment per Siren convention
+  }
+  return line;
 }
 
 export function wrapResourceBlock(
@@ -50,8 +59,12 @@ export function wrapResourceBlock(
   id: string,
   complete: boolean,
   bodyLines: string[],
+  headerTrailingComment?: string,
 ): string {
-  const header = `${type} ${id}${complete ? ' complete' : ''} {`;
+  let header = `${type} ${id}${complete ? ' complete' : ''} {`;
+  if (headerTrailingComment) {
+    header = `${header}  ${headerTrailingComment}`; // Two spaces before comment per Siren convention
+  }
   const footer = `}`;
   if (bodyLines.length === 0) return `${header}\n${footer}`;
   return [header, ...bodyLines, footer].join('\n');

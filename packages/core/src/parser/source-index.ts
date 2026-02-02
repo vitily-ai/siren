@@ -48,6 +48,16 @@ export class SourceIndex {
   }
 
   /**
+   * Return the original flat list of comment tokens in source order.
+   *
+   * Exporters can use this to interleave comments between semantic nodes
+   * while keeping core environment-agnostic.
+   */
+  getAllComments(): readonly CommentToken[] {
+    return this.comments;
+  }
+
+  /**
    * Build a map of row numbers to byte offsets for O(1) line lookup
    * lineStarts[row] = byte offset where that row begins
    */

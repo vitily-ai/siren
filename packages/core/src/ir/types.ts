@@ -44,6 +44,11 @@ export interface Attribute {
    * (includes quotes for string literals when available).
    */
   readonly raw?: string;
+  /**
+   * Optional source origin information for comment-aware formatting.
+   * This is not semantic and may differ across equivalent parses.
+   */
+  readonly origin?: Origin;
 }
 
 /**

@@ -24,7 +24,7 @@ function resourcesEqual(a: readonly Resource[], b: readonly Resource[]): boolean
       return {
         ...rest,
         attributes: r.attributes.map((attr) => {
-          const { raw, ...attrRest } = attr;
+          const { raw, origin: attrOrigin, ...attrRest } = attr;
           return attrRest;
         }),
       };
@@ -33,6 +33,20 @@ function resourcesEqual(a: readonly Resource[], b: readonly Resource[]): boolean
   } catch (_e) {
     return false;
   }
+}
+
+function debugStringifyResources(resources: readonly Resource[]): string {
+  const stripOrigin = (r: Resource) => {
+    const { origin, ...rest } = r;
+    return {
+      ...rest,
+      attributes: r.attributes.map((attr) => {
+        const { raw, ...attrRest } = attr;
+        return attrRest;
+      }),
+    };
+  };
+  return JSON.stringify(resources.map(stripOrigin), null, 2);
 }
 
 export async function runFormat(opts: FormatOptions = {}): Promise<void> {
@@ -93,6 +107,15 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
 
     if (!resourcesEqual(decodeResult.document.resources, decoded2.document.resources)) {
       console.error(`Format round-trip changed semantics for ${filePath}; skipping`);
+      if (process.env.SIREN_FORMAT_DEBUG === '1') {
+        console.error('--- SIREN_FORMAT_DEBUG: original decoded resources ---');
+        console.error(debugStringifyResources(decodeResult.document.resources));
+        console.error('--- SIREN_FORMAT_DEBUG: re-decoded resources ---');
+        console.error(debugStringifyResources(decoded2.document.resources));
+        console.error('--- SIREN_FORMAT_DEBUG: formatted output ---');
+        console.error(toWrite);
+        console.error('--- /SIREN_FORMAT_DEBUG ---');
+      }
       continue;
     }
 
@@ -103,12 +126,14 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
 
     if (opts.dryRun) {
       // Preserve existing behavior: print exported content for dry-run
-      console.log(toWrite);
+      const toPrint = toWrite.endsWith('\n') ? toWrite : `${toWrite}\n`;
+      console.log(toPrint);
       updatedFilesWouldEdit.push(path.relative(process.cwd(), filePath));
     } else {
       // Also print exported content when actually writing files so
       // golden tests capture the formatted output.
-      console.log(toWrite);
+      const toPrint = toWrite.endsWith('\n') ? toWrite : `${toWrite}\n`;
+      console.log(toPrint);
       fs.writeFileSync(filePath, toWrite, 'utf-8');
       updatedFiles.push(path.relative(process.cwd(), filePath));
     }

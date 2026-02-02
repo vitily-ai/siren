@@ -168,6 +168,7 @@ function decodeAttribute(node: AttributeNode): Attribute | null {
       key,
       value: decodeLiteral(expr),
       raw: expr.text,
+      origin: node.origin,
     };
   }
 
@@ -177,6 +178,7 @@ function decodeAttribute(node: AttributeNode): Attribute | null {
       key,
       value: decodeReference(expr),
       raw: expr.identifier.text,
+      origin: node.origin,
     };
   }
 
@@ -185,6 +187,7 @@ function decodeAttribute(node: AttributeNode): Attribute | null {
     return {
       key,
       value: decodeArray(expr),
+      origin: node.origin,
     };
   }
 
