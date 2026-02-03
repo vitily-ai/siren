@@ -1,0 +1,17 @@
+{
+	"fixture": "dangling-dependencies",
+	"command": "siren list -t"
+}
+---
+with-dangling
+├─ missing-task
+└─ present
+with-two-dangling
+├─ missing1
+└─ missing2
+
+---
+Warning: siren/main.siren: Dangling dependency: milestone 'with-dangling' -> missing-task?
+Warning: siren/main.siren: Dangling dependency: milestone 'with-two-dangling' -> missing1?
+Warning: siren/main.siren: Dangling dependency: milestone 'with-two-dangling' -> missing2?
+

@@ -7,7 +7,7 @@
 // - Diagnostic code: use 'W005' for dangling-dependencies (keeps parity with existing W004 for cycles).
 // - CLI will prefix with: "Warning: <relative-path>: <diagnostic message>"
 
-milestone dangling-dependencies {
+milestone dangling-dependencies complete {
   description = "declaring dependencies to entries that don't exist should surface a warning during IR construction. Missing dependencies should not be collected by or returned from listing APIs."
   depends_on = [add-golden-test]
 }
@@ -31,7 +31,7 @@ task cli-surface complete {
   depends_on = emit-warning
 }
 
-task add-golden-test {
+task add-golden-test complete {
   description = "Add golden test in apps/cli/test and expected output in apps/cli/test/expected for the dangling-dependencies scenario."
   depends_on = cli-surface
 }
