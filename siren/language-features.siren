@@ -22,4 +22,3 @@ task naked-description {
   description = "entries may begin with an unquoted or naked multiline string as a standin for `description = ...`. Naked in this sense means it would not necessarily be restricted to the multiline syntax (heredoc or otherwise), but be 'bare'."
   depends_on = multiline-strings
 }
-

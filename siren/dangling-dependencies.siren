@@ -1,0 +1,28 @@
+milestone dangling-dependencies {
+  description = "declaring dependencies to entries that don't exist should surface a warning during IR construction. Missing dependencies should not be collected by or returned from listing APIs."
+  depends_on = [add-golden-test]
+}
+
+task detect-dangling {
+  description = "Implement dangling-dependency detection in packages/core IR construction (unit-testable)."
+}
+
+task add-warning-buffer {
+  description = "Use core's existing diagnostics aggregation to record dangling-dependency warnings and add unit tests validating those warnings (unit-testable)."
+  depends_on = detect-dangling
+}
+
+task emit-warning {
+  description = "Emit a dangling-dependency warning during IR build when detection triggers (testable)."
+  depends_on = add-warning-buffer
+}
+
+task cli-surface {
+  description = "Surface warnings in the CLI: update apps/cli to display warnings on project load (golden-testable)."
+  depends_on = emit-warning
+}
+
+task add-golden-test {
+  description = "Add golden test in apps/cli/test and expected output in apps/cli/test/expected for the dangling-dependencies scenario."
+  depends_on = cli-surface
+}
