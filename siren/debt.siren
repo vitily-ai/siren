@@ -13,3 +13,23 @@ task getDependsOn-comment {
 task cli-list-long-names {
   description = "Verify that tab-indented task output in 'siren list -t' handles long milestone/task names gracefully in terminals"
 }
+
+task runformat-roundtrip {
+  description = "Address brittle round-trip semantic comparison in apps/cli/src/commands/format.ts. See TODO[RT-COMPARE] in that file. Replace JSON.stringify-based comparison with a deterministic semantic comparator."
+}
+
+task runformat-atomic-backup {
+  description = "Make `runFormat` safe: implement atomic file writes (temp+rename) and document/implement backup semantics if needed. See TODO[RUNFORMAT-ATOMIC] in apps/cli/src/commands/format.ts."
+}
+
+task encoding-multibyte {
+  description = "Ensure byte-offset logic and line calculations handle multibyte UTF-8 characters and CRLF properly. See TODO[ENCODING-MULTIBYTE] in packages/core/src/parser/source-index.ts."
+}
+
+task sourceindex-eof-detached {
+  description = "Audit and fix EOF / detached comment classification in SourceIndex. See TODO[EOF-DETACHED-LOGIC] in packages/core/src/parser/source-index.ts."
+}
+
+task sourceindex-assumptions {
+  description = "Enforce and document SourceIndex invariants (sorted comments, valid offsets). See TODO[SOURCEINDEX-ASSUME] in packages/core/src/parser/source-index.ts."
+}

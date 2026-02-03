@@ -29,6 +29,14 @@ function resourcesEqual(a: readonly Resource[], b: readonly Resource[]): boolean
         }),
       };
     };
+    // NOTE: TODO[RT-COMPARE]
+    // The current round-trip semantic comparison uses JSON.stringify after
+    // stripping `origin` and other runtime fields. This approach is brittle:
+    // - attribute ordering changes can break the equality
+    // - IR shape changes may introduce transient fields
+    // Consider replacing this with a deterministic comparator that ignores
+    // origin/raw fields and compares semantics explicitly.
+    // See task `runformat-roundtrip` in siren/debt.siren.
     return JSON.stringify(a.map(stripOrigin)) === JSON.stringify(b.map(stripOrigin));
   } catch (_e) {
     return false;
@@ -130,6 +138,12 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
       console.log(toPrint);
       updatedFilesWouldEdit.push(path.relative(process.cwd(), filePath));
     } else {
+      // TODO[RUNFORMAT-ATOMIC]
+      // Currently the formatter writes files with `fs.writeFileSync` which is
+      // not atomic and has no backup or rollback semantics. Implement an
+      // atomic write (write to temp file + rename) and optionally expose a
+      // documented `--backup` or safe-backup behavior. See task
+      // `runformat-atomic-backup` in siren/debt.siren.
       fs.writeFileSync(filePath, toWrite, 'utf-8');
       updatedFiles.push(path.relative(process.cwd(), filePath));
     }
