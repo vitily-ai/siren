@@ -283,10 +283,27 @@ export function decode(cst: DocumentNode): DecodeResult {
 
   // Build dependency graph and check for cycles
   const graph = new DirectedGraph();
+
+  // Known resource ids — used to detect dangling dependencies
+  const knownIds = new Set(resources.map((r) => r.id));
+
   for (const resource of resources) {
     graph.addNode(resource.id);
     const dependsOn = getDependsOn(resource);
     for (const depId of dependsOn) {
+      // If dependency refers to a resource that doesn't exist in this
+      // document, emit a dangling-dependency warning and do NOT add the
+      // missing id to the graph. This prevents missing nodes from
+      // appearing in cycle detection/topological APIs.
+      if (!knownIds.has(depId)) {
+        diagnostics.push({
+          code: 'W005',
+          message: `Dangling dependency: ${resource.type} '${resource.id}' -> ${depId}?`,
+          severity: 'warning',
+        });
+        continue;
+      }
+
       graph.addEdge(resource.id, depId);
     }
   }

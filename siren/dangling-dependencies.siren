@@ -1,23 +1,32 @@
+// Conventions for dangling-dependency warnings:
+// - Short, grokkable diagnostic message format: "Dangling dependency: <entry> -> <missing-id>?"
+//   Example: Dangling dependency: milestone 'dangling-dependencies' -> missing-task?
+// - Trailing '?' denotes a missing or ambiguous reference (convention across codebase).
+// - Emit one warning per dangling relationship (do NOT aggregate multiple missing ids into one warning).
+//   If multiple resources reference the same missing id, emit separate warnings for each relationship.
+// - Diagnostic code: use 'W005' for dangling-dependencies (keeps parity with existing W004 for cycles).
+// - CLI will prefix with: "Warning: <relative-path>: <diagnostic message>"
+
 milestone dangling-dependencies {
   description = "declaring dependencies to entries that don't exist should surface a warning during IR construction. Missing dependencies should not be collected by or returned from listing APIs."
   depends_on = [add-golden-test]
 }
 
-task detect-dangling {
+task detect-dangling complete {
   description = "Implement dangling-dependency detection in packages/core IR construction (unit-testable)."
 }
 
-task add-warning-buffer {
+task add-warning-buffer complete {
   description = "Use core's existing diagnostics aggregation to record dangling-dependency warnings and add unit tests validating those warnings (unit-testable)."
   depends_on = detect-dangling
 }
 
-task emit-warning {
+task emit-warning complete {
   description = "Emit a dangling-dependency warning during IR build when detection triggers (testable)."
   depends_on = add-warning-buffer
 }
 
-task cli-surface {
+task cli-surface complete {
   description = "Surface warnings in the CLI: update apps/cli to display warnings on project load (golden-testable)."
   depends_on = emit-warning
 }
