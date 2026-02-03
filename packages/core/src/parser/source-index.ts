@@ -11,6 +11,17 @@
 import type { CommentToken } from './adapter.js';
 import type { Origin } from './cst.js';
 
+// TODO[SOURCEINDEX-ASSUME]: SourceIndex currently assumes `comments` are provided
+// pre-sorted by byte offset and that `source` is UTF-8. Add defensive checks
+// and normalization (sort comments, validate offsets) to avoid surprising
+// behavior when callers feed unsorted or non-UTF8-aware offsets. See task
+// `sourceindex-assumptions` in siren/debt.siren.
+//
+// TODO[ENCODING-MULTIBYTE]: The implementation uses JavaScript string indices
+// (UTF-16 code units) vs. byte offsets in many places. Ensure offset
+// calculations account for multi-byte UTF-8 characters and CRLF line endings.
+// See task `encoding-multibyte` in siren/debt.siren.
+
 /**
  * Classified comment attached to a source location
  */
@@ -41,6 +52,8 @@ export class SourceIndex {
    * @param source - Original source text (for line break detection)
    */
   constructor(comments: readonly CommentToken[], source: string) {
+    // TODO: Consider normalizing/sorting comments here to be defensive.
+    // See TODO[SOURCEINDEX-ASSUME] and task `sourceindex-assumptions`.
     this.comments = comments;
     this.source = source;
     this.lineStarts = this.buildLineStarts();
@@ -263,6 +276,14 @@ export class SourceIndex {
 
     // Sort comments by start byte to process in order
     const sortedComments = this.comments.slice().sort((a, b) => a.startByte - b.startByte);
+
+    // TODO[EOF-DETACHED-LOGIC]
+    // The EOF/detached classification algorithm below is conservative but
+    // has edge cases (comments that straddle resource boundaries, trailing
+    // whitespace vs semantic content detection). Add targeted tests and
+    // simplify to: compute last non-whitespace byte of the file and classify
+    // comments after that as EOF. See task `sourceindex-eof-detached` in
+    // siren/debt.siren.
 
     // Find the last byte of semantic content (not inside any comment)
     let lastSemanticByte = -1;
