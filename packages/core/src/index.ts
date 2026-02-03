@@ -22,13 +22,19 @@ export { createParserFactory } from './parser/factory.js';
 export type {
   ArrayNode,
   AttributeNode,
+  ClassifiedComment,
+  CommentToken,
   DocumentNode,
   ExpressionNode,
   IdentifierNode,
   LiteralNode,
+  Origin,
   ParseError,
   ParseResult,
   ParserAdapter,
   ReferenceNode,
   ResourceNode,
 } from './parser/index.js';
+
+// Export SourceIndex for comment classification
+export { SourceIndex } from './parser/index.js';

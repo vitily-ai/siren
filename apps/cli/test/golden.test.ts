@@ -126,8 +126,8 @@ describe('golden CLI tests (expected/)', () => {
               .join('\n')
               .replace(/\s+$/u, '');
           }
-          const normOutCalls = outCalls.replace(/\s+$/u, '');
-          const normErrCalls = errCalls.replace(/\s+$/u, '');
+          const normOutCalls = stripComments(outCalls);
+          const normErrCalls = stripComments(errCalls);
           const normExpectedStdout = stripComments(expectedStdout);
           const normExpectedStderr = stripComments(expectedStderr);
           if (normExpectedStdout.length > 0) {
@@ -188,10 +188,16 @@ describe('golden CLI tests (expected/)', () => {
               .join('\n')
               .replace(/\s+$/u, '');
           }
+          // For comment-related fixtures, preserve comments in expected output
+          const preserveComments = metadata.fixture && metadata.fixture.includes('comment');
           const normOutCalls = outCalls.replace(/\s+$/u, '');
           const normErrCalls = errCalls.replace(/\s+$/u, '');
-          const normExpectedStdout = stripComments(expectedStdout);
-          const normExpectedStderr = stripComments(expectedStderr);
+          const normExpectedStdout = preserveComments
+            ? expectedStdout.replace(/\s+$/u, '')
+            : stripComments(expectedStdout);
+          const normExpectedStderr = preserveComments
+            ? expectedStderr.replace(/\s+$/u, '')
+            : stripComments(expectedStderr);
           if (normExpectedStdout.length > 0) {
             expect(normOutCalls).toBe(normExpectedStdout);
           }
@@ -246,7 +252,7 @@ describe('golden CLI tests (expected/)', () => {
           .map((c) => (c[0] !== undefined ? String(c[0]) : ''))
           .join('\n');
         const actual = isErr ? errCalls : outCalls;
-        // Support comments in expected output: ignore lines starting with #
+        // Support comments in expected output: ignore lines starting with # (unless fixture is comment-related)
         function stripComments(s: string): string {
           return s
             .split(/\r?\n/)
@@ -254,8 +260,12 @@ describe('golden CLI tests (expected/)', () => {
             .join('\n')
             .replace(/\s+$/u, '');
         }
+        // For comment-related fixtures, preserve comments in expected output
+        const preserveComments = metadata.fixture && metadata.fixture.includes('comment');
         const normActual = actual.replace(/\s+$/u, '');
-        const normExpected = stripComments(expectedContent);
+        const normExpected = preserveComments
+          ? expectedContent.replace(/\s+$/u, '')
+          : stripComments(expectedContent);
         expect(normActual).toBe(normExpected);
       } finally {
         process.chdir(originalCwd);

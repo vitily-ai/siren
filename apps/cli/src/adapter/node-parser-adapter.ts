@@ -11,10 +11,12 @@ import { fileURLToPath } from 'node:url';
 import type {
   ArrayNode,
   AttributeNode,
+  CommentToken,
   DocumentNode,
   ExpressionNode,
   IdentifierNode,
   LiteralNode,
+  Origin,
   ParseError,
   ParseResult,
   ParserAdapter,
@@ -70,11 +72,13 @@ export class NodeParserAdapter implements ParserAdapter {
     const rootNode = tree.rootNode;
     const errors = rootNode.hasError ? this.extractErrors(rootNode) : [];
     const documentNode = this.convertDocument(rootNode);
+    const comments = this.extractComments(rootNode, source);
 
     return {
       tree: documentNode,
       errors,
       success: !rootNode.hasError,
+      comments,
     };
   }
 
@@ -87,7 +91,11 @@ export class NodeParserAdapter implements ParserAdapter {
       }
     }
 
-    return { type: 'document', resources };
+    return {
+      type: 'document',
+      resources,
+      origin: this.getOrigin(node),
+    };
   }
 
   private convertResource(node: SyntaxNode): ResourceNode | null {
@@ -116,20 +124,33 @@ export class NodeParserAdapter implements ParserAdapter {
       identifier,
       complete,
       body: attributes,
+      origin: this.getOrigin(node),
     };
   }
 
   private convertIdentifier(node: SyntaxNode): IdentifierNode {
     const child = node.namedChildren[0];
     if (!child) {
-      return { type: 'identifier', value: node.text, quoted: false, text: node.text };
+      return {
+        type: 'identifier',
+        value: node.text,
+        quoted: false,
+        text: node.text,
+        origin: this.getOrigin(node),
+      };
     }
 
     const isQuoted = child.type === 'quoted_identifier';
     let value = child.text;
     if (isQuoted && value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
 
-    return { type: 'identifier', value, quoted: isQuoted, text: node.text };
+    return {
+      type: 'identifier',
+      value,
+      quoted: isQuoted,
+      text: node.text,
+      origin: this.getOrigin(node),
+    };
   }
 
   private convertAttribute(node: SyntaxNode): AttributeNode | null {
@@ -146,7 +167,12 @@ export class NodeParserAdapter implements ParserAdapter {
     const value = this.convertExpression(valueNode);
     if (!value) return null;
 
-    return { type: 'attribute', key, value };
+    return {
+      type: 'attribute',
+      key,
+      value,
+      origin: this.getOrigin(node),
+    };
   }
 
   private convertExpression(node: SyntaxNode): ExpressionNode | null {
@@ -186,18 +212,42 @@ export class NodeParserAdapter implements ParserAdapter {
       case 'string_literal': {
         let value = node.text;
         if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
-        return { type: 'literal', literalType: 'string', value, text: node.text };
+        return {
+          type: 'literal',
+          literalType: 'string',
+          value,
+          text: node.text,
+          origin: this.getOrigin(node),
+        };
       }
       case 'number_literal': {
         const value = parseFloat(node.text);
-        return { type: 'literal', literalType: 'number', value, text: node.text };
+        return {
+          type: 'literal',
+          literalType: 'number',
+          value,
+          text: node.text,
+          origin: this.getOrigin(node),
+        };
       }
       case 'boolean_literal': {
         const value = node.text === 'true';
-        return { type: 'literal', literalType: 'boolean', value, text: node.text };
+        return {
+          type: 'literal',
+          literalType: 'boolean',
+          value,
+          text: node.text,
+          origin: this.getOrigin(node),
+        };
       }
       case 'null_literal': {
-        return { type: 'literal', literalType: 'null', value: null, text: node.text };
+        return {
+          type: 'literal',
+          literalType: 'null',
+          value: null,
+          text: node.text,
+          origin: this.getOrigin(node),
+        };
       }
       default:
         return null;
@@ -211,7 +261,11 @@ export class NodeParserAdapter implements ParserAdapter {
       quoted: false,
       text: node.text,
     };
-    return { type: 'reference', identifier };
+    return {
+      type: 'reference',
+      identifier,
+      origin: this.getOrigin(node),
+    };
   }
 
   private convertArray(node: SyntaxNode): ArrayNode {
@@ -220,7 +274,11 @@ export class NodeParserAdapter implements ParserAdapter {
       const expr = this.convertExpression(child);
       if (expr) elements.push(expr);
     }
-    return { type: 'array', elements };
+    return {
+      type: 'array',
+      elements,
+      origin: this.getOrigin(node),
+    };
   }
 
   private extractErrors(node: SyntaxNode): ParseError[] {
@@ -239,6 +297,47 @@ export class NodeParserAdapter implements ParserAdapter {
 
     walk(node);
     return errors;
+  }
+
+  /**
+   * Helper to extract origin metadata from a tree-sitter node.
+   * Converts tree-sitter's byte offsets and row/column positions
+   * into our Origin interface.
+   */
+  private getOrigin(node: SyntaxNode): Origin {
+    return {
+      startByte: node.startIndex,
+      endByte: node.endIndex,
+      startRow: node.startPosition.row,
+      endRow: node.endPosition.row,
+    };
+  }
+
+  /**
+   * Extract comment tokens from the parse tree.
+   * Walks the tree-sitter tree to find all comment nodes (in extras),
+   * collects their position and text data, and returns them sorted by byte offset.
+   */
+  private extractComments(rootNode: SyntaxNode, source: string): CommentToken[] {
+    const comments: CommentToken[] = [];
+
+    // Use tree-sitter's descendantsOfType to find all comment nodes
+    const commentNodes = rootNode.descendantsOfType('comment');
+
+    for (const commentNode of commentNodes) {
+      comments.push({
+        startByte: commentNode.startIndex,
+        endByte: commentNode.endIndex,
+        startRow: commentNode.startPosition.row,
+        endRow: commentNode.endPosition.row,
+        text: source.slice(commentNode.startIndex, commentNode.endIndex),
+      });
+    }
+
+    // Sort comments by byte offset
+    comments.sort((a, b) => a.startByte - b.startByte);
+
+    return comments;
   }
 }
 

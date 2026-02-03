@@ -6,13 +6,32 @@
  */
 
 /**
+ * Origin metadata for CST nodes
+ *
+ * Tracks source code position (byte and row offsets) for a node.
+ * Used by formatters to preserve comments and structure.
+ * Optional on nodes—early code doesn't require origin tracking.
+ */
+export interface Origin {
+  readonly startByte: number;
+  readonly endByte: number;
+  readonly startRow: number;
+  readonly endRow: number;
+}
+
+/**
  * Base interface for all CST nodes
  *
  * Note: Position tracking (line/column) intentionally omitted until
  * diagnostics/error reporting are implemented. Will be added when needed.
+ *
+ * origin: Optional source code position metadata. Used by formatters
+ * to preserve comments and track source structure. Early code doesn't
+ * require this field.
  */
 export interface CSTNode {
   readonly type: string;
+  readonly origin?: Origin;
 }
 
 /**
