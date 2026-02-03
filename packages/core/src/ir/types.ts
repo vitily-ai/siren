@@ -5,6 +5,8 @@
  * They are environment-agnostic and used by all consumers of @siren/core.
  */
 
+import type { Origin } from '../parser/cst.js';
+
 /**
  * Primitive value types that can appear in attributes
  */
@@ -37,6 +39,16 @@ export type AttributeValue = PrimitiveValue | ResourceReference | ArrayValue;
 export interface Attribute {
   readonly key: string;
   readonly value: AttributeValue;
+  /**
+   * Optional raw text from the source CST for this attribute's value
+   * (includes quotes for string literals when available).
+   */
+  readonly raw?: string;
+  /**
+   * Optional source origin information for comment-aware formatting.
+   * This is not semantic and may differ across equivalent parses.
+   */
+  readonly origin?: Origin;
 }
 
 /**
@@ -56,6 +68,11 @@ export interface Resource {
    */
   readonly complete: boolean;
   readonly attributes: readonly Attribute[];
+  /**
+   * Optional source origin information for comment preservation
+   * Used by formatters to interleave comments with exported IR
+   */
+  readonly origin?: Origin;
 }
 
 /**

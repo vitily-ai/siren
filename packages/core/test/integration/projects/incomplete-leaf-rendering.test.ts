@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { isArray, isReference } from '../../../src/ir/index.js';
+import { isArray, isReference } from '../../../src/ir/types.js';
 import { getAdapter, parseAndDecodeAll } from './helper.js';
 
 function getDependsOn(resource: any): string[] {
@@ -23,10 +23,7 @@ describe('project:incomplete-leaf-rendering', () => {
   });
 
   it('decodes fixture and verifies completed dependency is present but has no deps', async () => {
-    const { resources, diagnostics } = await parseAndDecodeAll(
-      adapter,
-      'incomplete-leaf-rendering',
-    );
+    const { resources } = await parseAndDecodeAll(adapter, 'incomplete-leaf-rendering');
 
     // Expect 5 resources defined in the fixture
     expect(resources).toHaveLength(5);

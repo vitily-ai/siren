@@ -1,7 +1,8 @@
 {
 	"fixture": "parse-errors",
-	"command": "siren list",
-	"expect": "stdout"
+	"command": "siren list"
 }
 ---
 valid
+---
+Warning: skipping siren/broken.siren (parse error)

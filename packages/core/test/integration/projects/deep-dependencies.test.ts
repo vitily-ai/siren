@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { isArray, isReference } from '../../../src/ir/index.js';
+import { isArray, isReference } from '../../../src/ir/types.js';
 import { getAdapter, parseAndDecodeAll } from './helper.js';
 
 function getDependsOn(resource: any): string[] {

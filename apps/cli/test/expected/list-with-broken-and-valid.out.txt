@@ -1,0 +1,8 @@
+{
+	"fixture": "list-with-broken-and-valid",
+	"command": "siren list"
+}
+---
+
+---
+Warning: skipping siren/broken.siren (parse error)

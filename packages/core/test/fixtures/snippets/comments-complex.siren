@@ -1,0 +1,24 @@
+# Project Setup Phase
+# Initialize all required tasks
+task setup {
+  description = "Initial setup"  # Critical first step
+}
+
+# Development Phase
+# Main development work begins here
+
+task development {
+  description = "Core development"  # Primary work
+  depends_on = setup  # Requires setup completion
+}
+
+# Testing and QA
+# Comprehensive testing before release
+
+milestone qa {  # Quality assurance checkpoint
+  depends_on = [setup, development]  # Both must be done
+}
+
+# Final release preparation
+# Comments at end of file
+# Documenting final state

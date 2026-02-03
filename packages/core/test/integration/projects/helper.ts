@@ -12,7 +12,8 @@ export async function getAdapter() {
 }
 
 export async function parseAndDecodeAll(adapter: any, projectName: string) {
-  const projectPath = join(projectsDir, projectName, 'siren');
+  // Treat the fixture root as the project root; do not expect a nested `siren/` dir.
+  const projectPath = join(projectsDir, projectName);
   const files: string[] = [];
 
   function walk(dir: string) {

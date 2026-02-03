@@ -1,0 +1,23 @@
+{"fixture":"comments-detached","command":"siren format --dry-run"}
+---
+task first {
+  description = "First task"
+}
+
+# This block is separated by blank lines
+# It serves as a detached comment block
+# Documenting what comes next
+
+task second {
+  description = "Second task"
+}
+
+# Final section commentary
+# Explaining the milestone
+
+milestone release {
+  depends_on = [first, second]
+}
+
+Updated 1 files out of 1
+---

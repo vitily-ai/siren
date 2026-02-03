@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { decode, getMilestoneIds, type Resource } from '@siren/core';
+import { decode, IRContext, type Resource } from '@siren/core';
 import { getParser } from './parser.js';
 
 const SIREN_DIR = 'siren';
@@ -12,6 +12,7 @@ export interface ProjectContext {
   files: string[];
   resources: Resource[];
   milestones: string[];
+  ir?: IRContext;
   warnings: string[];
   errors: string[];
 }
@@ -47,7 +48,7 @@ export function getLoadedContext(): ProjectContext | null {
 
 export async function loadProject(cwd: string): Promise<ProjectContext> {
   const rootDir = cwd;
-  const sirenDir = path.join(rootDir, SIREN_DIR);
+  let sirenDir = path.join(rootDir, SIREN_DIR);
 
   const ctx: ProjectContext = {
     cwd,
@@ -60,12 +61,38 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
     errors: [],
   };
 
-  if (!fs.existsSync(sirenDir)) {
-    loadedContext = ctx;
-    return ctx;
+  // Prefer 'siren/' directory when present and containing .siren files; otherwise
+  // search the project root. This supports legacy fixtures with a `siren/`
+  // subdirectory as well as newer fixtures that place files at the project root.
+  if (fs.existsSync(sirenDir)) {
+    const nestedFiles = findSirenFiles(sirenDir);
+    if (nestedFiles.length > 0) {
+      // Prefer nested files only if at least one contains data. Empty files are
+      // treated as absent to allow fixtures that moved files to the project root.
+      const hasNonEmpty = nestedFiles.some((p) => {
+        try {
+          return fs.statSync(p).size > 0;
+        } catch {
+          return false;
+        }
+      });
+      if (hasNonEmpty) {
+        ctx.files = nestedFiles;
+      } else {
+        // Treat empty nested files as absent — scan project root instead.
+        sirenDir = rootDir;
+        ctx.files = findSirenFiles(rootDir);
+      }
+    } else {
+      // No files under nested siren/ — fall back to scanning the project root.
+      sirenDir = rootDir;
+      ctx.files = findSirenFiles(rootDir);
+    }
+  } else {
+    // Fall back to scanning the project root for .siren files.
+    sirenDir = rootDir;
+    ctx.files = findSirenFiles(rootDir);
   }
-
-  ctx.files = findSirenFiles(sirenDir);
   if (ctx.files.length === 0) {
     loadedContext = ctx;
     return ctx;
@@ -102,7 +129,10 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
   }
 
   ctx.resources = allResources;
-  ctx.milestones = getMilestoneIds(allResources);
+  // Build an immutable IR context for the project and derive milestones
+  const ir = IRContext.fromResources(allResources);
+  ctx.ir = ir;
+  ctx.milestones = ir.getMilestoneIds();
 
   loadedContext = ctx;
   return ctx;

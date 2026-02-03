@@ -42,16 +42,15 @@ cp -r "$fixture_dir" "$temp_dir"
 project_dir="$temp_dir/$(basename "$fixture_dir")"
 cd "$project_dir"
 
-# Run the command and capture output
-if output=$(eval "$cli_cmd" 2>&1); then
-  # Success, stdout
-  expected_file="$expected_dir/$golden_name.txt"
-  exit_code=0
-else
-  # Failure, stderr
-  expected_file="$expected_dir/$golden_name.err.txt"
-  exit_code=$?
-fi
+# Run the command and capture stdout and stderr separately
+stdout_file="$temp_dir/golden.stdout"
+stderr_file="$temp_dir/golden.stderr"
+# Execute command: stdout -> stdout_file, stderr -> stderr_file
+eval "$cli_cmd" 1>"$stdout_file" 2>"$stderr_file" || true
+exit_code=$?
+
+# Always write combined .out.txt file: JSON meta, then stdout section, then stderr section
+expected_file="$expected_dir/$golden_name.out.txt"
 
 # Write the frontmatter
 cat > "$expected_file" <<EOF
@@ -62,9 +61,20 @@ cat > "$expected_file" <<EOF
 ---
 EOF
 
-# Append the output
-echo "$output" >> "$expected_file"
+# Append stdout (may be empty)
+if [ -s "$stdout_file" ]; then
+  cat "$stdout_file" >> "$expected_file"
+  echo >> "$expected_file"
+fi
+
+echo "---" >> "$expected_file"
+
+# Append stderr (may be empty)
+if [ -s "$stderr_file" ]; then
+  cat "$stderr_file" >> "$expected_file"
+  echo >> "$expected_file"
+fi
 
 echo "Created golden file: $expected_file"
 
-exit 0
+exit $exit_code

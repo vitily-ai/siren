@@ -86,3 +86,15 @@ Fixtures
 	- `apps/cli/test/helpers/fixture-utils.ts` — helpers for copying and preparing fixtures in tests
 - Usage: When adding a grammar/decoder change, add a small, focused fixture that reproduces the case and a test referencing it. For golden file changes, update the expected output and ensure tests reflect the new behavior.
 - Best practices: keep fixtures minimal and well-named, include comments when needed, add a matching test, and prefer multiple small fixtures over one large file.
+
+Public API Policy (IRContext)
+-----------------------------
+
+- **Goal:** expose a minimal, opaque object-oriented surface via `IRContext` plus the IR types. Consumers (CLI, web, external) should interact with the project IR only through `IRContext` methods and exported types.
+- **What to export:** only IR types and `IRContext` from `packages/core`'s public entry. Internal utilities, parser runtime helpers, and type-guard helpers (`isArray`, `isReference`, etc.) should remain internal and not re-exported.
+- **Immutability & encapsulation:** `IRContext` instances are immutable and return plain data. Methods should avoid leaking internal mutable structures and should be the documented way for clients to query the IR (e.g., `getMilestoneIds()`, `getTasksByMilestone()`, `findResourceById()`, `getIncompleteLeafDependencyChains()`).
+- **Testing guidance:**
+	- Integration and external tests should exercise behavior via the `IRContext` API only.
+	- Internal unit tests within `packages/core` may import package-local modules (e.g., `src/ir/types.js` or `src/utilities/*`) to verify low-level behavior. Those imports must remain inside the package and should not be considered part of the public contract.
+- **CLI/Web integration:** when adding CLI commands or web features, prefer wiring the command handlers to methods on `IRContext` (CLI commands should mirror object methods). This keeps the CLI usage and programmatic API aligned.
+- **Evolving internals:** keep utilities and helpers private so the core implementation can change without breaking consumers. When a new capability is intended for consumers, add a well-documented method to `IRContext` and update callers.
