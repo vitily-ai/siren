@@ -1,0 +1,3 @@
+milestone milestone-files {
+  description = "treat .siren files as implicit simple milestones where every contained entry is a dependency"
+}

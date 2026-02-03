@@ -1,8 +1,3 @@
-task status-complete complete {
-  description = "add to the grammar a first-class way to mark a task or milestone as complete"
-  suggested_example = "task some-task complete { ... }"
-}
-
 task milestone-complete-implicit {
   description = "a milestone that has dependencies should be implicitly complete if all of its dependencies are complete. orphan milestones should not be implicitly completed."
 }
@@ -28,6 +23,3 @@ task naked-description {
   depends_on = multiline-strings
 }
 
-milestone milestone-files {
-  description = "treat .siren files as implicit simple milestones where every contained entry is a dependency"
-}
