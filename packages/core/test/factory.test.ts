@@ -2,7 +2,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { Language, Parser } from 'web-tree-sitter';
-import { decode } from '../src/decoder/index.js';
+import { IRContext } from '../src/ir/context.js';
 import { createParserFactory } from '../src/parser/factory.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -32,10 +32,9 @@ describe('createParserFactory', () => {
     expect(result.success).toBe(true);
     expect(result.tree).not.toBeNull();
 
-    // decode should accept the produced CST without throwing
-    const decoded = decode(result.tree!);
-    expect(decoded.success).toBe(true);
-    expect(decoded.document).not.toBeNull();
-    expect(decoded.document!.resources.length).toBeGreaterThan(0);
+    // IRContext.fromCst should accept the produced CST without throwing
+    const ir = IRContext.fromCst(result.tree!);
+    expect(ir).not.toBeNull();
+    expect(ir.resources.length).toBeGreaterThan(0);
   });
 });

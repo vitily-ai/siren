@@ -17,17 +17,16 @@ task cli-add-task-no-milestone {
 
 milestone cli-mvp {
   description = "Minimum features to make the cli usable"
-  depends_on = [cli-new-entry, recursive-search-up, cli-add-task-basic, cli-add-task-no-milestone, query-complete, complete-duplicates, ensure-load, list-with-tasks, list-with-status, list-to-core, list-indentation, list-nested]
+  depends_on = [cli-new-entry, recursive-search-up, cli-add-task-basic, cli-add-task-no-milestone, query-complete, complete-duplicates]
 }
 
 task query-complete {
   description = "Given a task/milestone id, determine if it complete or not"
-  depends_on = [status-complete]
+  planning_status = "Might need a rethink - considering repurposing `complete` symbol for general status"
 }
 
 task complete-duplicates {
   description = "attempting to 'complete' an entry that has a duplicated id via `siren complete` should fail, explicitly highliting the duplication"
-  depends_on = [status-complete, duplicate-ids]
 }
 
 milestone get-next {
@@ -45,5 +44,5 @@ task get-next-core-api {
 
 task show-next {
   description = "`siren show` also includes the results of `next`"
-  depends_on = [get-next, show-entry]
+  depends_on = [get-next]
 }

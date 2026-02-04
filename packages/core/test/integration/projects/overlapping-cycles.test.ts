@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { decode } from '../../../src/decoder/index.js';
+import { IRContext } from '../../../src/ir/context.js';
 import { getTestAdapter } from '../../helpers/parser.js';
 import { getAdapter, parseAndDecodeAll } from './helper.js';
 
@@ -31,9 +31,9 @@ describe('project:overlapping-cycles', () => {
     const src = readFileSync(join(projectDir, 'main.siren'), 'utf-8');
     const parseResult = await adapterLocal.parse(src);
     expect(parseResult.success).toBe(true);
-    const decodeResult = decode(parseResult.tree!);
-    expect(decodeResult.document!.cycles).toHaveLength(2);
-    const cycleNodes = decodeResult.document!.cycles.map((c) => c.nodes);
+    const ir = IRContext.fromCst(parseResult.tree!);
+    expect(ir.cycles).toHaveLength(2);
+    const cycleNodes = ir.cycles.map((c) => c.nodes);
     expect(cycleNodes).toContainEqual(['a', 'b', 'c', 'a']);
     expect(cycleNodes).toContainEqual(['a', 'c', 'a']);
   });

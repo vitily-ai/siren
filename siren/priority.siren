@@ -33,5 +33,5 @@ task get-next {
 
 milestone sort-by-priority {
   description = "add the ability to define priority on tasks/milestones and sort by it"
-  depends_on = [project-sort-attribute, sort-order, priority-invalid, show-priority]
+  depends_on = [sort-order, priority-invalid, show-priority]
 }

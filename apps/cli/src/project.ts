@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { decode, IRContext, type Resource } from '@siren/core';
+import { IRContext, type Resource } from '@siren/core';
 import { getParser } from './parser.js';
 
 const SIREN_DIR = 'siren';
@@ -100,6 +100,7 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
 
   const parser = await getParser();
   const allResources: Resource[] = [];
+  const diagnostics: string[] = [];
 
   for (const filePath of ctx.files) {
     const source = fs.readFileSync(filePath, 'utf-8');
@@ -110,26 +111,27 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
       continue;
     }
 
-    const decodeResult = decode(parseResult.tree);
-    if (!decodeResult.document) {
-      continue;
-    }
+    const ir = IRContext.fromCst(parseResult.tree, filePath);
 
-    // Collect decoding warnings (e.g., circular dependencies)
-    if (decodeResult.diagnostics) {
-      for (const diagnostic of decodeResult.diagnostics) {
-        if (diagnostic.severity === 'warning') {
-          const relPath = path.relative(rootDir, filePath);
-          ctx.warnings.push(`Warning: ${relPath}: ${diagnostic.message}`);
-        }
+    // Collect decode-time diagnostics (e.g., circular dependencies within this file)
+    for (const diagnostic of ir.diagnostics) {
+      if (diagnostic.severity === 'warning') {
+        const relPath = path.relative(rootDir, filePath);
+        diagnostics.push(`Warning: ${relPath}: ${diagnostic.message}`);
+      } else if (diagnostic.severity === 'error') {
+        const relPath = path.relative(rootDir, filePath);
+        diagnostics.push(`Error: ${relPath}: ${diagnostic.message}`);
       }
     }
 
-    allResources.push(...decodeResult.document.resources);
+    allResources.push(...ir.resources);
   }
 
   ctx.resources = allResources;
-  // Build an immutable IR context for the project and derive milestones
+  // Collect warnings from all files into context
+  ctx.warnings.push(...diagnostics);
+
+  // Build a new IR context for the aggregated project
   const ir = IRContext.fromResources(allResources);
   ctx.ir = ir;
   ctx.milestones = ir.getMilestoneIds();

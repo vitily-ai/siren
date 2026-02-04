@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { decode } from '../../../src/decoder/index.js';
+import { IRContext } from '../../../src/ir/context.js';
 import { getTestAdapter } from '../../helpers/parser.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -32,11 +32,9 @@ export async function parseAndDecodeAll(adapter: any, projectName: string) {
   for (const f of files) {
     const src = readFileSync(f, 'utf-8');
     const parseResult = await adapter.parse(src);
-    const decodeResult = decode(parseResult.tree!);
-    if (decodeResult.document?.resources) {
-      aggregatedResources.push(...decodeResult.document.resources);
-    }
-    if (decodeResult.diagnostics) diagnostics.push(...decodeResult.diagnostics);
+    const ir = IRContext.fromCst(parseResult.tree!);
+    aggregatedResources.push(...ir.resources);
+    diagnostics.push(...ir.diagnostics);
   }
 
   return { resources: aggregatedResources, diagnostics };

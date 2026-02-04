@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { decode } from '../../src/decoder/index.js';
+import { IRContext } from '../../src/ir/context.js';
 import { isReference } from '../../src/ir/types.js';
 import type { ParserAdapter } from '../../src/parser/adapter.js';
 import { getTestAdapter } from '../helpers/parser.js';
@@ -30,27 +30,27 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes successfully with no errors', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      expect(decodeResult.success).toBe(true);
-      expect(decodeResult.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
+      expect(ir.diagnostics.filter((d) => d.severity === 'error').length === 0).toBe(true);
+      expect(ir.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     });
 
     it('decodes correct number of resources (4)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      expect(decodeResult.document).not.toBeNull();
-      expect(decodeResult.document!.resources).toHaveLength(4);
+      expect(ir).not.toBeNull();
+      expect(ir.resources).toHaveLength(4);
     });
 
     it('decodes resource types correctly (3 tasks, 1 milestone)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      const resources = decodeResult.document!.resources;
+      const resources = ir.resources;
       const tasks = resources.filter((r) => r.type === 'task');
       const milestones = resources.filter((r) => r.type === 'milestone');
 
@@ -61,9 +61,9 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes resource IDs correctly (quotes stripped)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      const ids = decodeResult.document!.resources.map((r) => r.id);
+      const ids = ir.resources.map((r) => r.id);
 
       expect(ids).toContain('example');
       expect(ids).toContain('initial setup'); // stripped quotes
@@ -74,9 +74,9 @@ describe('Decode Integration: Fixtures', () => {
     it('preserves resource order from source', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      const resources = decodeResult.document!.resources;
+      const resources = ir.resources;
 
       expect(resources).toMatchObject([
         { type: 'task', id: 'example' },
@@ -93,27 +93,27 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes successfully with no errors', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      expect(decodeResult.success).toBe(true);
-      expect(decodeResult.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
+      expect(ir.diagnostics.filter((d) => d.severity === 'error').length === 0).toBe(true);
+      expect(ir.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     });
 
     it('decodes correct number of resources (3)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      expect(decodeResult.document).not.toBeNull();
-      expect(decodeResult.document!.resources).toHaveLength(3);
+      expect(ir).not.toBeNull();
+      expect(ir.resources).toHaveLength(3);
     });
 
     it('decodes resource types correctly (2 tasks, 1 milestone)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      const resources = decodeResult.document!.resources;
+      const resources = ir.resources;
       const tasks = resources.filter((r) => r.type === 'task');
       const milestones = resources.filter((r) => r.type === 'milestone');
 
@@ -124,9 +124,9 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes resource IDs correctly (quotes stripped)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      const ids = decodeResult.document!.resources.map((r) => r.id);
+      const ids = ir.resources.map((r) => r.id);
 
       expect(ids).toContain('with_attributes');
       expect(ids).toContain('Q1 Launch'); // stripped quotes
@@ -136,9 +136,9 @@ describe('Decode Integration: Fixtures', () => {
     it('preserves resource order from source', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      const resources = decodeResult.document!.resources;
+      const resources = ir.resources;
 
       expect(resources).toMatchObject([
         { type: 'task', id: 'with_attributes' },
@@ -150,11 +150,9 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes string attributes to string values (quotes stripped)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      const withAttributes = decodeResult.document!.resources.find(
-        (r) => r.id === 'with_attributes',
-      )!;
+      const withAttributes = ir.resources.find((r) => r.id === 'with_attributes')!;
       const description = withAttributes.attributes.find((a) => a.key === 'description');
 
       expect(description).toBeDefined();
@@ -167,11 +165,9 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes number attributes to number values (not strings)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      const withAttributes = decodeResult.document!.resources.find(
-        (r) => r.id === 'with_attributes',
-      )!;
+      const withAttributes = ir.resources.find((r) => r.id === 'with_attributes')!;
       const points = withAttributes.attributes.find((a) => a.key === 'points');
 
       expect(points).toBeDefined();
@@ -182,9 +178,9 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes boolean attributes to boolean values', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      const milestone = decodeResult.document!.resources.find((r) => r.id === 'Q1 Launch')!;
+      const milestone = ir.resources.find((r) => r.id === 'Q1 Launch')!;
       const critical = milestone.attributes.find((a) => a.key === 'critical');
 
       expect(critical).toBeDefined();
@@ -195,9 +191,9 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes complex_example with mixed attribute types', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      const complex = decodeResult.document!.resources.find((r) => r.id === 'complex_example')!;
+      const complex = ir.resources.find((r) => r.id === 'complex_example')!;
       const attrs = complex.attributes;
 
       // String attributes
@@ -216,9 +212,9 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes milestone Q1 Launch with year as number', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      const milestone = decodeResult.document!.resources.find((r) => r.id === 'Q1 Launch')!;
+      const milestone = ir.resources.find((r) => r.id === 'Q1 Launch')!;
       const year = milestone.attributes.find((a) => a.key === 'year');
 
       expect(year).toBeDefined();
@@ -233,27 +229,27 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes successfully with no errors', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      expect(decodeResult.success).toBe(true);
-      expect(decodeResult.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
+      expect(ir.diagnostics.filter((d) => d.severity === 'error').length === 0).toBe(true);
+      expect(ir.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     });
 
     it('decodes correct number of resources (8)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      expect(decodeResult.document).not.toBeNull();
-      expect(decodeResult.document!.resources).toHaveLength(8);
+      expect(ir).not.toBeNull();
+      expect(ir.resources).toHaveLength(8);
     });
 
     it('decodes resource types correctly (6 tasks, 2 milestones)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      const resources = decodeResult.document!.resources;
+      const resources = ir.resources;
       const tasks = resources.filter((r) => r.type === 'task');
       const milestones = resources.filter((r) => r.type === 'milestone');
 
@@ -264,9 +260,9 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes resource IDs correctly (quotes stripped)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      const ids = decodeResult.document!.resources.map((r) => r.id);
+      const ids = ir.resources.map((r) => r.id);
 
       // Bare identifiers
       expect(ids).toContain('A');
@@ -283,9 +279,9 @@ describe('Decode Integration: Fixtures', () => {
     it('preserves resource order from source', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      const resources = decodeResult.document!.resources;
+      const resources = ir.resources;
 
       expect(resources[0]).toMatchObject({ type: 'task', id: 'A' });
       expect(resources[1]).toMatchObject({ type: 'milestone', id: 'B' });
@@ -300,9 +296,9 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes single reference attribute (B.depends_on = A)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      const resourceB = decodeResult.document!.resources.find((r) => r.id === 'B')!;
+      const resourceB = ir.resources.find((r) => r.id === 'B')!;
       const dependsOn = resourceB.attributes.find((a) => a.key === 'depends_on');
 
       expect(dependsOn).toBeDefined();
@@ -316,9 +312,9 @@ describe('Decode Integration: Fixtures', () => {
       // as reference expressions, but a quoted string in value position is a literal.
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      const deploy = decodeResult.document!.resources.find((r) => r.id === 'deploy')!;
+      const deploy = ir.resources.find((r) => r.id === 'deploy')!;
       const dependsOn = deploy.attributes.find((a) => a.key === 'depends_on');
 
       expect(dependsOn).toBeDefined();
@@ -330,9 +326,9 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes forward reference (early.depends_on = late)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      const early = decodeResult.document!.resources.find((r) => r.id === 'early')!;
+      const early = ir.resources.find((r) => r.id === 'early')!;
       const dependsOn = early.attributes.find((a) => a.key === 'depends_on');
 
       expect(dependsOn).toBeDefined();
@@ -342,13 +338,13 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes array references (C.depends_on = [A, B])', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
       // Decode should succeed
-      expect(decodeResult.success).toBe(true);
+      expect(ir.diagnostics.filter((d) => d.severity === 'error').length === 0).toBe(true);
 
       // Resource C should exist and its array depends_on should be decoded
-      const resourceC = decodeResult.document!.resources.find((r) => r.id === 'C')!;
+      const resourceC = ir.resources.find((r) => r.id === 'C')!;
       const dependsOn = resourceC.attributes.find((a) => a.key === 'depends_on');
 
       // Array attribute is decoded
@@ -365,9 +361,9 @@ describe('Decode Integration: Fixtures', () => {
     it('identifies which resources have single vs array references', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      const resources = decodeResult.document!.resources;
+      const resources = ir.resources;
 
       // Resources with single references (should have depends_on decoded as ResourceReference)
       const singleRefResources = ['B', 'early'];
@@ -421,9 +417,9 @@ describe('Decode Integration: Fixtures', () => {
     it('01-minimal resources have empty attributes (no attributes in source)', async () => {
       const source = readFileSync(join(fixturesDir, 'snippets', '01-minimal.siren'), 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      for (const resource of decodeResult.document!.resources) {
+      for (const resource of ir.resources) {
         expect(resource.attributes).toEqual([]);
       }
     });
@@ -431,10 +427,10 @@ describe('Decode Integration: Fixtures', () => {
     it('02-simple resources have decoded attributes', async () => {
       const source = readFileSync(join(fixturesDir, 'snippets', '02-simple.siren'), 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
       // All resources in 02-simple have attributes
-      for (const resource of decodeResult.document!.resources) {
+      for (const resource of ir.resources) {
         expect(resource.attributes.length).toBeGreaterThan(0);
       }
     });
@@ -446,27 +442,27 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes successfully with no errors', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      expect(decodeResult.success).toBe(true);
-      expect(decodeResult.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
+      expect(ir.diagnostics.filter((d) => d.severity === 'error').length === 0).toBe(true);
+      expect(ir.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     });
 
     it('decodes correct number of resources (3)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      expect(decodeResult.document).not.toBeNull();
-      expect(decodeResult.document!.resources).toHaveLength(3);
+      expect(ir).not.toBeNull();
+      expect(ir.resources).toHaveLength(3);
     });
 
     it('decodes complete status correctly', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(source);
-      const decodeResult = decode(parseResult.tree!);
+      const ir = IRContext.fromCst(parseResult.tree!);
 
-      const resources = decodeResult.document!.resources;
+      const resources = ir.resources;
       expect(resources[0].complete).toBe(true); // task done complete
       expect(resources[1].complete).toBe(true); // milestone shipped complete
       expect(resources[2].complete).toBe(false); // task incomplete

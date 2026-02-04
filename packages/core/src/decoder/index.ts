@@ -55,6 +55,7 @@ function getDependsOn(resource: Resource): string[] {
 
 /**
  * Diagnostic message produced during decoding
+ * @internal - Use IRContext.diagnostics instead
  */
 export interface Diagnostic {
   /** Diagnostic code (e.g., 'W001' for warnings, 'E001' for errors) */
@@ -67,6 +68,7 @@ export interface Diagnostic {
 
 /**
  * Result of decoding a CST into IR
+ * @internal - Use IRContext.fromCst() instead
  */
 export interface DecodeResult {
   /** The decoded document, or null if decoding failed with errors */
@@ -269,11 +271,11 @@ function decodeResource(
 
 /**
  * Decode a CST into an IR Document
- *
+ * @internal Not part of the public API; use IRContext.fromCst() instead.
  * @param cst - The parsed concrete syntax tree
- * @returns The decode result with document, diagnostics, and success flag
+ * @returns Decoded document with diagnostics
  */
-export function decode(cst: DocumentNode): DecodeResult {
+export function decodeDocument(cst: DocumentNode): DecodeResult {
   const diagnostics: Diagnostic[] = [];
   const resources: Resource[] = [];
 
@@ -283,27 +285,10 @@ export function decode(cst: DocumentNode): DecodeResult {
 
   // Build dependency graph and check for cycles
   const graph = new DirectedGraph();
-
-  // Known resource ids — used to detect dangling dependencies
-  const knownIds = new Set(resources.map((r) => r.id));
-
   for (const resource of resources) {
     graph.addNode(resource.id);
     const dependsOn = getDependsOn(resource);
     for (const depId of dependsOn) {
-      // If dependency refers to a resource that doesn't exist in this
-      // document, emit a dangling-dependency warning and do NOT add the
-      // missing id to the graph. This prevents missing nodes from
-      // appearing in cycle detection/topological APIs.
-      if (!knownIds.has(depId)) {
-        diagnostics.push({
-          code: 'W005',
-          message: `Dangling dependency: ${resource.type} '${resource.id}' -> ${depId}?`,
-          severity: 'warning',
-        });
-        continue;
-      }
-
       graph.addEdge(resource.id, depId);
     }
   }
@@ -327,3 +312,9 @@ export function decode(cst: DocumentNode): DecodeResult {
     success: !hasErrors,
   };
 }
+
+/**
+ * Alias for backwards compatibility with existing tests
+ * @deprecated Use IRContext.fromCst() instead
+ */
+export const decode = decodeDocument;
