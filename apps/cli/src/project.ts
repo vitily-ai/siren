@@ -100,6 +100,7 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
 
   const parser = await getParser();
   const allResources: Resource[] = [];
+  const resourceSources = new Map<string, string>();
 
   for (const filePath of ctx.files) {
     const source = fs.readFileSync(filePath, 'utf-8');
@@ -111,13 +112,20 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
     }
 
     const ir = IRContext.fromCst(parseResult.tree, filePath);
+
+    // Track which file each resource came from
+    for (const resource of ir.resources) {
+      const relPath = path.relative(rootDir, filePath);
+      resourceSources.set(resource.id, relPath);
+    }
+
     allResources.push(...ir.resources);
   }
 
   ctx.resources = allResources;
 
-  // Build project-wide IR context and collect all diagnostics
-  const ir = IRContext.fromResources(allResources);
+  // Build project-wide IR context and collect all diagnostics with file attribution
+  const ir = IRContext.fromResources(allResources, undefined, resourceSources);
   ctx.ir = ir;
   ctx.milestones = ir.getMilestoneIds();
 

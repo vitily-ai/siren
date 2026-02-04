@@ -83,7 +83,11 @@ export class IRContext {
    * Factory to create an IRContext from resources, detecting cycles and generating diagnostics.
    * Performs the same cycle detection as fromCst() but starts from already-decoded resources.
    */
-  static fromResources(resources: readonly Resource[], source?: string): IRContext {
+  static fromResources(
+    resources: readonly Resource[],
+    source?: string,
+    resourceSources?: Map<string, string>,
+  ): IRContext {
     const diagnostics: Diagnostic[] = [];
 
     // Build dependency graph and check for cycles
@@ -98,11 +102,29 @@ export class IRContext {
     const cycles = graph.getCycles();
     const cyclesIr: { nodes: readonly string[] }[] = cycles.map((cycle) => ({ nodes: cycle }));
 
-    // Add warnings for each cycle
+    // Add warnings for each cycle with file attribution
     for (const cycle of cycles) {
+      let fileInfo = '';
+      if (resourceSources) {
+        // Find which files contain resources in this cycle
+        const filesInCycle = new Set<string>();
+        for (const nodeId of cycle) {
+          const nodeSource = resourceSources.get(nodeId);
+          if (nodeSource) {
+            const relativePath = nodeSource.includes('/')
+              ? nodeSource.substring(nodeSource.lastIndexOf('/') + 1)
+              : nodeSource;
+            filesInCycle.add(relativePath);
+          }
+        }
+        if (filesInCycle.size > 0) {
+          fileInfo = `${Array.from(filesInCycle).join(', ')}: `;
+        }
+      }
+
       diagnostics.push({
         code: 'W004',
-        message: `Circular dependency detected: ${cycle.join(' -> ')}`,
+        message: `${fileInfo}Circular dependency detected: ${cycle.join(' -> ')}`,
         severity: 'warning',
       });
     }
@@ -112,7 +134,6 @@ export class IRContext {
 
   /**
    * Helper to extract dependency IDs from a resource's depends_on attribute.
-   * Duplicated from decoder/index.ts to avoid circular dependencies.
    */
   private static getDependsOn(resource: Resource): string[] {
     const attr = resource.attributes.find((a) => a.key === 'depends_on');
