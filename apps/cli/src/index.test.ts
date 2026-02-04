@@ -489,11 +489,11 @@ describe('siren main', () => {
     expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
     expect(consoleErrorSpy).toHaveBeenNthCalledWith(
       1,
-      'Warning: siren/main.siren: Circular dependency detected: a -> b -> c -> a',
+      'Warning: Circular dependency detected: a -> b -> c -> a',
     );
     expect(consoleErrorSpy).toHaveBeenNthCalledWith(
       2,
-      'Warning: siren/main.siren: Circular dependency detected: a -> c -> a',
+      'Warning: Circular dependency detected: a -> c -> a',
     );
     // The milestone output itself is validated by golden tests; ensure something was logged.
     expect(consoleLogSpy).toHaveBeenCalled();

@@ -2,8 +2,9 @@ import { decodeDocument } from '../decoder/index.js';
 import type { DocumentNode } from '../parser/cst.js';
 import { getIncompleteLeafDependencyChains } from '../utilities/dependency-chains.js';
 import { findResourceById } from '../utilities/entry.js';
+import { DirectedGraph } from '../utilities/graph.js';
 import { getMilestoneIds, getTasksByMilestone } from '../utilities/milestone.js';
-import type { Document, Resource } from './types.js';
+import type { Document, Resource, ResourceReference } from './types.js';
 
 /**
  * Diagnostic message produced during IR construction
@@ -79,10 +80,59 @@ export class IRContext {
   }
 
   /**
-   * Convenience factory to create an IRContext from resources without decoding.
-   * Useful for constructing IR from already-decoded resources (e.g., in tests).
+   * Factory to create an IRContext from resources, detecting cycles and generating diagnostics.
+   * Performs the same cycle detection as fromCst() but starts from already-decoded resources.
    */
   static fromResources(resources: readonly Resource[], source?: string): IRContext {
-    return new IRContext({ resources: resources.slice(), source, cycles: [] });
+    const diagnostics: Diagnostic[] = [];
+
+    // Build dependency graph and check for cycles
+    const graph = new DirectedGraph();
+    for (const resource of resources) {
+      graph.addNode(resource.id);
+      const dependsOn = IRContext.getDependsOn(resource);
+      for (const depId of dependsOn) {
+        graph.addEdge(resource.id, depId);
+      }
+    }
+    const cycles = graph.getCycles();
+    const cyclesIr: { nodes: readonly string[] }[] = cycles.map((cycle) => ({ nodes: cycle }));
+
+    // Add warnings for each cycle
+    for (const cycle of cycles) {
+      diagnostics.push({
+        code: 'W004',
+        message: `Circular dependency detected: ${cycle.join(' -> ')}`,
+        severity: 'warning',
+      });
+    }
+
+    return new IRContext({ resources: resources.slice(), source, cycles: cyclesIr }, diagnostics);
+  }
+
+  /**
+   * Helper to extract dependency IDs from a resource's depends_on attribute.
+   * Duplicated from decoder/index.ts to avoid circular dependencies.
+   */
+  private static getDependsOn(resource: Resource): string[] {
+    const attr = resource.attributes.find((a) => a.key === 'depends_on');
+    if (!attr) return [];
+
+    const value = attr.value;
+    if (value === null) return [];
+    if (typeof value === 'object' && 'kind' in value) {
+      if (value.kind === 'reference') {
+        return [value.id];
+      }
+      if (value.kind === 'array') {
+        return value.elements
+          .filter(
+            (el): el is ResourceReference =>
+              typeof el === 'object' && el !== null && 'kind' in el && el.kind === 'reference',
+          )
+          .map((ref) => ref.id);
+      }
+    }
+    return [];
   }
 }

@@ -100,7 +100,6 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
 
   const parser = await getParser();
   const allResources: Resource[] = [];
-  const diagnostics: string[] = [];
 
   for (const filePath of ctx.files) {
     const source = fs.readFileSync(filePath, 'utf-8');
@@ -112,29 +111,24 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
     }
 
     const ir = IRContext.fromCst(parseResult.tree, filePath);
-
-    // Collect decode-time diagnostics (e.g., circular dependencies within this file)
-    for (const diagnostic of ir.diagnostics) {
-      if (diagnostic.severity === 'warning') {
-        const relPath = path.relative(rootDir, filePath);
-        diagnostics.push(`Warning: ${relPath}: ${diagnostic.message}`);
-      } else if (diagnostic.severity === 'error') {
-        const relPath = path.relative(rootDir, filePath);
-        diagnostics.push(`Error: ${relPath}: ${diagnostic.message}`);
-      }
-    }
-
     allResources.push(...ir.resources);
   }
 
   ctx.resources = allResources;
-  // Collect warnings from all files into context
-  ctx.warnings.push(...diagnostics);
 
-  // Build a new IR context for the aggregated project
+  // Build project-wide IR context and collect all diagnostics
   const ir = IRContext.fromResources(allResources);
   ctx.ir = ir;
   ctx.milestones = ir.getMilestoneIds();
+
+  // Collect all project-wide diagnostics
+  for (const diagnostic of ir.diagnostics) {
+    if (diagnostic.severity === 'warning') {
+      ctx.warnings.push(`Warning: ${diagnostic.message}`);
+    } else if (diagnostic.severity === 'error') {
+      ctx.errors.push(`Error: ${diagnostic.message}`);
+    }
+  }
 
   loadedContext = ctx;
   return ctx;

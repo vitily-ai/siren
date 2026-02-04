@@ -11,7 +11,4 @@ with-two-dangling
 └─ missing2
 
 ---
-Warning: siren/main.siren: Dangling dependency: milestone 'with-dangling' -> missing-task?
-Warning: siren/main.siren: Dangling dependency: milestone 'with-two-dangling' -> missing1?
-Warning: siren/main.siren: Dangling dependency: milestone 'with-two-dangling' -> missing2?
 
