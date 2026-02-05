@@ -1,9 +1,0 @@
-{
-	"fixture": "overlapping-cycles",
-	"command": "siren list"
-}
----
-a
----
-Warning: Circular dependency detected: a -> b -> c -> a
-Warning: Circular dependency detected: a -> c -> a
