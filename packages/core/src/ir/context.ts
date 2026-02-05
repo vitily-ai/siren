@@ -1,4 +1,4 @@
-import { decodeDocument } from '../decoder/index.js';
+import { decodeDocument, type ParseDiagnostic } from '../decoder/index.js';
 import type { DocumentNode } from '../parser/cst.js';
 import { getIncompleteLeafDependencyChains } from '../utilities/dependency-chains.js';
 import { findResourceById } from '../utilities/entry.js';
@@ -7,7 +7,7 @@ import { getMilestoneIds, getTasksByMilestone } from '../utilities/milestone.js'
 import type { Document, Resource, ResourceReference } from './types.js';
 
 /**
- * Diagnostic message produced during IR construction
+ * Semantic diagnostic message produced from IR analysis
  */
 export interface Diagnostic {
   /** Diagnostic code (e.g., 'W001' for warnings, 'E001' for errors) */
@@ -29,18 +29,22 @@ export interface Diagnostic {
 export class IRContext {
   public readonly resources: readonly Resource[];
   public readonly source?: string;
-  public readonly cycles: readonly { nodes: readonly string[] }[];
-  public readonly diagnostics: readonly Diagnostic[];
+  public readonly parseDiagnostics: readonly ParseDiagnostic[];
+  private readonly resourceSources?: ReadonlyMap<string, string>;
+  private _diagnostics?: readonly Diagnostic[];
+  private _cycles?: readonly { nodes: readonly string[] }[];
 
-  constructor(doc: Document, diagnostics: readonly Diagnostic[] = []) {
+  constructor(
+    doc: Document,
+    parseDiagnostics: readonly ParseDiagnostic[] = [],
+    resourceSources?: ReadonlyMap<string, string>,
+  ) {
     // Shallow freeze top-level arrays to discourage accidental mutation.
     this.resources = Object.freeze(doc.resources.slice());
     this.source = doc.source;
-    this.cycles = Object.freeze(
-      (doc.cycles || []).map((c) => ({ nodes: Object.freeze(c.nodes.slice()) })),
-    );
-    this.diagnostics = Object.freeze(diagnostics.slice());
-    Object.freeze(this);
+    this.parseDiagnostics = Object.freeze(parseDiagnostics.slice());
+    this.resourceSources = resourceSources;
+    // Note: Don't freeze the object itself since we need lazy property assignment
   }
 
   findResourceById(id: string): Resource {
@@ -63,6 +67,22 @@ export class IRContext {
     return getIncompleteLeafDependencyChains(rootId, [...this.resources], comparator, options);
   }
 
+  /** Get semantic diagnostics computed from IR analysis */
+  get diagnostics(): readonly Diagnostic[] {
+    if (!this._diagnostics) {
+      this._diagnostics = this.computeDiagnostics();
+    }
+    return this._diagnostics;
+  }
+
+  /** Get dependency cycles detected in the IR */
+  get cycles(): readonly { nodes: readonly string[] }[] {
+    if (!this._cycles) {
+      this._cycles = this.computeCycles();
+    }
+    return this._cycles;
+  }
+
   /**
    * Create an IRContext from a parsed CST, performing decoding and validation.
    * Diagnostics are collected and exposed via the context's `diagnostics` property.
@@ -73,26 +93,26 @@ export class IRContext {
   static fromCst(cst: DocumentNode, source?: string): IRContext {
     const { document, diagnostics } = decodeDocument(cst);
     if (!document) {
-      // If decoding produced errors, create empty context with diagnostics
-      return new IRContext({ resources: [], cycles: [], source }, diagnostics);
+      // If decoding produced errors, create empty context with parse diagnostics
+      return new IRContext({ resources: [], source }, diagnostics);
     }
-    return new IRContext(document, diagnostics);
+    return new IRContext({ ...document, source }, diagnostics);
   }
 
   /**
-   * Factory to create an IRContext from resources, detecting cycles and generating diagnostics.
-   * Performs the same cycle detection as fromCst() but starts from already-decoded resources.
+   * Factory to create an IRContext from resources with optional file source mapping.
    */
   static fromResources(
     resources: readonly Resource[],
     source?: string,
-    resourceSources?: Map<string, string>,
+    resourceSources?: ReadonlyMap<string, string>,
   ): IRContext {
-    const diagnostics: Diagnostic[] = [];
+    return new IRContext({ resources: resources.slice(), source }, [], resourceSources);
+  }
 
-    // Build dependency graph and check for cycles
+  private computeCycles(): readonly { nodes: readonly string[] }[] {
     const graph = new DirectedGraph();
-    for (const resource of resources) {
+    for (const resource of this.resources) {
       graph.addNode(resource.id);
       const dependsOn = IRContext.getDependsOn(resource);
       for (const depId of dependsOn) {
@@ -100,16 +120,21 @@ export class IRContext {
       }
     }
     const cycles = graph.getCycles();
-    const cyclesIr: { nodes: readonly string[] }[] = cycles.map((cycle) => ({ nodes: cycle }));
+    return Object.freeze(cycles.map((cycle) => ({ nodes: Object.freeze(cycle.slice()) })));
+  }
+
+  private computeDiagnostics(): readonly Diagnostic[] {
+    const diagnostics: Diagnostic[] = [];
+    const cycles = this.cycles; // This will trigger cycle computation if needed
 
     // Add warnings for each cycle with file attribution
     for (const cycle of cycles) {
       let fileInfo = '';
-      if (resourceSources) {
+      if (this.resourceSources) {
         // Find which files contain resources in this cycle
         const filesInCycle = new Set<string>();
-        for (const nodeId of cycle) {
-          const nodeSource = resourceSources.get(nodeId);
+        for (const nodeId of cycle.nodes) {
+          const nodeSource = this.resourceSources.get(nodeId);
           if (nodeSource) {
             const relativePath = nodeSource.includes('/')
               ? nodeSource.substring(nodeSource.lastIndexOf('/') + 1)
@@ -124,12 +149,12 @@ export class IRContext {
 
       diagnostics.push({
         code: 'W004',
-        message: `${fileInfo}Circular dependency detected: ${cycle.join(' -> ')}`,
+        message: `${fileInfo}Circular dependency detected: ${cycle.nodes.join(' -> ')}`,
         severity: 'warning',
       });
     }
 
-    return new IRContext({ resources: resources.slice(), source, cycles: cyclesIr }, diagnostics);
+    return Object.freeze(diagnostics);
   }
 
   /**

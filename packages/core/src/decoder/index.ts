@@ -9,7 +9,6 @@ import type {
   ArrayValue,
   Attribute,
   AttributeValue,
-  Cycle,
   Document,
   Resource,
   ResourceReference,
@@ -24,40 +23,13 @@ import type {
   ReferenceNode,
   ResourceNode,
 } from '../parser/cst.js';
-import { DirectedGraph } from '../utilities/graph.js';
 
 /**
- * Extracts dependency IDs from a resource's depends_on attribute.
- * @param resource The resource to extract dependencies from
- * @returns Array of dependency IDs
+ * Parse-level diagnostic message (grammar/syntax issues only)
+ * For semantic diagnostics, use IRContext.diagnostics getter
+ * @internal - Use IRContext.fromCst() instead
  */
-function getDependsOn(resource: Resource): string[] {
-  const attr = resource.attributes.find((a) => a.key === 'depends_on');
-  if (!attr) return [];
-
-  const value = attr.value;
-  if (value === null) return [];
-  if (typeof value === 'object' && 'kind' in value) {
-    if (value.kind === 'reference') {
-      return [value.id];
-    }
-    if (value.kind === 'array') {
-      return value.elements
-        .filter(
-          (el): el is ResourceReference =>
-            typeof el === 'object' && el !== null && 'kind' in el && el.kind === 'reference',
-        )
-        .map((ref: ResourceReference) => ref.id);
-    }
-  }
-  return [];
-}
-
-/**
- * Diagnostic message produced during decoding
- * @internal - Use IRContext.diagnostics instead
- */
-export interface Diagnostic {
+export interface ParseDiagnostic {
   /** Diagnostic code (e.g., 'W001' for warnings, 'E001' for errors) */
   readonly code: string;
   /** Human-readable description of the issue */
@@ -73,8 +45,8 @@ export interface Diagnostic {
 export interface DecodeResult {
   /** The decoded document, or null if decoding failed with errors */
   readonly document: Document | null;
-  /** Diagnostics collected during decoding */
-  readonly diagnostics: readonly Diagnostic[];
+  /** Parse-level diagnostics (grammar/syntax issues only) */
+  readonly diagnostics: readonly ParseDiagnostic[];
   /** True if decoding succeeded without errors (warnings allowed) */
   readonly success: boolean;
 }
@@ -204,7 +176,7 @@ function decodeAttribute(node: AttributeNode): Attribute | null {
  */
 function decodeResource(
   node: ResourceNode & { completeKeywordCount?: number; completeKeywordDiagnostics?: string[] },
-  diagnostics: Diagnostic[],
+  diagnostics: ParseDiagnostic[],
 ): Resource {
   const type: ResourceType = node.resourceType;
   const id = node.identifier.value;
@@ -276,38 +248,17 @@ function decodeResource(
  * @returns Decoded document with diagnostics
  */
 export function decodeDocument(cst: DocumentNode): DecodeResult {
-  const diagnostics: Diagnostic[] = [];
+  const diagnostics: ParseDiagnostic[] = [];
   const resources: Resource[] = [];
 
   for (const resourceNode of cst.resources) {
     resources.push(decodeResource(resourceNode, diagnostics));
   }
 
-  // Build dependency graph and check for cycles
-  const graph = new DirectedGraph();
-  for (const resource of resources) {
-    graph.addNode(resource.id);
-    const dependsOn = getDependsOn(resource);
-    for (const depId of dependsOn) {
-      graph.addEdge(resource.id, depId);
-    }
-  }
-  const cycles = graph.getCycles();
-  const cyclesIr: Cycle[] = cycles.map((cycle) => ({ nodes: cycle }));
-
-  // Add warnings for each cycle
-  for (const cycle of cycles) {
-    diagnostics.push({
-      code: 'W004',
-      message: `Circular dependency detected: ${cycle.join(' -> ')}`,
-      severity: 'warning',
-    });
-  }
-
   const hasErrors = diagnostics.some((d) => d.severity === 'error');
 
   return {
-    document: hasErrors ? null : { resources, cycles: cyclesIr },
+    document: hasErrors ? null : { resources },
     diagnostics,
     success: !hasErrors,
   };
