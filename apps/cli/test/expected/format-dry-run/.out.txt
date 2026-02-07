@@ -5,8 +5,7 @@ milestone alpha {
     # this is a comment
 }
 
-milestone beta {
-}
+milestone beta {}
 # this is a comment
 
 Updated 2 files out of 2

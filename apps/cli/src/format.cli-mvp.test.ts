@@ -65,7 +65,7 @@ describe('format summary and verbose listing', () => {
 
       // Make a.siren already match exported form (no attributes -> formatted block)
       const aPath = path.join(sirenDir, 'a.siren');
-      fs.writeFileSync(aPath, 'milestone alpha {\n}\n', 'utf-8');
+      fs.writeFileSync(aPath, 'milestone alpha {}\n', 'utf-8');
 
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       try {
