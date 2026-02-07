@@ -27,6 +27,9 @@ describe('project:circular-depends', () => {
     expect(cycleDiag.severity).toBe('warning');
     expect(cycleDiag.nodes).toEqual(['task1', 'task2', 'task3', 'task1']);
     expect(cycleDiag.file).toBe('siren/main.siren');
+    // PRESCRIPTIVE: Integration tests with real files MUST include position info
+    expect(cycleDiag.line).toBeGreaterThan(0);
+    expect(cycleDiag.column).toBeGreaterThanOrEqual(0);
   });
 
   it('includes cycles in the IR', async () => {
