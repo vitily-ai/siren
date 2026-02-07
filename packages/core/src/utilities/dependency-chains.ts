@@ -38,22 +38,29 @@ export function getIncompleteLeafDependencyChains(
   comparator?: (a: string[], b: string[]) => number,
   options?: { onWarning?: (message: string) => void },
 ): string[][] {
-  // DEBUG: trace invocation (temporary)
-  // eslint-disable-next-line no-console
-  // console.error('DBG getChains', { rootId, maxDepth, resources: resources.map((r) => r.id) });
   const graph = buildDependencyGraph(resources);
   const resourceMap = new Map(resources.map((r) => [r.id, r]));
   const chains: string[][] = [];
   const prunedRoots = new Set<string>();
 
-  function dfs(currentId: string, path: string[], depth: number): void {
+  function dfs(
+    currentId: string,
+    path: string[],
+    depth: number,
+    treatCompletedAsLeaves = false,
+  ): void {
     path.push(currentId);
 
     const resource = resourceMap.get(currentId);
     const isMilestone = resource?.type === 'milestone';
     const isIncompleteTask = resource?.type === 'task' && !resource.complete;
+    // In fallback mode treat completed tasks as "incomplete" targets so
+    // chains ending at completed tasks are collected when no incomplete
+    // leaves exist for the root.
+    const isCompletedTask = resource?.type === 'task' && !!resource.complete;
     const isMissing = !resource;
-    const isIncomplete = isMissing || isMilestone || isIncompleteTask;
+    const isIncomplete =
+      isMissing || isMilestone || isIncompleteTask || (treatCompletedAsLeaves && isCompletedTask);
     const hasSuccessors = graph.getSuccessors(currentId).length > 0;
     const isLeaf =
       (isMilestone && currentId !== rootId) ||
@@ -98,6 +105,67 @@ export function getIncompleteLeafDependencyChains(
   }
 
   dfs(rootId, [], 0);
+
+  // If the normal traversal found no incomplete-leaf chains, perform a
+  // fallback traversal that treats completed tasks as leaves. This preserves
+  // the existing behavior when true incomplete leaves exist while allowing
+  // callers (CLI) to show chains when only completed tasks are present.
+  if (chains.length === 0) {
+    // clear prunedRoots so warnings for this root can still be emitted
+    prunedRoots.clear();
+    // Fallback traversal: treat completed tasks as leaves and collect chains
+    // ending at completed tasks (stop expanding at completed tasks).
+    const stack: { id: string; path: string[]; depth: number }[] = [
+      { id: rootId, path: [rootId], depth: 0 },
+    ];
+
+    while (stack.length > 0) {
+      const { id, path, depth } = stack.pop()!;
+      const resource = resourceMap.get(id);
+      const isMilestone = resource?.type === 'milestone';
+      const isCompletedTask = resource?.type === 'task' && !!resource.complete;
+      const isMissing = !resource;
+      const hasSuccessors = graph.getSuccessors(id).length > 0;
+
+      // If this node is a milestone leaf (not the root), a missing node, or
+      // a completed task, collect the chain.
+      if (
+        (isMilestone && id !== rootId) ||
+        isMissing ||
+        isCompletedTask ||
+        (resource?.type === 'task' && !hasSuccessors)
+      ) {
+        chains.push([...path]);
+        continue;
+      }
+
+      if (depth >= MAX_DEPTH && !isMissing) {
+        if (!prunedRoots.has(rootId)) {
+          prunedRoots.add(rootId);
+          options?.onWarning?.(`Dependency tree for '${rootId}' pruned at max depth ${MAX_DEPTH}`);
+        }
+        continue;
+      }
+
+      for (const succ of graph.getSuccessors(id)) {
+        if (path.includes(succ)) {
+          const rootResource = resourceMap.get(rootId);
+          if (rootResource?.type === 'milestone') {
+            const sentinel = '… (dependency loop - check warnings)';
+            const firstDep = path[1];
+            if (firstDep) {
+              chains.push([rootId, firstDep, sentinel]);
+            } else {
+              chains.push([rootId, sentinel]);
+            }
+          }
+          continue;
+        }
+
+        stack.push({ id: succ, path: [...path, succ], depth: depth + 1 });
+      }
+    }
+  }
 
   if (comparator) {
     chains.sort(comparator);
