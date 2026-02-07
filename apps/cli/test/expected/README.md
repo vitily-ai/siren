@@ -31,7 +31,7 @@ Example (`example.out.txt`):
 ---
 some expected stdout line
 ---
-Warning: skipping siren/broken.siren (parse error)
+Warning: skipping broken.siren (parse error)
 ```
 
 Notes

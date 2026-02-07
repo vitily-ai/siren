@@ -26,7 +26,7 @@ describe('project:circular-depends', () => {
     expect(cycleDiag.code).toBe('W004');
     expect(cycleDiag.severity).toBe('warning');
     expect(cycleDiag.nodes).toEqual(['task1', 'task2', 'task3', 'task1']);
-    expect(cycleDiag.file).toBe('siren/main.siren');
+    expect(cycleDiag.file).toBe('main.siren');
     // PRESCRIPTIVE: Integration tests with real files MUST include position info
     expect(cycleDiag.line).toBeGreaterThan(0);
     expect(cycleDiag.column).toBeGreaterThanOrEqual(0);
@@ -34,7 +34,7 @@ describe('project:circular-depends', () => {
 
   it('includes cycles in the IR', async () => {
     const adapterLocal = await getTestAdapter();
-    const projectDir = join(projectsDir, 'circular-depends', 'siren');
+    const projectDir = join(projectsDir, 'circular-depends');
     const src = readFileSync(join(projectDir, 'main.siren'), 'utf-8');
     const parseResult = await adapterLocal.parse(src);
     const ir = IRContext.fromCst(parseResult.tree!);

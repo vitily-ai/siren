@@ -5,4 +5,4 @@
 ---
 valid
 ---
-Warning: skipping siren/broken.siren (parse error)
+Warning: skipping broken.siren (parse error)
