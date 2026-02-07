@@ -28,14 +28,30 @@ export async function parseAndDecodeAll(adapter: any, projectName: string) {
 
   const aggregatedResources: any[] = [];
   const diagnostics: any[] = [];
+  const resourceSources = new Map<string, string>();
 
   for (const f of files) {
     const src = readFileSync(f, 'utf-8');
     const parseResult = await adapter.parse(src);
+    // Compute relative path from project root for file attribution
+    const relativePath = f.substring(projectPath.length + 1);
     const ir = IRContext.fromCst(parseResult.tree!);
+
+    // Build resourceSources map: resource id -> relative file path
+    for (const resource of ir.resources) {
+      resourceSources.set(resource.id, relativePath);
+    }
+
     aggregatedResources.push(...ir.resources);
     diagnostics.push(...ir.diagnostics);
   }
 
-  return { resources: aggregatedResources, diagnostics };
+  // Reconstruct IRContext with aggregated resources and resourceSources to get proper file attribution
+  const contextWithSources = IRContext.fromResources(
+    aggregatedResources,
+    undefined,
+    resourceSources,
+  );
+
+  return { resources: aggregatedResources, diagnostics: contextWithSources.diagnostics };
 }

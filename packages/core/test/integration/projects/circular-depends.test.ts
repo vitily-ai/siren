@@ -19,7 +19,14 @@ describe('project:circular-depends', () => {
     const { diagnostics } = await parseAndDecodeAll(adapter, 'circular-depends');
     const cycleWarnings = diagnostics.filter((d) => d.code === 'W004' && d.severity === 'warning');
     expect(cycleWarnings).toHaveLength(1);
-    expect(cycleWarnings[0].message).toContain('task1 -> task2 -> task3 -> task1');
+
+    // PRESCRIPTIVE: Core MUST provide structured diagnostic data
+    // W004 diagnostics must have: code, severity, nodes (array of resource IDs in cycle), file(s)
+    const cycleDiag: any = cycleWarnings[0];
+    expect(cycleDiag.code).toBe('W004');
+    expect(cycleDiag.severity).toBe('warning');
+    expect(cycleDiag.nodes).toEqual(['task1', 'task2', 'task3', 'task1']);
+    expect(cycleDiag.file).toBe('siren/main.siren');
   });
 
   it('includes cycles in the IR', async () => {
