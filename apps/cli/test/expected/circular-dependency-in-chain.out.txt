@@ -1,0 +1,10 @@
+{
+  "fixture": "circular-dependency-in-chain",
+  "command": "siren list --tasks"
+}
+---
+ms
+└─ a
+   └─ … (dependency loop - check warnings)
+---
+siren/siren/main.siren:7:0: W004: Circular dependency detected: a -> b -> c -> a

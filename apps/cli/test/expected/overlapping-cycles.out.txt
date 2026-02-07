@@ -1,10 +1,9 @@
 {
-	"fixture": "overlapping-cycles",
-	"command": "siren list"
+"fixture": "overlapping-cycles",
+"command": "siren list"
 }
 ---
 a
 ---
-Warning: siren/main.siren: Circular dependency detected: a -> b -> c -> a
-# second loop overlaps the first loop as a subset of vertices, but it should be reported anyway
-Warning: siren/main.siren: Circular dependency detected: a -> c -> a
+siren/main.siren:1:0: W004: Circular dependency detected: a -> b -> c -> a
+siren/main.siren:1:0: W004: Circular dependency detected: a -> c -> a

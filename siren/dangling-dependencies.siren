@@ -1,0 +1,41 @@
+// Conventions for dangling-dependency warnings:
+// - Short, grokkable diagnostic message format: "Dangling dependency: <entry> -> <missing-id>?"
+//   Example: Dangling dependency: milestone 'dangling-dependencies' -> missing-task?
+// - Trailing '?' denotes a missing or ambiguous reference (convention across codebase).
+// - Emit one warning per dangling relationship (do NOT aggregate multiple missing ids into one warning).
+//   If multiple resources reference the same missing id, emit separate warnings for each relationship.
+// - Diagnostic code: use 'W005' for dangling-dependencies (keeps parity with existing W004 for cycles).
+// - CLI will prefix with: "Warning: <relative-path>: <diagnostic message>"
+
+milestone dangling-dependencies {
+  description = "declaring dependencies to entries that don't exist should surface a warning during IR construction. Missing dependencies should not be collected by or returned from listing APIs."
+  depends_on = [add-golden-test]
+}
+
+task detect-dangling {
+  description = "Implement dangling-dependency detection in packages/core IR construction (unit-testable)."
+}
+
+task add-warning-buffer {
+  description = "Use core's existing diagnostics aggregation to record dangling-dependency warnings and add unit tests validating those warnings (unit-testable)."
+  depends_on = detect-dangling
+}
+
+task emit-warning {
+  description = "Emit a dangling-dependency warning during IR build when detection triggers (testable)."
+  depends_on = add-warning-buffer
+}
+
+task cli-surface {
+  description = "Surface warnings detected during IR construction in the CLI: update apps/cli to display warnings on project load (golden-testable)."
+  depends_on = emit-warning
+}
+
+task add-golden-test {
+  description = "Add golden test in apps/cli/test and expected output in apps/cli/test/expected for the dangling-dependencies scenario."
+  depends_on = cli-surface
+}
+
+// There should be a collection of all warnings which is populated within the core `IRContext` as the IR is constructed. Clients such as CLI should simply refer to that collection (via an immutable API) to surface warnings.
+// To be clear, the IR should implicitly diagnose dangling dependencies (and all other diagnostics) as or after the IR is constructed. Clients should not be responsible for warnings or errors. Unless there is a concrete reason for doing otherwise, diagnostics should never be handled by the client before the IR is constructed (because they won't exist yet).
+// In essence, during IRContext construction, internally the provided resources, or their converted IR equivalents, should be tested for every class of diagnostic (including danglingDependencies). The client should not see any diagnostics until construction is complete, at which point it can present those warnings to the user.

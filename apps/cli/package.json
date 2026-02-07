@@ -12,7 +12,8 @@
   ],
   "scripts": {
     "build": "tsup",
-    "test": "npx vitest run",
+    "build:quiet": "tsup --silent",
+    "test": "npx vitest run --reporter=dot --silent",
     "clean": "rm -rf dist"
   },
   "dependencies": {

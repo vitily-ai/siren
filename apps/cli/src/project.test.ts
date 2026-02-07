@@ -168,7 +168,8 @@ milestone "MVP Release" {}`,
     const ctx = await loadProject(tempDir);
 
     expect(ctx.warnings).toHaveLength(1);
-    expect(ctx.warnings[0]).toContain('Warning: siren/main.siren: Circular dependency detected');
-    expect(ctx.warnings[0]).toContain('task1 -> task2 -> task3 -> task1');
+    expect(ctx.warnings[0]).toContain(
+      'siren/main.siren:1:0: W004: Circular dependency detected: task1 -> task2 -> task3 -> task1',
+    );
   });
 });

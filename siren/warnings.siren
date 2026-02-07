@@ -9,3 +9,7 @@ task dangling-dependencies {
 task complete-before-dependencies {
   description = "an entry that is explicitly marked 'complete' while having dependencies that are not complete should surface a warning during IR construction"
 }
+
+task ir-grouping {
+  description = "IRContext `diagnostics` should be grouped by diagnostic code [key string: val Diagnostic[]] instead of a flat list"
+}

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { decode } from '../../../src/decoder/index.js';
+import { IRContext } from '../../../src/ir/context.js';
 import { getTestAdapter } from '../../helpers/parser.js';
 import { getAdapter, parseAndDecodeAll } from './helper.js';
 
@@ -19,7 +19,17 @@ describe('project:circular-depends', () => {
     const { diagnostics } = await parseAndDecodeAll(adapter, 'circular-depends');
     const cycleWarnings = diagnostics.filter((d) => d.code === 'W004' && d.severity === 'warning');
     expect(cycleWarnings).toHaveLength(1);
-    expect(cycleWarnings[0].message).toContain('task1 -> task2 -> task3 -> task1');
+
+    // PRESCRIPTIVE: Core MUST provide structured diagnostic data
+    // W004 diagnostics must have: code, severity, nodes (array of resource IDs in cycle), file(s)
+    const cycleDiag: any = cycleWarnings[0];
+    expect(cycleDiag.code).toBe('W004');
+    expect(cycleDiag.severity).toBe('warning');
+    expect(cycleDiag.nodes).toEqual(['task1', 'task2', 'task3', 'task1']);
+    expect(cycleDiag.file).toBe('siren/main.siren');
+    // PRESCRIPTIVE: Integration tests with real files MUST include position info
+    expect(cycleDiag.line).toBeGreaterThan(0);
+    expect(cycleDiag.column).toBeGreaterThanOrEqual(0);
   });
 
   it('includes cycles in the IR', async () => {
@@ -27,8 +37,8 @@ describe('project:circular-depends', () => {
     const projectDir = join(projectsDir, 'circular-depends', 'siren');
     const src = readFileSync(join(projectDir, 'main.siren'), 'utf-8');
     const parseResult = await adapterLocal.parse(src);
-    const decodeResult = decode(parseResult.tree!);
-    expect(decodeResult.document!.cycles).toHaveLength(1);
-    expect(decodeResult.document!.cycles[0].nodes).toEqual(['task1', 'task2', 'task3', 'task1']);
+    const ir = IRContext.fromCst(parseResult.tree!);
+    expect(ir.cycles).toHaveLength(1);
+    expect(ir.cycles[0].nodes).toEqual(['task1', 'task2', 'task3', 'task1']);
   });
 });

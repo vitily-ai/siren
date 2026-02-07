@@ -17,7 +17,8 @@
   ],
   "scripts": {
     "build": "tsc -b",
-    "test": "vitest run",
+    "build:silent": "tsc -b --pretty false",
+    "test": "vitest run --reporter=dot --silent",
     "test:watch": "vitest",
     "clean": "rm -rf dist *.tsbuildinfo"
   },

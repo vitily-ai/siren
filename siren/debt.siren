@@ -33,3 +33,7 @@ task sourceindex-eof-detached {
 task sourceindex-assumptions {
   description = "Enforce and document SourceIndex invariants (sorted comments, valid offsets). See TODO[SOURCEINDEX-ASSUME] in packages/core/src/parser/source-index.ts."
 }
+
+task show-complete-short-circuit-bug {
+  description = "marking a leaf task as complete short-circuits `siren show`"
+}

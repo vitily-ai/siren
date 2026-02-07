@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { decode } from '../../../src/decoder/index.js';
+import { IRContext } from '../../../src/ir/context.js';
 import { getTestAdapter } from '../../helpers/parser.js';
 import { getAdapter, parseAndDecodeAll } from './helper.js';
 
@@ -19,10 +19,31 @@ describe('project:overlapping-cycles', () => {
     const { diagnostics } = await parseAndDecodeAll(adapter, 'overlapping-cycles');
     const cycleWarnings = diagnostics.filter((d) => d.code === 'W004' && d.severity === 'warning');
     expect(cycleWarnings).toHaveLength(2);
-    // The warnings should contain the cycle paths
-    const messages = cycleWarnings.map((w) => w.message);
-    expect(messages.some((m) => m.includes('a -> b -> c -> a'))).toBe(true);
-    expect(messages.some((m) => m.includes('a -> c -> a'))).toBe(true);
+
+    // PRESCRIPTIVE: Core MUST provide structured diagnostic data
+    // W004 diagnostics must have: code, severity, nodes (cycle chain), file
+    const cycles: any[] = cycleWarnings;
+
+    // Find the a -> b -> c -> a cycle
+    const longCycle = cycles.find((c) => c.nodes?.length === 4);
+    expect(longCycle).toBeDefined();
+    expect(longCycle.code).toBe('W004');
+    expect(longCycle.severity).toBe('warning');
+    expect(longCycle.nodes).toEqual(['a', 'b', 'c', 'a']);
+    expect(longCycle.file).toBe('siren/main.siren');
+    // PRESCRIPTIVE: Integration tests with real files MUST include position info
+    expect(longCycle.line).toBeGreaterThan(0);
+    expect(longCycle.column).toBeGreaterThanOrEqual(0);
+
+    // Find the a -> c -> a cycle
+    const shortCycle = cycles.find((c) => c.nodes?.length === 3);
+    expect(shortCycle).toBeDefined();
+    expect(shortCycle.code).toBe('W004');
+    expect(shortCycle.severity).toBe('warning');
+    expect(shortCycle.nodes).toEqual(['a', 'c', 'a']);
+    expect(shortCycle.file).toBe('siren/main.siren');
+    expect(shortCycle.line).toBeGreaterThan(0);
+    expect(shortCycle.column).toBeGreaterThanOrEqual(0);
   });
 
   it('includes cycles in the IR', async () => {
@@ -31,9 +52,9 @@ describe('project:overlapping-cycles', () => {
     const src = readFileSync(join(projectDir, 'main.siren'), 'utf-8');
     const parseResult = await adapterLocal.parse(src);
     expect(parseResult.success).toBe(true);
-    const decodeResult = decode(parseResult.tree!);
-    expect(decodeResult.document!.cycles).toHaveLength(2);
-    const cycleNodes = decodeResult.document!.cycles.map((c) => c.nodes);
+    const ir = IRContext.fromCst(parseResult.tree!);
+    expect(ir.cycles).toHaveLength(2);
+    const cycleNodes = ir.cycles.map((c) => c.nodes);
     expect(cycleNodes).toContainEqual(['a', 'b', 'c', 'a']);
     expect(cycleNodes).toContainEqual(['a', 'c', 'a']);
   });

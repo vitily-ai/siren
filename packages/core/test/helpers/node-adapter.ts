@@ -20,8 +20,21 @@ import type {
   ReferenceNode,
   ResourceNode,
 } from '../../src/parser/cst.js';
+import type { Origin } from '../../src/parser/cst.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Extract origin metadata from a tree-sitter node
+ */
+function extractOrigin(node: SyntaxNode): Origin {
+  return {
+    startByte: node.startIndex,
+    endByte: node.endIndex,
+    startRow: node.startPosition.row,
+    endRow: node.endPosition.row,
+  };
+}
 
 /**
  * Node-based ParserAdapter using web-tree-sitter
@@ -87,6 +100,7 @@ class NodeParserAdapter implements ParserAdapter {
     return {
       type: 'document',
       resources,
+      origin: extractOrigin(node),
     };
   }
 
@@ -124,6 +138,7 @@ class NodeParserAdapter implements ParserAdapter {
       identifier,
       complete,
       body: attributes,
+      origin: extractOrigin(node),
     };
   }
 
@@ -141,6 +156,7 @@ class NodeParserAdapter implements ParserAdapter {
         value: node.text,
         quoted: false,
         text: node.text,
+        origin: extractOrigin(node),
       };
     }
 
@@ -157,6 +173,7 @@ class NodeParserAdapter implements ParserAdapter {
       value,
       quoted: isQuoted,
       text: node.text,
+      origin: extractOrigin(node),
     };
   }
 
@@ -176,6 +193,7 @@ class NodeParserAdapter implements ParserAdapter {
       value: keyNode.text,
       quoted: false,
       text: keyNode.text,
+      origin: extractOrigin(keyNode),
     };
 
     const value = this.convertExpression(valueNode);
@@ -187,6 +205,7 @@ class NodeParserAdapter implements ParserAdapter {
       type: 'attribute',
       key,
       value,
+      origin: extractOrigin(node),
     };
   }
 
@@ -240,6 +259,7 @@ class NodeParserAdapter implements ParserAdapter {
    * Convert direct literal node types
    */
   private convertLiteralDirect(node: SyntaxNode): LiteralNode | null {
+    const origin = extractOrigin(node);
     switch (node.type) {
       case 'string_literal': {
         let value = node.text;
@@ -251,6 +271,7 @@ class NodeParserAdapter implements ParserAdapter {
           literalType: 'string',
           value,
           text: node.text,
+          origin,
         };
       }
 
@@ -261,6 +282,7 @@ class NodeParserAdapter implements ParserAdapter {
           literalType: 'number',
           value,
           text: node.text,
+          origin,
         };
       }
 
@@ -271,6 +293,7 @@ class NodeParserAdapter implements ParserAdapter {
           literalType: 'boolean',
           value,
           text: node.text,
+          origin,
         };
       }
 
@@ -280,6 +303,7 @@ class NodeParserAdapter implements ParserAdapter {
           literalType: 'null',
           value: null,
           text: node.text,
+          origin,
         };
       }
 
@@ -297,11 +321,13 @@ class NodeParserAdapter implements ParserAdapter {
       value: node.text,
       quoted: false,
       text: node.text,
+      origin: extractOrigin(node),
     };
 
     return {
       type: 'reference',
       identifier,
+      origin: extractOrigin(node),
     };
   }
 
@@ -321,6 +347,7 @@ class NodeParserAdapter implements ParserAdapter {
     return {
       type: 'array',
       elements,
+      origin: extractOrigin(node),
     };
   }
 

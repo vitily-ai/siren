@@ -74,6 +74,20 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
 
   // Conversion helpers adapted from the Node test adapter. Keep logic here
   // so core owns the CST shape while the runtime provides parsing only.
+  
+  /**
+   * Extract origin metadata from a tree-sitter node
+   */
+  function extractOrigin(node: any) {
+    if (!node || !node.startPosition || !node.endPosition) return undefined;
+    return {
+      startByte: node.startIndex ?? 0,
+      endByte: node.endIndex ?? 0,
+      startRow: node.startPosition.row ?? 0,
+      endRow: node.endPosition.row ?? 0,
+    };
+  }
+
   function convertIdentifier(node: any): IdentifierNode {
     const child = node?.namedChildren?.[0];
     if (!child) {
@@ -82,6 +96,7 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
         value: node ? String(node.text) : '',
         quoted: false,
         text: node ? String(node.text) : '',
+        origin: extractOrigin(node),
       };
     }
 
@@ -96,26 +111,28 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
       value,
       quoted: isQuoted,
       text: String(node.text ?? ''),
+      origin: extractOrigin(node),
     };
   }
 
   function convertLiteralDirect(node: any): LiteralNode | null {
+    const origin = extractOrigin(node);
     switch (node.type) {
       case 'string_literal': {
         let value = String(node.text ?? '');
         if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
-        return { type: 'literal', literalType: 'string', value, text: String(node.text ?? '') };
+        return { type: 'literal', literalType: 'string', value, text: String(node.text ?? ''), origin };
       }
       case 'number_literal': {
         const value = parseFloat(String(node.text ?? ''));
-        return { type: 'literal', literalType: 'number', value, text: String(node.text ?? '') };
+        return { type: 'literal', literalType: 'number', value, text: String(node.text ?? ''), origin };
       }
       case 'boolean_literal': {
         const value = String(node.text) === 'true';
-        return { type: 'literal', literalType: 'boolean', value, text: String(node.text ?? '') };
+        return { type: 'literal', literalType: 'boolean', value, text: String(node.text ?? ''), origin };
       }
       case 'null_literal':
-        return { type: 'literal', literalType: 'null', value: null, text: String(node.text ?? '') };
+        return { type: 'literal', literalType: 'null', value: null, text: String(node.text ?? ''), origin };
       default:
         return null;
     }
@@ -127,8 +144,9 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
       value: String(node.text ?? ''),
       quoted: false,
       text: String(node.text ?? ''),
+      origin: extractOrigin(node),
     };
-    return { type: 'reference', identifier };
+    return { type: 'reference', identifier, origin: extractOrigin(node) };
   }
 
   function convertArray(node: any): ArrayNode {
@@ -137,7 +155,7 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
       const expr = convertExpression(child);
       if (expr) elements.push(expr);
     }
-    return { type: 'array', elements };
+    return { type: 'array', elements, origin: extractOrigin(node) };
   }
 
   function convertLiteral(node: any): LiteralNode | null {
@@ -183,10 +201,11 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
       value: String(keyNode.text ?? ''),
       quoted: false,
       text: String(keyNode.text ?? ''),
+      origin: extractOrigin(keyNode),
     };
     const value = convertExpression(valueNode);
     if (!value) return null;
-    return { type: 'attribute', key, value };
+    return { type: 'attribute', key, value, origin: extractOrigin(node) };
   }
 
   function convertResource(node: any): ResourceNode | null {
@@ -215,6 +234,7 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
       identifier,
       complete,
       body: attributes,
+      origin: extractOrigin(node),
     };
     return result;
   }
@@ -227,7 +247,7 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
         if (r) resources.push(r);
       }
     }
-    return { type: 'document', resources };
+    return { type: 'document', resources, origin: extractOrigin(root) };
   }
 
   function extractErrors(node: any): ParseError[] {

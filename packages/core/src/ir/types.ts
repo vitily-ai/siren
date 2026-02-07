@@ -98,8 +98,6 @@ export interface Document {
   readonly resources: readonly Resource[];
   /** Source file path (if any) */
   readonly source?: string;
-  /** Detected cycles in the dependency graph */
-  readonly cycles: readonly Cycle[];
 }
 
 /**

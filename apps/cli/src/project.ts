@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { decode, IRContext, type Resource } from '@siren/core';
+import { IRContext, type Resource } from '@siren/core';
+import { formatDiagnostic } from './format-diagnostics.js';
 import { getParser } from './parser.js';
 
 const SIREN_DIR = 'siren';
@@ -100,6 +101,7 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
 
   const parser = await getParser();
   const allResources: Resource[] = [];
+  const resourceSources = new Map<string, string>();
 
   for (const filePath of ctx.files) {
     const source = fs.readFileSync(filePath, 'utf-8');
@@ -110,29 +112,43 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
       continue;
     }
 
-    const decodeResult = decode(parseResult.tree);
-    if (!decodeResult.document) {
-      continue;
+    const ir = IRContext.fromCst(parseResult.tree, filePath);
+
+    // Track which file each resource came from
+    for (const resource of ir.resources) {
+      const relPath = path.relative(rootDir, filePath);
+      resourceSources.set(resource.id, relPath);
     }
 
-    // Collect decoding warnings (e.g., circular dependencies)
-    if (decodeResult.diagnostics) {
-      for (const diagnostic of decodeResult.diagnostics) {
-        if (diagnostic.severity === 'warning') {
-          const relPath = path.relative(rootDir, filePath);
-          ctx.warnings.push(`Warning: ${relPath}: ${diagnostic.message}`);
-        }
-      }
-    }
-
-    allResources.push(...decodeResult.document.resources);
+    allResources.push(...ir.resources);
   }
 
   ctx.resources = allResources;
-  // Build an immutable IR context for the project and derive milestones
-  const ir = IRContext.fromResources(allResources);
+
+  // Build project-wide IR context and collect all diagnostics with file attribution
+  const ir = IRContext.fromResources(allResources, undefined, resourceSources);
   ctx.ir = ir;
   ctx.milestones = ir.getMilestoneIds();
+
+  // Collect parse-level diagnostics (W001, W002, W003, E001)
+  for (const diagnostic of ir.parseDiagnostics) {
+    const formatted = formatDiagnostic(diagnostic);
+    if (diagnostic.severity === 'warning') {
+      ctx.warnings.push(formatted);
+    } else if (diagnostic.severity === 'error') {
+      ctx.errors.push(formatted);
+    }
+  }
+
+  // Collect semantic diagnostics (W004, W005)
+  for (const diagnostic of ir.diagnostics) {
+    const formatted = formatDiagnostic(diagnostic);
+    if (diagnostic.severity === 'warning') {
+      ctx.warnings.push(formatted);
+    } else if (diagnostic.severity === 'error') {
+      ctx.errors.push(formatted);
+    }
+  }
 
   loadedContext = ctx;
   return ctx;

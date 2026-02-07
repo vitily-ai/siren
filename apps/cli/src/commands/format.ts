@@ -1,7 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
-  decode,
   exportToSiren,
   exportWithComments,
   IRContext,
@@ -74,13 +73,8 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
       console.error(`Skipping ${path.relative(process.cwd(), filePath)} (parse error)`);
       continue;
     }
-    const decodeResult = decode(parseResult.tree);
-    if (!decodeResult.document) {
-      console.error(`Skipping ${path.relative(process.cwd(), filePath)} (decode failed)`);
-      continue;
-    }
 
-    const perFileIR = IRContext.fromResources(decodeResult.document.resources, filePath);
+    const perFileIR = IRContext.fromCst(parseResult.tree, filePath);
 
     // Build SourceIndex from parse result for comment preservation
     const sourceIndex = parseResult.comments
@@ -107,19 +101,14 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
       console.error(`Format produced unparsable output for ${filePath}`);
       continue;
     }
-    const decoded2 = decode(parse2.tree);
-    if (!decoded2.document) {
-      console.error(`Format produced undecodable output for ${filePath}`);
-      continue;
-    }
-
-    if (!resourcesEqual(decodeResult.document.resources, decoded2.document.resources)) {
+    const decoded2 = IRContext.fromCst(parse2.tree);
+    if (!resourcesEqual(perFileIR.resources, decoded2.resources)) {
       console.error(`Format round-trip changed semantics for ${filePath}; skipping`);
       if (process.env.SIREN_FORMAT_DEBUG === '1') {
         console.error('--- SIREN_FORMAT_DEBUG: original decoded resources ---');
-        console.error(debugStringifyResources(decodeResult.document.resources));
+        console.error(debugStringifyResources(perFileIR.resources));
         console.error('--- SIREN_FORMAT_DEBUG: re-decoded resources ---');
-        console.error(debugStringifyResources(decoded2.document.resources));
+        console.error(debugStringifyResources(decoded2.resources));
         console.error('--- SIREN_FORMAT_DEBUG: formatted output ---');
         console.error(toWrite);
         console.error('--- /SIREN_FORMAT_DEBUG ---');
