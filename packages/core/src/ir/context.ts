@@ -33,6 +33,7 @@ export class IRContext {
   private readonly resourceSources?: ReadonlyMap<string, string>;
   private _diagnostics?: readonly Diagnostic[];
   private _cycles?: readonly { nodes: readonly string[] }[];
+  private _danglingDiagnostics?: readonly Diagnostic[];
 
   constructor(
     doc: Document,
@@ -154,6 +155,23 @@ export class IRContext {
         severity: 'warning',
       });
     }
+
+    diagnostics.push(...this.danglingDiagnostics);
+
+    return Object.freeze(diagnostics);
+  }
+
+  /** Memoized getter for dangling dependency diagnostics */
+  get danglingDiagnostics(): readonly Diagnostic[] {
+    if (!this._danglingDiagnostics) {
+      this._danglingDiagnostics = this.computeDanglingDiagnostics();
+    }
+    return this._danglingDiagnostics;
+  }
+
+  private computeDanglingDiagnostics(): readonly Diagnostic[] {
+    const diagnostics: Diagnostic[] = [];
+    const resourcesById = new Map(this.resources.map((resource) => [resource.id, resource]));
 
     for (const resource of this.resources) {
       const dependsOn = IRContext.getDependsOn(resource);
