@@ -24,6 +24,9 @@ Commands:
   list    List all milestone IDs from .siren files
     -t, --tasks    Show incomplete tasks under each milestone
   show    Show a single entry's dependency tree (milestone or task)
+  format  Format .siren files in-place or print formatted output
+    --dry-run    Print formatted output to stdout without writing files
+    --verbose    Print list of files that would be updated or were updated
 
 Options:
   --version    Show version number`);
