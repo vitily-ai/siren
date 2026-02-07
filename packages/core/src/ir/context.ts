@@ -127,28 +127,10 @@ export class IRContext {
   private computeDiagnostics(): readonly Diagnostic[] {
     const diagnostics: Diagnostic[] = [];
     const cycles = this.cycles; // This will trigger cycle computation if needed
-    const resourcesById = new Map(this.resources.map((resource) => [resource.id, resource]));
 
     // Add warnings for each cycle with file attribution
     for (const cycle of cycles) {
-      let fileInfo = '';
-      if (this.resourceSources) {
-        // Find which files contain resources in this cycle
-        const filesInCycle = new Set<string>();
-        for (const nodeId of cycle.nodes) {
-          const nodeSource = this.resourceSources.get(nodeId);
-          if (nodeSource) {
-            const relativePath = nodeSource.includes('/')
-              ? nodeSource.substring(nodeSource.lastIndexOf('/') + 1)
-              : nodeSource;
-            filesInCycle.add(relativePath);
-          }
-        }
-        if (filesInCycle.size > 0) {
-          fileInfo = `${Array.from(filesInCycle).join(', ')}: `;
-        }
-      }
-
+      const fileInfo = this.getFileInfo(cycle.nodes);
       diagnostics.push({
         code: 'W004',
         message: `${fileInfo}Circular dependency detected: ${cycle.nodes.join(' -> ')}`,
@@ -177,9 +159,10 @@ export class IRContext {
       const dependsOn = IRContext.getDependsOn(resource);
       for (const depId of dependsOn) {
         if (!resourcesById.has(depId)) {
+          const fileInfo = this.getFileInfo([resource.id]);
           diagnostics.push({
             code: 'W005',
-            message: `Dangling dependency: ${resource.type} '${resource.id}' -> ${depId}?`,
+            message: `${fileInfo}Dangling dependency: ${resource.type} '${resource.id}' -> ${depId}?`,
             severity: 'warning',
           });
         }
@@ -187,6 +170,23 @@ export class IRContext {
     }
 
     return Object.freeze(diagnostics);
+  }
+
+  /**
+   * Build file attribution string from resource IDs using resourceSources mapping.
+   * Returns the full relative paths joined by commas and suffixed with \": \",
+   * or empty string if no sources available.
+   */
+  private getFileInfo(nodeIds: readonly string[]): string {
+    if (!this.resourceSources || nodeIds.length === 0) return '';
+    const files = new Set<string>();
+    for (const nodeId of nodeIds) {
+      const source = this.resourceSources.get(nodeId);
+      if (source) {
+        files.add(source);
+      }
+    }
+    return files.size > 0 ? `${Array.from(files).join(', ')}: ` : '';
   }
 
   /**
