@@ -31,8 +31,7 @@ describe('exportToSiren', () => {
       '  enabled = true\n' +
       '  maybe = null\n' +
       '}\n\n' +
-      'milestone m1 complete {\n' +
-      '}\n';
+      'milestone m1 complete {}\n';
     expect(out).toBe(expected);
   });
 
@@ -60,12 +59,41 @@ describe('exportToSiren', () => {
     const ir = IRContext.fromResources(resources);
     const out = exportToSiren(ir);
     const expected =
-      'task task1 {\n' +
-      '}\n\n' +
+      'task task1 {}\n\n' +
       'milestone m2 {\n' +
       '  depends_on = [task1]\n' +
       '  labels = ["a", "b"]\n' +
       '}\n';
+    expect(out).toBe(expected);
+  });
+
+  it('formats an empty milestone as single-line block', () => {
+    const resources: Resource[] = [
+      {
+        type: 'milestone',
+        id: 'empty',
+        complete: false,
+        attributes: [],
+      },
+    ];
+    const ir = IRContext.fromResources(resources);
+    const out = exportToSiren(ir);
+    const expected = 'milestone empty {}\n';
+    expect(out).toBe(expected);
+  });
+
+  it('formats an empty task as single-line block', () => {
+    const resources: Resource[] = [
+      {
+        type: 'task',
+        id: 'empty',
+        complete: false,
+        attributes: [],
+      },
+    ];
+    const ir = IRContext.fromResources(resources);
+    const out = exportToSiren(ir);
+    const expected = 'task empty {}\n';
     expect(out).toBe(expected);
   });
 });

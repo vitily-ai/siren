@@ -61,11 +61,19 @@ export function wrapResourceBlock(
   bodyLines: string[],
   headerTrailingComment?: string,
 ): string {
-  let header = `${type} ${id}${complete ? ' complete' : ''} {`;
+  const headerBase = `${type} ${id}${complete ? ' complete' : ''}`;
+  const footer = `}`;
+  if (bodyLines.length === 0) {
+    let single = `${headerBase} {}`;
+    if (headerTrailingComment) {
+      single = `${single}  ${headerTrailingComment}`; // Two spaces before comment per Siren convention
+    }
+    return single;
+  }
+
+  let header = `${headerBase} {`;
   if (headerTrailingComment) {
     header = `${header}  ${headerTrailingComment}`; // Two spaces before comment per Siren convention
   }
-  const footer = `}`;
-  if (bodyLines.length === 0) return `${header}\n${footer}`;
   return [header, ...bodyLines, footer].join('\n');
 }
