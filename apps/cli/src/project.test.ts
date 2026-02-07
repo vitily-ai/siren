@@ -18,7 +18,8 @@ const fixturesDir = path.join(
 );
 
 function copyFixture(fixtureName: string, targetDir: string) {
-  const fixturePath = path.join(fixturesDir, fixtureName, 'siren');
+  const nested = path.join(fixturesDir, fixtureName, 'siren');
+  const fixturePath = fs.existsSync(nested) ? nested : path.join(fixturesDir, fixtureName);
   const targetSirenDir = path.join(targetDir, 'siren');
   fs.cpSync(fixturePath, targetSirenDir, { recursive: true });
 }
@@ -169,7 +170,7 @@ milestone "MVP Release" {}`,
 
     expect(ctx.warnings).toHaveLength(1);
     expect(ctx.warnings[0]).toContain(
-      'siren/main.siren:1:0: W004: Circular dependency detected: task1 -> task2 -> task3 -> task1',
+      'siren/circular-depends.siren:1:0: W004: Circular dependency detected: task1 -> task2 -> task3 -> task1',
     );
   });
 });
