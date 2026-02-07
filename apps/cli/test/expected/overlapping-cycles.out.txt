@@ -5,5 +5,5 @@
 ---
 a
 ---
-main.siren:1:0: W004: Circular dependency detected: a -> b -> c -> a
-main.siren:1:0: W004: Circular dependency detected: a -> c -> a
+overlapping-cycles.siren:1:0: W004: Circular dependency detected: a -> b -> c -> a
+overlapping-cycles.siren:1:0: W004: Circular dependency detected: a -> c -> a

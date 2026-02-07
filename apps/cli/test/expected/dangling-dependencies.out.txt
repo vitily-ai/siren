@@ -11,7 +11,7 @@ with-two-dangling
 └─ missing2
 
 ---
-main.siren:5:0: W005: Dangling dependency: milestone 'with-dangling' depends on 'missing-task'
-main.siren:11:0: W005: Dangling dependency: milestone 'with-two-dangling' depends on 'missing1'
-main.siren:11:0: W005: Dangling dependency: milestone 'with-two-dangling' depends on 'missing2'
+dangling-dependencies.siren:5:0: W005: Dangling dependency: milestone 'with-dangling' depends on 'missing-task'
+dangling-dependencies.siren:11:0: W005: Dangling dependency: milestone 'with-two-dangling' depends on 'missing1'
+dangling-dependencies.siren:11:0: W005: Dangling dependency: milestone 'with-two-dangling' depends on 'missing2'
 
