@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { IRContext, type Resource } from '@siren/core';
+import { formatDiagnostic } from './format-diagnostics.js';
 import { getParser } from './parser.js';
 
 const SIREN_DIR = 'siren';
@@ -129,12 +130,23 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
   ctx.ir = ir;
   ctx.milestones = ir.getMilestoneIds();
 
-  // Collect all project-wide diagnostics
-  for (const diagnostic of ir.diagnostics) {
+  // Collect parse-level diagnostics (W001, W002, W003, E001)
+  for (const diagnostic of ir.parseDiagnostics) {
+    const formatted = formatDiagnostic(diagnostic);
     if (diagnostic.severity === 'warning') {
-      ctx.warnings.push(`Warning: ${diagnostic.message}`);
+      ctx.warnings.push(formatted);
     } else if (diagnostic.severity === 'error') {
-      ctx.errors.push(`Error: ${diagnostic.message}`);
+      ctx.errors.push(formatted);
+    }
+  }
+
+  // Collect semantic diagnostics (W004, W005)
+  for (const diagnostic of ir.diagnostics) {
+    const formatted = formatDiagnostic(diagnostic);
+    if (diagnostic.severity === 'warning') {
+      ctx.warnings.push(formatted);
+    } else if (diagnostic.severity === 'error') {
+      ctx.errors.push(formatted);
     }
   }
 

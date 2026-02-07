@@ -8,13 +8,12 @@ import type { Document, Resource, ResourceReference } from './types.js';
 
 /**
  * Semantic diagnostic message produced from IR analysis
- * 
+ *
  * Structured as a discriminated union by code.
  * The `message` field is intentionally absent - frontends (CLI, web)
  * decide how to format diagnostics for display.
  */
 export type Diagnostic = DanglingDependencyDiagnostic | CircularDependencyDiagnostic;
-
 
 // TODO this looks like it should be an extension of a root interface instead of two separate interfaces
 /**
@@ -127,7 +126,7 @@ export class IRContext {
    * @returns IRContext with diagnostics
    */
   static fromCst(cst: DocumentNode, source?: string): IRContext {
-    const { document, diagnostics } = decodeDocument(cst);
+    const { document, diagnostics } = decodeDocument(cst, source);
     if (!document) {
       // If decoding produced errors, create empty context with parse diagnostics
       return new IRContext({ resources: [], source }, diagnostics);
@@ -167,7 +166,7 @@ export class IRContext {
     for (const cycle of cycles) {
       const firstNodeId = cycle.nodes[0];
       const firstResource = this.resources.find((r) => r.id === firstNodeId);
-      
+
       const fileInfo = this.getFileInfoForResources(cycle.nodes);
       const positionInfo = firstResource?.origin
         ? { line: firstResource.origin.startRow + 1, column: 0 }

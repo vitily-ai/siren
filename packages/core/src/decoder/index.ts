@@ -36,6 +36,12 @@ export interface ParseDiagnostic {
   readonly message: string;
   /** Severity level */
   readonly severity: 'error' | 'warning' | 'info';
+  /** Source file path (populated by fromCst when file is provided) */
+  readonly file?: string;
+  /** 1-based line number (when origin available) */
+  readonly line?: number;
+  /** 0-based column number (when origin available) */
+  readonly column?: number;
 }
 
 /**
@@ -172,11 +178,14 @@ function decodeAttribute(node: AttributeNode): Attribute | null {
  * Decode a resource node from CST to IR
  *
  * @param node - The CST resource node
+ * @param diagnostics - Array to collect diagnostics
+ * @param source - Optional source file path for diagnostic attribution
  * @returns The decoded Resource
  */
 function decodeResource(
   node: ResourceNode & { completeKeywordCount?: number; completeKeywordDiagnostics?: string[] },
   diagnostics: ParseDiagnostic[],
+  source?: string,
 ): Resource {
   const type: ResourceType = node.resourceType;
   const id = node.identifier.value;
@@ -188,6 +197,9 @@ function decodeResource(
       code: 'W002',
       message: `Resource '${id}' has 'complete' keyword specified more than once. Only one is allowed; resource will be treated as complete: true.`,
       severity: 'warning',
+      file: source,
+      line: node.origin ? node.origin.startRow + 1 : undefined,
+      column: node.origin ? 0 : undefined,
     });
   }
 
@@ -197,6 +209,9 @@ function decodeResource(
       code: 'W003',
       message: `Resource type '${type}' does not support the 'complete' keyword. It will be ignored.`,
       severity: 'warning',
+      file: source,
+      line: node.origin ? node.origin.startRow + 1 : undefined,
+      column: node.origin ? 0 : undefined,
     });
   }
 
@@ -207,6 +222,9 @@ function decodeResource(
         code: 'E001',
         message: msg,
         severity: 'error',
+        file: source,
+        line: node.origin ? node.origin.startRow + 1 : undefined,
+        column: node.origin ? 0 : undefined,
       });
     }
   }
@@ -229,6 +247,9 @@ function decodeResource(
       message:
         "Resource has both 'complete' keyword and a 'complete' attribute whose value is not true. The resource will be treated as complete.",
       severity: 'warning',
+      file: source,
+      line: node.origin ? node.origin.startRow + 1 : undefined,
+      column: node.origin ? 0 : undefined,
     });
   }
 
@@ -245,14 +266,15 @@ function decodeResource(
  * Decode a CST into an IR Document
  * @internal Not part of the public API; use IRContext.fromCst() instead.
  * @param cst - The parsed concrete syntax tree
+ * @param source - Optional source file path for diagnostic attribution
  * @returns Decoded document with diagnostics
  */
-export function decodeDocument(cst: DocumentNode): DecodeResult {
+export function decodeDocument(cst: DocumentNode, source?: string): DecodeResult {
   const diagnostics: ParseDiagnostic[] = [];
   const resources: Resource[] = [];
 
   for (const resourceNode of cst.resources) {
-    resources.push(decodeResource(resourceNode, diagnostics));
+    resources.push(decodeResource(resourceNode, diagnostics, source));
   }
 
   const hasErrors = diagnostics.some((d) => d.severity === 'error');

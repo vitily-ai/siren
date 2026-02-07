@@ -5,10 +5,16 @@
 
 export const version = '0.1.0';
 
+// Parse diagnostics
+export type { ParseDiagnostic } from './decoder/index.js';
 // Export text exporter utilities
 export * from './export/index.js';
 // IR context with diagnostics
-export type { Diagnostic } from './ir/context.js';
+export type {
+  CircularDependencyDiagnostic,
+  DanglingDependencyDiagnostic,
+  Diagnostic,
+} from './ir/context.js';
 // IR types (intermediate representation)
 export * from './ir/index.js';
 // Export the parser factory so hosts (CLI/Web) can inject WASM loaders.
