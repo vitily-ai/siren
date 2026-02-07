@@ -14,7 +14,7 @@ test('emits W005 for dangling dependencies and does not include missing nodes in
   // Find the specific diagnostic for with-dangling -> missing-task
   const danglingMissingTask = warnings.find(
     (w: any) => w.resourceId === 'with-dangling' && w.dependencyId === 'missing-task',
-  );
+  )!;
   expect(danglingMissingTask).toBeDefined();
   expect(danglingMissingTask.code).toBe('W005');
   expect(danglingMissingTask.severity).toBe('warning');
@@ -27,7 +27,7 @@ test('emits W005 for dangling dependencies and does not include missing nodes in
   // Find diagnostics for with-two-dangling -> missing1 and missing2
   const danglingMissing1 = warnings.find(
     (w: any) => w.resourceId === 'with-two-dangling' && w.dependencyId === 'missing1',
-  );
+  )!;
   expect(danglingMissing1).toBeDefined();
   expect(danglingMissing1.resourceId).toBe('with-two-dangling');
   expect(danglingMissing1.resourceType).toBe('milestone');
@@ -36,7 +36,7 @@ test('emits W005 for dangling dependencies and does not include missing nodes in
   expect(danglingMissing1.column).toBeGreaterThanOrEqual(0);
   const danglingMissing2 = warnings.find(
     (w: any) => w.resourceId === 'with-two-dangling' && w.dependencyId === 'missing2',
-  );
+  )!;
   expect(danglingMissing2).toBeDefined();
   expect(danglingMissing2.resourceId).toBe('with-two-dangling');
   expect(danglingMissing2.resourceType).toBe('milestone');

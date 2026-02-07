@@ -8,14 +8,49 @@ import type { Document, Resource, ResourceReference } from './types.js';
 
 /**
  * Semantic diagnostic message produced from IR analysis
+ * 
+ * Structured as a discriminated union by code.
+ * The `message` field is intentionally absent - frontends (CLI, web)
+ * decide how to format diagnostics for display.
  */
-export interface Diagnostic {
-  /** Diagnostic code (e.g., 'W001' for warnings, 'E001' for errors) */
-  readonly code: string;
-  /** Human-readable description of the issue */
-  readonly message: string;
-  /** Severity level */
-  readonly severity: 'error' | 'warning' | 'info';
+export type Diagnostic = DanglingDependencyDiagnostic | CircularDependencyDiagnostic;
+
+
+// TODO this looks like it should be an extension of a root interface instead of two separate interfaces
+/**
+ * W005: Dangling dependency (resource depends on non-existent resource)
+ */
+export interface DanglingDependencyDiagnostic {
+  readonly code: 'W005';
+  readonly severity: 'warning';
+  /** ID of the resource that has the dangling dependency */
+  readonly resourceId: string;
+  /** Type of the resource (task or milestone) */
+  readonly resourceType: 'task' | 'milestone';
+  /** ID of the missing dependency */
+  readonly dependencyId: string;
+  /** Source file path (when resourceSources available) */
+  readonly file?: string;
+  /** 1-based line number (when origin available) */
+  readonly line?: number;
+  /** 0-based column number (when origin available) */
+  readonly column?: number;
+}
+
+/**
+ * W004: Circular dependency detected
+ */
+export interface CircularDependencyDiagnostic {
+  readonly code: 'W004';
+  readonly severity: 'warning';
+  /** Nodes in the cycle, with the first node repeated at the end (e.g., ['a', 'b', 'c', 'a']) */
+  readonly nodes: readonly string[];
+  /** Source file path(s) (when resourceSources available) */
+  readonly file?: string;
+  /** 1-based line number of the first node in cycle (when origin available) */
+  readonly line?: number;
+  /** 0-based column number of the first node in cycle (when origin available) */
+  readonly column?: number;
 }
 
 /**
@@ -128,13 +163,22 @@ export class IRContext {
     const diagnostics: Diagnostic[] = [];
     const cycles = this.cycles; // This will trigger cycle computation if needed
 
-    // Add warnings for each cycle with file attribution
+    // Add warnings for each cycle with file and position attribution
     for (const cycle of cycles) {
-      const fileInfo = this.getFileInfo(cycle.nodes);
+      const firstNodeId = cycle.nodes[0];
+      const firstResource = this.resources.find((r) => r.id === firstNodeId);
+      
+      const fileInfo = this.getFileInfoForResources(cycle.nodes);
+      const positionInfo = firstResource?.origin
+        ? { line: firstResource.origin.startRow + 1, column: 0 }
+        : {};
+
       diagnostics.push({
         code: 'W004',
-        message: `${fileInfo}Circular dependency detected: ${cycle.nodes.join(' -> ')}`,
         severity: 'warning',
+        nodes: cycle.nodes,
+        ...fileInfo,
+        ...positionInfo,
       });
     }
 
@@ -159,11 +203,19 @@ export class IRContext {
       const dependsOn = IRContext.getDependsOn(resource);
       for (const depId of dependsOn) {
         if (!resourcesById.has(depId)) {
-          const fileInfo = this.getFileInfo([resource.id]);
+          const fileInfo = this.getFileInfoForResources([resource.id]);
+          const positionInfo = resource.origin
+            ? { line: resource.origin.startRow + 1, column: 0 }
+            : {};
+
           diagnostics.push({
             code: 'W005',
-            message: `${fileInfo}Dangling dependency: ${resource.type} '${resource.id}' -> ${depId}?`,
             severity: 'warning',
+            resourceId: resource.id,
+            resourceType: resource.type,
+            dependencyId: depId,
+            ...fileInfo,
+            ...positionInfo,
           });
         }
       }
@@ -173,12 +225,12 @@ export class IRContext {
   }
 
   /**
-   * Build file attribution string from resource IDs using resourceSources mapping.
-   * Returns the full relative paths joined by commas and suffixed with \": \",
-   * or empty string if no sources available.
+   * Build file attribution object from resource IDs using resourceSources mapping.
+   * Returns an object with a `file` property if sources are available, empty object otherwise.
+   * For multiple files, joins them with ", ".
    */
-  private getFileInfo(nodeIds: readonly string[]): string {
-    if (!this.resourceSources || nodeIds.length === 0) return '';
+  private getFileInfoForResources(nodeIds: readonly string[]): { file?: string } {
+    if (!this.resourceSources || nodeIds.length === 0) return {};
     const files = new Set<string>();
     for (const nodeId of nodeIds) {
       const source = this.resourceSources.get(nodeId);
@@ -186,7 +238,7 @@ export class IRContext {
         files.add(source);
       }
     }
-    return files.size > 0 ? `${Array.from(files).join(', ')}: ` : '';
+    return files.size > 0 ? { file: Array.from(files).join(', ') } : {};
   }
 
   /**
