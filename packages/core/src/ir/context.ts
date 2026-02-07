@@ -126,6 +126,7 @@ export class IRContext {
   private computeDiagnostics(): readonly Diagnostic[] {
     const diagnostics: Diagnostic[] = [];
     const cycles = this.cycles; // This will trigger cycle computation if needed
+    const resourcesById = new Map(this.resources.map((resource) => [resource.id, resource]));
 
     // Add warnings for each cycle with file attribution
     for (const cycle of cycles) {
@@ -152,6 +153,19 @@ export class IRContext {
         message: `${fileInfo}Circular dependency detected: ${cycle.nodes.join(' -> ')}`,
         severity: 'warning',
       });
+    }
+
+    for (const resource of this.resources) {
+      const dependsOn = IRContext.getDependsOn(resource);
+      for (const depId of dependsOn) {
+        if (!resourcesById.has(depId)) {
+          diagnostics.push({
+            code: 'W005',
+            message: `Dangling dependency: ${resource.type} '${resource.id}' -> ${depId}?`,
+            severity: 'warning',
+          });
+        }
+      }
     }
 
     return Object.freeze(diagnostics);

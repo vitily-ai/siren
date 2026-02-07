@@ -1,9 +1,7 @@
 import { expect, test } from 'vitest';
 import { getAdapter, parseAndDecodeAll } from './helper.js';
 
-// TODO: W005 dangling dependency diagnostics not yet implemented
-// See: siren/dangling-dependencies.siren
-test.skip('emits W005 for dangling dependencies and does not include missing nodes in IR graph', async () => {
+test('emits W005 for dangling dependencies and does not include missing nodes in IR graph', async () => {
   const adapter = await getAdapter();
   const { resources, diagnostics } = await parseAndDecodeAll(adapter, 'dangling-dependencies');
 
