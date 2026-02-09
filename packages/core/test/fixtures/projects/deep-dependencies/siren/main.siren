@@ -1,5 +1,5 @@
 # Deep Dependencies Fixture
-# This fixture exercises deep dependency chains for testing core traversal logic.
+# This fixture exercises deep dependency trees for testing core traversal logic.
 # Includes chains of depths 2, 10, multiple branches, milestone leaves, incomplete deps, and cycles.
 
 # Chain of depth 10: task10 -> ... -> task1

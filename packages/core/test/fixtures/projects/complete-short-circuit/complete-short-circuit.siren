@@ -1,44 +1,11 @@
-milestone duplicate-ids {
-  description = "
-    When two entries have a conflicting identical id, a warning diagnostic should be raised.
-    The conflict will be resolved by preferring the first entry.
-    The diagnostic will be attributed to the second occurrence that is detected, wherever that is in the deterministic load order.
-  "
-
-  depends_on = [tdd-duplicate-unit-test, tdd-duplicate-integration-test, duplicate-id-cli-implementation]
+milestone ms {
+  depends_on = [complete-and-should-not-show, incomplete-and-should-show]
 }
 
-task determine-source complete {
+task complete-and-should-not-show complete {}
 
-    description = "It must be understood if duplicate detection and diagnostic generation should occur in the IR or the parser."
-    finding = "Use IR"
-    context = ".copilot-tracking/research/20260207-duplicate-id-detection-research.md"
-}
+task incomplete-and-should-show {
 
-task tdd-duplicate-unit-test {
+    depends_on = complete-and-should-not-show
 
-    description = "Start with basic failing unit test"
-    clarification_needed = "Need to understand if IR or parser is responsible in order to know where to write test"
-    depends_on = determine-source
-
-}
-
-task tdd-duplicate-integration-test {
-    depends_on = tdd-duplicate-unit-test
-}
-
-task duplicate-id-core-implementation {
-    depends_on = tdd-duplicate-unit-test
-}
-
-task tdd-duplicate-id-cli-code-formatting-unit-test {
-    depends_on = duplicate-id-core-implementation
-}
-
-task tdd-duplicate-id-cli-code-golden-scenario {
-    depends_on = tdd-duplicate-id-cli-code-formatting-unit-test
-}
-
-task duplicate-id-cli-implementation {
-    depends_on = tdd-duplicate-id-cli-code-golden-scenario
 }

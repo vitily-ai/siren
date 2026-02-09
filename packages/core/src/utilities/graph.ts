@@ -13,6 +13,52 @@ export class DirectedGraph {
   }
 
   /**
+   * General-purpose depth-first search starting at `start`.
+   *
+   * The `onVisit` callback is invoked for each node with the current
+   * path (including the node) and depth. If `onVisit` returns `false`
+   * traversal will not expand that node's successors. The optional
+   * `onBackEdge` is invoked when a successor would revisit a node on
+   * the current path (i.e. a cycle/back-edge), receiving the current
+   * node, the successor that closes the cycle, and the path at the
+   * moment the back-edge was discovered.
+   */
+  dfs(
+    start: string,
+    onVisit: (node: string, path: string[], depth: number) => boolean | undefined,
+    options?: {
+      maxDepth?: number;
+      onBackEdge?: (from: string, to: string, path: string[]) => void;
+    },
+  ): void {
+    const maxDepth = options?.maxDepth ?? Number.POSITIVE_INFINITY;
+    const path: string[] = [];
+    const pathSet = new Set<string>();
+
+    const recurse = (node: string, depth: number): void => {
+      path.push(node);
+      pathSet.add(node);
+
+      const cont = onVisit(node, [...path], depth);
+
+      if (cont !== false && depth < maxDepth) {
+        for (const succ of this.getSuccessors(node)) {
+          if (pathSet.has(succ)) {
+            options?.onBackEdge?.(node, succ, [...path]);
+          } else {
+            recurse(succ, depth + 1);
+          }
+        }
+      }
+
+      path.pop();
+      pathSet.delete(node);
+    };
+
+    recurse(start, 0);
+  }
+
+  /**
    * Add a node to the graph (idempotent)
    */
   addNode(id: string): void {

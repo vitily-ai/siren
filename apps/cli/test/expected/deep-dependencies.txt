@@ -9,9 +9,8 @@ milestone1
    └─ … (8 intermediate dependencies)
       └─ task1
 milestone2
-├─ task10
-│  └─ … (8 intermediate dependencies)
-│     └─ task1
-└─ taskA
-# TODO this should list the leaves nested below it
-   └─ … (multiple dependency branches)
+├─ taskA
+│  └─ … (multiple dependency branches)
+└─ task10
+   └─ … (8 intermediate dependencies)
+      └─ task1

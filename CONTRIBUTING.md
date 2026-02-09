@@ -92,7 +92,7 @@ Public API Policy (IRContext)
 
 - **Goal:** expose a minimal, opaque object-oriented surface via `IRContext` plus the IR types. Consumers (CLI, web, external) should interact with the project IR only through `IRContext` methods and exported types.
 - **What to export:** only IR types and `IRContext` from `packages/core`'s public entry. Internal utilities, parser runtime helpers, and type-guard helpers (`isArray`, `isReference`, etc.) should remain internal and not re-exported.
-- **Immutability & encapsulation:** `IRContext` instances are immutable and return plain data. Methods should avoid leaking internal mutable structures and should be the documented way for clients to query the IR (e.g., `getMilestoneIds()`, `getTasksByMilestone()`, `findResourceById()`, `getIncompleteLeafDependencyChains()`).
+- **Immutability & encapsulation:** `IRContext` instances are immutable and return plain data. Methods should avoid leaking internal mutable structures and should be the documented way for clients to query the IR (e.g., `getMilestoneIds()`, `getTasksByMilestone()`, `findResourceById()`).
 - **Testing guidance:**
 	- Integration and external tests should exercise behavior via the `IRContext` API only.
 	- Internal unit tests within `packages/core` may import package-local modules (e.g., `src/ir/types.js` or `src/utilities/*`) to verify low-level behavior. Those imports must remain inside the package and should not be considered part of the public contract.

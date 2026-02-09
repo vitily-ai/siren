@@ -43,3 +43,6 @@ export type {
 
 // Export SourceIndex for comment classification
 export { SourceIndex } from './parser/index.js';
+
+// Export dependency tree utilities
+export type { DependencyTree } from './utilities/dependency-tree.js';

@@ -1,6 +1,9 @@
 import { decodeDocument, type ParseDiagnostic } from '../decoder/index.js';
 import type { DocumentNode } from '../parser/cst.js';
-import { getIncompleteLeafDependencyChains } from '../utilities/dependency-chains.js';
+import {
+  getDependencyTree as buildDependencyTree,
+  type DependencyTree,
+} from '../utilities/dependency-tree.js';
 import { findResourceById } from '../utilities/entry.js';
 import { DirectedGraph } from '../utilities/graph.js';
 import { getMilestoneIds, getTasksByMilestone } from '../utilities/milestone.js';
@@ -94,12 +97,20 @@ export class IRContext {
     return getTasksByMilestone([...this.resources]);
   }
 
-  getIncompleteLeafDependencyChains(
-    rootId: string,
-    comparator?: (a: string[], b: string[]) => number,
-    options?: { onWarning?: (message: string) => void },
-  ): string[][] {
-    return getIncompleteLeafDependencyChains(rootId, [...this.resources], comparator, options);
+  getDependencyTree(rootId: string): DependencyTree {
+    // By default, treat milestone nodes (except the root) as leaves when
+    // expanding from a root resource. This mirrors CLI/listing behavior
+    // where milestones act as grouping nodes and are not expanded further
+    // in dependency trees unless explicitly requested. Also filter out
+    // complete tasks from the tree.
+    const expandPredicate = (r: Resource) => {
+      // Don't expand if it's a complete task
+      if (r.complete) return false;
+      // Don't expand milestones (except the root)
+      if (r.type === 'milestone' && r.id !== rootId) return false;
+      return true;
+    };
+    return buildDependencyTree(rootId, [...this.resources], expandPredicate);
   }
 
   /** Get semantic diagnostics computed from IR analysis */
