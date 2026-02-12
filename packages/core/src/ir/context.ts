@@ -97,20 +97,25 @@ export class IRContext {
     return getTasksByMilestone([...this.resources]);
   }
 
+  // TODO currently implemented with a sensible default traverse
+  // but eventually needs to support a more expressive query interface
   getDependencyTree(rootId: string): DependencyTree {
     // By default, treat milestone nodes (except the root) as leaves when
     // expanding from a root resource. This mirrors CLI/listing behavior
     // where milestones act as grouping nodes and are not expanded further
     // in dependency trees unless explicitly requested. Also filter out
-    // complete tasks from the tree.
-    const expandPredicate = (r: Resource) => {
-      // Don't expand if it's a complete task
+    // complete tasks from the tree entirely.
+    const traversePredicate = (r: Resource) => {
+      // Exclude complete tasks entirely (don't include in tree)
       if (r.complete) return false;
-      // Don't expand milestones (except the root)
-      if (r.type === 'milestone' && r.id !== rootId) return false;
+      // Include non-root milestones as leaves (include but don't expand)
+      if (r.type === 'milestone' && r.id !== rootId) {
+        return { include: true, expand: false };
+      }
+      // Include and expand everything else
       return true;
     };
-    return buildDependencyTree(rootId, [...this.resources], expandPredicate);
+    return buildDependencyTree(rootId, [...this.resources], traversePredicate);
   }
 
   /** Get semantic diagnostics computed from IR analysis */

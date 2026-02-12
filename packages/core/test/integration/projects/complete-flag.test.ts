@@ -36,26 +36,21 @@ describe('project:complete-flag', () => {
     expect(tree.dependencies[0]?.resource.id).toBe('task_root');
 
     const taskRootNode = tree.dependencies[0];
-    // task_root should have both dependencies in the raw tree
-    expect(taskRootNode?.dependencies).toHaveLength(2);
+    // task_root should only have incomplete dependencies (complete tasks are filtered by core)
+    expect(taskRootNode?.dependencies).toHaveLength(1);
 
-    // Find the complete and incomplete tasks in the dependencies
-    const completeDep = taskRootNode?.dependencies.find((d) => d.resource.id === 'task_done');
+    // Find the incomplete task in the dependencies
     const incompleteDep = taskRootNode?.dependencies.find(
       (d) => d.resource.id === 'task_incomplete',
     );
 
-    expect(completeDep).toBeDefined();
     expect(incompleteDep).toBeDefined();
 
-    // Verify the complete flag is set correctly
-    expect(completeDep!.resource.complete).toBe(true);
+    // Verify the incomplete task has the correct complete flag
     expect(incompleteDep!.resource.complete).toBe(false);
 
-    // When filtered for incomplete tasks only (as done during rendering),
-    // only task_incomplete should remain
-    const incompleteDeps = taskRootNode!.dependencies.filter((d) => !d.resource.complete);
-    expect(incompleteDeps).toHaveLength(1);
-    expect(incompleteDeps[0]?.resource.id).toBe('task_incomplete');
+    // Complete tasks should not appear in the tree at all
+    const completeDep = taskRootNode?.dependencies.find((d) => d.resource.id === 'task_done');
+    expect(completeDep).toBeUndefined();
   });
 });

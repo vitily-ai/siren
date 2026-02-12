@@ -41,14 +41,16 @@ describe('getDependencyTree', () => {
     expect(tree.dependencies.map((d) => d.resource.id).sort()).toEqual(['B', 'C']);
   });
 
-  it('honors expandPredicate (treats node as leaf when predicate is false)', () => {
+  it('honors traversePredicate (treats node as leaf with explicit control)', () => {
     const resources = [res('A', 'B'), res('B', 'C'), res('C')];
-    const tree = getDependencyTree('A', resources, (r) => r.id !== 'B');
+    const tree = getDependencyTree('A', resources, (r) =>
+      r.id === 'B' ? { include: true, expand: false } : true,
+    );
 
     expect(tree.dependencies).toHaveLength(1);
     const b = tree.dependencies[0];
     expect(b.resource.id).toBe('B');
-    // B should be a leaf because predicate returned false for B
+    // B should be a leaf because predicate returned { include: true, expand: false }
     expect(b.dependencies).toHaveLength(0);
   });
 

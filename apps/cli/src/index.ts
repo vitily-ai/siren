@@ -12,8 +12,6 @@ const MAIN_FILE = 'main.siren';
 const CONFIG_CONTENTS = `# project_name: Siren Project
 `;
 
-const _DEBUG_MAX_DEPTH = 10000;
-
 function printUsage(): void {
   console.log(`Siren CLI v${version}
 

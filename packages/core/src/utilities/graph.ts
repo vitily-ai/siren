@@ -104,41 +104,27 @@ export class DirectedGraph {
     const cycles: string[][] = [];
 
     for (const start of this.getNodes()) {
-      const path: string[] = [];
-      const pathSet = new Set<string>();
-
-      const dfs = (node: string): void => {
-        path.push(node);
-        pathSet.add(node);
-
-        for (const successor of this.getSuccessors(node)) {
-          if (pathSet.has(successor)) {
-            // Cycle found: successor is in current path
-            const cycleStart = path.indexOf(successor);
-            // `cycle` temporarily includes the closing duplicate (successor)
-            // e.g. path slice -> ['a','b','c'] + successor -> ['a','b','c','a']
-            const cycle = path.slice(cycleStart).concat(successor);
-            // Normalize cycle: rotate to start with the lexicographically smallest node
-            // Exclude the temporary closing duplicate for rotation calculations
-            const cycleNodes = cycle.slice(0, -1);
-            const minNode = cycleNodes.reduce((min, curr) => (curr < min ? curr : min));
-            const minIndex = cycleNodes.indexOf(minNode);
-            // Re-add the starting node at the end to produce the canonical
-            // representation that explicitly closes the cycle, e.g. ['a','b','c','a']
-            const normalized = cycleNodes
-              .slice(minIndex)
-              .concat(cycleNodes.slice(0, minIndex), minNode);
-            cycles.push(normalized);
-          } else {
-            dfs(successor);
-          }
-        }
-
-        path.pop();
-        pathSet.delete(node);
-      };
-
-      dfs(start);
+      this.dfs(start, () => true, {
+        onBackEdge: (_from, to, path) => {
+          // Cycle found: `to` is already on the current path
+          const cycleStart = path.indexOf(to);
+          if (cycleStart < 0) return;
+          // `cycle` temporarily includes the closing duplicate (to)
+          // e.g. path slice -> ['a','b','c'] + to -> ['a','b','c','a']
+          const cycle = path.slice(cycleStart).concat(to);
+          // Normalize cycle: rotate to start with the lexicographically smallest node
+          // Exclude the temporary closing duplicate for rotation calculations
+          const cycleNodes = cycle.slice(0, -1);
+          const minNode = cycleNodes.reduce((min, curr) => (curr < min ? curr : min));
+          const minIndex = cycleNodes.indexOf(minNode);
+          // Re-add the starting node at the end to produce the canonical
+          // representation that explicitly closes the cycle, e.g. ['a','b','c','a']
+          const normalized = cycleNodes
+            .slice(minIndex)
+            .concat(cycleNodes.slice(0, minIndex), minNode);
+          cycles.push(normalized);
+        },
+      });
     }
 
     // Deduplicate cycles

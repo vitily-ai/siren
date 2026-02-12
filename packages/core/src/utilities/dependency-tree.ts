@@ -4,6 +4,28 @@ import { DirectedGraph } from './graph.js';
 
 const MAX_DEPTH = 1000000;
 
+/**
+ * Controls how a node is traversed in the dependency tree.
+ * - include: Should this node appear in the tree?
+ * - expand: Should we traverse its children?
+ */
+export interface TraversalControl {
+  include: boolean;
+  expand: boolean;
+}
+
+/**
+ * Predicate that controls tree traversal.
+ * Returns:
+ * - `false` → exclude node entirely (shorthand for { include: false, expand: false })
+ * - `true` → include and expand (shorthand for { include: true, expand: true })
+ * - `TraversalControl` → explicit control over inclusion and expansion
+ */
+export type TraversePredicate = (
+  resource: Resource,
+  parent?: Resource,
+) => boolean | TraversalControl;
+
 export interface DependencyTree {
   resource: Resource;
   dependencies: DependencyTree[];
@@ -16,7 +38,7 @@ export interface DependencyTree {
 export function getDependencyTree(
   rootId: string,
   resources: readonly Resource[],
-  expandPredicate: (resource: Resource) => boolean = (r) => getDependsOn(r).length > 0,
+  traversePredicate: TraversePredicate = () => true,
 ): DependencyTree {
   const graph = buildDependencyGraph(resources);
   const rootResource = resources.find((r) => r.id === rootId);
@@ -26,88 +48,99 @@ export function getDependencyTree(
 
   const resourcesById = new Map(resources.map((r) => [r.id, r] as const));
 
-  const visited = new Set<string>();
-  const stack: string[] = [];
+  return buildDependencyTree(rootResource, graph, traversePredicate, resourcesById);
+}
 
-  return buildDependencyTree(
-    rootResource,
-    graph,
-    expandPredicate,
-    resourcesById,
-    visited,
-    stack,
-    0,
-  );
+/**
+ * Normalize predicate result to TraversalControl.
+ */
+function normalizeControl(result: boolean | TraversalControl): TraversalControl {
+  if (typeof result === 'boolean') {
+    return { include: result, expand: result };
+  }
+  return result;
 }
 
 function buildDependencyTree(
   root: Resource,
   graph: DirectedGraph,
-  expandPredicate: (resource: Resource) => boolean = (r) => getDependsOn(r).length > 0,
+  traversePredicate: TraversePredicate = () => true,
   resourcesById?: Map<string, Resource>,
-  visited?: Set<string>,
-  stack?: string[],
-  depth = 0,
 ): DependencyTree {
-  if (depth > MAX_DEPTH) {
-    throw new Error('maximum dependency depth exceeded');
-  }
-
   const resourcesMap = resourcesById ?? new Map();
-  const path = stack ?? [];
   const tree: DependencyTree = { resource: root, dependencies: [] };
 
-  // If expandPredicate says not to expand this node, return as leaf
-  if (!expandPredicate(root)) return tree;
+  // Check if we should expand the root's children
+  const rootControl = normalizeControl(traversePredicate(root));
+  if (!rootControl.expand) return tree;
 
-  const successors = graph.getSuccessors(root.id) ?? [];
+  const pathKey = (path: readonly string[]): string => path.join('\u0000');
+  const nodesByPath = new Map<string, DependencyTree>();
+  nodesByPath.set(pathKey([root.id]), tree);
 
-  // mark current node on the recursion path for cycle detection
-  path.push(root.id);
+  graph.dfs(
+    root.id,
+    (nodeId, path, depth) => {
+      if (depth > MAX_DEPTH) {
+        throw new Error('maximum dependency depth exceeded');
+      }
 
-  for (const succId of successors) {
-    // detect cycle: successor already on current recursion path
-    if (path.includes(succId)) {
-      const cycResource = resourcesMap.get(succId) ?? {
-        type: 'task',
-        id: succId,
-        complete: false,
-        attributes: [],
-      };
-      const cycNode: DependencyTree = { resource: cycResource, dependencies: [], cycle: true };
-      tree.dependencies.push(cycNode);
-      continue;
-    }
+      if (depth === 0) {
+        return rootControl.expand;
+      }
 
-    // get the resource object for successor; if missing create a placeholder
-    const succResource = resourcesMap.get(succId) ?? {
-      type: 'task',
-      id: succId,
-      complete: false,
-      attributes: [],
-    };
+      const parentKey = pathKey(path.slice(0, -1));
+      const parent = nodesByPath.get(parentKey);
+      if (!parent) return false;
 
-    // recurse
-    const child = buildDependencyTree(
-      succResource,
-      graph,
-      expandPredicate,
-      resourcesMap,
-      visited,
-      path,
-      depth + 1,
-    );
+      const resource =
+        resourcesMap.get(nodeId) ??
+        ({
+          type: 'task',
+          id: nodeId,
+          complete: false,
+          attributes: [],
+        } satisfies Resource);
 
-    // if the child resource was created as placeholder (not in original map), mark missing
-    if (!resourcesMap.has(succId)) {
-      child.missing = true;
-    }
+      // Check traversal predicate with parent context
+      const parentResource = parent.resource;
+      const control = normalizeControl(traversePredicate(resource, parentResource));
 
-    tree.dependencies.push(child);
-  }
+      // If not included, don't add to tree at all
+      if (!control.include) {
+        return false;
+      }
 
-  // remove current node from recursion path
-  path.pop();
+      const child: DependencyTree = { resource, dependencies: [] };
+      if (!resourcesMap.has(nodeId)) {
+        child.missing = true;
+      }
+
+      parent.dependencies.push(child);
+      nodesByPath.set(pathKey(path), child);
+
+      // Return whether to expand this node's children
+      return control.expand;
+    },
+    {
+      onBackEdge: (_from, to, path) => {
+        const parent = nodesByPath.get(pathKey(path));
+        if (!parent) return;
+
+        const cycResource =
+          resourcesMap.get(to) ??
+          ({
+            type: 'task',
+            id: to,
+            complete: false,
+            attributes: [],
+          } satisfies Resource);
+
+        const cycNode: DependencyTree = { resource: cycResource, dependencies: [], cycle: true };
+        parent.dependencies.push(cycNode);
+      },
+    },
+  );
 
   return tree;
 }
