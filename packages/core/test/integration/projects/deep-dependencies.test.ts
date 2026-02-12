@@ -22,7 +22,7 @@ describe('project:deep-dependencies', () => {
     adapter = await getAdapter();
   });
 
-  it('decodes deep dependency chains correctly', async () => {
+  it('decodes deep dependency trees correctly', async () => {
     const { resources, diagnostics } = await parseAndDecodeAll(adapter, 'deep-dependencies');
 
     // Should have 17 tasks + 2 milestones = 19 resources

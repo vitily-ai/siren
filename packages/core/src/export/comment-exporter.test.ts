@@ -145,8 +145,8 @@ describe('exportWithComments', () => {
 
   describe('detached comment blocks', () => {
     it('should preserve detached block with blank line separation', () => {
-      const source = 'task foo { }\n\n# Detached comment';
-      const comments = [
+      const _source = 'task foo { }\n\n# Detached comment';
+      const _comments = [
         comment('task foo { }', 0, 12, 0, 0),
         comment('# Detached comment', 15, 33, 2, 2),
       ];

@@ -17,10 +17,10 @@ import type {
   ExpressionNode,
   IdentifierNode,
   LiteralNode,
+  Origin,
   ReferenceNode,
   ResourceNode,
 } from '../../src/parser/cst.js';
-import type { Origin } from '../../src/parser/cst.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

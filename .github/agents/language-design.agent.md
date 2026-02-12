@@ -27,7 +27,7 @@ This AGENTS.md is written to onboard an automated code agent that will act as an
 - Grammar: `packages/core/grammar/` and `packages/core/grammar/src/` (Tree-sitter DSL and parser artifacts).
 - Parser & CST: `packages/core/src/parser/` and related adapter code.
 - Decoder & IR: `packages/core/src/decoder/` and `packages/core/src/ir/`.
-- Utilities: `packages/core/src/utilities/` (dependency-chains, entry, etc.).
+- Utilities: `packages/core/src/utilities/` (dependency-tree, entry, etc.).
 - Tests & fixtures: `packages/core/test/fixtures/`, `apps/cli/test/expected/`, and `packages/core/test/`.
 
 ## Setup Commands (copyable)

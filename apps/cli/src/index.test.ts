@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { copyProjectFixture } from '../test/helpers/fixture-utils.js';
-import { init, list, main, renderDependencyChains } from './index.js';
+import { init, list, main } from './index.js';
 import * as project from './project.js';
 import { loadProject } from './project.js';
 
@@ -277,73 +277,14 @@ describe('siren list', () => {
     expect(result.milestones).toEqual(['test']);
   });
 
-  it('lists tasks by milestone when showTasks is true', async () => {
-    copyFixture('tasks-by-milestone', tempDir);
+  it('lists milestones', async () => {
+    copyFixture('multiple-files', tempDir);
 
     await loadProject(tempDir);
-    const result = await list(true);
+    const result = await list();
 
     expect(result.milestones).toEqual(['alpha', 'beta']);
-    expect(result.chainsByMilestone).toBeDefined();
-    expect(result.chainsByMilestone?.get('alpha')).toEqual([['alpha', 'task1']]);
-    expect(result.chainsByMilestone?.get('beta')).toEqual([]);
-  });
-
-  it('handles array depends_on in tasks', async () => {
-    copyFixture('array-depends', tempDir);
-
-    await loadProject(tempDir);
-    const result = await list(true);
-
-    expect(result.chainsByMilestone?.get('alpha')).toEqual([['alpha', 'task1']]);
-    expect(result.chainsByMilestone?.get('gamma')).toEqual([['gamma', 'task1']]);
-  });
-});
-
-describe('renderDependencyChains', () => {
-  it('renders empty chains', () => {
-    expect(renderDependencyChains([])).toEqual([]);
-  });
-
-  it('renders single chain with depth 1', () => {
-    const chains = [['milestone', 'task1']];
-    expect(renderDependencyChains(chains)).toEqual(['└─ task1']);
-  });
-
-  it('renders single chain with depth 2', () => {
-    const chains = [['milestone', 'dep1', 'task1']];
-    expect(renderDependencyChains(chains)).toEqual(['└─ dep1', '   └─ task1']);
-  });
-
-  it('renders truncated chain', () => {
-    const chains = [['milestone', 'dep1', 'dep2', 'dep3', 'dep4', 'task1']];
-    expect(renderDependencyChains(chains)).toEqual([
-      '└─ dep1',
-      '   └─ … (3 intermediate dependencies)',
-      '      └─ task1',
-    ]);
-  });
-
-  it('renders multiple chains', () => {
-    const chains = [
-      ['milestone', 'dep1', 'task1'],
-      ['milestone', 'dep1', 'task2'],
-    ];
-    expect(renderDependencyChains(chains)).toEqual(['└─ dep1', '   ├─ task1', '   └─ task2']);
-  });
-
-  it('renders branching chains', () => {
-    const chains = [
-      ['milestone', 'dep1', 'sub1', 'task1'],
-      ['milestone', 'dep1', 'sub2', 'task2'],
-    ];
-    expect(renderDependencyChains(chains)).toEqual([
-      '└─ dep1',
-      '   ├─ sub1',
-      '   │  └─ task1',
-      '   └─ sub2',
-      '      └─ task2',
-    ]);
+    expect(result.warnings).toHaveLength(0);
   });
 });
 

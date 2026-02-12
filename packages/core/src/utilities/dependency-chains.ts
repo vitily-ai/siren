@@ -2,108 +2,103 @@ import type { Resource } from '../ir/types.js';
 import { isArray, isReference } from '../ir/types.js';
 import { DirectedGraph } from './graph.js';
 
-/**
- * Collects incomplete leaf dependency chains starting from a given root ID.
- *
- * A dependency chain is a path from the root resource to a leaf resource, where leaves are
- * milestones or incomplete tasks (tasks not marked as complete). Milestones are treated as
- * leaves and their dependencies are not expanded. The traversal respects a maximum depth
- * limit, where depth is the number of dependency edges in the chain (e.g., a chain of 3 IDs
- * has depth 2).
- *
- * Incomplete leaves include:
- * - Milestones (always considered incomplete goals)
- * - Tasks that are not marked complete
- * - Missing/unresolved dependency IDs (treated as incomplete)
- *
- * The function performs a depth-first search from the root, following dependency edges
- * (from dependent to dependency), and collects all valid chains to incomplete leaves within
- * the depth limit. Cycles are avoided by not revisiting nodes in the current path.
- *
- * Future extensibility: The optional comparator allows for custom sorting of chains, which
- * could be extended to support different traversal orders (e.g., breadth-first) or filtering
- * criteria by accepting additional parameters like a filter function for leaves.
- *
- * @param rootId - The ID of the root resource to start traversal from
- * @param resources - Array of all Siren resources in the project
- * @param maxDepth - Maximum number of dependency edges to traverse (0 means only check root)
- * @param comparator - Optional comparator function to sort the returned chains
- * @returns Array of dependency chains, each chain is an array of resource IDs from root to leaf
- */
-const MAX_DEPTH = 10000;
+const MAX_DEPTH = 1000000;
 
-export function getIncompleteLeafDependencyChains(
+export interface DependencyTree {
+  resource: Resource;
+  dependencies: DependencyTree[];
+  /** If true, this node represents a detected cycle */
+  cycle?: boolean;
+  /** If true, this node represents a missing referenced resource */
+  missing?: boolean;
+}
+
+export function getDependencyTree(
   rootId: string,
   resources: readonly Resource[],
-  comparator?: (a: string[], b: string[]) => number,
-  options?: { onWarning?: (message: string) => void },
-): string[][] {
-  // DEBUG: trace invocation (temporary)
-  // eslint-disable-next-line no-console
-  // console.error('DBG getChains', { rootId, maxDepth, resources: resources.map((r) => r.id) });
+  expandPredicate: (resource: Resource) => boolean = (r) => getDependsOn(r).length > 0,
+): DependencyTree {
   const graph = buildDependencyGraph(resources);
-  const resourceMap = new Map(resources.map((r) => [r.id, r]));
-  const chains: string[][] = [];
-  const prunedRoots = new Set<string>();
+  const rootResource = resources.find((r) => r.id === rootId);
+  if (!rootResource) {
+    throw new Error(`Resource with id ${rootId} not found`);
+  }
 
-  function dfs(currentId: string, path: string[], depth: number): void {
-    path.push(currentId);
+  const resourcesById = new Map(resources.map((r) => [r.id, r] as const));
 
-    const resource = resourceMap.get(currentId);
-    const isMilestone = resource?.type === 'milestone';
-    const isIncompleteTask = resource?.type === 'task' && !resource.complete;
-    const isMissing = !resource;
-    const isIncomplete = isMissing || isMilestone || isIncompleteTask;
-    const hasSuccessors = graph.getSuccessors(currentId).length > 0;
-    const isLeaf =
-      (isMilestone && currentId !== rootId) ||
-      (resource?.type === 'task' && !hasSuccessors) ||
-      isMissing;
+  const stack: string[] = [];
 
-    if (isLeaf && isIncomplete) {
-      chains.push([...path]);
-    } else if (depth < MAX_DEPTH && !isMissing) {
-      // Only expand if not missing and within depth
-      for (const successor of graph.getSuccessors(currentId)) {
-        if (path.includes(successor)) {
-          // Detected a cycle. Only emit a sentinel chain when the original
-          // traversal root is a milestone so callers (CLI) can present a
-          // concise loop indicator for milestones. For task-root cycles,
-          // do not emit anything (preserve previous behavior of returning
-          // no chains for pure cycles).
-          const rootResource = resourceMap.get(rootId);
-          if (rootResource?.type === 'milestone') {
-            const sentinel = '… (dependency loop - check warnings)';
-            const firstDep = path[1];
-            if (firstDep) {
-              chains.push([rootId, firstDep, sentinel]);
-            } else {
-              chains.push([rootId, sentinel]);
-            }
-          }
-        } else {
-          dfs(successor, path, depth + 1);
-        }
-      }
-    } else if (depth >= MAX_DEPTH && !isMissing) {
-      // We hit the configured depth limit and there are still successors.
-      // Emit a single warning for this root if an onWarning handler was provided.
-      if (!prunedRoots.has(rootId)) {
-        prunedRoots.add(rootId);
-        options?.onWarning?.(`Dependency tree for '${rootId}' pruned at max depth ${MAX_DEPTH}`);
-      }
+  return buildDependencyTree(rootResource, graph, expandPredicate, resourcesById, stack, 0);
+}
+
+function buildDependencyTree(
+  root: Resource,
+  graph: DirectedGraph,
+  expandPredicate: (resource: Resource) => boolean = (r) => getDependsOn(r).length > 0,
+  resourcesById?: Map<string, Resource>,
+  stack?: string[],
+  depth = 0,
+): DependencyTree {
+  if (depth > MAX_DEPTH) {
+    throw new Error('maximum dependency depth exceeded');
+  }
+
+  const resourcesMap = resourcesById ?? new Map();
+  const path = stack ?? [];
+  const tree: DependencyTree = { resource: root, dependencies: [] };
+
+  // If expandPredicate says not to expand this node, return as leaf
+  if (!expandPredicate(root)) return tree;
+
+  const successors = graph.getSuccessors(root.id) ?? [];
+
+  // mark current node on the recursion path for cycle detection
+  path.push(root.id);
+
+  for (const succId of successors) {
+    // detect cycle: successor already on current recursion path
+    if (path.includes(succId)) {
+      const cycResource = resourcesMap.get(succId) ?? {
+        type: 'task',
+        id: succId,
+        complete: false,
+        attributes: [],
+      };
+      const cycNode: DependencyTree = { resource: cycResource, dependencies: [], cycle: true };
+      tree.dependencies.push(cycNode);
+      continue;
     }
 
-    path.pop();
+    // get the resource object for successor; if missing create a placeholder
+    const succResource = resourcesMap.get(succId) ?? {
+      type: 'task',
+      id: succId,
+      complete: false,
+      attributes: [],
+    };
+
+    // recurse
+    const child = buildDependencyTree(
+      succResource,
+      graph,
+      expandPredicate,
+      resourcesMap,
+      path,
+      depth + 1,
+    );
+
+    // if the child resource was created as placeholder (not in original map), mark missing
+    if (!resourcesMap.has(succId)) {
+      child.missing = true;
+    }
+
+    tree.dependencies.push(child);
   }
 
-  dfs(rootId, [], 0);
+  // remove current node from recursion path
+  path.pop();
 
-  if (comparator) {
-    chains.sort(comparator);
-  }
-
-  return chains;
+  return tree;
 }
 
 /**

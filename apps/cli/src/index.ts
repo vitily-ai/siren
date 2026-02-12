@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { version } from '@siren/core';
+import { type DependencyTree, version } from '@siren/core';
 import { runFormat } from './commands/format.js';
 import { getLoadedContext, loadProject } from './project.js';
 
@@ -11,8 +11,6 @@ const MAIN_FILE = 'main.siren';
 
 const CONFIG_CONTENTS = `# project_name: Siren Project
 `;
-
-const DEBUG_MAX_DEPTH = 10000;
 
 function printUsage(): void {
   console.log(`Siren CLI v${version}
@@ -86,122 +84,177 @@ export function runInit(cwd: string): void {
 
 export interface ListResult {
   milestones: string[];
-  chainsByMilestone?: Map<string, string[][]>;
   warnings: string[];
 }
 
-// Minimal recursive tree node type for dependency rendering. Keys map to
-// child subtrees or `undefined` for absent entries. Keep `| undefined`
-// to work cleanly with `noUncheckedIndexedAccess` in strict TS.
-interface TreeNode {
-  [id: string]: TreeNode | undefined;
+/**
+ * Check if a dependency tree contains a cycle anywhere in its subtree
+ */
+function hasCycleInTree(tree: DependencyTree): boolean {
+  if (tree.cycle) return true;
+  for (const dep of tree.dependencies) {
+    if (hasCycleInTree(dep)) return true;
+  }
+  return false;
+}
+
+/**
+ * Render a dependency tree as an array of indented lines using Unicode box-drawing characters.
+ * Handles cycles, missing dependencies, and deep trees with truncation.
+ *
+ * @param tree - The dependency tree to render
+ * @param prefix - Current indentation prefix (for recursion)
+ * @param isLast - Whether this node is the last child of its parent
+ * @param depth - Current depth (for truncation)
+ * @param maxDepth - Maximum depth before truncating intermediate dependencies
+ * @returns Array of formatted tree lines
+ */
+function renderDependencyTree(
+  tree: DependencyTree,
+  prefix: string = '',
+  _isLast: boolean = true,
+  depth: number = 0,
+  maxDepth: number = 2,
+): string[] {
+  const lines: string[] = [];
+
+  // Filter out complete tasks from dependencies
+  const deps = tree.dependencies.filter((d) => !d.resource.complete);
+
+  // If no dependencies (after filtering), return empty (leaf node)
+  if (deps.length === 0) {
+    return lines;
+  }
+
+  // Check if we need to truncate due to depth
+  if (depth >= maxDepth - 1 && deps.length > 0) {
+    // Check if any dependencies have their own dependencies (i.e., would we go deeper?)
+    const hasGrandchildren = deps.some(
+      (d) => d.dependencies.filter((dd) => !dd.resource.complete).length > 0,
+    );
+    if (hasGrandchildren) {
+      // Count all dependencies in the subtree (excluding complete ones)
+      const countAllDeps = (node: DependencyTree): number => {
+        const childDeps = node.dependencies.filter((d) => !d.resource.complete);
+        if (childDeps.length === 0) {
+          return 0;
+        }
+        let count = childDeps.length; // Count immediate children
+        for (const child of childDeps) {
+          count += countAllDeps(child); // Recursively count their descendants
+        }
+        return count;
+      };
+
+      // For multiple dependencies, check if we should show "multiple dependency branches"
+      // or expand each branch individually
+      if (deps.length > 1) {
+        // Check if any dep has descendants (would create branches)
+        const hasDescendants = deps.some((d) => countAllDeps(d) > 0);
+
+        if (hasDescendants) {
+          // Show "… (multiple dependency branches)" instead of expanding
+          const connector = '└─';
+          lines.push(`${prefix}${connector} … (multiple dependency branches)`);
+          return lines;
+        }
+
+        // Otherwise, all deps are leaves - show them normally
+        for (let i = 0; i < deps.length; i++) {
+          const dep = deps[i];
+          if (!dep) continue;
+          const isLastDep = i === deps.length - 1;
+          const connector = isLastDep ? '└─' : '├─';
+          lines.push(`${prefix}${connector} ${dep.resource.id}`);
+        }
+        return lines;
+      }
+
+      // For a single dependency, handle truncation
+      const firstDep = deps[0];
+      if (!firstDep) return lines;
+
+      // Count all deps starting from current level (deps itself + all descendants)
+      const totalDeps = 1 + countAllDeps(firstDep); // +1 for firstDep itself
+
+      // All deps except the deepest leaf are intermediate
+      const intermediateCount = totalDeps - 1;
+
+      const connector = '└─';
+      const childPrefix = `${prefix}   `;
+
+      if (intermediateCount > 0) {
+        lines.push(
+          `${prefix}${connector} … (${intermediateCount} intermediate ${intermediateCount === 1 ? 'dependency' : 'dependencies'})`,
+        );
+
+        // Find the deepest leaf to show
+        let current: DependencyTree | undefined = firstDep;
+        while (current && current.dependencies.filter((d) => !d.resource.complete).length > 0) {
+          current = current.dependencies.filter((d) => !d.resource.complete)[0];
+        }
+        if (current && current !== firstDep) {
+          lines.push(`${childPrefix}└─ ${current.resource.id}`);
+        }
+      } else {
+        // Only one dependency total, just show it
+        lines.push(`${prefix}${connector} ${firstDep.resource.id}`);
+      }
+      return lines;
+    }
+  }
+
+  // Render all dependencies
+  for (let i = 0; i < deps.length; i++) {
+    // TODO type system forces handling undefined `dep` - can we get better guarantees here?
+    const dep = deps[i]!;
+    const isLastDep = i === deps.length - 1;
+    const connector = isLastDep ? '└─' : '├─';
+
+    lines.push(`${prefix}${connector} ${dep.resource.id}`);
+
+    // Check if this dependency's subtree contains a cycle
+    // If so, show ellipsis instead of recursing
+    if (hasCycleInTree(dep)) {
+      const childPrefix = prefix + (isLastDep ? '   ' : '│  ');
+      lines.push(`${childPrefix}└─ … (dependency loop - check warnings)`);
+      continue;
+    }
+
+    // Recursively render child dependencies
+    const childPrefix = prefix + (isLastDep ? '   ' : '│  ');
+    const childLines = renderDependencyTree(dep, childPrefix, isLastDep, depth + 1, maxDepth);
+    lines.push(...childLines);
+  }
+
+  return lines;
 }
 
 /**
  * List all milestone IDs from .siren files in the siren/ directory
  */
-export async function list(showTasks: boolean = false): Promise<ListResult> {
+export async function list(_showTasks: boolean = false): Promise<ListResult> {
   const ctx = getLoadedContext();
   if (!ctx) {
     throw new Error('Project context not loaded');
   }
   const result: ListResult = { milestones: ctx.milestones, warnings: ctx.warnings };
-  if (showTasks) {
-    const chainsByMilestone = new Map<string, string[][]>();
-    for (const milestoneId of ctx.milestones) {
-      const chains =
-        ctx.ir?.getIncompleteLeafDependencyChains(milestoneId, undefined, {
-          onWarning: (m) => ctx.warnings.push(`Warning: ${m}`),
-        }) || [];
-      chainsByMilestone.set(milestoneId, chains);
-    }
-    result.chainsByMilestone = chainsByMilestone;
-  }
   return result;
-}
-
-/**
- * Render dependency chains with ASCII tree characters, truncating chains longer than depth 2.
- */
-export function renderDependencyChains(chains: string[][]): string[] {
-  if (chains.length === 0) return [];
-
-  // Process chains: remove milestone from start, truncate if too long
-  const processedChains: string[][] = chains.map((chain) => {
-    const deps = chain.slice(1); // Remove milestone
-    if (deps.length <= 4) return deps; // No truncation if <=4 deps (intermediate <=2)
-    // Truncate: keep first, replace middle with '… (N intermediate)', keep last
-    const first = deps[0]!;
-    const last = deps[deps.length - 1]!;
-    const intermediateCount = deps.length - 2;
-    return [first, `… (${intermediateCount} intermediate dependencies)`, last];
-  });
-
-  // Build a tree from the processed chains
-  const tree: TreeNode = {};
-  for (const chain of processedChains) {
-    let current = tree;
-    for (const id of chain) {
-      if (!current[id]) current[id] = {};
-      current = current[id]!;
-    }
-  }
-
-  // Compress multiple truncated branches into a single sentinel to match
-  // expected CLI output (e.g. '… (multiple dependency branches)')
-  function compressTruncated(node: TreeNode) {
-    const keys = Object.keys(node);
-    // Find truncated children (strings that start with the elision marker)
-    const truncatedKeys = keys.filter((k) => k.startsWith('… ('));
-    if (truncatedKeys.length > 1) {
-      // Remove all truncated keys and replace with a single multiple-branch sentinel
-      for (const tk of truncatedKeys) delete node[tk];
-      node['… (multiple dependency branches)'] = {};
-    }
-    for (const k of Object.keys(node)) {
-      const child = node[k];
-      if (child && Object.keys(child).length > 0) compressTruncated(child);
-    }
-  }
-
-  compressTruncated(tree);
-
-  // Recursively render the tree
-  function renderTree(node: TreeNode, prefix: string = ''): string[] {
-    const lines: string[] = [];
-    const entries = Object.entries(node).sort((a, b) => a[0].localeCompare(b[0])) as Array<
-      [string, TreeNode | undefined]
-    >;
-    for (let i = 0; i < entries.length; i++) {
-      const entry = entries[i]!;
-      const [key, subNode] = entry;
-      const isLast = i === entries.length - 1;
-      const connector = isLast ? '└─' : '├─';
-      const extend = isLast ? '   ' : '│  ';
-      lines.push(`${prefix}${connector} ${key}`);
-      if (subNode && Object.keys(subNode).length > 0) {
-        const subLines = renderTree(subNode, prefix + extend);
-        lines.push(...subLines);
-      }
-    }
-    return lines;
-  }
-
-  return renderTree(tree);
 }
 
 export async function runList(showTasks: boolean = false): Promise<void> {
   const result = await list(showTasks);
+  const ctx = getLoadedContext();
 
   // Note: warnings are already printed by main()
 
-  if (showTasks && result.chainsByMilestone) {
-    // Print milestone IDs with dependency chains
+  if (showTasks && ctx?.ir) {
+    // Print each milestone with its dependency tree
     for (const milestoneId of result.milestones) {
       console.log(milestoneId);
-      const chains = result.chainsByMilestone.get(milestoneId) || [];
-      const rendered = renderDependencyChains(chains);
-      for (const line of rendered) {
+      const tree = ctx.ir.getDependencyTree(milestoneId);
+      const lines = renderDependencyTree(tree);
+      for (const line of lines) {
         console.log(line);
       }
     }
@@ -220,178 +273,19 @@ export async function runList(showTasks: boolean = false): Promise<void> {
 export async function runShow(entryId: string): Promise<void> {
   const ctx = getLoadedContext();
   if (!ctx) throw new Error('Project context not loaded');
+  if (!ctx.ir) throw new Error('IR context not available');
 
-  // Validate entry exists and get its declared direct dependencies (preserve order)
-  const resource =
-    ctx.ir?.findResourceById(entryId) ??
-    (() => {
-      throw new Error(`Resource with ID '${entryId}' not found`);
-    })();
-  const directDeps: string[] = [];
-  const depAttr = resource.attributes.find((a) => a.key === 'depends_on');
-  if (depAttr && typeof depAttr === 'object' && depAttr.value != null) {
-    const v: any = depAttr.value;
-    if (v && typeof v === 'object' && 'kind' in v) {
-      if (v.kind === 'reference') directDeps.push(v.id);
-      else if (v.kind === 'array') {
-        for (const el of v.elements) {
-          if (el && typeof el === 'object' && 'kind' in el && el.kind === 'reference') {
-            directDeps.push(el.id);
-          }
-        }
-      }
-    }
-  }
+  // Get the dependency tree for this entry
+  const tree = ctx.ir.getDependencyTree(entryId);
 
-  // Get incomplete leaf dependency chains for the entry
-  if (process.env.SIREN_DEBUG) {
-    // Print resources and their declared depends_on for inspection
-    for (const r of ctx.resources) {
-      const depAttr = r.attributes.find((a: any) => a.key === 'depends_on');
-      const raw = depAttr ? depAttr.value : null;
-      console.error(
-        'RESOURCE',
-        r.id,
-        'type',
-        r.type,
-        'complete',
-        r.complete,
-        'depends_on_raw',
-        raw,
-      );
-    }
-    // Build adjacency map and trace DFS order
-    const adj = new Map();
-    for (const r of ctx.resources) {
-      const depAttr = r.attributes.find((a: any) => a.key === 'depends_on');
-      const deps: string[] = [];
-      if (depAttr?.value) {
-        const v: any = depAttr.value;
-        if (v.kind === 'reference') deps.push(v.id);
-        else if (v.kind === 'array') {
-          for (const el of v.elements) if (el.kind === 'reference') deps.push(el.id);
-        }
-      }
-      adj.set(r.id, deps);
-    }
-    console.error('ADJ:', JSON.stringify(Object.fromEntries(adj), null, 2));
-    function trace(node: string, path: string[]) {
-      console.error('TRACE ENTER', node, 'path=', path.join('->'));
-      const successors = adj.get(node) || [];
-      for (const s of successors) {
-        if (path.includes(s)) {
-          console.error('TRACE CYCLE', node, '->', s);
-          continue;
-        }
-        trace(s, [...path, s]);
-      }
-      console.error('TRACE LEAVE', node);
-    }
-    trace(entryId, [entryId]);
-    // Recompute chains locally with same rules to compare
-    const resourceMap = new Map(ctx.resources.map((r: any) => [r.id, r]));
-    const localChains: string[][] = [];
-    function localDfs(currentId: string, path: string[], depth: number) {
-      path.push(currentId);
-      const resource = resourceMap.get(currentId);
-      const isMilestone = resource?.type === 'milestone';
-      const isIncompleteTask = resource?.type === 'task' && !resource.complete;
-      const isMissing = !resource;
-      const isIncomplete = isMissing || isMilestone || isIncompleteTask;
-      const hasSuccessors = (adj.get(currentId) || []).length > 0;
-      const isLeaf =
-        (isMilestone && currentId !== entryId) ||
-        (resource?.type === 'task' && !hasSuccessors) ||
-        isMissing;
-      console.error('LOCAL_DFS', {
-        node: currentId,
-        depth,
-        isLeaf,
-        isIncomplete,
-        hasSuccessors,
-        path: JSON.stringify(path),
-      });
-      if (isLeaf && isIncomplete) {
-        console.error('PUSH_CHAIN', JSON.stringify(path));
-        localChains.push([...path]);
-      } else if (depth < DEBUG_MAX_DEPTH && !isMissing) {
-        for (const s of adj.get(currentId) || []) {
-          if (path.includes(s)) continue;
-          localDfs(s, path, depth + 1);
-        }
-      }
-      path.pop();
-    }
-    localDfs(entryId, [], 0);
-    console.error('LOCAL_CHAINS:', JSON.stringify(localChains, null, 2));
-  }
-  const chains =
-    ctx.ir?.getIncompleteLeafDependencyChains(entryId, undefined, {
-      onWarning: (m) => ctx.warnings.push(`Warning: ${m}`),
-    }) || [];
-
-  // DEBUG: print raw chains to stderr when SIREN_DEBUG is set
-  if (process.env.SIREN_DEBUG) {
-    console.error('RAW_CHAINS:', JSON.stringify(chains, null, 2));
-  }
-
-  // Process chains similarly to renderDependencyChains (remove root, truncate long chains)
-  const processedChains: string[][] = chains.map((chain) => {
-    const deps = chain.slice(1);
-    if (deps.length <= 4) return deps;
-    const first = deps[0]!;
-    const last = deps[deps.length - 1]!;
-    const intermediateCount = deps.length - 2;
-    return [first, `… (${intermediateCount} intermediate dependencies)`, last];
-  });
-
-  // Build tree from processed chains
-  type TreeNode = { [id: string]: TreeNode | undefined };
-  const tree: TreeNode = {};
-  for (const chain of processedChains) {
-    let curr = tree;
-    for (const id of chain) {
-      if (!curr[id]) curr[id] = {};
-      curr = curr[id]!;
-    }
-  }
-
-  // Ensure declared direct dependencies appear in the tree (preserve order). If absent,
-  // Note: do not insert sentinel nodes for declared dependencies that produced
-  // no computed chains — showing an entry should reflect actual dependency
-  // traversal results rather than manufacture children.
-
-  // Render the tree but preserve order of top-level entries according to directDeps
-  function renderTree(node: TreeNode, prefix = '', topOrder?: string[]): string[] {
-    const lines: string[] = [];
-    const keys = Object.keys(node);
-    let orderedKeys: string[];
-    if (topOrder && topOrder.length > 0) {
-      const inOrder = topOrder.filter((k) => keys.includes(k));
-      const rest = keys.filter((k) => !inOrder.includes(k)).sort((a, b) => a.localeCompare(b));
-      orderedKeys = [...inOrder, ...rest];
-    } else {
-      orderedKeys = keys.sort((a, b) => a.localeCompare(b));
-    }
-
-    for (let i = 0; i < orderedKeys.length; i++) {
-      const key = orderedKeys[i]!;
-      const subNode = node[key];
-      const isLast = i === orderedKeys.length - 1;
-      const connector = isLast ? '└─' : '├─';
-      const extend = isLast ? '   ' : '│  ';
-      lines.push(`${prefix}${connector} ${key}`);
-      if (subNode && Object.keys(subNode).length > 0) {
-        const subLines = renderTree(subNode, prefix + extend);
-        lines.push(...subLines);
-      }
-    }
-    return lines;
-  }
-
+  // Print the entry ID
   console.log(entryId);
-  const rendered = renderTree(tree, '', directDeps.length ? directDeps : undefined);
-  for (const line of rendered) console.log(line);
+
+  // Render and print the dependency tree
+  const lines = renderDependencyTree(tree);
+  for (const line of lines) {
+    console.log(line);
+  }
 }
 
 export async function main(args: string[] = process.argv.slice(2)): Promise<void> {

@@ -1,6 +1,9 @@
 import { decodeDocument, type ParseDiagnostic } from '../decoder/index.js';
 import type { DocumentNode } from '../parser/cst.js';
-import { getIncompleteLeafDependencyChains } from '../utilities/dependency-chains.js';
+import {
+  getDependencyTree as buildDependencyTree,
+  type DependencyTree,
+} from '../utilities/dependency-tree.js';
 import { findResourceById } from '../utilities/entry.js';
 import { DirectedGraph } from '../utilities/graph.js';
 import { getMilestoneIds, getTasksByMilestone } from '../utilities/milestone.js';
@@ -94,12 +97,25 @@ export class IRContext {
     return getTasksByMilestone([...this.resources]);
   }
 
-  getIncompleteLeafDependencyChains(
-    rootId: string,
-    comparator?: (a: string[], b: string[]) => number,
-    options?: { onWarning?: (message: string) => void },
-  ): string[][] {
-    return getIncompleteLeafDependencyChains(rootId, [...this.resources], comparator, options);
+  // TODO currently implemented with a sensible default traverse
+  // but eventually needs to support a more expressive query interface
+  getDependencyTree(rootId: string): DependencyTree {
+    // By default, treat milestone nodes (except the root) as leaves when
+    // expanding from a root resource. This mirrors CLI/listing behavior
+    // where milestones act as grouping nodes and are not expanded further
+    // in dependency trees unless explicitly requested. Also filter out
+    // complete tasks from the tree entirely.
+    const traversePredicate = (r: Resource) => {
+      // Exclude complete tasks entirely (don't include in tree)
+      if (r.complete) return false;
+      // Include non-root milestones as leaves (include but don't expand)
+      if (r.type === 'milestone' && r.id !== rootId) {
+        return { include: true, expand: false };
+      }
+      // Include and expand everything else
+      return true;
+    };
+    return buildDependencyTree(rootId, [...this.resources], traversePredicate);
   }
 
   /** Get semantic diagnostics computed from IR analysis */

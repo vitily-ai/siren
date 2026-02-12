@@ -74,7 +74,7 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
 
   // Conversion helpers adapted from the Node test adapter. Keep logic here
   // so core owns the CST shape while the runtime provides parsing only.
-  
+
   /**
    * Extract origin metadata from a tree-sitter node
    */
@@ -121,18 +121,42 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
       case 'string_literal': {
         let value = String(node.text ?? '');
         if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
-        return { type: 'literal', literalType: 'string', value, text: String(node.text ?? ''), origin };
+        return {
+          type: 'literal',
+          literalType: 'string',
+          value,
+          text: String(node.text ?? ''),
+          origin,
+        };
       }
       case 'number_literal': {
         const value = parseFloat(String(node.text ?? ''));
-        return { type: 'literal', literalType: 'number', value, text: String(node.text ?? ''), origin };
+        return {
+          type: 'literal',
+          literalType: 'number',
+          value,
+          text: String(node.text ?? ''),
+          origin,
+        };
       }
       case 'boolean_literal': {
         const value = String(node.text) === 'true';
-        return { type: 'literal', literalType: 'boolean', value, text: String(node.text ?? ''), origin };
+        return {
+          type: 'literal',
+          literalType: 'boolean',
+          value,
+          text: String(node.text ?? ''),
+          origin,
+        };
       }
       case 'null_literal':
-        return { type: 'literal', literalType: 'null', value: null, text: String(node.text ?? ''), origin };
+        return {
+          type: 'literal',
+          literalType: 'null',
+          value: null,
+          text: String(node.text ?? ''),
+          origin,
+        };
       default:
         return null;
     }

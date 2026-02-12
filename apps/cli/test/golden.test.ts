@@ -189,7 +189,7 @@ describe('golden CLI tests (expected/)', () => {
               .replace(/\s+$/u, '');
           }
           // For comment-related fixtures, preserve comments in expected output
-          const preserveComments = metadata.fixture && metadata.fixture.includes('comment');
+          const preserveComments = metadata.fixture?.includes('comment');
           const normOutCalls = outCalls.replace(/\s+$/u, '');
           const normErrCalls = errCalls.replace(/\s+$/u, '');
           const normExpectedStdout = preserveComments
@@ -261,7 +261,7 @@ describe('golden CLI tests (expected/)', () => {
             .replace(/\s+$/u, '');
         }
         // For comment-related fixtures, preserve comments in expected output
-        const preserveComments = metadata.fixture && metadata.fixture.includes('comment');
+        const preserveComments = metadata.fixture?.includes('comment');
         const normActual = actual.replace(/\s+$/u, '');
         const normExpected = preserveComments
           ? expectedContent.replace(/\s+$/u, '')

@@ -21,7 +21,7 @@ test('emits W005 for dangling dependencies and does not include missing nodes in
   expect(danglingMissingTask.resourceId).toBe('with-dangling');
   expect(danglingMissingTask.resourceType).toBe('milestone');
   expect(danglingMissingTask.dependencyId).toBe('missing-task');
-  expect(danglingMissingTask.file).toBe('siren/main.siren');  // PRESCRIPTIVE: Integration tests with real files MUST include position info
+  expect(danglingMissingTask.file).toBe('siren/main.siren'); // PRESCRIPTIVE: Integration tests with real files MUST include position info
   expect(danglingMissingTask.line).toBeGreaterThan(0);
   expect(danglingMissingTask.column).toBeGreaterThanOrEqual(0);
   // Find diagnostics for with-two-dangling -> missing1 and missing2
@@ -32,7 +32,8 @@ test('emits W005 for dangling dependencies and does not include missing nodes in
   expect(danglingMissing1.resourceId).toBe('with-two-dangling');
   expect(danglingMissing1.resourceType).toBe('milestone');
   expect(danglingMissing1.dependencyId).toBe('missing1');
-  expect(danglingMissing1.file).toBe('siren/main.siren');  expect(danglingMissing1.line).toBeGreaterThan(0);
+  expect(danglingMissing1.file).toBe('siren/main.siren');
+  expect(danglingMissing1.line).toBeGreaterThan(0);
   expect(danglingMissing1.column).toBeGreaterThanOrEqual(0);
   const danglingMissing2 = warnings.find(
     (w: any) => w.resourceId === 'with-two-dangling' && w.dependencyId === 'missing2',
@@ -41,7 +42,8 @@ test('emits W005 for dangling dependencies and does not include missing nodes in
   expect(danglingMissing2.resourceId).toBe('with-two-dangling');
   expect(danglingMissing2.resourceType).toBe('milestone');
   expect(danglingMissing2.dependencyId).toBe('missing2');
-  expect(danglingMissing2.file).toBe('siren/main.siren');  expect(danglingMissing2.line).toBeGreaterThan(0);
+  expect(danglingMissing2.file).toBe('siren/main.siren');
+  expect(danglingMissing2.line).toBeGreaterThan(0);
   expect(danglingMissing2.column).toBeGreaterThanOrEqual(0);
   const ids = resources.map((r) => r.id);
   expect(ids).toContain('present');
