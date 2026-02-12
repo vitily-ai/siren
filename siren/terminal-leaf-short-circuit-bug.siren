@@ -1,7 +1,0 @@
-task refactor-dfs {
-    description = "dfs addition 'handling' all complete leaves just treats them as incomplete. ideally, dfs shouldn't even be traversing complete nodes. consider dfs refactor"
-}
-
-task minimize-reproduction {
-    description = "reduce source fixture to minimal reproduction of the defect, and merge the new test file with existing chain construction tests"
-}
