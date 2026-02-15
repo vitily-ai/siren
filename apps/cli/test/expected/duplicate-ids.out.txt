@@ -1,0 +1,9 @@
+{
+  "fixture": "duplicate-ids-cli",
+  "command": "siren list"
+}
+---
+
+---
+second.siren:1:0: W006: Duplicate resource ID detected: task 'duplicate-task' first defined at 1:0
+second.siren:5:0: W006: Duplicate resource ID detected: milestone 'duplicate-milestone' first defined at 5:0

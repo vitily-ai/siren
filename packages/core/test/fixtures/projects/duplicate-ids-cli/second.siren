@@ -1,0 +1,7 @@
+task duplicate-task {
+  description = "Second occurrence - dropped"
+}
+
+milestone duplicate-milestone {
+  description = "Second occurrence - dropped"
+}

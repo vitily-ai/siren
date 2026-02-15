@@ -14,6 +14,7 @@ export type {
   CircularDependencyDiagnostic,
   DanglingDependencyDiagnostic,
   Diagnostic,
+  DuplicateIdDiagnostic,
 } from './ir/context.js';
 // IR types (intermediate representation)
 export * from './ir/index.js';

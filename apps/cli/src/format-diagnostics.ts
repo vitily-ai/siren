@@ -9,6 +9,7 @@ import type {
   CircularDependencyDiagnostic,
   DanglingDependencyDiagnostic,
   Diagnostic,
+  DuplicateIdDiagnostic,
   ParseDiagnostic,
 } from '@siren/core';
 
@@ -32,11 +33,24 @@ export function formatDiagnostic(diagnostic: Diagnostic | ParseDiagnostic): stri
 
 /**
  * Format the position prefix (file:line:col)
+ *
+ * For W006 (duplicate ID), position is the duplicate (second) occurrence.
  */
 function formatPrefix(diagnostic: Diagnostic | ParseDiagnostic): string {
   const file = diagnostic.file ?? 'unknown';
-  const line = diagnostic.line ?? 0;
-  const column = diagnostic.column ?? 0;
+
+  // W006 uses secondLine/secondColumn for the diagnostic position
+  if (diagnostic.code === 'W006') {
+    const dup = diagnostic as DuplicateIdDiagnostic;
+    const line = dup.secondLine ?? 0;
+    const column = dup.secondColumn ?? 0;
+    return `${file}:${line}:${column}`;
+  }
+
+  // All other diagnostic types have standard line/column
+  const withPos = diagnostic as { line?: number; column?: number };
+  const line = withPos.line ?? 0;
+  const column = withPos.column ?? 0;
   return `${file}:${line}:${column}`;
 }
 
@@ -49,6 +63,8 @@ function formatMessage(diagnostic: Diagnostic | ParseDiagnostic): string {
       return formatCircularDependency(diagnostic as CircularDependencyDiagnostic);
     case 'W005':
       return formatDanglingDependency(diagnostic as DanglingDependencyDiagnostic);
+    case 'W006':
+      return formatDuplicateId(diagnostic as DuplicateIdDiagnostic);
     default:
       // W001, W002, W003, E001 - pass through message
       return (diagnostic as ParseDiagnostic).message;
@@ -69,4 +85,13 @@ function formatCircularDependency(diagnostic: CircularDependencyDiagnostic): str
 function formatDanglingDependency(diagnostic: DanglingDependencyDiagnostic): string {
   const { resourceType, resourceId, dependencyId } = diagnostic;
   return `Dangling dependency: ${resourceType ?? 'undefined'} '${resourceId ?? 'undefined'}' depends on '${dependencyId ?? 'undefined'}'`;
+}
+
+/**
+ * Format W006: Duplicate resource ID detected
+ */
+function formatDuplicateId(diagnostic: DuplicateIdDiagnostic): string {
+  const { resourceType, resourceId, firstLine, firstColumn } = diagnostic;
+  const firstLocation = `${firstLine ?? 0}:${firstColumn ?? 0}`;
+  return `Duplicate resource ID detected: ${resourceType} '${resourceId}' first defined at ${firstLocation}`;
 }

@@ -1,0 +1,8 @@
+task duplicate-task {
+  description = "First occurrence - kept"
+}
+
+milestone duplicate-milestone {
+  description = "First occurrence - kept"
+  depends_on = duplicate-task
+}
