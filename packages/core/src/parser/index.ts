@@ -2,7 +2,13 @@
  * Parser module exports
  */
 
-export type { CommentToken, ParseError, ParseResult, ParserAdapter } from './adapter.js';
+export type {
+  CommentToken,
+  ParseError,
+  ParseResult,
+  ParserAdapter,
+  SourceDocument,
+} from './adapter.js';
 export type {
   ArrayNode,
   AttributeNode,

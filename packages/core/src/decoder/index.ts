@@ -185,7 +185,7 @@ function decodeAttribute(node: AttributeNode): Attribute | null {
 function decodeResource(
   node: ResourceNode & { completeKeywordCount?: number; completeKeywordDiagnostics?: string[] },
   diagnostics: ParseDiagnostic[],
-  source?: string,
+  _source?: string,
 ): Resource {
   const type: ResourceType = node.resourceType;
   const id = node.identifier.value;
@@ -197,7 +197,7 @@ function decodeResource(
       code: 'W002',
       message: `Resource '${id}' has 'complete' keyword specified more than once. Only one is allowed; resource will be treated as complete: true.`,
       severity: 'warning',
-      file: source,
+      file: node.origin?.document,
       line: node.origin ? node.origin.startRow + 1 : undefined,
       column: node.origin ? 0 : undefined,
     });
@@ -209,7 +209,7 @@ function decodeResource(
       code: 'W003',
       message: `Resource type '${type}' does not support the 'complete' keyword. It will be ignored.`,
       severity: 'warning',
-      file: source,
+      file: node.origin?.document,
       line: node.origin ? node.origin.startRow + 1 : undefined,
       column: node.origin ? 0 : undefined,
     });
@@ -222,7 +222,7 @@ function decodeResource(
         code: 'E001',
         message: msg,
         severity: 'error',
-        file: source,
+        file: node.origin?.document,
         line: node.origin ? node.origin.startRow + 1 : undefined,
         column: node.origin ? 0 : undefined,
       });
@@ -247,7 +247,7 @@ function decodeResource(
       message:
         "Resource has both 'complete' keyword and a 'complete' attribute whose value is not true. The resource will be treated as complete.",
       severity: 'warning',
-      file: source,
+      file: node.origin?.document,
       line: node.origin ? node.origin.startRow + 1 : undefined,
       column: node.origin ? 0 : undefined,
     });

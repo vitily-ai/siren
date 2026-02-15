@@ -3,11 +3,18 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { IRContext } from '../../../src/ir/context.js';
+import type { SourceDocument } from '../../../src/parser/adapter.js';
 import { getTestAdapter } from '../../helpers/parser.js';
 import { getAdapter, parseAndDecodeAll } from './helper.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectsDir = join(__dirname, '..', '..', 'fixtures', 'projects');
+
+// TODO move to helper - this is duplicated a lot
+/** Helper to wrap a source string as a SourceDocument array */
+function doc(content: string, name = 'test.siren'): SourceDocument[] {
+  return [{ name, content }];
+}
 
 describe('project:circular-depends', () => {
   let adapter: any;
@@ -36,7 +43,7 @@ describe('project:circular-depends', () => {
     const adapterLocal = await getTestAdapter();
     const projectDir = join(projectsDir, 'circular-depends', 'siren');
     const src = readFileSync(join(projectDir, 'main.siren'), 'utf-8');
-    const parseResult = await adapterLocal.parse(src);
+    const parseResult = await adapterLocal.parse(doc(src));
     const ir = IRContext.fromCst(parseResult.tree!);
     expect(ir.cycles).toHaveLength(1);
     expect(ir.cycles[0].nodes).toEqual(['task1', 'task2', 'task3', 'task1']);

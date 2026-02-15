@@ -22,11 +22,21 @@ import type {
   ParserAdapter,
   ReferenceNode,
   ResourceNode,
+  SourceDocument,
 } from '@siren/core';
 import type { Node as SyntaxNode, Tree } from 'web-tree-sitter';
 import { Language, Parser } from 'web-tree-sitter';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Document boundary tracking for multi-document parsing
+ */
+interface DocumentBoundary {
+  name: string;
+  startByte: number;
+  startRow: number;
+}
 
 export class NodeParserAdapter implements ParserAdapter {
   private constructor(private readonly parser: Parser) {}
@@ -65,14 +75,35 @@ export class NodeParserAdapter implements ParserAdapter {
     return new NodeParserAdapter(parser);
   }
 
-  async parse(source: string): Promise<ParseResult> {
-    const tree = this.parser.parse(source) as Tree | null;
+  async parse(documents: readonly SourceDocument[]): Promise<ParseResult> {
+    // Build boundaries and concatenate documents
+    const boundaries: DocumentBoundary[] = [];
+    let concatenated = '';
+    let currentByte = 0;
+    let currentRow = 0;
+
+    for (let i = 0; i < documents.length; i++) {
+      const doc = documents[i];
+      boundaries.push({ name: doc.name, startByte: currentByte, startRow: currentRow });
+      concatenated += doc.content;
+      currentByte += Buffer.byteLength(doc.content, 'utf8');
+      currentRow += doc.content.split('\n').length - 1;
+
+      // Add separator between documents (except after last)
+      if (i < documents.length - 1) {
+        concatenated += '\n';
+        currentByte += 1;
+        currentRow += 1;
+      }
+    }
+
+    const tree = this.parser.parse(concatenated) as Tree | null;
     if (!tree) throw new Error('web-tree-sitter returned null tree');
 
     const rootNode = tree.rootNode;
-    const errors = rootNode.hasError ? this.extractErrors(rootNode) : [];
-    const documentNode = this.convertDocument(rootNode);
-    const comments = this.extractComments(rootNode, source);
+    const errors = rootNode.hasError ? this.extractErrors(rootNode, boundaries) : [];
+    const documentNode = this.convertDocument(rootNode, boundaries);
+    const comments = this.extractComments(rootNode, concatenated, boundaries);
 
     return {
       tree: documentNode,
@@ -82,11 +113,54 @@ export class NodeParserAdapter implements ParserAdapter {
     };
   }
 
-  private convertDocument(node: SyntaxNode): DocumentNode {
+  /**
+   * Find the document boundary for a given byte offset.
+   * Returns the last boundary where startByte <= globalByte.
+   */
+  private findDocumentForByte(
+    globalByte: number,
+    boundaries: readonly DocumentBoundary[],
+  ): DocumentBoundary {
+    for (let i = boundaries.length - 1; i >= 0; i--) {
+      if (boundaries[i].startByte <= globalByte) {
+        return boundaries[i];
+      }
+    }
+    return boundaries[0];
+  }
+
+  /**
+   * Adjust global origin to per-document coordinates.
+   */
+  private adjustOrigin(globalOrigin: Origin, boundary: DocumentBoundary): Origin {
+    return {
+      startByte: globalOrigin.startByte - boundary.startByte,
+      endByte: globalOrigin.endByte - boundary.startByte,
+      startRow: globalOrigin.startRow - boundary.startRow,
+      endRow: globalOrigin.endRow - boundary.startRow,
+      document: boundary.name,
+    };
+  }
+
+  /**
+   * Get origin from node with document boundary adjustment.
+   */
+  private getOrigin(node: SyntaxNode, boundaries: readonly DocumentBoundary[]): Origin {
+    const globalOrigin: Origin = {
+      startByte: node.startIndex,
+      endByte: node.endIndex,
+      startRow: node.startPosition.row,
+      endRow: node.endPosition.row,
+    };
+    const boundary = this.findDocumentForByte(node.startIndex, boundaries);
+    return this.adjustOrigin(globalOrigin, boundary);
+  }
+
+  private convertDocument(node: SyntaxNode, boundaries: readonly DocumentBoundary[]): DocumentNode {
     const resources: ResourceNode[] = [];
     for (const child of node.namedChildren) {
       if (child.type === 'resource') {
-        const resource = this.convertResource(child);
+        const resource = this.convertResource(child, boundaries);
         if (resource) resources.push(resource);
       }
     }
@@ -94,11 +168,14 @@ export class NodeParserAdapter implements ParserAdapter {
     return {
       type: 'document',
       resources,
-      origin: this.getOrigin(node),
+      origin: this.getOrigin(node, boundaries),
     };
   }
 
-  private convertResource(node: SyntaxNode): ResourceNode | null {
+  private convertResource(
+    node: SyntaxNode,
+    boundaries: readonly DocumentBoundary[],
+  ): ResourceNode | null {
     const typeNode = node.childForFieldName('type');
     const idNode = node.childForFieldName('id');
     const completeModifierNode = node.childForFieldName('complete_modifier');
@@ -106,14 +183,14 @@ export class NodeParserAdapter implements ParserAdapter {
     if (!typeNode || !idNode) return null;
 
     const resourceType = typeNode.text as 'task' | 'milestone';
-    const identifier = this.convertIdentifier(idNode);
+    const identifier = this.convertIdentifier(idNode, boundaries);
     const complete = completeModifierNode !== null;
     const attributes: AttributeNode[] = [];
 
     const bodyChildren = node.childrenForFieldName('body');
     for (const child of bodyChildren) {
       if (child.type === 'attribute') {
-        const attr = this.convertAttribute(child);
+        const attr = this.convertAttribute(child, boundaries);
         if (attr) attributes.push(attr);
       }
     }
@@ -124,11 +201,14 @@ export class NodeParserAdapter implements ParserAdapter {
       identifier,
       complete,
       body: attributes,
-      origin: this.getOrigin(node),
+      origin: this.getOrigin(node, boundaries),
     };
   }
 
-  private convertIdentifier(node: SyntaxNode): IdentifierNode {
+  private convertIdentifier(
+    node: SyntaxNode,
+    boundaries: readonly DocumentBoundary[],
+  ): IdentifierNode {
     const child = node.namedChildren[0];
     if (!child) {
       return {
@@ -136,7 +216,7 @@ export class NodeParserAdapter implements ParserAdapter {
         value: node.text,
         quoted: false,
         text: node.text,
-        origin: this.getOrigin(node),
+        origin: this.getOrigin(node, boundaries),
       };
     }
 
@@ -149,11 +229,14 @@ export class NodeParserAdapter implements ParserAdapter {
       value,
       quoted: isQuoted,
       text: node.text,
-      origin: this.getOrigin(node),
+      origin: this.getOrigin(node, boundaries),
     };
   }
 
-  private convertAttribute(node: SyntaxNode): AttributeNode | null {
+  private convertAttribute(
+    node: SyntaxNode,
+    boundaries: readonly DocumentBoundary[],
+  ): AttributeNode | null {
     const keyNode = node.childForFieldName('key');
     const valueNode = node.childForFieldName('value');
     if (!keyNode || !valueNode) return null;
@@ -164,50 +247,59 @@ export class NodeParserAdapter implements ParserAdapter {
       quoted: false,
       text: keyNode.text,
     };
-    const value = this.convertExpression(valueNode);
+    const value = this.convertExpression(valueNode, boundaries);
     if (!value) return null;
 
     return {
       type: 'attribute',
       key,
       value,
-      origin: this.getOrigin(node),
+      origin: this.getOrigin(node, boundaries),
     };
   }
 
-  private convertExpression(node: SyntaxNode): ExpressionNode | null {
+  private convertExpression(
+    node: SyntaxNode,
+    boundaries: readonly DocumentBoundary[],
+  ): ExpressionNode | null {
     if (node.type === 'expression') {
       const child = node.namedChildren[0];
       if (!child) return null;
-      return this.convertExpression(child);
+      return this.convertExpression(child, boundaries);
     }
 
     switch (node.type) {
       case 'literal':
-        return this.convertLiteral(node);
+        return this.convertLiteral(node, boundaries);
       case 'reference':
-        return this.convertReference(node);
+        return this.convertReference(node, boundaries);
       case 'array':
-        return this.convertArray(node);
+        return this.convertArray(node, boundaries);
       case 'string_literal':
       case 'number_literal':
       case 'boolean_literal':
       case 'null_literal':
-        return this.convertLiteralDirect(node);
+        return this.convertLiteralDirect(node, boundaries);
       case 'bare_identifier':
-        return this.convertReference(node);
+        return this.convertReference(node, boundaries);
       default:
         return null;
     }
   }
 
-  private convertLiteral(node: SyntaxNode): LiteralNode | null {
+  private convertLiteral(
+    node: SyntaxNode,
+    boundaries: readonly DocumentBoundary[],
+  ): LiteralNode | null {
     const child = node.namedChildren[0];
     if (!child) return null;
-    return this.convertLiteralDirect(child);
+    return this.convertLiteralDirect(child, boundaries);
   }
 
-  private convertLiteralDirect(node: SyntaxNode): LiteralNode | null {
+  private convertLiteralDirect(
+    node: SyntaxNode,
+    boundaries: readonly DocumentBoundary[],
+  ): LiteralNode | null {
     switch (node.type) {
       case 'string_literal': {
         let value = node.text;
@@ -217,7 +309,7 @@ export class NodeParserAdapter implements ParserAdapter {
           literalType: 'string',
           value,
           text: node.text,
-          origin: this.getOrigin(node),
+          origin: this.getOrigin(node, boundaries),
         };
       }
       case 'number_literal': {
@@ -227,7 +319,7 @@ export class NodeParserAdapter implements ParserAdapter {
           literalType: 'number',
           value,
           text: node.text,
-          origin: this.getOrigin(node),
+          origin: this.getOrigin(node, boundaries),
         };
       }
       case 'boolean_literal': {
@@ -237,7 +329,7 @@ export class NodeParserAdapter implements ParserAdapter {
           literalType: 'boolean',
           value,
           text: node.text,
-          origin: this.getOrigin(node),
+          origin: this.getOrigin(node, boundaries),
         };
       }
       case 'null_literal': {
@@ -246,7 +338,7 @@ export class NodeParserAdapter implements ParserAdapter {
           literalType: 'null',
           value: null,
           text: node.text,
-          origin: this.getOrigin(node),
+          origin: this.getOrigin(node, boundaries),
         };
       }
       default:
@@ -254,7 +346,10 @@ export class NodeParserAdapter implements ParserAdapter {
     }
   }
 
-  private convertReference(node: SyntaxNode): ReferenceNode {
+  private convertReference(
+    node: SyntaxNode,
+    boundaries: readonly DocumentBoundary[],
+  ): ReferenceNode {
     const identifier: IdentifierNode = {
       type: 'identifier',
       value: node.text,
@@ -264,33 +359,43 @@ export class NodeParserAdapter implements ParserAdapter {
     return {
       type: 'reference',
       identifier,
-      origin: this.getOrigin(node),
+      origin: this.getOrigin(node, boundaries),
     };
   }
 
-  private convertArray(node: SyntaxNode): ArrayNode {
+  private convertArray(node: SyntaxNode, boundaries: readonly DocumentBoundary[]): ArrayNode {
     const elements: ExpressionNode[] = [];
     for (const child of node.namedChildren) {
-      const expr = this.convertExpression(child);
+      const expr = this.convertExpression(child, boundaries);
       if (expr) elements.push(expr);
     }
     return {
       type: 'array',
       elements,
-      origin: this.getOrigin(node),
+      origin: this.getOrigin(node, boundaries),
     };
   }
 
-  private extractErrors(node: SyntaxNode): ParseError[] {
+  private extractErrors(node: SyntaxNode, boundaries: readonly DocumentBoundary[]): ParseError[] {
     const errors: ParseError[] = [];
+    const seen = new Set<string>();
 
     const walk = (n: SyntaxNode) => {
       if (n.type === 'ERROR' || n.isMissing) {
-        errors.push({
+        const boundary = this.findDocumentForByte(n.startIndex, boundaries);
+        const adjustedRow = n.startPosition.row - boundary.startRow;
+        const error: ParseError = {
           message: n.isMissing ? `Missing ${n.type}` : 'Syntax error',
-          line: n.startPosition.row + 1,
+          line: adjustedRow + 1,
           column: n.startPosition.column + 1,
-        });
+          document: boundary.name,
+        };
+        // Deduplicate errors at the same position with the same message
+        const key = `${error.document}:${error.line}:${error.column}:${error.message}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          errors.push(error);
+        }
       }
       for (const child of n.children) walk(child);
     };
@@ -300,42 +405,35 @@ export class NodeParserAdapter implements ParserAdapter {
   }
 
   /**
-   * Helper to extract origin metadata from a tree-sitter node.
-   * Converts tree-sitter's byte offsets and row/column positions
-   * into our Origin interface.
+   * Extract comment tokens from the parse tree with document attribution.
    */
-  private getOrigin(node: SyntaxNode): Origin {
-    return {
-      startByte: node.startIndex,
-      endByte: node.endIndex,
-      startRow: node.startPosition.row,
-      endRow: node.endPosition.row,
-    };
-  }
-
-  /**
-   * Extract comment tokens from the parse tree.
-   * Walks the tree-sitter tree to find all comment nodes (in extras),
-   * collects their position and text data, and returns them sorted by byte offset.
-   */
-  private extractComments(rootNode: SyntaxNode, source: string): CommentToken[] {
+  private extractComments(
+    rootNode: SyntaxNode,
+    source: string,
+    boundaries: readonly DocumentBoundary[],
+  ): CommentToken[] {
     const comments: CommentToken[] = [];
-
-    // Use tree-sitter's descendantsOfType to find all comment nodes
     const commentNodes = rootNode.descendantsOfType('comment');
 
     for (const commentNode of commentNodes) {
+      const boundary = this.findDocumentForByte(commentNode.startIndex, boundaries);
       comments.push({
-        startByte: commentNode.startIndex,
-        endByte: commentNode.endIndex,
-        startRow: commentNode.startPosition.row,
-        endRow: commentNode.endPosition.row,
+        startByte: commentNode.startIndex - boundary.startByte,
+        endByte: commentNode.endIndex - boundary.startByte,
+        startRow: commentNode.startPosition.row - boundary.startRow,
+        endRow: commentNode.endPosition.row - boundary.startRow,
         text: source.slice(commentNode.startIndex, commentNode.endIndex),
+        document: boundary.name,
       });
     }
 
-    // Sort comments by byte offset
-    comments.sort((a, b) => a.startByte - b.startByte);
+    // Sort comments by document, then byte offset
+    comments.sort((a, b) => {
+      if (a.document !== b.document) {
+        return (a.document ?? '').localeCompare(b.document ?? '');
+      }
+      return a.startByte - b.startByte;
+    });
 
     return comments;
   }

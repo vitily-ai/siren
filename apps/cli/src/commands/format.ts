@@ -5,6 +5,7 @@ import {
   exportWithComments,
   IRContext,
   type Resource,
+  type SourceDocument,
   SourceIndex,
 } from '@siren/core';
 import { getParser } from '../parser.js';
@@ -13,6 +14,12 @@ import { loadProject } from '../project.js';
 export interface FormatOptions {
   dryRun?: boolean;
   verbose?: boolean;
+}
+
+// TODO move to helper - this is duplicated a lot
+/** Helper to wrap a source string as a SourceDocument array */
+function doc(content: string, name: string): SourceDocument[] {
+  return [{ name, content }];
 }
 
 function resourcesEqual(a: readonly Resource[], b: readonly Resource[]): boolean {
@@ -68,9 +75,10 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
 
   for (const filePath of ctx.files) {
     const source = fs.readFileSync(filePath, 'utf-8');
-    const parseResult = await parser.parse(source);
+    const relPath = path.relative(process.cwd(), filePath);
+    const parseResult = await parser.parse(doc(source, relPath));
     if (!parseResult.tree) {
-      console.error(`Skipping ${path.relative(process.cwd(), filePath)} (parse error)`);
+      console.error(`Skipping ${relPath} (parse error)`);
       continue;
     }
 
@@ -96,7 +104,7 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
     }
 
     // Validate round-trip: parse exported text and decode
-    const parse2 = await parser.parse(toWrite);
+    const parse2 = await parser.parse(doc(toWrite, relPath));
     if (!parse2.tree) {
       console.error(`Format produced unparsable output for ${filePath}`);
       continue;

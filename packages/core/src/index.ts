@@ -39,6 +39,7 @@ export type {
   ParserAdapter,
   ReferenceNode,
   ResourceNode,
+  SourceDocument,
 } from './parser/index.js';
 
 // Export SourceIndex for comment classification
