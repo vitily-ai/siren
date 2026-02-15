@@ -78,6 +78,8 @@ export interface DuplicateIdDiagnostic {
   readonly firstLine?: number;
   /** 0-based column number of the first (precedent) occurrence */
   readonly firstColumn?: number;
+  /** Source file path of the first (precedent) occurrence (from origin.document) */
+  readonly firstFile?: string;
   /** 1-based line number of the duplicate (second) occurrence - used for diagnostic position */
   readonly secondLine?: number;
   /** 0-based column number of the duplicate (second) occurrence */
@@ -281,6 +283,9 @@ export class IRContext {
         const firstPos = first.origin
           ? { firstLine: first.origin.startRow + 1, firstColumn: 0 }
           : {};
+        // Determine precedent file using resource lookup to ensure attribution
+        // works even when origin.document may be absent on the stored `first` object.
+        const firstFile = this.getFileInfoForResources([resource.id]).file;
         const secondPos = resource.origin
           ? { secondLine: resource.origin.startRow + 1, secondColumn: 0 }
           : {};
@@ -294,6 +299,7 @@ export class IRContext {
           resourceId: resource.id,
           resourceType: resource.type,
           file,
+          firstFile,
           ...firstPos,
           ...secondPos,
         });

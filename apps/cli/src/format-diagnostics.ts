@@ -90,8 +90,10 @@ function formatDanglingDependency(diagnostic: DanglingDependencyDiagnostic): str
 /**
  * Format W006: Duplicate resource ID detected
  */
+// TODO formalize {document}:{line}:{column} as a canonical address format in core diagnostics and refactor to use that consistently across all diagnostics for accurate CLI formatting without needing augmentation in the CLI layer.
 function formatDuplicateId(diagnostic: DuplicateIdDiagnostic): string {
-  const { resourceType, resourceId, firstLine, firstColumn } = diagnostic;
+  const { resourceType, resourceId, firstLine, firstColumn, firstFile } = diagnostic;
   const firstLocation = `${firstLine ?? 0}:${firstColumn ?? 0}`;
-  return `Duplicate resource ID detected: ${resourceType} '${resourceId}' first defined at ${firstLocation}`;
+  const firstWithFile = firstFile ? `${firstFile}:${firstLocation}` : firstLocation;
+  return `Duplicate resource ID detected: ${resourceType} '${resourceId}' first defined at ${firstWithFile}`;
 }
