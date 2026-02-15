@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { IRContext } from '../../../src/ir/context.js';
+import type { SourceDocument } from '../../../src/parser/adapter.js';
 import { getTestAdapter } from '../../helpers/parser.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -26,32 +27,17 @@ export async function parseAndDecodeAll(adapter: any, projectName: string) {
 
   walk(projectPath);
 
-  const aggregatedResources: any[] = [];
-  const diagnostics: any[] = [];
-  const resourceSources = new Map<string, string>();
-
-  for (const f of files) {
-    const src = readFileSync(f, 'utf-8');
-    const parseResult = await adapter.parse(src);
+  // Build SourceDocument array from all files
+  const documents: SourceDocument[] = files.map((f) => {
+    const content = readFileSync(f, 'utf-8');
     // Compute relative path from project root for file attribution
-    const relativePath = f.substring(projectPath.length + 1);
-    const ir = IRContext.fromCst(parseResult.tree!);
+    const name = f.substring(projectPath.length + 1);
+    return { name, content };
+  });
 
-    // Build resourceSources map: resource id -> relative file path
-    for (const resource of ir.resources) {
-      resourceSources.set(resource.id, relativePath);
-    }
+  // Parse all documents at once - multi-document API handles file attribution
+  const parseResult = await adapter.parse(documents);
+  const ir = IRContext.fromCst(parseResult.tree!);
 
-    aggregatedResources.push(...ir.resources);
-    diagnostics.push(...ir.diagnostics);
-  }
-
-  // Reconstruct IRContext with aggregated resources and resourceSources to get proper file attribution
-  const contextWithSources = IRContext.fromResources(
-    aggregatedResources,
-    undefined,
-    resourceSources,
-  );
-
-  return { resources: aggregatedResources, diagnostics: contextWithSources.diagnostics };
+  return { resources: ir.resources, diagnostics: ir.diagnostics };
 }

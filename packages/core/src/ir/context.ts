@@ -67,21 +67,15 @@ export class IRContext {
   public readonly resources: readonly Resource[];
   public readonly source?: string;
   public readonly parseDiagnostics: readonly ParseDiagnostic[];
-  private readonly resourceSources?: ReadonlyMap<string, string>;
   private _diagnostics?: readonly Diagnostic[];
   private _cycles?: readonly { nodes: readonly string[] }[];
   private _danglingDiagnostics?: readonly Diagnostic[];
 
-  constructor(
-    doc: Document,
-    parseDiagnostics: readonly ParseDiagnostic[] = [],
-    resourceSources?: ReadonlyMap<string, string>,
-  ) {
+  constructor(doc: Document, parseDiagnostics: readonly ParseDiagnostic[] = []) {
     // Shallow freeze top-level arrays to discourage accidental mutation.
     this.resources = Object.freeze(doc.resources.slice());
     this.source = doc.source;
     this.parseDiagnostics = Object.freeze(parseDiagnostics.slice());
-    this.resourceSources = resourceSources;
     // Note: Don't freeze the object itself since we need lazy property assignment
   }
 
@@ -151,14 +145,13 @@ export class IRContext {
   }
 
   /**
-   * Factory to create an IRContext from resources with optional file source mapping.
+   * Factory to create an IRContext from resources.
+   *
+   * File attribution is read from each resource's origin.document field.
+   * This replaces the previous resourceSources parameter pattern.
    */
-  static fromResources(
-    resources: readonly Resource[],
-    source?: string,
-    resourceSources?: ReadonlyMap<string, string>,
-  ): IRContext {
-    return new IRContext({ resources: resources.slice(), source }, [], resourceSources);
+  static fromResources(resources: readonly Resource[], source?: string): IRContext {
+    return new IRContext({ resources: resources.slice(), source }, []);
   }
 
   private computeCycles(): readonly { nodes: readonly string[] }[] {
@@ -240,17 +233,17 @@ export class IRContext {
   }
 
   /**
-   * Build file attribution object from resource IDs using resourceSources mapping.
+   * Build file attribution object from resource IDs using origin.document.
    * Returns an object with a `file` property if sources are available, empty object otherwise.
    * For multiple files, joins them with ", ".
    */
   private getFileInfoForResources(nodeIds: readonly string[]): { file?: string } {
-    if (!this.resourceSources || nodeIds.length === 0) return {};
+    if (nodeIds.length === 0) return {};
     const files = new Set<string>();
     for (const nodeId of nodeIds) {
-      const source = this.resourceSources.get(nodeId);
-      if (source) {
-        files.add(source);
+      const resource = this.resources.find((r) => r.id === nodeId);
+      if (resource?.origin?.document) {
+        files.add(resource.origin.document);
       }
     }
     return files.size > 0 ? { file: Array.from(files).join(', ') } : {};

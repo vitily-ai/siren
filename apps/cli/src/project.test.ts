@@ -103,7 +103,10 @@ task gamma {}`,
     expect(ctx.files).toHaveLength(2);
     expect(ctx.milestones).toEqual(['valid']);
     expect(ctx.warnings).toHaveLength(1);
-    expect(ctx.warnings[0]).toBe('Warning: skipping siren/broken.siren (parse error)');
+    // New format: file:line:col: message - skipping document
+    expect(ctx.warnings[0]).toMatch(
+      /^Warning: siren\/broken\.siren:\d+:\d+: Syntax error - skipping document$/,
+    );
     expect(ctx.errors).toEqual([]);
   });
 

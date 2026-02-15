@@ -8,6 +8,19 @@
 import type { DocumentNode } from './cst.js';
 
 /**
+ * Source document for parsing
+ *
+ * Represents a single source file to be parsed.
+ * Used when parsing multiple documents in a single operation.
+ */
+export interface SourceDocument {
+  /** Document identifier (e.g., relative file path) */
+  readonly name: string;
+  /** Document source text */
+  readonly content: string;
+}
+
+/**
  * Comment token from source code
  *
  * Represents a single comment extracted by the parser.
@@ -19,6 +32,8 @@ export interface CommentToken {
   readonly startRow: number;
   readonly endRow: number;
   readonly text: string;
+  /** Document identifier (e.g., relative file path) when parsing multiple documents */
+  readonly document?: string;
 }
 
 /**
@@ -49,6 +64,8 @@ export interface ParseError {
   readonly message: string;
   readonly line: number;
   readonly column: number;
+  /** Document identifier (e.g., relative file path) when parsing multiple documents */
+  readonly document?: string;
 }
 
 /**
@@ -68,10 +85,14 @@ export interface ParseError {
  */
 export interface ParserAdapter {
   /**
-   * Parse Siren source code into a CST
+   * Parse Siren source documents into a CST
    *
-   * @param source - The Siren source code to parse
+   * Accepts an array of source documents. Documents are concatenated internally
+   * for parsing, with offsets adjusted to per-document coordinates in the result.
+   * Each node's origin.document field identifies its source document.
+   *
+   * @param documents - Array of source documents to parse
    * @returns Parse result with tree and/or errors
    */
-  parse(source: string): Promise<ParseResult>;
+  parse(documents: readonly SourceDocument[]): Promise<ParseResult>;
 }

@@ -115,18 +115,24 @@ describe('IRContext', () => {
   });
 
   describe('fromResources with file attribution', () => {
-    it('includes file info in dangling dependency diagnostics when resourceSources provided', () => {
+    it('includes file info in dangling dependency diagnostics when origin.document set', () => {
       const resources: Resource[] = [
         {
           type: 'task',
           id: 'has-dangling',
           complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'missing' } }],
+          origin: {
+            startByte: 0,
+            endByte: 10,
+            startRow: 0,
+            endRow: 0,
+            document: 'project/tasks.siren',
+          },
         },
       ];
 
-      const resourceSources = new Map([['has-dangling', 'project/tasks.siren']]);
-      const ir = IRContext.fromResources(resources, undefined, resourceSources);
+      const ir = IRContext.fromResources(resources);
 
       const danglingDiags = ir.diagnostics.filter((d) => d.code === 'W005');
       expect(danglingDiags).toHaveLength(1);
@@ -135,34 +141,50 @@ describe('IRContext', () => {
       expect(diag.file).toBe('project/tasks.siren');
     });
 
-    it('includes file info in circular dependency diagnostics when resourceSources provided', () => {
+    it('includes file info in circular dependency diagnostics when origin.document set', () => {
       const resources: Resource[] = [
         {
           type: 'task',
           id: 'x',
           complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'y' } }],
+          origin: {
+            startByte: 0,
+            endByte: 10,
+            startRow: 0,
+            endRow: 0,
+            document: 'project/main.siren',
+          },
         },
         {
           type: 'task',
           id: 'y',
           complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'z' } }],
+          origin: {
+            startByte: 20,
+            endByte: 30,
+            startRow: 1,
+            endRow: 1,
+            document: 'project/main.siren',
+          },
         },
         {
           type: 'task',
           id: 'z',
           complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'x' } }],
+          origin: {
+            startByte: 40,
+            endByte: 50,
+            startRow: 2,
+            endRow: 2,
+            document: 'project/main.siren',
+          },
         },
       ];
 
-      const resourceSources = new Map([
-        ['x', 'project/main.siren'],
-        ['y', 'project/main.siren'],
-        ['z', 'project/main.siren'],
-      ]);
-      const ir = IRContext.fromResources(resources, undefined, resourceSources);
+      const ir = IRContext.fromResources(resources);
 
       const cycleDiags = ir.diagnostics.filter((d) => d.code === 'W004');
       expect(cycleDiags).toHaveLength(1);
@@ -179,20 +201,30 @@ describe('IRContext', () => {
           id: 'a',
           complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'b' } }],
+          origin: {
+            startByte: 0,
+            endByte: 10,
+            startRow: 0,
+            endRow: 0,
+            document: 'project/file1.siren',
+          },
         },
         {
           type: 'task',
           id: 'b',
           complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'a' } }],
+          origin: {
+            startByte: 0,
+            endByte: 10,
+            startRow: 0,
+            endRow: 0,
+            document: 'project/file2.siren',
+          },
         },
       ];
 
-      const resourceSources = new Map([
-        ['a', 'project/file1.siren'],
-        ['b', 'project/file2.siren'],
-      ]);
-      const ir = IRContext.fromResources(resources, undefined, resourceSources);
+      const ir = IRContext.fromResources(resources);
 
       const cycleDiags = ir.diagnostics.filter((d) => d.code === 'W004');
       expect(cycleDiags).toHaveLength(1);
@@ -203,6 +235,89 @@ describe('IRContext', () => {
       expect(diag.file).toBeDefined();
       // Could be comma-separated or array - implementation decides
       // For now, just assert it exists
+    });
+  });
+
+  describe('fromCst with origin.document', () => {
+    it('preserves origin.document through decoding and populates diagnostic file', async () => {
+      // This test verifies that origin.document flows from CST through decoding
+      // to the final diagnostic generation
+      const { DocumentNode, ResourceNode } = await import('../parser/cst.js');
+
+      // Create a minimal CST with origin.document set
+      const cst: DocumentNode = {
+        type: 'document',
+        resources: [
+          {
+            type: 'resource',
+            resourceType: 'task',
+            identifier: { type: 'identifier', value: 'a', quoted: false },
+            complete: false,
+            body: [
+              {
+                type: 'attribute',
+                key: { type: 'identifier', value: 'depends_on', quoted: false },
+                value: {
+                  type: 'reference',
+                  identifier: { type: 'identifier', value: 'b', quoted: false },
+                },
+              },
+            ],
+            origin: {
+              startByte: 0,
+              endByte: 30,
+              startRow: 0,
+              endRow: 0,
+              document: 'test-file.siren',
+            },
+          } as ResourceNode,
+          {
+            type: 'resource',
+            resourceType: 'task',
+            identifier: { type: 'identifier', value: 'b', quoted: false },
+            complete: false,
+            body: [
+              {
+                type: 'attribute',
+                key: { type: 'identifier', value: 'depends_on', quoted: false },
+                value: {
+                  type: 'reference',
+                  identifier: { type: 'identifier', value: 'a', quoted: false },
+                },
+              },
+            ],
+            origin: {
+              startByte: 31,
+              endByte: 60,
+              startRow: 1,
+              endRow: 1,
+              document: 'test-file.siren',
+            },
+          } as ResourceNode,
+        ],
+      };
+
+      const ir = IRContext.fromCst(cst);
+
+      // Verify IR resources have origin.document
+      expect(ir.resources).toHaveLength(2);
+      for (const r of ir.resources) {
+        expect(r.origin?.document).toBe('test-file.siren');
+      }
+
+      // Verify depends_on attribute was decoded
+      const resourceA = ir.resources.find((r) => r.id === 'a');
+      expect(resourceA).toBeDefined();
+      const dependsOnAttr = resourceA!.attributes.find((a) => a.key === 'depends_on');
+      expect(dependsOnAttr).toBeDefined();
+      expect(dependsOnAttr!.value).toMatchObject({ kind: 'reference', id: 'b' });
+
+      // Verify cycle diagnostic has file
+      const cycleDiags = ir.diagnostics.filter((d) => d.code === 'W004');
+      expect(cycleDiags).toHaveLength(1);
+
+      const diag: any = cycleDiags[0];
+      expect(diag.file).toBe('test-file.siren');
     });
   });
 

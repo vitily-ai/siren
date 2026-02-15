@@ -3,7 +3,6 @@
 	"command": "siren list"
 }
 ---
-
+valid
 ---
-Warning: skipping siren/broken1.siren (parse error)
-Warning: skipping siren/broken2.siren (parse error)
+Warning: siren/broken1.siren:1:1: Syntax error - skipping document

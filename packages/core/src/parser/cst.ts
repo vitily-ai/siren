@@ -17,6 +17,8 @@ export interface Origin {
   readonly endByte: number;
   readonly startRow: number;
   readonly endRow: number;
+  /** Document identifier (e.g., relative file path from project root) */
+  readonly document?: string;
 }
 
 /**

@@ -10,13 +10,20 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Language, Parser, type Tree } from 'web-tree-sitter';
-import type { ParserAdapter } from '../../src/parser/adapter.js';
+import type { ParserAdapter, SourceDocument } from '../../src/parser/adapter.js';
 import { createNodeAdapter } from './node-adapter.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 let _parser: Parser | null = null;
 let _adapter: ParserAdapter | null = null;
+
+/**
+ * Helper to wrap a source string as a single SourceDocument for testing.
+ */
+export function doc(content: string, name = 'test.siren'): SourceDocument[] {
+  return [{ name, content }];
+}
 
 /**
  * Get a cached ParserAdapter instance for tests.

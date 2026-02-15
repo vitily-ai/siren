@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { IRContext, type Resource } from '@siren/core';
+import { IRContext, type Resource, type SourceDocument } from '@siren/core';
 import { formatDiagnostic } from './format-diagnostics.js';
 import { getParser } from './parser.js';
 
@@ -100,33 +100,35 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
   }
 
   const parser = await getParser();
-  const allResources: Resource[] = [];
-  const resourceSources = new Map<string, string>();
 
-  for (const filePath of ctx.files) {
-    const source = fs.readFileSync(filePath, 'utf-8');
-    const parseResult = await parser.parse(source);
-    if (!parseResult.success || !parseResult.tree) {
-      const relPath = path.relative(rootDir, filePath);
-      ctx.warnings.push(`Warning: skipping ${relPath} (parse error)`);
-      continue;
-    }
+  // Build SourceDocument array from discovered files
+  const documents: SourceDocument[] = ctx.files.map((filePath) => ({
+    name: path.relative(rootDir, filePath),
+    content: fs.readFileSync(filePath, 'utf-8'),
+  }));
 
-    const ir = IRContext.fromCst(parseResult.tree, filePath);
+  // Parse all documents in a single call - origin.document is set automatically
+  const parseResult = await parser.parse(documents);
 
-    // Track which file each resource came from
-    for (const resource of ir.resources) {
-      const relPath = path.relative(rootDir, filePath);
-      resourceSources.set(resource.id, relPath);
-    }
-
-    allResources.push(...ir.resources);
+  if (!parseResult.tree) {
+    // No valid parse tree at all
+    ctx.warnings.push('Warning: no valid parse tree could be produced');
+    loadedContext = ctx;
+    return ctx;
   }
 
-  ctx.resources = allResources;
+  // Report parse errors but continue processing what we can
+  for (const error of parseResult.errors) {
+    const filePrefix = error.document ? `${error.document}:` : '';
+    const suffix = error.message === 'Syntax error' ? ' - skipping document' : '';
+    ctx.warnings.push(
+      `Warning: ${filePrefix}${error.line}:${error.column}: ${error.message}${suffix}`,
+    );
+  }
 
-  // Build project-wide IR context and collect all diagnostics with file attribution
-  const ir = IRContext.fromResources(allResources, undefined, resourceSources);
+  // Decode CST to IR - resources now have origin.document set by the parser
+  const ir = IRContext.fromCst(parseResult.tree);
+  ctx.resources = [...ir.resources];
   ctx.ir = ir;
   ctx.milestones = ir.getMilestoneIds();
 
@@ -140,7 +142,7 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
     }
   }
 
-  // Collect semantic diagnostics (W004, W005)
+  // Collect semantic diagnostics (W004, W005) - file attribution comes from origin.document
   for (const diagnostic of ir.diagnostics) {
     const formatted = formatDiagnostic(diagnostic);
     if (diagnostic.severity === 'warning') {

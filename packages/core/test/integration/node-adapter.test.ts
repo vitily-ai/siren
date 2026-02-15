@@ -5,12 +5,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { getTestAdapter } from '../helpers/parser.js';
+import { doc, getTestAdapter } from '../helpers/parser.js';
 
 describe('NodeParserAdapter', () => {
   it('should parse an empty document', async () => {
     const adapter = await getTestAdapter();
-    const result = await adapter.parse('');
+    const result = await adapter.parse(doc(''));
 
     expect(result.success).toBe(true);
     expect(result.errors).toHaveLength(0);
@@ -22,7 +22,7 @@ describe('NodeParserAdapter', () => {
   it('should parse a simple task', async () => {
     const adapter = await getTestAdapter();
     const source = `task example {}`;
-    const result = await adapter.parse(source);
+    const result = await adapter.parse(doc(source));
 
     expect(result.success).toBe(true);
     expect(result.errors).toHaveLength(0);
@@ -39,7 +39,7 @@ describe('NodeParserAdapter', () => {
   it('should parse quoted identifiers', async () => {
     const adapter = await getTestAdapter();
     const source = `milestone "setup phase" {}`;
-    const result = await adapter.parse(source);
+    const result = await adapter.parse(doc(source));
 
     expect(result.success).toBe(true);
     const milestone = result.tree?.resources[0];
@@ -53,7 +53,7 @@ describe('NodeParserAdapter', () => {
     const source = `task test {
   description = "Hello, world!"
 }`;
-    const result = await adapter.parse(source);
+    const result = await adapter.parse(doc(source));
 
     expect(result.success).toBe(true);
     const task = result.tree?.resources[0];
@@ -75,7 +75,7 @@ describe('NodeParserAdapter', () => {
   priority = 42
   effort = 3.14
 }`;
-    const result = await adapter.parse(source);
+    const result = await adapter.parse(doc(source));
 
     expect(result.success).toBe(true);
     const task = result.tree?.resources[0];
@@ -96,7 +96,7 @@ describe('NodeParserAdapter', () => {
   active = true
   archived = false
 }`;
-    const result = await adapter.parse(source);
+    const result = await adapter.parse(doc(source));
 
     expect(result.success).toBe(true);
     const task = result.tree?.resources[0];
@@ -115,7 +115,7 @@ describe('NodeParserAdapter', () => {
     const source = `task test {
   owner = null
 }`;
-    const result = await adapter.parse(source);
+    const result = await adapter.parse(doc(source));
 
     expect(result.success).toBe(true);
     const task = result.tree?.resources[0];
@@ -130,7 +130,7 @@ describe('NodeParserAdapter', () => {
     const source = `task test {
   depends_on = other_task
 }`;
-    const result = await adapter.parse(source);
+    const result = await adapter.parse(doc(source));
 
     expect(result.success).toBe(true);
     const task = result.tree?.resources[0];
@@ -146,7 +146,7 @@ describe('NodeParserAdapter', () => {
   tags = ["urgent", "backend"]
   numbers = [1, 2, 3]
 }`;
-    const result = await adapter.parse(source);
+    const result = await adapter.parse(doc(source));
 
     expect(result.success).toBe(true);
     const task = result.tree?.resources[0];
@@ -168,7 +168,7 @@ describe('NodeParserAdapter', () => {
   it('should detect parse errors', async () => {
     const adapter = await getTestAdapter();
     const source = `task {}`; // Missing identifier
-    const result = await adapter.parse(source);
+    const result = await adapter.parse(doc(source));
 
     expect(result.success).toBe(false);
     expect(result.errors.length).toBeGreaterThan(0);
@@ -185,7 +185,7 @@ task first {}
 milestone second {}
 task third {}
 `;
-    const result = await adapter.parse(source);
+    const result = await adapter.parse(doc(source));
 
     expect(result.success).toBe(true);
     expect(result.tree?.resources).toHaveLength(3);
@@ -197,7 +197,7 @@ task third {}
   it('should parse complete modifier', async () => {
     const adapter = await getTestAdapter();
     const source = `task done complete { description = "finished" }`;
-    const result = await adapter.parse(source);
+    const result = await adapter.parse(doc(source));
 
     expect(result.success).toBe(true);
     expect(result.tree?.resources).toHaveLength(1);

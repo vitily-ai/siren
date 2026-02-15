@@ -5,4 +5,4 @@
 ---
 
 ---
-Warning: skipping siren/broken.siren (parse error)
+Warning: siren/broken.siren:1:1: Syntax error - skipping document
