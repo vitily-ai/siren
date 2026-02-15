@@ -1,0 +1,21 @@
+# First occurrence of duplicate-task
+# Padding comment to make sure its on a different line
+task duplicate-task {
+  description = "First occurrence - this one is kept"
+}
+
+# First occurrence of duplicate-milestone
+milestone duplicate-milestone {
+  description = "First milestone occurrence"
+  depends_on = duplicate-task
+}
+
+# Unique resource
+task unique-task {
+  description = "No conflict"
+}
+
+# Third occurrence of duplicate-milestone (will be dropped)
+milestone duplicate-milestone {
+  description = "Third milestone occurrence - dropped"
+}

@@ -16,7 +16,10 @@ import type { Document, Resource, ResourceReference } from './types.js';
  * The `message` field is intentionally absent - frontends (CLI, web)
  * decide how to format diagnostics for display.
  */
-export type Diagnostic = DanglingDependencyDiagnostic | CircularDependencyDiagnostic;
+export type Diagnostic =
+  | DanglingDependencyDiagnostic
+  | CircularDependencyDiagnostic
+  | DuplicateIdDiagnostic;
 
 // TODO this looks like it should be an extension of a root interface instead of two separate interfaces
 /**
@@ -56,6 +59,34 @@ export interface CircularDependencyDiagnostic {
 }
 
 /**
+ * W006: Duplicate resource ID detected
+ *
+ * Emitted when multiple resources share the same ID. The first occurrence is kept,
+ * and all subsequent occurrences are dropped with a warning. File attribution
+ * is derived from each resource's origin.document field.
+ */
+export interface DuplicateIdDiagnostic {
+  readonly code: 'W006';
+  readonly severity: 'warning';
+  /** ID of the duplicate resource */
+  readonly resourceId: string;
+  /** Type of the resource (task or milestone) */
+  readonly resourceType: 'task' | 'milestone';
+  /** Source file path of the duplicate occurrence (from origin.document) */
+  readonly file?: string;
+  /** 1-based line number of the first (precedent) occurrence */
+  readonly firstLine?: number;
+  /** 0-based column number of the first (precedent) occurrence */
+  readonly firstColumn?: number;
+  /** Source file path of the first (precedent) occurrence (from origin.document) */
+  readonly firstFile?: string;
+  /** 1-based line number of the duplicate (second) occurrence - used for diagnostic position */
+  readonly secondLine?: number;
+  /** 0-based column number of the duplicate (second) occurrence */
+  readonly secondColumn?: number;
+}
+
+/**
  * Immutable IR context that wraps a `Document` and exposes utility functions as methods.
  *
  * The class intentionally holds plain data (no hidden mutability) and delegates
@@ -64,19 +95,47 @@ export interface CircularDependencyDiagnostic {
  * data-oriented and serializable.
  */
 export class IRContext {
-  public readonly resources: readonly Resource[];
+  /** All resources including duplicates - used for duplicate detection */
+  private readonly _allResources: readonly Resource[];
+  /** Deduplicated resources - computed lazily */
+  private _uniqueResources?: readonly Resource[];
   public readonly source?: string;
   public readonly parseDiagnostics: readonly ParseDiagnostic[];
   private _diagnostics?: readonly Diagnostic[];
   private _cycles?: readonly { nodes: readonly string[] }[];
   private _danglingDiagnostics?: readonly Diagnostic[];
+  private _duplicateDiagnostics?: readonly DuplicateIdDiagnostic[];
 
   constructor(doc: Document, parseDiagnostics: readonly ParseDiagnostic[] = []) {
-    // Shallow freeze top-level arrays to discourage accidental mutation.
-    this.resources = Object.freeze(doc.resources.slice());
+    // Store all resources including duplicates - deduplication happens lazily
+    this._allResources = Object.freeze(doc.resources.slice());
     this.source = doc.source;
     this.parseDiagnostics = Object.freeze(parseDiagnostics.slice());
     // Note: Don't freeze the object itself since we need lazy property assignment
+  }
+
+  /**
+   * Get deduplicated resources. First occurrence of each ID is kept, duplicates are dropped.
+   * Use `duplicateDiagnostics` to get warnings about dropped duplicates.
+   */
+  get resources(): readonly Resource[] {
+    if (!this._uniqueResources) {
+      this._uniqueResources = this.computeUniqueResources();
+    }
+    return this._uniqueResources;
+  }
+
+  /** Compute deduplicated resources - first occurrence wins */
+  private computeUniqueResources(): readonly Resource[] {
+    const seen = new Set<string>();
+    const unique: Resource[] = [];
+    for (const resource of this._allResources) {
+      if (!seen.has(resource.id)) {
+        seen.add(resource.id);
+        unique.push(resource);
+      }
+    }
+    return Object.freeze(unique);
   }
 
   findResourceById(id: string): Resource {
@@ -191,6 +250,7 @@ export class IRContext {
     }
 
     diagnostics.push(...this.danglingDiagnostics);
+    diagnostics.push(...this.duplicateDiagnostics);
 
     return Object.freeze(diagnostics);
   }
@@ -201,6 +261,54 @@ export class IRContext {
       this._danglingDiagnostics = this.computeDanglingDiagnostics();
     }
     return this._danglingDiagnostics;
+  }
+
+  /** Memoized getter for duplicate ID diagnostics */
+  get duplicateDiagnostics(): readonly DuplicateIdDiagnostic[] {
+    if (!this._duplicateDiagnostics) {
+      this._duplicateDiagnostics = this.computeDuplicateDiagnostics();
+    }
+    return this._duplicateDiagnostics;
+  }
+
+  /** Compute W006 diagnostics for duplicate resource IDs */
+  private computeDuplicateDiagnostics(): readonly DuplicateIdDiagnostic[] {
+    const diagnostics: DuplicateIdDiagnostic[] = [];
+    const seen = new Map<string, Resource>();
+
+    for (const resource of this._allResources) {
+      const first = seen.get(resource.id);
+      if (first) {
+        // Duplicate detected - emit W006 diagnostic
+        const firstPos = first.origin
+          ? { firstLine: first.origin.startRow + 1, firstColumn: 0 }
+          : {};
+        // Determine precedent file using resource lookup to ensure attribution
+        // works even when origin.document may be absent on the stored `first` object.
+        const firstFile = this.getFileInfoForResources([resource.id]).file;
+        const secondPos = resource.origin
+          ? { secondLine: resource.origin.startRow + 1, secondColumn: 0 }
+          : {};
+
+        // File attribution: use duplicate's origin.document if available
+        const file = resource.origin?.document;
+
+        diagnostics.push({
+          code: 'W006',
+          severity: 'warning',
+          resourceId: resource.id,
+          resourceType: resource.type,
+          file,
+          firstFile,
+          ...firstPos,
+          ...secondPos,
+        });
+      } else {
+        seen.set(resource.id, resource);
+      }
+    }
+
+    return Object.freeze(diagnostics);
   }
 
   private computeDanglingDiagnostics(): readonly Diagnostic[] {

@@ -128,6 +128,7 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
 
   // Decode CST to IR - resources now have origin.document set by the parser
   const ir = IRContext.fromCst(parseResult.tree);
+
   ctx.resources = [...ir.resources];
   ctx.ir = ir;
   ctx.milestones = ir.getMilestoneIds();

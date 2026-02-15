@@ -1,4 +1,8 @@
-import type { CircularDependencyDiagnostic, DanglingDependencyDiagnostic } from '@siren/core';
+import type {
+  CircularDependencyDiagnostic,
+  DanglingDependencyDiagnostic,
+  DuplicateIdDiagnostic,
+} from '@siren/core';
 import { describe, expect, it } from 'vitest';
 import { formatDiagnostic } from './format-diagnostics.js';
 
@@ -102,6 +106,28 @@ describe('formatDiagnostic', () => {
 
       expect(result).toBe(
         "milestones.siren:3:2: W005: Dangling dependency: milestone 'release-v1' depends on 'unfinished-task'",
+      );
+    });
+  });
+
+  describe('W006: Duplicate resource ID', () => {
+    it('formats duplicate ID with second occurrence position', () => {
+      const diagnostic: DuplicateIdDiagnostic = {
+        code: 'W006',
+        severity: 'warning',
+        resourceId: 'duplicate-id',
+        resourceType: 'task',
+        file: 'siren/dupes.siren',
+        firstLine: 2,
+        firstColumn: 0,
+        secondLine: 10,
+        secondColumn: 0,
+      };
+
+      const result = formatDiagnostic(diagnostic);
+
+      expect(result).toBe(
+        "siren/dupes.siren:10:0: W006: Duplicate resource ID detected: task 'duplicate-id' first defined at 2:0",
       );
     });
   });
