@@ -27,10 +27,6 @@ task show-priority {
   depends_on = [sort-check]
 }
 
-task get-next {
-  description = "given an entry, return/surface the highest-priority incomplete task in its dependency graph"
-}
-
 milestone sort-by-priority {
   description = "add the ability to define priority on tasks/milestones and sort by it"
   depends_on = [sort-order, priority-invalid, show-priority]

@@ -31,7 +31,7 @@ task complete-duplicates {
 
 milestone get-next {
   description = "`siren next <entry-id>`: returns the next available dependency that must be completed before the given entry"
-  depends_on = get-next-cli
+  depends_on = [get-next-cli, sort-by-priority]
 }
 
 task get-next-cli {

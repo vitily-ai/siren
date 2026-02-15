@@ -1,4 +1,4 @@
-milestone duplicate-ids {
+milestone duplicate-ids complete {
   description = "
     When two entries have a conflicting identical id, a warning diagnostic should be raised.
     The conflict will be resolved by preferring the first entry.
@@ -7,32 +7,36 @@ milestone duplicate-ids {
   depends_on = [determine-source, tdd-duplicate-unit-test, tdd-duplicate-integration-test, duplicate-id-cli-implementation]
 }
 
-task determine-source {
+task determine-source complete {
   description = "It must be understood if duplicate detection and diagnostic generation should occur in the IR or the parser."
 }
 
-task tdd-duplicate-unit-test {
+task tdd-duplicate-unit-test complete {
   description = "Start with basic failing unit test"
   clarification_needed = "Need to understand if IR or parser is responsible in order to know where to write test"
   depends_on = determine-source
 }
 
-task tdd-duplicate-integration-test {
+task tdd-duplicate-integration-test complete {
   depends_on = tdd-duplicate-unit-test
 }
 
-task duplicate-id-core-implementation {
+task duplicate-id-core-implementation complete {
   depends_on = tdd-duplicate-unit-test
 }
 
-task tdd-duplicate-id-cli-code-formatting-unit-test {
+task tdd-duplicate-id-cli-code-formatting-unit-test complete {
   depends_on = duplicate-id-core-implementation
 }
 
-task tdd-duplicate-id-cli-code-golden-scenario {
+task tdd-duplicate-id-cli-code-golden-scenario complete {
   depends_on = tdd-duplicate-id-cli-code-formatting-unit-test
 }
 
-task duplicate-id-cli-implementation {
+task duplicate-id-cli-implementation complete {
   depends_on = tdd-duplicate-id-cli-code-golden-scenario
+}
+
+task prioritize-milestones {
+  description = "When a milestone and a task collide, prefer the milestone, superceding the prefer-first behavior"
 }
