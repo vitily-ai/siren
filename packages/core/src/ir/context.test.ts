@@ -240,10 +240,6 @@ describe('IRContext', () => {
 
   describe('fromCst with origin.document', () => {
     it('preserves origin.document through decoding and populates diagnostic file', async () => {
-      // This test verifies that origin.document flows from CST through decoding
-      // to the final diagnostic generation
-      const { DocumentNode, ResourceNode } = await import('../parser/cst.js');
-
       // Create a minimal CST with origin.document set
       const cst: DocumentNode = {
         type: 'document',
