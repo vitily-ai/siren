@@ -1,3 +1,10 @@
 task verify-multibyte-consistency {}
 
+// NEXT
+milestone readiness {}
+
 milestone task-mutex {}
+
+milestone assignment-streams {
+  depends_on = [task-mutex, sort-by-priority, readiness]
+}
