@@ -1,5 +1,3 @@
-task verify-multibyte-consistency {}
-
 // NEXT
 milestone readiness {}
 
