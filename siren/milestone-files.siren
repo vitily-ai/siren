@@ -1,3 +1,8 @@
 milestone milestone-files {
   description = "treat .siren files as implicit simple milestones where every contained entry is a dependency"
+  // Planning Context
+  // "Files" are a CLI/Node construct. Core operates on `Document` structures, which are not files.
+  // This however should not be a feature exclusive to Node consumers.
+  // Does this mean every `Document` should implicitly produce a milestone?
+  
 }

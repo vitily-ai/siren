@@ -37,3 +37,7 @@ task sourceindex-assumptions {
 task show-complete-short-circuit-bug {
   description = "marking a leaf task as complete short-circuits `siren show`"
 }
+
+task list-deps-not-tasks {
+  description = "`siren list -d` not `siren list -t`"
+}
