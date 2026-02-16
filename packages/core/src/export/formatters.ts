@@ -1,4 +1,5 @@
 import type { AttributeValue } from '../ir/types.js';
+import { isArray, isReference } from '../ir/types.js';
 
 const INDENT = '  ';
 
@@ -28,15 +29,12 @@ export function formatAttributeValue(value: AttributeValue, raw?: string): strin
   // Array: { kind: 'array', elements }
   // Primitive: string|number|boolean|null
   // We avoid importing type guards to keep this file minimal.
-  if (typeof value === 'object' && value !== null && 'kind' in value) {
-    if ((value as any).kind === 'reference') {
-      // Reference: emit bare id
-      return (value as any).id;
-    }
-    if ((value as any).kind === 'array') {
-      const elems = (value as any).elements as AttributeValue[];
-      return `[${elems.map((e) => formatAttributeValue(e)).join(', ')}]`;
-    }
+  if (isReference(value)) {
+    return value.id;
+  }
+  if (isArray(value)) {
+    const elems = value.elements as AttributeValue[];
+    return `[${elems.map((e) => formatAttributeValue(e)).join(', ')}]`;
   }
   return formatPrimitive(value as unknown);
 }

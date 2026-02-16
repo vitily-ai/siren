@@ -20,7 +20,7 @@ import type {
 
 // Minimal structural types describing host-provided parser/runtime.
 export interface ParserLike {
-  parse(source: string): any; // returns a tree with rootNode
+  parse(source: string): unknown; // returns a tree with rootNode-like shape
 }
 
 export interface LanguageLike {
@@ -57,8 +57,12 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
   // sensible package-relative fallback in ESM-capable runtimes.
   let defaultWasmUrl: string | undefined;
   try {
-    const metaUrl = (import.meta as any).url;
-    const URLCtor = (globalThis as any).URL;
+    const metaUrl = (import.meta as unknown as { url?: string }).url;
+    const URLCtor = (
+      globalThis as unknown as {
+        URL?: { new (path: string, base?: string): { href: string } };
+      }
+    ).URL;
     if (metaUrl && URLCtor) {
       defaultWasmUrl = new URLCtor('../../grammar/tree-sitter-siren.wasm', metaUrl).href;
     }
@@ -79,19 +83,39 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
     startRow: number;
   }
 
+  // Lightweight structural shape for parser runtime nodes. Keep explicit
+  // optional properties so callers can use dot-access without `any`.
+  interface NodeLike {
+    type?: string;
+    text?: string;
+    namedChildren?: NodeLike[];
+    startPosition?: { row?: number; column?: number };
+    endPosition?: { row?: number };
+    startIndex?: number;
+    endIndex?: number;
+    childForFieldName?: (s: string) => NodeLike | undefined;
+    childrenForFieldName?: (s: string) => NodeLike[];
+    children?: NodeLike[];
+    isMissing?: boolean;
+    hasError?: boolean;
+  }
+
   // Conversion helpers adapted from the Node test adapter. Keep logic here
   // so core owns the CST shape while the runtime provides parsing only.
 
   /**
    * Extract origin metadata from a tree-sitter node with document adjustment
    */
-  function extractOrigin(node: any, boundary: DocumentBoundary) {
-    if (!node || !node.startPosition || !node.endPosition) return undefined;
+  function extractOrigin(node: NodeLike | undefined, boundary: DocumentBoundary) {
+    if (!node) return undefined;
+    const startPos = node.startPosition;
+    const endPos = node.endPosition;
+    if (!startPos || !endPos) return undefined;
     return {
-      startByte: (node.startIndex ?? 0) - boundary.startByte,
-      endByte: (node.endIndex ?? 0) - boundary.startByte,
-      startRow: (node.startPosition.row ?? 0) - boundary.startRow,
-      endRow: (node.endPosition.row ?? 0) - boundary.startRow,
+      startByte: (Number(node.startIndex ?? 0) as number) - boundary.startByte,
+      endByte: (Number(node.endIndex ?? 0) as number) - boundary.startByte,
+      startRow: (Number(startPos.row ?? 0) as number) - boundary.startRow,
+      endRow: (Number(endPos.row ?? 0) as number) - boundary.startRow,
       document: boundary.name,
     };
   }
@@ -112,19 +136,19 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
     return boundaries[0] ?? { name: 'unknown', startByte: 0, startRow: 0 };
   }
 
-  function convertIdentifier(node: any, boundary: DocumentBoundary): IdentifierNode {
-    const child = node?.namedChildren?.[0];
+  function convertIdentifier(node: NodeLike, boundary: DocumentBoundary): IdentifierNode {
+    const child = node.namedChildren?.[0];
     if (!child) {
       return {
         type: 'identifier',
-        value: node ? String(node.text) : '',
+        value: node ? String(node.text ?? '') : '',
         quoted: false,
-        text: node ? String(node.text) : '',
+        text: node ? String(node.text ?? '') : '',
         origin: extractOrigin(node, boundary),
       };
     }
 
-    const isQuoted = child.type === 'quoted_identifier';
+    const isQuoted = String(child.type ?? '') === 'quoted_identifier';
     let value = String(child.text ?? '');
     if (isQuoted && value.startsWith('"') && value.endsWith('"')) {
       value = value.slice(1, -1);
@@ -139,9 +163,9 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
     };
   }
 
-  function convertLiteralDirect(node: any, boundary: DocumentBoundary): LiteralNode | null {
+  function convertLiteralDirect(node: NodeLike, boundary: DocumentBoundary): LiteralNode | null {
     const origin = extractOrigin(node, boundary);
-    switch (node.type) {
+    switch (String(node.type ?? '')) {
       case 'string_literal': {
         let value = String(node.text ?? '');
         if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
@@ -186,7 +210,7 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
     }
   }
 
-  function convertReference(node: any, boundary: DocumentBoundary): ReferenceNode {
+  function convertReference(node: NodeLike, boundary: DocumentBoundary): ReferenceNode {
     const identifier: IdentifierNode = {
       type: 'identifier',
       value: String(node.text ?? ''),
@@ -197,7 +221,7 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
     return { type: 'reference', identifier, origin: extractOrigin(node, boundary) };
   }
 
-  function convertArray(node: any, boundary: DocumentBoundary): ArrayNode {
+  function convertArray(node: NodeLike, boundary: DocumentBoundary): ArrayNode {
     const elements: ExpressionNode[] = [];
     for (const child of node.namedChildren ?? []) {
       const expr = convertExpression(child, boundary);
@@ -206,42 +230,45 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
     return { type: 'array', elements, origin: extractOrigin(node, boundary) };
   }
 
-  function convertLiteral(node: any, boundary: DocumentBoundary): LiteralNode | null {
-    const child = node?.namedChildren?.[0];
+  function convertLiteral(node: NodeLike, boundary: DocumentBoundary): LiteralNode | null {
+    const child = node.namedChildren?.[0];
     if (!child) return null;
     return convertLiteralDirect(child, boundary);
   }
 
-  function convertExpression(node: any, boundary: DocumentBoundary): ExpressionNode | null {
+  function convertExpression(
+    node: NodeLike | undefined,
+    boundary: DocumentBoundary,
+  ): ExpressionNode | null {
     if (!node) return null;
-    if (node.type === 'expression') {
+    if (String(node.type ?? '') === 'expression') {
       const child = node.namedChildren?.[0];
       if (!child) return null;
       return convertExpression(child, boundary);
     }
 
-    switch (node.type) {
+    switch (String(node.type ?? '')) {
       case 'literal':
-        return convertLiteral(node, boundary);
+        return convertLiteral(node as NodeLike, boundary);
       case 'reference':
-        return convertReference(node, boundary);
+        return convertReference(node as NodeLike, boundary);
       case 'array':
-        return convertArray(node, boundary);
+        return convertArray(node as NodeLike, boundary);
       case 'string_literal':
       case 'number_literal':
       case 'boolean_literal':
       case 'null_literal':
-        return convertLiteralDirect(node, boundary);
+        return convertLiteralDirect(node as NodeLike, boundary);
       case 'bare_identifier':
-        return convertReference(node, boundary);
+        return convertReference(node as NodeLike, boundary);
       default:
         return null;
     }
   }
 
-  function convertAttribute(node: any, boundary: DocumentBoundary): AttributeNode | null {
-    const keyNode = node?.childForFieldName?.('key');
-    const valueNode = node?.childForFieldName?.('value');
+  function convertAttribute(node: NodeLike, boundary: DocumentBoundary): AttributeNode | null {
+    const keyNode = node.childForFieldName?.('key');
+    const valueNode = node.childForFieldName?.('value');
     if (!keyNode || !valueNode) return null;
 
     const key: IdentifierNode = {
@@ -256,7 +283,7 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
     return { type: 'attribute', key, value, origin: extractOrigin(node, boundary) };
   }
 
-  function convertResource(node: any, boundary: DocumentBoundary): ResourceNode | null {
+  function convertResource(node: NodeLike, boundary: DocumentBoundary): ResourceNode | null {
     const typeNode = node?.childForFieldName?.('type');
     const idNode = node?.childForFieldName?.('id');
     const completeModifierNode = node?.childForFieldName?.('complete_modifier');
@@ -267,9 +294,9 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
     const complete = !!completeModifierNode;
     const attributes: AttributeNode[] = [];
 
-    const bodyChildren = node.childrenForFieldName ? node.childrenForFieldName('body') : [];
-    for (const child of bodyChildren) {
-      if (child.type === 'attribute') {
+    const bodyChildren = node.childrenForFieldName?.('body');
+    for (const child of bodyChildren ?? []) {
+      if (String(child.type ?? '') === 'attribute') {
         const attr = convertAttribute(child, boundary);
         if (attr) attributes.push(attr);
       }
@@ -287,11 +314,11 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
     return result;
   }
 
-  function convertDocument(root: any, boundaries: readonly DocumentBoundary[]): DocumentNode {
+  function convertDocument(root: NodeLike, boundaries: readonly DocumentBoundary[]): DocumentNode {
     const resources: ResourceNode[] = [];
     for (const child of root.namedChildren ?? []) {
-      if (child.type === 'resource') {
-        const boundary = findDocumentForByte(child.startIndex ?? 0, boundaries);
+      if (String(child.type ?? '') === 'resource') {
+        const boundary = findDocumentForByte(Number(child.startIndex ?? 0), boundaries);
         const r = convertResource(child, boundary);
         if (r) resources.push(r);
       }
@@ -301,17 +328,23 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
     return { type: 'document', resources, origin: extractOrigin(root, rootBoundary) };
   }
 
-  function extractErrors(node: any, boundaries: readonly DocumentBoundary[]): ParseError[] {
+  function extractErrors(
+    node: NodeLike | undefined,
+    boundaries: readonly DocumentBoundary[],
+  ): ParseError[] {
     const errors: ParseError[] = [];
     const seen = new Set<string>();
-    const walk = (n: any) => {
+    const walk = (n: NodeLike | undefined) => {
       if (!n) return;
-      if (n.type === 'ERROR' || n.isMissing) {
-        const boundary = findDocumentForByte(n.startIndex ?? 0, boundaries);
+      const nType = String(n.type ?? '');
+      const isMissing = Boolean(n.isMissing);
+      if (nType === 'ERROR' || isMissing) {
+        const boundary = findDocumentForByte(Number(n.startIndex ?? 0), boundaries);
+        const startPos = n.startPosition;
         const error: ParseError = {
-          message: n.isMissing ? `Missing ${n.type}` : 'Syntax error',
-          line: (n.startPosition?.row ?? 0) - boundary.startRow + 1,
-          column: (n.startPosition?.column ?? 0) + 1,
+          message: isMissing ? `Missing ${nType}` : 'Syntax error',
+          line: (Number(startPos?.row ?? 0) as number) - boundary.startRow + 1,
+          column: (Number(startPos?.column ?? 0) as number) + 1,
           document: boundary.name,
         };
         // Deduplicate errors at the same position with the same message
@@ -354,12 +387,15 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
         }
       }
 
-      const tree = parser.parse(concatenated);
+      const tree = parser.parse(concatenated) as
+        | { rootNode: NodeLike; hasError?: boolean }
+        | null
+        | undefined;
       if (!tree) throw new Error('parser returned null tree');
       const root = tree.rootNode;
-      const errors = root.hasError ? extractErrors(root, boundaries) : [];
+      const errors = tree.hasError ? extractErrors(root, boundaries) : [];
       const documentNode = convertDocument(root, boundaries);
-      const success = !(root.hasError === true);
+      const success = !(tree.hasError === true);
       const result: ParseResult = { tree: documentNode, errors, success };
       return result;
     },

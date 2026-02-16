@@ -73,68 +73,72 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
   const updatedFiles: string[] = [];
   const updatedFilesWouldEdit: string[] = [];
 
-  for (const filePath of ctx.files) {
-    const source = fs.readFileSync(filePath, 'utf-8');
-    const relPath = path.relative(process.cwd(), filePath);
-    const parseResult = await parser.parse(doc(source, relPath));
-    if (!parseResult.tree) {
-      console.error(`Skipping ${relPath} (parse error)`);
-      continue;
-    }
-
-    const perFileIR = IRContext.fromCst(parseResult.tree, filePath);
-
-    // Build SourceIndex from parse result for comment preservation
-    const sourceIndex = parseResult.comments
-      ? new SourceIndex(parseResult.comments, source)
-      : undefined;
-
-    // Export with comment preservation if available
-    const exported = sourceIndex
-      ? exportWithComments(perFileIR, sourceIndex)
-      : exportToSiren(perFileIR);
-
-    // If exporter would drop all content (e.g. a file that only contains
-    // comments) or the source contains comments that would be lost, prefer
-    // to preserve the original source so comments are not discarded.
-    let toWrite = exported;
-    const sourceHasComments = /(^|\n)\s*(#|\/\/)\s*/.test(source);
-    if (exported.trim() === '' && sourceHasComments) {
-      toWrite = source;
-    }
-
-    // Validate round-trip: parse exported text and decode
-    const parse2 = await parser.parse(doc(toWrite, relPath));
-    if (!parse2.tree) {
-      console.error(`Format produced unparsable output for ${filePath}`);
-      continue;
-    }
-    const decoded2 = IRContext.fromCst(parse2.tree);
-    if (!resourcesEqual(perFileIR.resources, decoded2.resources)) {
-      console.error(`Format round-trip changed semantics for ${filePath}; skipping`);
-      if (process.env.SIREN_FORMAT_DEBUG === '1') {
-        console.error('--- SIREN_FORMAT_DEBUG: original decoded resources ---');
-        console.error(debugStringifyResources(perFileIR.resources));
-        console.error('--- SIREN_FORMAT_DEBUG: re-decoded resources ---');
-        console.error(debugStringifyResources(decoded2.resources));
-        console.error('--- SIREN_FORMAT_DEBUG: formatted output ---');
-        console.error(toWrite);
-        console.error('--- /SIREN_FORMAT_DEBUG ---');
+  async function processFile(filePath: string) {
+    const result = { filePath, updated: false, wouldEdit: false };
+    try {
+      const source = fs.readFileSync(filePath, 'utf-8');
+      const relPath = path.relative(process.cwd(), filePath);
+      const parseResult = await parser.parse(doc(source, relPath));
+      if (!parseResult.tree) {
+        console.error(`Skipping ${relPath} (parse error)`);
+        return result;
       }
-      continue;
-    }
 
-    // If exported equals original source, do not write or count as updated.
-    if (toWrite === source) {
-      continue;
-    }
+      const perFileIR = IRContext.fromCst(parseResult.tree, filePath);
 
-    if (opts.dryRun) {
-      // Preserve existing behavior: print exported content for dry-run
-      const toPrint = toWrite.endsWith('\n') ? toWrite : `${toWrite}\n`;
-      console.log(toPrint);
-      updatedFilesWouldEdit.push(path.relative(process.cwd(), filePath));
-    } else {
+      // Build SourceIndex from parse result for comment preservation
+      const sourceIndex = parseResult.comments
+        ? new SourceIndex(parseResult.comments, source)
+        : undefined;
+
+      // Export with comment preservation if available
+      const exported = sourceIndex
+        ? exportWithComments(perFileIR, sourceIndex)
+        : exportToSiren(perFileIR);
+
+      // If exporter would drop all content (e.g. a file that only contains
+      // comments) or the source contains comments that would be lost, prefer
+      // to preserve the original source so comments are not discarded.
+      let toWrite = exported;
+      const sourceHasComments = /(^|\n)\s*(#|\/\/)\s*/.test(source);
+      if (exported.trim() === '' && sourceHasComments) {
+        toWrite = source;
+      }
+
+      // Validate round-trip: parse exported text and decode
+      const parse2 = await parser.parse(doc(toWrite, relPath));
+      if (!parse2.tree) {
+        console.error(`Format produced unparsable output for ${filePath}`);
+        return result;
+      }
+      const decoded2 = IRContext.fromCst(parse2.tree);
+      if (!resourcesEqual(perFileIR.resources, decoded2.resources)) {
+        console.error(`Format round-trip changed semantics for ${filePath}; skipping`);
+        if (process.env.SIREN_FORMAT_DEBUG === '1') {
+          console.error('--- SIREN_FORMAT_DEBUG: original decoded resources ---');
+          console.error(debugStringifyResources(perFileIR.resources));
+          console.error('--- SIREN_FORMAT_DEBUG: re-decoded resources ---');
+          console.error(debugStringifyResources(decoded2.resources));
+          console.error('--- SIREN_FORMAT_DEBUG: formatted output ---');
+          console.error(toWrite);
+          console.error('--- /SIREN_FORMAT_DEBUG ---');
+        }
+        return result;
+      }
+
+      // If exported equals original source, do not write or count as updated.
+      if (toWrite === source) {
+        return result;
+      }
+
+      if (opts.dryRun) {
+        // Preserve existing behavior: print exported content for dry-run
+        const toPrint = toWrite.endsWith('\n') ? toWrite : `${toWrite}\n`;
+        console.log(toPrint);
+        result.wouldEdit = true;
+        return result;
+      }
+
       // TODO[RUNFORMAT-ATOMIC]
       // Currently the formatter writes files with `fs.writeFileSync` which is
       // not atomic and has no backup or rollback semantics. Implement an
@@ -142,8 +146,18 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
       // documented `--backup` or safe-backup behavior. See task
       // `runformat-atomic-backup` in siren/debt.siren.
       fs.writeFileSync(filePath, toWrite, 'utf-8');
-      updatedFiles.push(path.relative(process.cwd(), filePath));
+      result.updated = true;
+      return result;
+    } catch (e) {
+      console.error(`Error formatting ${filePath}: ${(e as Error).message}`);
+      return result;
     }
+  }
+
+  const results = await Promise.all(ctx.files.map((f) => processFile(f)));
+  for (const r of results) {
+    if (r.updated) updatedFiles.push(path.relative(process.cwd(), r.filePath));
+    if (r.wouldEdit) updatedFilesWouldEdit.push(path.relative(process.cwd(), r.filePath));
   }
   // Print summary
   const updatedCount = opts.dryRun ? updatedFilesWouldEdit.length : updatedFiles.length;

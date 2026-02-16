@@ -111,10 +111,10 @@ function hasCycleInTree(tree: DependencyTree): boolean {
  */
 function renderDependencyTree(
   tree: DependencyTree,
-  prefix: string = '',
-  _isLast: boolean = true,
-  depth: number = 0,
-  maxDepth: number = 2,
+  prefix = '',
+  _isLast = true,
+  depth = 0,
+  maxDepth = 2,
 ): string[] {
   const lines: string[] = [];
 
@@ -190,8 +190,8 @@ function renderDependencyTree(
 
         // Find the deepest leaf to show
         let current: DependencyTree | undefined = firstDep;
-        while (current && current.dependencies.filter((d) => !d.resource.complete).length > 0) {
-          current = current.dependencies.filter((d) => !d.resource.complete)[0];
+        while (current?.dependencies.some((d) => !d.resource.complete)) {
+          current = current.dependencies.find((d) => !d.resource.complete);
         }
         if (current && current !== firstDep) {
           lines.push(`${childPrefix}└─ ${current.resource.id}`);
@@ -233,7 +233,7 @@ function renderDependencyTree(
 /**
  * List all milestone IDs from .siren files in the siren/ directory
  */
-export async function list(_showTasks: boolean = false): Promise<ListResult> {
+export async function list(_showTasks = false): Promise<ListResult> {
   const ctx = getLoadedContext();
   if (!ctx) {
     throw new Error('Project context not loaded');
@@ -242,7 +242,7 @@ export async function list(_showTasks: boolean = false): Promise<ListResult> {
   return result;
 }
 
-export async function runList(showTasks: boolean = false): Promise<void> {
+export async function runList(showTasks = false): Promise<void> {
   const result = await list(showTasks);
   const ctx = getLoadedContext();
 
