@@ -7,7 +7,7 @@ export function exportToSiren(ctx: IRContext): string {
   for (const res of ctx.resources) {
     const body: string[] = [];
     for (const attr of res.attributes) {
-      body.push(formatAttributeLine(attr.key, attr.value as any, (attr as any).raw));
+      body.push(formatAttributeLine(attr.key, attr.value, attr.raw));
     }
     lines.push(wrapResourceBlock(res.type, res.id, res.complete, body));
   }

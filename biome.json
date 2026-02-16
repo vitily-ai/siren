@@ -10,10 +10,28 @@
         "noUnusedVariables": "error"
       },
       "style": {
-        "noNonNullAssertion": "off"
+        "noNonNullAssertion": "off",
+        "noCommonJs": "error",
+        "noDoneCallback": "error",
+        "noExportedImports": "error",
+        "noInferrableTypes": "error",
+        "noNamespace": "error",
+        "useAsConstAssertion": "error",
+        "useForOf": "error"
       },
       "suspicious": {
-        "noExplicitAny": "off"
+        "noEvolvingTypes": "error",
+        "noUnassignedVariables": "error"
+      },
+      "nursery": {
+        "noUnnecessaryConditions": "error",
+        "useFind": "error",
+        "noUnusedExpressions": "error",
+        "noEmptySource": "error"
+      },
+      "performance": {
+        "noAwaitInLoops": "error",
+        "noBarrelFile": "error"
       }
     }
   },
@@ -34,12 +52,38 @@
   },
   "overrides": [
     {
+      "includes": ["**/*.test.ts", "**/*.spec.ts", "**/test/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/core/**", "!packages/core/**/*.test.ts"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noBarrelFile": "off"
+          },
+          "suspicious": {
+            "noConsole": "warn"
+          }
+        }
+      }
+    },
+    {
       "includes": ["**/grammar/grammar.js"],
       "linter": {
         "rules": {
           "correctness": {
             "noUnusedVariables": "off",
             "noUnusedFunctionParameters": "off"
+          },
+          "style": {
+            "noCommonJs": "off"
           }
         }
       }

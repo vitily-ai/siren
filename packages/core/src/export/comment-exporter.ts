@@ -1,4 +1,5 @@
 import type { IRContext } from '../ir/context.js';
+import type { AttributeValue } from '../ir/types.js';
 import type { SourceIndex } from '../parser/source-index.js';
 import { formatAttributeLine, wrapResourceBlock } from './formatters.js';
 import { exportToSiren } from './siren-exporter.js';
@@ -128,26 +129,26 @@ export function exportWithComments(ctx: IRContext, sourceIndex?: SourceIndex): s
     // Track attributes by their end row to detect trailing comments
     const attributeByEndRow = new Map<
       number,
-      { index: number; key: string; value: any; raw: any }
+      { index: number; key: string; value: AttributeValue; raw?: string }
     >();
 
     for (const attr of res.attributes) {
-      const order = (attr as any).origin?.startByte ?? Number.POSITIVE_INFINITY;
+      const order = attr.origin?.startByte ?? Number.POSITIVE_INFINITY;
       const entryIndex = bodyEntries.length;
-      const endRow = (attr as any).origin?.endRow;
+      const endRow = attr.origin?.endRow;
 
       bodyEntries.push({
         order,
         seq: seq++,
-        text: formatAttributeLine(attr.key, attr.value as any, (attr as any).raw),
+        text: formatAttributeLine(attr.key, attr.value, attr.raw),
       });
 
       if (endRow !== undefined) {
         attributeByEndRow.set(endRow, {
           index: entryIndex,
           key: attr.key,
-          value: attr.value as any,
-          raw: (attr as any).raw,
+          value: attr.value,
+          raw: attr.raw,
         });
       }
     }

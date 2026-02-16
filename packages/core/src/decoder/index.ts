@@ -189,7 +189,7 @@ function decodeResource(
 ): Resource {
   const type: ResourceType = node.resourceType;
   const id = node.identifier.value;
-  const complete = typeof (node as any).complete === 'boolean' ? (node as any).complete : false;
+  const complete = typeof node.complete === 'boolean' ? node.complete : false;
 
   // Error-tolerant: handle multiple 'complete' keywords
   if (typeof node.completeKeywordCount === 'number' && node.completeKeywordCount > 1) {
