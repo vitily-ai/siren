@@ -92,7 +92,7 @@ task gamma {}`,
     expect(ctx.milestones).toEqual(['root', 'nested']);
   });
 
-  it('handles parse errors with warnings', async () => {
+  it('handles parse errors with errors and skips broken documents', async () => {
     const sirenDir = path.join(tempDir, 'siren');
     fs.mkdirSync(sirenDir);
     fs.writeFileSync(path.join(sirenDir, 'valid.siren'), 'milestone valid {}');
@@ -102,12 +102,12 @@ task gamma {}`,
 
     expect(ctx.files).toHaveLength(2);
     expect(ctx.milestones).toEqual(['valid']);
-    expect(ctx.warnings).toHaveLength(1);
-    // New format: file:line:col: message - skipping document
-    expect(ctx.warnings[0]).toMatch(
-      /^Warning: siren\/broken\.siren:\d+:\d+: Syntax error - skipping document$/,
-    );
-    expect(ctx.errors).toEqual([]);
+    expect(ctx.warnings).toEqual([]);
+    expect(ctx.errors).toHaveLength(2);
+    expect(ctx.errors[0]).toContain('error: unexpected token');
+    expect(ctx.errors[0]).toContain('--> siren/broken.siren:1:1');
+    expect(ctx.errors[0]).toContain("expected 'task' or 'milestone'");
+    expect(ctx.errors[1]).toBe('note: skipping siren/broken.siren due to syntax errors');
   });
 
   it('handles quoted milestone identifiers', async () => {

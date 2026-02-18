@@ -112,7 +112,13 @@ describe('golden CLI tests (expected/)', () => {
         const originalCwd = process.cwd();
         try {
           process.chdir(cwd);
-          await main(args.slice(1));
+          const originalExitCode = process.exitCode;
+          process.exitCode = undefined;
+          try {
+            await main(args.slice(1));
+          } finally {
+            process.exitCode = originalExitCode;
+          }
           const outCalls = logSpy.mock.calls
             .map((c) => (c[0] !== undefined ? String(c[0]) : ''))
             .join('\n');
@@ -174,7 +180,13 @@ describe('golden CLI tests (expected/)', () => {
         const originalCwd = process.cwd();
         try {
           process.chdir(cwd);
-          await main(args.slice(1));
+          const originalExitCode = process.exitCode;
+          process.exitCode = undefined;
+          try {
+            await main(args.slice(1));
+          } finally {
+            process.exitCode = originalExitCode;
+          }
           const outCalls = logSpy.mock.calls
             .map((c) => (c[0] !== undefined ? String(c[0]) : ''))
             .join('\n');
@@ -244,7 +256,13 @@ describe('golden CLI tests (expected/)', () => {
       const originalCwd = process.cwd();
       try {
         process.chdir(cwd);
-        await main(args.slice(1));
+        const originalExitCode = process.exitCode;
+        process.exitCode = undefined;
+        try {
+          await main(args.slice(1));
+        } finally {
+          process.exitCode = originalExitCode;
+        }
         const outCalls = logSpy.mock.calls
           .map((c) => (c[0] !== undefined ? String(c[0]) : ''))
           .join('\n');

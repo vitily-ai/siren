@@ -400,6 +400,67 @@ task second { }
     });
   });
 
+  describe('Syntax error reporting', () => {
+    it('reports top-level unexpected token with expected/found', async () => {
+      const source = '!!! broken';
+      const result = await adapter.parse(doc(source));
+
+      expect(result.success).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toMatchObject({
+        severity: 'error',
+        kind: 'unexpected_token',
+        found: '!!!',
+        expected: ['task', 'milestone'],
+        line: 1,
+        column: 1,
+        document: 'test.siren',
+      });
+      expect(result.errors[0]?.message).toBe(
+        "unexpected token '!!!'; expected 'task' or 'milestone'",
+      );
+      expect(result.errors[0]?.startByte).toBe(0);
+      expect(result.errors[0]?.endByte).toBe(3);
+    });
+
+    it('reports missing identifier after resource type', async () => {
+      const source = 'task { }';
+      const result = await adapter.parse(doc(source));
+
+      expect(result.success).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toMatchObject({
+        severity: 'error',
+        kind: 'missing_token',
+        expected: ['identifier after resource type'],
+        line: 1,
+        column: 5,
+        document: 'test.siren',
+      });
+      expect(result.errors[0]?.message).toBe('expected identifier after resource type');
+    });
+
+    it('reports missing attribute value as expected expression', async () => {
+      const source = 'task foo { description = }\n# comment';
+      const result = await adapter.parse(doc(source));
+
+      expect(result.success).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      const missing = result.errors.find((e) => e.kind === 'missing_token');
+      expect(missing).toBeDefined();
+      expect(missing?.message).toBe('expected expression');
+    });
+
+    it('reports missing closing brace', async () => {
+      const source = 'task foo { description = "x"';
+      const result = await adapter.parse(doc(source));
+
+      expect(result.success).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors.some((e) => e.message === 'expected }')).toBe(true);
+    });
+  });
+
   describe('Backward compatibility', () => {
     it('existing test patterns still work', async () => {
       const source = `task foo {

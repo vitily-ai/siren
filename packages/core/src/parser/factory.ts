@@ -89,6 +89,7 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
     type?: string;
     text?: string;
     namedChildren?: NodeLike[];
+    parent?: NodeLike;
     startPosition?: { row?: number; column?: number };
     endPosition?: { row?: number };
     startIndex?: number;
@@ -98,6 +99,71 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
     children?: NodeLike[];
     isMissing?: boolean;
     hasError?: boolean;
+  }
+
+  function scanToken(source: string, index: number): { token: string; length: number } {
+    let i = index;
+    while (i < source.length && /\s/u.test(source[i]!)) i++;
+    if (i >= source.length) return { token: 'EOF', length: 1 };
+
+    const ch = source[i]!;
+
+    if (ch === '"') {
+      let j = i + 1;
+      while (j < source.length && source[j] !== '"') j++;
+      if (j < source.length) j++;
+      const token = source.slice(i, j);
+      return { token, length: Math.max(1, token.length) };
+    }
+
+    if (/[a-zA-Z_]/u.test(ch)) {
+      let j = i + 1;
+      while (j < source.length && /[a-zA-Z0-9_-]/u.test(source[j]!)) j++;
+      const token = source.slice(i, j);
+      return { token, length: Math.max(1, token.length) };
+    }
+
+    if (/[0-9]/u.test(ch)) {
+      let j = i + 1;
+      while (j < source.length && /[0-9]/u.test(source[j]!)) j++;
+      if (j < source.length && source[j] === '.') {
+        j++;
+        while (j < source.length && /[0-9]/u.test(source[j]!)) j++;
+      }
+      const token = source.slice(i, j);
+      return { token, length: Math.max(1, token.length) };
+    }
+
+    let j = i + 1;
+    while (
+      j < source.length &&
+      !/\s/u.test(source[j]!) &&
+      !/[a-zA-Z0-9_"]/u.test(source[j]!) &&
+      j - i < 16
+    ) {
+      j++;
+    }
+    const token = source.slice(i, j);
+    return { token, length: Math.max(1, token.length) };
+  }
+
+  function formatExpectedList(expected: readonly string[]): string {
+    const items = expected.map((e) => `'${e}'`);
+    if (items.length === 0) return '';
+    if (items.length === 1) return items[0]!;
+    if (items.length === 2) return `${items[0]} or ${items[1]}`;
+    return `${items.slice(0, -1).join(', ')}, or ${items[items.length - 1]}`;
+  }
+
+  function isMissingResourceId(node: NodeLike): boolean {
+    if (String(node.type ?? '') !== 'bare_identifier' || !node.isMissing) return false;
+    if (String(node.parent?.type ?? '') !== 'identifier') return false;
+    let cur: NodeLike | undefined = node.parent;
+    while (cur) {
+      if (String(cur.type ?? '') === 'resource') return true;
+      cur = cur.parent;
+    }
+    return false;
   }
 
   // Conversion helpers adapted from the Node test adapter. Keep logic here
@@ -331,30 +397,126 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
   function extractErrors(
     node: NodeLike | undefined,
     boundaries: readonly DocumentBoundary[],
+    documents: readonly SourceDocument[],
   ): ParseError[] {
+    const sourceByDoc = new Map<string, string>();
+    for (const doc of documents) {
+      if (doc) sourceByDoc.set(doc.name, doc.content);
+    }
+
     const errors: ParseError[] = [];
     const seen = new Set<string>();
+
+    const emit = (error: ParseError) => {
+      const key = `${error.document ?? 'unknown'}:${error.line}:${error.column}:${error.message}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      errors.push(error);
+    };
+
+    const topLevelExpected = ['task', 'milestone'] as const;
     const walk = (n: NodeLike | undefined) => {
       if (!n) return;
       const nType = String(n.type ?? '');
       const isMissing = Boolean(n.isMissing);
-      if (nType === 'ERROR' || isMissing) {
+      const children = n.children ?? [];
+      const isLeafError =
+        nType === 'ERROR' && !children.some((c) => String(c.type ?? '') === 'ERROR');
+
+      if (isMissing) {
         const boundary = findDocumentForByte(Number(n.startIndex ?? 0), boundaries);
         const startPos = n.startPosition;
-        const error: ParseError = {
-          message: isMissing ? `Missing ${nType}` : 'Syntax error',
+        const localStartByte = Number(n.startIndex ?? 0) - boundary.startByte;
+        const expectedToken =
+          nType === '}'
+            ? '}'
+            : nType === ']'
+              ? ']'
+              : nType === 'bare_identifier'
+                ? isMissingResourceId(n)
+                  ? 'identifier after resource type'
+                  : 'expression'
+                : nType;
+
+        emit({
+          severity: 'error',
+          kind: 'missing_token',
+          message: `expected ${expectedToken}`,
+          expected: [expectedToken],
           line: (Number(startPos?.row ?? 0) as number) - boundary.startRow + 1,
           column: (Number(startPos?.column ?? 0) as number) + 1,
           document: boundary.name,
-        };
-        // Deduplicate errors at the same position with the same message
-        const key = `${error.document}:${error.line}:${error.column}:${error.message}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          errors.push(error);
+          startByte: localStartByte,
+          endByte: localStartByte,
+        });
+      } else if (isLeafError) {
+        const boundary = findDocumentForByte(Number(n.startIndex ?? 0), boundaries);
+        const startPos = n.startPosition;
+        const localStartByte = Number(n.startIndex ?? 0) - boundary.startByte;
+        const source = sourceByDoc.get(boundary.name) ?? '';
+        const scanned = scanToken(source, localStartByte);
+        const found = scanned.token;
+
+        let nearestNonErrorParent = n.parent;
+        while (String(nearestNonErrorParent?.type ?? '') === 'ERROR') {
+          nearestNonErrorParent = nearestNonErrorParent?.parent;
+        }
+        const parentType = String(n.parent?.type ?? '');
+        const isTopLevel =
+          !nearestNonErrorParent || String(nearestNonErrorParent.type ?? '') === 'document';
+        const expected = isTopLevel ? [...topLevelExpected] : [];
+
+        const isDuplicateComplete =
+          found === 'complete' &&
+          parentType === 'resource' &&
+          n.parent?.childForFieldName?.('complete_modifier') != null;
+
+        const message = isDuplicateComplete
+          ? `duplicate 'complete' keyword; expected '{'`
+          : expected.length > 0
+            ? `unexpected token '${found}'; expected ${formatExpectedList(expected)}`
+            : `unexpected token '${found}'`;
+
+        emit({
+          severity: isDuplicateComplete ? 'warning' : 'error',
+          kind: 'unexpected_token',
+          message,
+          found,
+          expected: isDuplicateComplete ? ['{'] : expected,
+          line: (Number(startPos?.row ?? 0) as number) - boundary.startRow + 1,
+          column: (Number(startPos?.column ?? 0) as number) + 1,
+          document: boundary.name,
+          startByte: localStartByte,
+          endByte: Math.min(localStartByte + scanned.length, source.length),
+        });
+
+        // Cross-document ERROR splitting: if an error span crosses document boundaries,
+        // emit an additional top-level error at each subsequent document start.
+        const startIndex = Number(n.startIndex ?? 0);
+        const endIndex = Number(n.endIndex ?? startIndex);
+        for (const b of boundaries) {
+          if (b.startByte <= startIndex) continue;
+          if (b.startByte >= endIndex) continue;
+          const docSource = sourceByDoc.get(b.name) ?? '';
+          const docScanned = scanToken(docSource, 0);
+          emit({
+            severity: 'error',
+            kind: 'unexpected_token',
+            message: `unexpected token '${docScanned.token}'; expected ${formatExpectedList([
+              ...topLevelExpected,
+            ])}`,
+            found: docScanned.token,
+            expected: [...topLevelExpected],
+            line: 1,
+            column: 1,
+            document: b.name,
+            startByte: 0,
+            endByte: Math.min(docScanned.length, docSource.length),
+          });
         }
       }
-      for (const child of n.children ?? []) walk(child);
+
+      for (const child of children) walk(child);
     };
     walk(node);
     return errors;
@@ -393,9 +555,10 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
         | undefined;
       if (!tree) throw new Error('parser returned null tree');
       const root = tree.rootNode;
-      const errors = tree.hasError ? extractErrors(root, boundaries) : [];
+      const hasError = Boolean(tree.hasError === true || root?.hasError === true);
+      const errors = hasError ? extractErrors(root, boundaries, documents) : [];
       const documentNode = convertDocument(root, boundaries);
-      const success = !(tree.hasError === true);
+      const success = !hasError;
       const result: ParseResult = { tree: documentNode, errors, success };
       return result;
     },

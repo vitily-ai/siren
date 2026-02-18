@@ -5,4 +5,9 @@
 ---
 valid
 ---
-Warning: siren/broken.siren:1:1: Syntax error - skipping document
+error: unexpected token 'this'; expected 'task' or 'milestone'
+ --> siren/broken.siren:1:1
+  |
+1 | this is not valid siren syntax!!!
+  | ^^^^
+note: skipping siren/broken.siren due to syntax errors

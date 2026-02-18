@@ -200,18 +200,16 @@ describe('siren list', () => {
     expect(result.warnings).toEqual([]);
   });
 
-  it('skips files with parse errors and emits warning', async () => {
+  it('skips files with parse errors and records syntax errors', async () => {
     copyFixture('parse-errors', tempDir);
 
-    await loadProject(tempDir);
+    const ctx = await loadProject(tempDir);
     const result = await list();
 
     expect(result.milestones).toEqual(['valid']);
-    expect(result.warnings).toHaveLength(1);
-    // New format includes file:line:col prefix with structured error message and skipping document clarification
-    expect(result.warnings[0]).toMatch(
-      /^Warning: siren\/broken\.siren:\d+:\d+: Syntax error - skipping document$/,
-    );
+    expect(result.warnings).toEqual([]);
+    expect(ctx.errors.some((e) => e.includes('--> siren/broken.siren:1:1'))).toBe(true);
+    expect(ctx.errors.some((e) => e.includes('note: skipping siren/broken.siren'))).toBe(true);
   });
 
   it('handles quoted milestone identifiers', async () => {
@@ -263,14 +261,13 @@ describe('siren list', () => {
   it('handles multiple files with parse errors', async () => {
     copyFixture('multiple-parse-errors', tempDir);
 
-    await loadProject(tempDir);
+    const ctx = await loadProject(tempDir);
     const result = await list();
 
     expect(result.milestones).toEqual(['valid']);
-    // With multi-document parsing, parse errors may be consolidated
-    // At minimum we expect at least one warning about parse errors
-    expect(result.warnings.length).toBeGreaterThanOrEqual(1);
-    expect(result.warnings.some((w) => w.startsWith('Warning: siren/'))).toBe(true);
+    expect(result.warnings).toEqual([]);
+    expect(ctx.errors.some((e) => e.includes('--> siren/broken1.siren:1:1'))).toBe(true);
+    expect(ctx.errors.some((e) => e.includes('--> siren/broken2.siren:1:1'))).toBe(true);
   });
 
   it('uses the loaded project context', async () => {
@@ -296,6 +293,7 @@ describe('siren list', () => {
 describe('siren main', () => {
   let tempDir: string;
   let originalCwd: string;
+  let originalExitCode: number | undefined;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
   let loadProjectSpy: ReturnType<typeof vi.spyOn>;
@@ -303,6 +301,8 @@ describe('siren main', () => {
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'siren-main-test-'));
     originalCwd = process.cwd();
+    originalExitCode = process.exitCode;
+    process.exitCode = undefined;
     process.chdir(tempDir);
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -311,6 +311,7 @@ describe('siren main', () => {
 
   afterEach(() => {
     process.chdir(originalCwd);
+    process.exitCode = originalExitCode;
     fs.rmSync(tempDir, { recursive: true, force: true });
     consoleLogSpy.mockRestore();
     consoleErrorSpy.mockRestore();
@@ -348,7 +349,7 @@ describe('siren main', () => {
     expect(loadProjectSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('init command outputs warnings to stderr before command output', async () => {
+  it('init command outputs syntax errors to stderr before command output', async () => {
     // Setup: create siren dir with broken file
     copyFixture('broken', tempDir);
 
@@ -356,7 +357,7 @@ describe('siren main', () => {
 
     // Check that error is called before log
     expect(consoleErrorSpy).toHaveBeenCalled();
-    expect(consoleErrorSpy.mock.calls[0][0]).toContain('Warning: siren/broken.siren');
+    expect(consoleErrorSpy.mock.calls[0][0]).toContain('--> siren/broken.siren:1:1');
     expect(consoleLogSpy).toHaveBeenCalled();
     expect(
       consoleLogSpy.mock.calls.some((call: unknown[]) =>
@@ -386,7 +387,7 @@ describe('siren main', () => {
     await main(['list']);
 
     expect(consoleErrorSpy).toHaveBeenCalled();
-    expect(consoleErrorSpy.mock.calls[0][0]).toContain('Warning: siren/broken.siren');
+    expect(consoleErrorSpy.mock.calls[0][0]).toContain('--> siren/broken.siren:1:1');
     expect(loadProjectSpy).toHaveBeenCalledTimes(1);
   });
 
@@ -397,9 +398,9 @@ describe('siren main', () => {
     await main(['list']);
 
     expect(consoleErrorSpy).toHaveBeenCalled();
-    expect(consoleErrorSpy.mock.calls[0][0]).toContain('Warning: siren/');
+    expect(consoleErrorSpy.mock.calls[0][0]).toContain('--> siren/broken.siren:1:1');
     expect(consoleLogSpy).toHaveBeenCalledWith('test');
-    // Since runList prints warnings to error, then milestones to log
+    // Since main prints syntax errors to stderr, then milestones to stdout
     expect(consoleErrorSpy.mock.invocationCallOrder[0]).toBeLessThan(
       consoleLogSpy.mock.invocationCallOrder[0],
     );

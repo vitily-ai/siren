@@ -41,6 +41,72 @@ interface DocumentBoundary {
 export class NodeParserAdapter implements ParserAdapter {
   private constructor(private readonly parser: Parser) {}
 
+  private scanToken(source: string, index: number): { token: string; length: number } {
+    let i = index;
+    while (i < source.length && /\s/u.test(source[i]!)) i++;
+    if (i >= source.length) return { token: 'EOF', length: 1 };
+
+    const ch = source[i]!;
+
+    if (ch === '"') {
+      let j = i + 1;
+      while (j < source.length && source[j] !== '"') j++;
+      if (j < source.length) j++;
+      const token = source.slice(i, j);
+      return { token, length: Math.max(1, token.length) };
+    }
+
+    if (/[a-zA-Z_]/u.test(ch)) {
+      let j = i + 1;
+      while (j < source.length && /[a-zA-Z0-9_-]/u.test(source[j]!)) j++;
+      const token = source.slice(i, j);
+      return { token, length: Math.max(1, token.length) };
+    }
+
+    if (/[0-9]/u.test(ch)) {
+      let j = i + 1;
+      while (j < source.length && /[0-9]/u.test(source[j]!)) j++;
+      if (j < source.length && source[j] === '.') {
+        j++;
+        while (j < source.length && /[0-9]/u.test(source[j]!)) j++;
+      }
+      const token = source.slice(i, j);
+      return { token, length: Math.max(1, token.length) };
+    }
+
+    // Punctuation / other: consume a short run until whitespace or an identifier/number starts.
+    let j = i + 1;
+    while (
+      j < source.length &&
+      !/\s/u.test(source[j]!) &&
+      !/[a-zA-Z0-9_"]/u.test(source[j]!) &&
+      j - i < 16
+    ) {
+      j++;
+    }
+    const token = source.slice(i, j);
+    return { token, length: Math.max(1, token.length) };
+  }
+
+  private formatExpectedList(expected: readonly string[]): string {
+    const items = expected.map((e) => `'${e}'`);
+    if (items.length === 0) return '';
+    if (items.length === 1) return items[0]!;
+    if (items.length === 2) return `${items[0]} or ${items[1]}`;
+    return `${items.slice(0, -1).join(', ')}, or ${items[items.length - 1]}`;
+  }
+
+  private isMissingResourceId(node: SyntaxNode): boolean {
+    if (node.type !== 'bare_identifier' || !node.isMissing) return false;
+    if (node.parent?.type !== 'identifier') return false;
+    let cur: SyntaxNode | null = node.parent;
+    while (cur) {
+      if (cur.type === 'resource') return true;
+      cur = cur.parent;
+    }
+    return false;
+  }
+
   static async create(): Promise<NodeParserAdapter> {
     await Parser.init();
     const parser = new Parser();
@@ -86,7 +152,8 @@ export class NodeParserAdapter implements ParserAdapter {
       const doc = documents[i];
       boundaries.push({ name: doc.name, startByte: currentByte, startRow: currentRow });
       concatenated += doc.content;
-      currentByte += Buffer.byteLength(doc.content, 'utf8');
+      // web-tree-sitter indices are JS string offsets, not UTF-8 byte offsets.
+      currentByte += doc.content.length;
       currentRow += doc.content.split('\n').length - 1;
 
       // Add separator between documents (except after last)
@@ -101,7 +168,7 @@ export class NodeParserAdapter implements ParserAdapter {
     if (!tree) throw new Error('web-tree-sitter returned null tree');
 
     const rootNode = tree.rootNode;
-    const errors = rootNode.hasError ? this.extractErrors(rootNode, boundaries) : [];
+    const errors = rootNode.hasError ? this.extractErrors(rootNode, boundaries, documents) : [];
     const documentNode = this.convertDocument(rootNode, boundaries);
     const comments = this.extractComments(rootNode, concatenated, boundaries);
 
@@ -376,25 +443,114 @@ export class NodeParserAdapter implements ParserAdapter {
     };
   }
 
-  private extractErrors(node: SyntaxNode, boundaries: readonly DocumentBoundary[]): ParseError[] {
+  private extractErrors(
+    node: SyntaxNode,
+    boundaries: readonly DocumentBoundary[],
+    documents: readonly SourceDocument[],
+  ): ParseError[] {
+    const sourceByDoc = new Map<string, string>();
+    for (const doc of documents) sourceByDoc.set(doc.name, doc.content);
+
     const errors: ParseError[] = [];
     const seen = new Set<string>();
 
+    const emit = (error: ParseError) => {
+      const key = `${error.document ?? 'unknown'}:${error.line}:${error.column}:${error.message}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      errors.push(error);
+    };
+
+    const topLevelExpected = ['task', 'milestone'] as const;
+
     const walk = (n: SyntaxNode) => {
-      if (n.type === 'ERROR' || n.isMissing) {
+      const isLeafError = n.type === 'ERROR' && !n.children.some((c) => c.type === 'ERROR');
+
+      if (n.isMissing) {
         const boundary = this.findDocumentForByte(n.startIndex, boundaries);
         const adjustedRow = n.startPosition.row - boundary.startRow;
-        const error: ParseError = {
-          message: n.isMissing ? `Missing ${n.type}` : 'Syntax error',
+        const localStartByte = n.startIndex - boundary.startByte;
+        const expectedToken =
+          n.type === '}'
+            ? '}'
+            : n.type === ']'
+              ? ']'
+              : n.type === 'bare_identifier'
+                ? this.isMissingResourceId(n)
+                  ? 'identifier after resource type'
+                  : 'expression'
+                : n.type;
+        emit({
+          severity: 'error',
+          kind: 'missing_token',
+          message: `expected ${expectedToken}`,
+          expected: [expectedToken],
           line: adjustedRow + 1,
           column: n.startPosition.column + 1,
           document: boundary.name,
-        };
-        // Deduplicate errors at the same position with the same message
-        const key = `${error.document}:${error.line}:${error.column}:${error.message}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          errors.push(error);
+          startByte: localStartByte,
+          endByte: localStartByte,
+        });
+      } else if (isLeafError) {
+        const boundary = this.findDocumentForByte(n.startIndex, boundaries);
+        const adjustedRow = n.startPosition.row - boundary.startRow;
+        const localStartByte = n.startIndex - boundary.startByte;
+        const source = sourceByDoc.get(boundary.name) ?? '';
+        const { token: found, length } = this.scanToken(source, localStartByte);
+
+        let nearestNonErrorParent: SyntaxNode | null = n.parent;
+        while (nearestNonErrorParent && nearestNonErrorParent.type === 'ERROR') {
+          nearestNonErrorParent = nearestNonErrorParent.parent;
+        }
+        const isTopLevel = !nearestNonErrorParent || nearestNonErrorParent.type === 'document';
+        const expected = isTopLevel ? [...topLevelExpected] : [];
+
+        const parent = n.parent;
+        const isDuplicateComplete =
+          found === 'complete' &&
+          parent?.type === 'resource' &&
+          parent.childForFieldName('complete_modifier') !== null;
+
+        const message = isDuplicateComplete
+          ? `duplicate 'complete' keyword; expected '{'`
+          : expected.length > 0
+            ? `unexpected token '${found}'; expected ${this.formatExpectedList(expected)}`
+            : `unexpected token '${found}'`;
+
+        emit({
+          severity: isDuplicateComplete ? 'warning' : 'error',
+          kind: 'unexpected_token',
+          message,
+          found,
+          expected: isDuplicateComplete ? ['{'] : expected,
+          line: adjustedRow + 1,
+          column: n.startPosition.column + 1,
+          document: boundary.name,
+          startByte: localStartByte,
+          endByte: Math.min(localStartByte + length, source.length),
+        });
+
+        // Cross-document ERROR splitting: if an error span crosses document boundaries,
+        // emit an additional top-level error at each subsequent document start.
+        for (const b of boundaries) {
+          if (b.startByte <= n.startIndex) continue;
+          if (b.startByte >= n.endIndex) continue;
+          const docSource = sourceByDoc.get(b.name) ?? '';
+          const scanned = this.scanToken(docSource, 0);
+          emit({
+            severity: 'error',
+            kind: 'unexpected_token',
+            message: `unexpected token '${scanned.token}'; expected ${this.formatExpectedList([
+              ...topLevelExpected,
+            ])}`,
+            found: scanned.token,
+            expected: [...topLevelExpected],
+            line: 1,
+            column: 1,
+            document: b.name,
+            startByte: 0,
+            endByte: Math.min(scanned.length, docSource.length),
+          });
         }
       }
       for (const child of n.children) walk(child);
