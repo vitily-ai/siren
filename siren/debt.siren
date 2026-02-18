@@ -41,3 +41,7 @@ task show-complete-short-circuit-bug {
 task list-deps-not-tasks {
   description = "`siren list -d` not `siren list -t`"
 }
+
+task parser-wasm-packaging {
+  description = "Make parser WASM publishing/runtime resolution robust for npm/npx installs. Current CLI adapter path resolution assumes monorepo layout. Decide and implement a distribution strategy: package WASM with runtime clients (e.g. @siren/cli dist) or publish a dedicated WASM package, and wire deterministic runtime resolution accordingly."
+}
