@@ -156,6 +156,7 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
           resources: parseResult.tree.resources.filter(
             (r) => !skippedDocs.has(r.origin?.document ?? ''),
           ),
+          documents: parseResult.tree.documents?.filter((doc) => !skippedDocs.has(doc)),
         };
 
   // Decode CST to IR - resources now have origin.document set by the parser

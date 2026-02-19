@@ -3,7 +3,8 @@
 	"command": "siren list"
 }
 ---
-
+test
+valid
 ---
 error: unexpected token '!!!'; expected 'task' or 'milestone'
  --> siren/broken.siren:1:1

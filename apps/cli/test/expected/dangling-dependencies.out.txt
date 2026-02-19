@@ -9,6 +9,10 @@ with-dangling
 with-two-dangling
 ├─ missing1
 └─ missing2
+main
+├─ present
+├─ with-dangling
+└─ with-two-dangling
 
 ---
 siren/main.siren:5:0: W005: Dangling dependency: milestone 'with-dangling' depends on 'missing-task'

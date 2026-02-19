@@ -159,7 +159,7 @@ describe('siren list', () => {
     await loadProject(tempDir);
     const result = await list();
 
-    expect(result.milestones).toEqual([]);
+    expect(result.milestones).toEqual(['tasks']);
     expect(result.warnings).toEqual([]);
   });
 
@@ -170,7 +170,7 @@ describe('siren list', () => {
     await loadProject(cwd);
     const result = await list();
 
-    expect(result.milestones).toEqual(['alpha', 'beta']);
+    expect(result.milestones).toEqual(['alpha', 'beta', 'main']);
     expect(result.warnings).toEqual([]);
   });
 
@@ -184,7 +184,9 @@ describe('siren list', () => {
 
     expect(result.milestones).toContain('alpha');
     expect(result.milestones).toContain('beta');
-    expect(result.milestones).toHaveLength(2);
+    expect(result.milestones).toContain('a');
+    expect(result.milestones).toContain('b');
+    expect(result.milestones).toHaveLength(4);
     expect(result.warnings).toEqual([]);
   });
 
@@ -218,7 +220,7 @@ describe('siren list', () => {
     await loadProject(tempDir);
     const result = await list();
 
-    expect(result.milestones).toEqual(['Q1 Launch', 'MVP Release']);
+    expect(result.milestones).toEqual(['Q1 Launch', 'MVP Release', 'quoted']);
     expect(result.warnings).toEqual([]);
   });
 
@@ -228,7 +230,7 @@ describe('siren list', () => {
     await loadProject(tempDir);
     const result = await list();
 
-    expect(result.milestones).toEqual([]);
+    expect(result.milestones).toEqual(['empty', 'whitespace']);
     expect(result.warnings).toEqual([]);
   });
 
@@ -241,7 +243,8 @@ describe('siren list', () => {
     expect(result.milestones).toContain('🚀 Launch');
     expect(result.milestones).toContain('日本語マイルストーン');
     expect(result.milestones).toContain('émojis-and-accénts');
-    expect(result.milestones).toHaveLength(3);
+    expect(result.milestones).toContain('unicode');
+    expect(result.milestones).toHaveLength(4);
     expect(result.warnings).toEqual([]);
   });
 
@@ -285,7 +288,7 @@ describe('siren list', () => {
     await loadProject(tempDir);
     const result = await list();
 
-    expect(result.milestones).toEqual(['alpha', 'beta']);
+    expect(result.milestones).toEqual(['alpha', 'beta', 'a', 'b']);
     expect(result.warnings).toHaveLength(0);
   });
 });

@@ -6,3 +6,6 @@
 ---
 alpha
 └─ task1
+main
+├─ alpha
+└─ task1

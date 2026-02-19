@@ -279,8 +279,10 @@ export function decodeDocument(cst: DocumentNode, source?: string): DecodeResult
 
   const hasErrors = diagnostics.some((d) => d.severity === 'error');
 
+  const document = hasErrors ? null : { resources, documents: cst.documents };
+
   return {
-    document: hasErrors ? null : { resources },
+    document,
     diagnostics,
     success: !hasErrors,
   };

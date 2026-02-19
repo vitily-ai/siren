@@ -42,16 +42,16 @@ describe('Decode Integration: Fixtures', () => {
       expect(ir.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     });
 
-    it('decodes correct number of resources (4)', async () => {
+    it('decodes correct number of resources (5 including synthetic file milestone)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
       const ir = IRContext.fromCst(parseResult.tree!);
 
       expect(ir).not.toBeNull();
-      expect(ir.resources).toHaveLength(4);
+      expect(ir.resources).toHaveLength(5);
     });
 
-    it('decodes resource types correctly (3 tasks, 1 milestone)', async () => {
+    it('decodes resource types correctly (3 tasks, 2 milestones)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
       const ir = IRContext.fromCst(parseResult.tree!);
@@ -61,7 +61,7 @@ describe('Decode Integration: Fixtures', () => {
       const milestones = resources.filter((r) => r.type === 'milestone');
 
       expect(tasks).toHaveLength(3);
-      expect(milestones).toHaveLength(1);
+      expect(milestones).toHaveLength(2);
     });
 
     it('decodes resource IDs correctly (quotes stripped)', async () => {
@@ -75,6 +75,7 @@ describe('Decode Integration: Fixtures', () => {
       expect(ids).toContain('initial setup'); // stripped quotes
       expect(ids).toContain('setup-environment');
       expect(ids).toContain('example 2: with special chars!'); // stripped quotes
+      expect(ids).toContain('test');
     });
 
     it('preserves resource order from source', async () => {
@@ -89,6 +90,7 @@ describe('Decode Integration: Fixtures', () => {
         { type: 'milestone', id: 'initial setup' },
         { type: 'task', id: 'setup-environment' },
         { type: 'task', id: 'example 2: with special chars!' },
+        { type: 'milestone', id: 'test' },
       ]);
     });
   });
@@ -105,16 +107,16 @@ describe('Decode Integration: Fixtures', () => {
       expect(ir.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     });
 
-    it('decodes correct number of resources (3)', async () => {
+    it('decodes correct number of resources (4 including synthetic file milestone)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
       const ir = IRContext.fromCst(parseResult.tree!);
 
       expect(ir).not.toBeNull();
-      expect(ir.resources).toHaveLength(3);
+      expect(ir.resources).toHaveLength(4);
     });
 
-    it('decodes resource types correctly (2 tasks, 1 milestone)', async () => {
+    it('decodes resource types correctly (2 tasks, 2 milestones)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
       const ir = IRContext.fromCst(parseResult.tree!);
@@ -124,7 +126,7 @@ describe('Decode Integration: Fixtures', () => {
       const milestones = resources.filter((r) => r.type === 'milestone');
 
       expect(tasks).toHaveLength(2);
-      expect(milestones).toHaveLength(1);
+      expect(milestones).toHaveLength(2);
     });
 
     it('decodes resource IDs correctly (quotes stripped)', async () => {
@@ -137,6 +139,7 @@ describe('Decode Integration: Fixtures', () => {
       expect(ids).toContain('with_attributes');
       expect(ids).toContain('Q1 Launch'); // stripped quotes
       expect(ids).toContain('complex_example');
+      expect(ids).toContain('test');
     });
 
     it('preserves resource order from source', async () => {
@@ -150,6 +153,7 @@ describe('Decode Integration: Fixtures', () => {
         { type: 'task', id: 'with_attributes' },
         { type: 'milestone', id: 'Q1 Launch' },
         { type: 'task', id: 'complex_example' },
+        { type: 'milestone', id: 'test' },
       ]);
     });
 
@@ -241,16 +245,16 @@ describe('Decode Integration: Fixtures', () => {
       expect(ir.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     });
 
-    it('decodes correct number of resources (8)', async () => {
+    it('decodes correct number of resources (9 including synthetic file milestone)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
       const ir = IRContext.fromCst(parseResult.tree!);
 
       expect(ir).not.toBeNull();
-      expect(ir.resources).toHaveLength(8);
+      expect(ir.resources).toHaveLength(9);
     });
 
-    it('decodes resource types correctly (6 tasks, 2 milestones)', async () => {
+    it('decodes resource types correctly (6 tasks, 3 milestones)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
       const ir = IRContext.fromCst(parseResult.tree!);
@@ -260,7 +264,7 @@ describe('Decode Integration: Fixtures', () => {
       const milestones = resources.filter((r) => r.type === 'milestone');
 
       expect(tasks).toHaveLength(6);
-      expect(milestones).toHaveLength(2);
+      expect(milestones).toHaveLength(3);
     });
 
     it('decodes resource IDs correctly (quotes stripped)', async () => {
@@ -280,6 +284,7 @@ describe('Decode Integration: Fixtures', () => {
       // Quoted identifiers (quotes stripped)
       expect(ids).toContain('setup environment');
       expect(ids).toContain('v1.0');
+      expect(ids).toContain('test');
     });
 
     it('preserves resource order from source', async () => {
@@ -297,6 +302,7 @@ describe('Decode Integration: Fixtures', () => {
       expect(resources[5]).toMatchObject({ type: 'milestone', id: 'v1.0' });
       expect(resources[6]).toMatchObject({ type: 'task', id: 'early' });
       expect(resources[7]).toMatchObject({ type: 'task', id: 'late' });
+      expect(resources[8]).toMatchObject({ type: 'milestone', id: 'test' });
     });
 
     it('decodes single reference attribute (B.depends_on = A)', async () => {
@@ -425,9 +431,13 @@ describe('Decode Integration: Fixtures', () => {
       const parseResult = await adapter.parse(doc(source));
       const ir = IRContext.fromCst(parseResult.tree!);
 
-      for (const resource of ir.resources) {
+      const synthetic = ir.resources.find((r) => r.id === 'test');
+      const originals = ir.resources.filter((r) => r.id !== 'test');
+
+      for (const resource of originals) {
         expect(resource.attributes).toEqual([]);
       }
+      expect(synthetic?.attributes.find((a) => a.key === 'depends_on')).toBeDefined();
     });
 
     it('02-simple resources have decoded attributes', async () => {
@@ -454,13 +464,13 @@ describe('Decode Integration: Fixtures', () => {
       expect(ir.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     });
 
-    it('decodes correct number of resources (3)', async () => {
+    it('decodes correct number of resources (4 including synthetic file milestone)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
       const ir = IRContext.fromCst(parseResult.tree!);
 
       expect(ir).not.toBeNull();
-      expect(ir.resources).toHaveLength(3);
+      expect(ir.resources).toHaveLength(4);
     });
 
     it('decodes complete status correctly', async () => {

@@ -4,3 +4,4 @@
 	"expect": "stdout"
 }
 ---
+tasks
