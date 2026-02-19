@@ -11,9 +11,11 @@ test('emits W006 for duplicate IDs and keeps only first occurrence of each', asy
   const { resources, diagnostics } = await parseAndDecodeAll(adapter, 'duplicate-ids');
 
   // PRESCRIPTIVE: Only first occurrence of each duplicate ID is kept
-  expect(resources).toHaveLength(3);
+  // +2 synthetic per-file milestones (duplicate-ids1, duplicate-ids2)
+  expect(resources).toHaveLength(5);
   const ids = resources.map((r) => r.id);
-  expect(ids).toEqual(['duplicate-task', 'duplicate-milestone', 'unique-task']);
+  expect(ids.slice(0, 3)).toEqual(['duplicate-task', 'duplicate-milestone', 'unique-task']);
+  expect(new Set(ids.slice(3))).toEqual(new Set(['duplicate-ids1', 'duplicate-ids2']));
 
   // PRESCRIPTIVE: First occurrences should have correct attributes
   const firstTask = resources.find((r) => r.id === 'duplicate-task');

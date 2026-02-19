@@ -25,8 +25,8 @@ describe('project:incomplete-leaf-rendering', () => {
   it('decodes fixture and verifies completed dependency is present but has no deps', async () => {
     const { resources } = await parseAndDecodeAll(adapter, 'incomplete-leaf-rendering');
 
-    // Expect 5 resources defined in the fixture
-    expect(resources).toHaveLength(5);
+    // Expect 5 resources defined in the fixture + 1 synthetic milestone
+    expect(resources).toHaveLength(6);
 
     const parent = resources.find((r) => r.id === 'm_parent');
     expect(parent).toBeDefined();

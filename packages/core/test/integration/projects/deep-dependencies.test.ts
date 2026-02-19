@@ -25,8 +25,8 @@ describe('project:deep-dependencies', () => {
   it('decodes deep dependency trees correctly', async () => {
     const { resources, diagnostics } = await parseAndDecodeAll(adapter, 'deep-dependencies');
 
-    // Should have 17 tasks + 2 milestones = 19 resources
-    expect(resources).toHaveLength(19);
+    // Should have 17 tasks + 2 milestones + 1 synthetic milestone = 20 resources
+    expect(resources).toHaveLength(20);
 
     // Check that deep chains are present
     const task10 = resources.find((r) => r.id === 'task10');

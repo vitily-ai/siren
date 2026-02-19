@@ -72,7 +72,7 @@ task gamma {}`,
 
     expect(ctx.files).toHaveLength(1);
     expect(ctx.files[0]).toBe(path.join(sirenDir, 'main.siren'));
-    expect(ctx.milestones).toEqual(['alpha', 'beta']);
+    expect(ctx.milestones).toEqual(['alpha', 'beta', 'main']);
     expect(ctx.warnings).toEqual([]);
     expect(ctx.errors).toEqual([]);
   });
@@ -121,7 +121,7 @@ milestone "MVP Release" {}`,
 
     const ctx = await loadProject(tempDir);
 
-    expect(ctx.milestones).toEqual(['Q1 Launch', 'MVP Release']);
+    expect(ctx.milestones).toEqual(['Q1 Launch', 'MVP Release', 'quoted']);
   });
 
   it('stores loaded context in global state', async () => {

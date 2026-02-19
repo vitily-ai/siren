@@ -11,7 +11,7 @@ describe('project:unicode', () => {
     const { resources } = await parseAndDecodeAll(adapter, 'unicode');
     const milestoneIds = resources.filter((r) => r.type === 'milestone').map((r) => r.id);
     expect(new Set(milestoneIds)).toEqual(
-      new Set(['🚀 Launch', '日本語マイルストーン', 'émojis-and-accénts']),
+      new Set(['🚀 Launch', '日本語マイルストーン', 'émojis-and-accénts', 'unicode']),
     );
   });
 });
