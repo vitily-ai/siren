@@ -4,4 +4,105 @@ milestone milestone-files {
   // "Files" are a CLI/Node construct. Core operates on `Document` structures, which are not files.
   // This however should not be a feature exclusive to Node consumers.
   // Does this mean every `Document` should implicitly produce a milestone?
+  requirements = "
+    Example file siren/a/b/c/dirsareignored/somefile.siren produces synthetic milestone entry `somefile`.
+    Two or more files with the same name in a project raise warnings using existing duplicate entry detection - no special treatment.
+    Treating files this way should be considered default behavior, with ways to opt out on a per-file basis later on.
+    Implementation, in theory, should be entirely in core - frontends should not need to orchestrate this.
+    It should be doable within the context during construction.
+  "
+  // Implementation decisions:
+  // - ID derivation: basename only (foo.siren → foo), not full path
+  // - Collision: explicit milestone suppresses synthetic (no merge/warning)
+  // - Dependencies: all resources in file (tasks + milestones)
+  // - complete: always false (defer to milestone-complete-implicit task)
+  // - Origin: row 0 col 0 of source file for diagnostics
+
+  depends_on = [mf-group-resources, mf-derive-id, mf-check-collision, mf-generate-synthetic, mf-append-resources, mf-unit-tests, mf-project-fixture, mf-golden-tests]
+}
+
+// Implementation tasks for milestone-files
+
+task mf-group-resources {
+  description = "Group resources by origin.document in IRContext constructor"
+  details = "
+    In packages/core/src/ir/context.ts constructor, after receiving doc.resources,
+    group resources by resource.origin?.document. Skip resources with undefined
+    origin.document (no file association).
+  "
+}
+
+task mf-derive-id {
+  description = "Add helper to derive milestone ID from filename"
+  details = "
+    Create private static fileToMilestoneId(documentPath: string): string.
+    Extract basename handling both / and \\ separators, strip .siren extension.
+    Example: siren/a/b/foo.siren → foo
+  "
+}
+
+task mf-check-collision {
+  description = "Check for explicit milestone collision before synthesis"
+  depends_on = [mf-group-resources, mf-derive-id]
+  details = "
+    For each document, check if any parsed resource in _allResources is a
+    milestone with the derived ID. If found, skip synthetic generation for
+    that document (explicit wins).
+  "
+}
+
+task mf-generate-synthetic {
+  description = "Generate synthetic milestone resources"
+  depends_on = mf-check-collision
+  details = "
+    For each document without collision, create Resource:
+      type: 'milestone'
+      id: derived from filename
+      complete: false
+      attributes: [{ key: 'depends_on', value: { kind: 'array', elements: resourceRefs } }]
+      origin: { startByte: 0, endByte: 0, startRow: 0, endRow: 0, document: docPath }
+    Where resourceRefs is array of { kind: 'reference', id } for all resources from that document.
+  "
+}
+
+task mf-append-resources {
+  description = "Append synthetic milestones to _allResources"
+  depends_on = mf-generate-synthetic
+  details = "
+    Add generated milestones after parsed resources.
+    Existing computeUniqueResources() and computeDuplicateDiagnostics() handle
+    duplicates (e.g., two files named foo.siren in different directories → W006).
+  "
+}
+
+task mf-unit-tests {
+  description = "Add unit tests in context.test.ts"
+  depends_on = mf-append-resources
+  details = "
+    Test cases:
+    - File with tasks generates synthetic milestone with correct ID and depends_on
+    - Explicit milestone foo {} in foo.siren suppresses synthetic
+    - Empty file generates milestone with empty depends_on array
+    - Two files with same basename (a/foo.siren, b/foo.siren) produces W006 warning
+    - Resources without origin.document are not grouped (no synthetic)
+  "
+}
+
+task mf-project-fixture {
+  description = "Add project fixture demonstrating synthetic milestones"
+  depends_on = mf-append-resources
+  details = "
+    Create fixture under packages/core/test/fixtures/projects/ with multiple
+    .siren files demonstrating synthetic milestone behavior.
+  "
+}
+
+task mf-golden-tests {
+  description = "Update CLI golden tests for new behavior"
+  depends_on = mf-unit-tests
+  details = "
+    Update existing multi-file test outputs in apps/cli/test/expected/ to
+    reflect synthetic milestones appearing in `siren list` output.
+    Add new golden test specifically for file-based milestones.
+  "
 }

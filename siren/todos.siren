@@ -6,3 +6,5 @@ milestone task-mutex {}
 milestone assignment-streams {
   depends_on = [task-mutex, sort-by-priority, readiness]
 }
+
+milestone depends-on-regex {}
