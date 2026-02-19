@@ -306,6 +306,9 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
   for (const error of ctx.errors) {
     console.error(error);
   }
+  if (ctx.errors.length > 0) {
+    process.exitCode = 1;
+  }
 
   if (command === 'init') {
     runInit(process.cwd());

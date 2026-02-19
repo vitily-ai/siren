@@ -5,4 +5,9 @@
 ---
 
 ---
-Warning: siren/broken.siren:1:1: Syntax error - skipping document
+error: unexpected token '!!!'; expected 'task' or 'milestone'
+ --> siren/broken.siren:1:1
+  |
+1 | !!! broken
+  | ^^^
+note: skipping siren/broken.siren due to syntax errors

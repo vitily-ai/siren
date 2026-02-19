@@ -5,4 +5,15 @@
 ---
 valid
 ---
-Warning: siren/broken1.siren:1:1: Syntax error - skipping document
+error: unexpected token '!!!'; expected 'task' or 'milestone'
+ --> siren/broken1.siren:1:1
+  |
+1 | !!! syntax error
+  | ^^^
+note: skipping siren/broken1.siren due to syntax errors
+error: unexpected token '@@@'; expected 'task' or 'milestone'
+ --> siren/broken2.siren:1:1
+  |
+1 | @@@ another error
+  | ^^^
+note: skipping siren/broken2.siren due to syntax errors

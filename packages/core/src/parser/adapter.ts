@@ -66,6 +66,31 @@ export interface ParseError {
   readonly column: number;
   /** Document identifier (e.g., relative file path) when parsing multiple documents */
   readonly document?: string;
+  /**
+   * Severity of the parse issue.
+   * Defaults to 'error' when omitted.
+   */
+  readonly severity?: 'error' | 'warning';
+  /**
+   * Classification of parse error type for consumers that want structured handling.
+   */
+  readonly kind?: 'unexpected_token' | 'missing_token' | 'other';
+  /**
+   * The token encountered at the error location (human-readable).
+   * For end-of-file situations, this may be 'EOF'.
+   */
+  readonly found?: string;
+  /**
+   * Human-readable expectations at the error location.
+   * These are heuristic unless provided by a richer parser runtime.
+   */
+  readonly expected?: readonly string[];
+  /**
+   * Document-relative start/end offsets for highlighting. These are JS string
+   * indices to match tree-sitter/web-tree-sitter node indices.
+   */
+  readonly startByte?: number;
+  readonly endByte?: number;
 }
 
 /**
