@@ -156,11 +156,16 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
           resources: parseResult.tree.resources.filter(
             (r) => !skippedDocs.has(r.origin?.document ?? ''),
           ),
-          documents: parseResult.tree.documents?.filter((doc) => !skippedDocs.has(doc)),
         };
 
+  const filteredSourceDocuments = parseResult.sourceDocuments?.filter(
+    (doc) => !skippedDocs.has(doc),
+  );
+
   // Decode CST to IR - resources now have origin.document set by the parser
-  const ir = IRContext.fromCst(filteredTree);
+  // TODO this factory is getting complex
+  //  Parse flow should return this information fully structured and/or this isn't the right starting point for IR construction
+  const ir = IRContext.fromCst(filteredTree, undefined, true, filteredSourceDocuments);
 
   ctx.resources = [...ir.resources];
   ctx.ir = ir;

@@ -55,6 +55,14 @@ export interface ParseResult {
    * to preserve comments during export. Early code doesn't require this.
    */
   readonly comments?: readonly CommentToken[];
+
+  /**
+   * Names of all input source documents, preserving original ordering.
+   * Includes documents that contained no resources (e.g., empty files).
+   * Used by downstream consumers (e.g., synthetic milestone generation)
+   * to track provenance of multi-file parses.
+   */
+  readonly sourceDocuments?: readonly string[];
 }
 
 /**

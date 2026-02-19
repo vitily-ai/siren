@@ -10,6 +10,6 @@ describe('project:list-single-milestone', () => {
   it('decodes single milestone', async () => {
     const { resources } = await parseAndDecodeAll(adapter, 'list-single-milestone');
     const milestoneIds = resources.filter((r) => r.type === 'milestone').map((r) => r.id);
-    expect(milestoneIds).toEqual(['test_milestone']);
+    expect(new Set(milestoneIds)).toEqual(new Set(['test_milestone', 'main']));
   });
 });

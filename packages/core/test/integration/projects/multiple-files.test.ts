@@ -10,6 +10,6 @@ describe('project:multiple-files', () => {
   it('decodes milestones from multiple files', async () => {
     const { resources } = await parseAndDecodeAll(adapter, 'multiple-files');
     const milestoneIds = resources.filter((r) => r.type === 'milestone').map((r) => r.id);
-    expect(new Set(milestoneIds)).toEqual(new Set(['alpha', 'beta']));
+    expect(new Set(milestoneIds)).toEqual(new Set(['alpha', 'beta', 'a', 'b']));
   });
 });

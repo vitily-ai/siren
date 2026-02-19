@@ -10,6 +10,6 @@ describe('project:list-milestones', () => {
   it('decodes milestones alpha and beta', async () => {
     const { resources } = await parseAndDecodeAll(adapter, 'list-milestones');
     const milestoneIds = resources.filter((r) => r.type === 'milestone').map((r) => r.id);
-    expect(new Set(milestoneIds)).toEqual(new Set(['alpha', 'beta']));
+    expect(new Set(milestoneIds)).toEqual(new Set(['alpha', 'beta', 'main']));
   });
 });

@@ -10,7 +10,7 @@ describe('project:array-depends', () => {
   it('decodes array depends_on into resources', async () => {
     const { resources } = await parseAndDecodeAll(adapter, 'array-depends');
     const milestoneIds = resources.filter((r) => r.type === 'milestone').map((r) => r.id);
-    expect(new Set(milestoneIds)).toEqual(new Set(['alpha', 'gamma']));
+    expect(new Set(milestoneIds)).toEqual(new Set(['alpha', 'gamma', 'main']));
     const tasks = resources.filter((r) => r.type === 'task').map((r) => r.id);
     expect(tasks).toContain('task1');
   });

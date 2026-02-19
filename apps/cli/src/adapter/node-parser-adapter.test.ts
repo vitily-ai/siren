@@ -111,8 +111,8 @@ task b { depends_on = a }
 
       const ir = IRContext.fromCst(result.tree!);
 
-      // Verify IR resources have origin.document
-      expect(ir.resources.length).toBe(2);
+      // Verify IR resources have origin.document (2 explicit + 1 synthetic milestone)
+      expect(ir.resources.length).toBe(3);
       for (const r of ir.resources) {
         expect(r.origin?.document, `resource ${r.id} should have origin.document`).toBe(
           'test-file.siren',

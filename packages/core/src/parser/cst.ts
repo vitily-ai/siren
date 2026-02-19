@@ -42,11 +42,6 @@ export interface CSTNode {
 export interface DocumentNode extends CSTNode {
   readonly type: 'document';
   readonly resources: readonly ResourceNode[];
-  /**
-   * Names of all parsed source documents when parsing multiple inputs.
-   * Preserves original ordering from the parser adapter.
-   */
-  readonly documents?: readonly string[];
 }
 
 /**

@@ -10,6 +10,6 @@ describe('project:quoted-identifiers', () => {
   it('handles quoted milestone identifiers', async () => {
     const { resources } = await parseAndDecodeAll(adapter, 'quoted-identifiers');
     const milestoneIds = resources.filter((r) => r.type === 'milestone').map((r) => r.id);
-    expect(new Set(milestoneIds)).toEqual(new Set(['Q1 Launch', 'MVP Release']));
+    expect(new Set(milestoneIds)).toEqual(new Set(['Q1 Launch', 'MVP Release', 'quoted']));
   });
 });

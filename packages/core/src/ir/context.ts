@@ -110,10 +110,13 @@ export class IRContext {
     doc: Document,
     parseDiagnostics: readonly ParseDiagnostic[] = [],
     includeSyntheticMilestones = true,
+    // TODO this is probably not something the context should know about other than as metadata
+    //  synthetic milestones should be generated as part of the parsing/decoding process and included in the resources array, rather than being conditionally added here based on separate source document information
+    sourceDocuments: readonly string[] = [],
   ) {
     const baseResources = doc.resources.slice();
     const syntheticMilestones = includeSyntheticMilestones
-      ? IRContext.buildSyntheticMilestones(baseResources, doc.documents ?? [])
+      ? IRContext.buildSyntheticMilestones(baseResources, sourceDocuments)
       : [];
     // Store all resources including duplicates - deduplication happens lazily
     this._allResources = Object.freeze([...baseResources, ...syntheticMilestones]);
@@ -202,7 +205,12 @@ export class IRContext {
    * @param source - Optional source file path or content
    * @returns IRContext with diagnostics
    */
-  static fromCst(cst: DocumentNode, source?: string, includeSyntheticMilestones = true): IRContext {
+  static fromCst(
+    cst: DocumentNode,
+    source?: string,
+    includeSyntheticMilestones = true,
+    sourceDocuments?: readonly string[],
+  ): IRContext {
     const { document, diagnostics } = decodeDocument(cst, source);
     if (!document) {
       // If decoding produced errors, delegate to fromResources with empty resources
@@ -210,7 +218,7 @@ export class IRContext {
         [],
         source,
         diagnostics,
-        undefined,
+        sourceDocuments,
         includeSyntheticMilestones,
       );
     }
@@ -219,7 +227,7 @@ export class IRContext {
       document.resources,
       source,
       diagnostics,
-      document.documents,
+      sourceDocuments,
       includeSyntheticMilestones,
     );
   }
@@ -234,13 +242,14 @@ export class IRContext {
     resources: readonly Resource[],
     source?: string,
     parseDiagnostics: readonly ParseDiagnostic[] = [],
-    documents?: readonly string[],
+    sourceDocuments?: readonly string[],
     includeSyntheticMilestones = true,
   ): IRContext {
     return new IRContext(
-      { resources: resources.slice(), source, documents },
+      { resources: resources.slice(), source },
       parseDiagnostics,
       includeSyntheticMilestones,
+      sourceDocuments ?? [],
     );
   }
 
@@ -255,7 +264,7 @@ export class IRContext {
   /** Generate synthetic milestones for each parsed document */
   private static buildSyntheticMilestones(
     resources: readonly Resource[],
-    documents: readonly string[],
+    sourceDocuments: readonly string[],
   ): Resource[] {
     const resourcesByDocument = new Map<string, Resource[]>();
     for (const resource of resources) {
@@ -266,7 +275,7 @@ export class IRContext {
       resourcesByDocument.set(document, list);
     }
 
-    const documentNames = new Set<string>(documents);
+    const documentNames = new Set<string>(sourceDocuments);
     for (const docName of resourcesByDocument.keys()) {
       documentNames.add(docName);
     }

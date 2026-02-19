@@ -126,10 +126,13 @@ class NodeParserAdapter implements ParserAdapter {
     // Even if there are errors, we attempt to convert what we can
     const documentNode = this.convertDocument(rootNode, boundaries);
 
+    const sourceDocuments = boundaries.map((b) => b.name);
+
     return {
       tree: documentNode,
       errors,
       success: !rootNode.hasError,
+      sourceDocuments,
     };
   }
 

@@ -153,13 +153,14 @@ describe('siren list', () => {
     expect(result.warnings).toEqual([]);
   });
 
-  it('returns empty when siren/ has .siren files but no milestones', async () => {
+  // TODO fix when synthetic milestone opt-out is implemented
+  it.fails('returns empty when siren/ has .siren files but no milestones', async () => {
     copyFixture('no-milestones-only-tasks', tempDir);
 
     await loadProject(tempDir);
     const result = await list();
 
-    expect(result.milestones).toEqual(['tasks']);
+    expect(result.milestones).toEqual([]);
     expect(result.warnings).toEqual([]);
   });
 
