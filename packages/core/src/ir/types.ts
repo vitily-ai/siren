@@ -98,6 +98,8 @@ export interface Document {
   readonly resources: readonly Resource[];
   /** Source file path (if any) */
   readonly source?: string;
+  /** Optional list of parsed document names (e.g., file paths) */
+  readonly documents?: readonly string[];
 }
 
 /**

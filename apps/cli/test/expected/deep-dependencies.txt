@@ -14,3 +14,49 @@ milestone2
 └─ task10
    └─ … (8 intermediate dependencies)
       └─ task1
+main
+├─ task1
+├─ task2
+│  └─ task1
+├─ task3
+│  └─ … (1 intermediate dependency)
+│     └─ task1
+├─ task4
+│  └─ … (2 intermediate dependencies)
+│     └─ task1
+├─ task5
+│  └─ … (3 intermediate dependencies)
+│     └─ task1
+├─ task6
+│  └─ … (4 intermediate dependencies)
+│     └─ task1
+├─ task7
+│  └─ … (5 intermediate dependencies)
+│     └─ task1
+├─ task8
+│  └─ … (6 intermediate dependencies)
+│     └─ task1
+├─ task9
+│  └─ … (7 intermediate dependencies)
+│     └─ task1
+├─ task10
+│  └─ … (8 intermediate dependencies)
+│     └─ task1
+├─ taskB
+│  └─ … (9 intermediate dependencies)
+│     └─ task1
+├─ taskC
+│  └─ … (8 intermediate dependencies)
+│     └─ task1
+├─ taskA
+│  └─ … (multiple dependency branches)
+├─ milestone1
+├─ milestone2
+├─ incompleteTask
+│  └─ nonExistentTask
+├─ cycleX
+│  └─ … (dependency loop - check warnings)
+├─ cycleY
+│  └─ … (dependency loop - check warnings)
+└─ cycleZ
+   └─ … (dependency loop - check warnings)

@@ -13,7 +13,7 @@ describe('project:milestone-dependency', () => {
 
   it('decodes the expected milestones', () => {
     const milestoneIds = resources.filter((r) => r.type === 'milestone').map((r) => r.id);
-    expect(new Set(milestoneIds)).toEqual(new Set(['shows_as_leaf_dep_of_root', 'root']));
+    expect(new Set(milestoneIds)).toEqual(new Set(['shows_as_leaf_dep_of_root', 'root', 'main']));
   });
 
   it('treats milestone dependencies as leaves when expanded from a root milestone', () => {

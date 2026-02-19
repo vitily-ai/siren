@@ -106,9 +106,17 @@ export class IRContext {
   private _danglingDiagnostics?: readonly Diagnostic[];
   private _duplicateDiagnostics?: readonly DuplicateIdDiagnostic[];
 
-  constructor(doc: Document, parseDiagnostics: readonly ParseDiagnostic[] = []) {
+  constructor(
+    doc: Document,
+    parseDiagnostics: readonly ParseDiagnostic[] = [],
+    includeSyntheticMilestones = true,
+  ) {
+    const baseResources = doc.resources.slice();
+    const syntheticMilestones = includeSyntheticMilestones
+      ? IRContext.buildSyntheticMilestones(baseResources, doc.documents ?? [])
+      : [];
     // Store all resources including duplicates - deduplication happens lazily
-    this._allResources = Object.freeze(doc.resources.slice());
+    this._allResources = Object.freeze([...baseResources, ...syntheticMilestones]);
     this.source = doc.source;
     this.parseDiagnostics = Object.freeze(parseDiagnostics.slice());
     // Note: Don't freeze the object itself since we need lazy property assignment
@@ -194,14 +202,26 @@ export class IRContext {
    * @param source - Optional source file path or content
    * @returns IRContext with diagnostics
    */
-  static fromCst(cst: DocumentNode, source?: string): IRContext {
+  static fromCst(cst: DocumentNode, source?: string, includeSyntheticMilestones = true): IRContext {
     const { document, diagnostics } = decodeDocument(cst, source);
     if (!document) {
       // If decoding produced errors, delegate to fromResources with empty resources
-      return IRContext.fromResources([], source, diagnostics);
+      return IRContext.fromResources(
+        [],
+        source,
+        diagnostics,
+        undefined,
+        includeSyntheticMilestones,
+      );
     }
     // Delegate to fromResources so decoding and construction logic is centralized
-    return IRContext.fromResources(document.resources, source, diagnostics);
+    return IRContext.fromResources(
+      document.resources,
+      source,
+      diagnostics,
+      document.documents,
+      includeSyntheticMilestones,
+    );
   }
 
   /**
@@ -214,8 +234,83 @@ export class IRContext {
     resources: readonly Resource[],
     source?: string,
     parseDiagnostics: readonly ParseDiagnostic[] = [],
+    documents?: readonly string[],
+    includeSyntheticMilestones = true,
   ): IRContext {
-    return new IRContext({ resources: resources.slice(), source }, parseDiagnostics);
+    return new IRContext(
+      { resources: resources.slice(), source, documents },
+      parseDiagnostics,
+      includeSyntheticMilestones,
+    );
+  }
+
+  /** Derive synthetic milestone ID from a document path */
+  private static fileToMilestoneId(documentPath: string): string {
+    const normalized = documentPath.replace(/\\+/g, '/');
+    const parts = normalized.split('/');
+    const basename = parts.filter((p) => p.length > 0).pop() ?? documentPath;
+    return basename.endsWith('.siren') ? basename.slice(0, -'.siren'.length) : basename;
+  }
+
+  /** Generate synthetic milestones for each parsed document */
+  private static buildSyntheticMilestones(
+    resources: readonly Resource[],
+    documents: readonly string[],
+  ): Resource[] {
+    const resourcesByDocument = new Map<string, Resource[]>();
+    for (const resource of resources) {
+      const document = resource.origin?.document;
+      if (!document) continue;
+      const list = resourcesByDocument.get(document) ?? [];
+      list.push(resource);
+      resourcesByDocument.set(document, list);
+    }
+
+    const documentNames = new Set<string>(documents);
+    for (const docName of resourcesByDocument.keys()) {
+      documentNames.add(docName);
+    }
+
+    const synthetic: Resource[] = [];
+
+    for (const document of documentNames) {
+      const resourcesForDocument = resourcesByDocument.get(document) ?? [];
+      const milestoneId = IRContext.fileToMilestoneId(document);
+
+      const hasExplicit = resourcesForDocument.some(
+        (resource) => resource.type === 'milestone' && resource.id === milestoneId,
+      );
+      if (hasExplicit) continue;
+
+      const elements: ResourceReference[] = resourcesForDocument.map((resource) => ({
+        kind: 'reference',
+        id: resource.id,
+      }));
+
+      synthetic.push({
+        type: 'milestone',
+        id: milestoneId,
+        complete: false,
+        attributes: [
+          {
+            key: 'depends_on',
+            value: {
+              kind: 'array',
+              elements,
+            },
+          },
+        ],
+        origin: {
+          startByte: 0,
+          endByte: 0,
+          startRow: 0,
+          endRow: 0,
+          document,
+        },
+      });
+    }
+
+    return synthetic;
   }
 
   private computeCycles(): readonly { nodes: readonly string[] }[] {

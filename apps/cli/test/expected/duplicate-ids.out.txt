@@ -3,7 +3,9 @@
   "command": "siren list"
 }
 ---
-
+duplicate-milestone
+duplicate-ids1
+duplicate-ids2
 ---
 duplicate-ids1.siren:19:0: W006: Duplicate resource ID detected: milestone 'duplicate-milestone' first defined at duplicate-ids1.siren:8:0
 duplicate-ids2.siren:2:0: W006: Duplicate resource ID detected: task 'duplicate-task' first defined at duplicate-ids1.siren:3:0

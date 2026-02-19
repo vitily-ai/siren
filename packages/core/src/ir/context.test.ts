@@ -296,10 +296,11 @@ describe('IRContext', () => {
       const ir = IRContext.fromCst(cst);
 
       // Verify IR resources have origin.document
-      expect(ir.resources).toHaveLength(2);
+      expect(ir.resources).toHaveLength(3);
       for (const r of ir.resources) {
         expect(r.origin?.document).toBe('test-file.siren');
       }
+      expect(ir.resources[2]).toMatchObject({ type: 'milestone', id: 'test-file' });
 
       // Verify depends_on attribute was decoded
       const resourceA = ir.resources.find((r) => r.id === 'a');
@@ -314,6 +315,107 @@ describe('IRContext', () => {
 
       const diag: any = cycleDiags[0];
       expect(diag.file).toBe('test-file.siren');
+    });
+  });
+
+  describe('synthetic milestones', () => {
+    const origin = (document: string) => ({
+      startByte: 0,
+      endByte: 0,
+      startRow: 0,
+      endRow: 0,
+      document,
+    });
+
+    it('creates synthetic milestone with file-derived ID and depends_on entries', () => {
+      const resources: Resource[] = [
+        {
+          type: 'task',
+          id: 'alpha',
+          complete: false,
+          attributes: [],
+          origin: origin('a/foo.siren'),
+        },
+        {
+          type: 'task',
+          id: 'beta',
+          complete: false,
+          attributes: [],
+          origin: origin('a/foo.siren'),
+        },
+      ];
+
+      const ir = IRContext.fromResources(resources);
+
+      const synthetic = ir.resources.find((r) => r.id === 'foo' && r.type === 'milestone');
+      expect(synthetic).toBeDefined();
+      const dependsOn = synthetic!.attributes.find((a) => a.key === 'depends_on');
+      expect(dependsOn?.value).toEqual({
+        kind: 'array',
+        elements: [
+          { kind: 'reference', id: 'alpha' },
+          { kind: 'reference', id: 'beta' },
+        ],
+      });
+    });
+
+    it('skips synthetic milestone when explicit milestone matches derived ID', () => {
+      const resources: Resource[] = [
+        {
+          type: 'milestone',
+          id: 'foo',
+          complete: false,
+          attributes: [],
+          origin: origin('foo.siren'),
+        },
+        {
+          type: 'task',
+          id: 'task-1',
+          complete: false,
+          attributes: [],
+          origin: origin('foo.siren'),
+        },
+      ];
+
+      const ir = IRContext.fromResources(resources);
+
+      expect(ir.resources.filter((r) => r.id === 'foo')).toHaveLength(1);
+      expect(ir.duplicateDiagnostics.filter((d) => d.code === 'W006')).toHaveLength(0);
+    });
+
+    it('creates synthetic milestone for empty document', () => {
+      const ir = IRContext.fromResources([], undefined, [], ['empty.siren']);
+
+      const synthetic = ir.resources.find((r) => r.id === 'empty');
+      expect(synthetic).toBeDefined();
+      const dependsOn = synthetic!.attributes.find((a) => a.key === 'depends_on');
+      expect(dependsOn?.value).toEqual({ kind: 'array', elements: [] });
+    });
+
+    it('emits duplicate warning when two files share a basename', () => {
+      const resources: Resource[] = [
+        { type: 'task', id: 'a', complete: false, attributes: [], origin: origin('a/foo.siren') },
+        { type: 'task', id: 'b', complete: false, attributes: [], origin: origin('b/foo.siren') },
+      ];
+
+      const ir = IRContext.fromResources(resources);
+      const duplicateMilestones = ir.duplicateDiagnostics.filter(
+        (d) => d.code === 'W006' && d.resourceId === 'foo',
+      );
+
+      expect(duplicateMilestones).toHaveLength(1);
+      const diag = duplicateMilestones[0]!;
+      expect(diag.file).toBe('b/foo.siren');
+      expect(diag.firstFile).toBe('a/foo.siren');
+    });
+
+    it('does not synthesize milestones when resources lack origin and documents are absent', () => {
+      const resources: Resource[] = [
+        { type: 'task', id: 'orphan', complete: false, attributes: [] },
+      ];
+
+      const ir = IRContext.fromResources(resources);
+      expect(ir.resources).toHaveLength(1);
     });
   });
 

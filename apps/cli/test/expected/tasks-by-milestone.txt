@@ -7,3 +7,7 @@
 alpha
 └─ task1
 beta
+main
+├─ alpha
+├─ task1
+└─ beta

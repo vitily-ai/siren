@@ -1,0 +1,11 @@
+{
+	"fixture": "milestone-files",
+	"command": "siren list"
+}
+---
+beta
+alpha
+foo
+empty
+---
+other/foo.siren:1:0: W006: Duplicate resource ID detected: milestone 'foo' first defined at dup/foo.siren:1:0

@@ -4,3 +4,5 @@
 	"expect": "stdout"
 }
 ---
+empty
+whitespace

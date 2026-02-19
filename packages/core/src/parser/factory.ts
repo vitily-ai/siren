@@ -398,7 +398,8 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
     }
     // For the root document node, use the first boundary
     const rootBoundary = boundaries[0] ?? { name: 'unknown', startByte: 0, startRow: 0 };
-    return { type: 'document', resources, origin: extractOrigin(root, rootBoundary) };
+    const documents = boundaries.map((b) => b.name);
+    return { type: 'document', resources, documents, origin: extractOrigin(root, rootBoundary) };
   }
 
   function extractErrors(

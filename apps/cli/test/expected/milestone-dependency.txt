@@ -9,4 +9,10 @@ shows_as_leaf_dep_of_root
 root
 └─ shows_as_root_dep
    └─ shows_as_leaf_dep_of_root
+main
+├─ does_not_show_as_root_dep
+├─ shows_as_leaf_dep_of_root
+├─ shows_as_root_dep
+│  └─ shows_as_leaf_dep_of_root
+└─ root
 

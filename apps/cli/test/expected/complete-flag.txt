@@ -7,3 +7,8 @@
 milestone1
 └─ task_root
    └─ task_incomplete
+main
+├─ task_incomplete
+├─ task_root
+│  └─ task_incomplete
+└─ milestone1

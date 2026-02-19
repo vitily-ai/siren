@@ -10,6 +10,6 @@ describe('project:no-milestones-only-tasks', () => {
   it('finds no milestones when only tasks exist', async () => {
     const { resources } = await parseAndDecodeAll(adapter, 'no-milestones-only-tasks');
     const milestoneIds = resources.filter((r) => r.type === 'milestone').map((r) => r.id);
-    expect(milestoneIds).toEqual([]);
+    expect(milestoneIds).toEqual(['tasks']);
   });
 });
