@@ -6,7 +6,13 @@
  * that returns a minimal Language-like object.
  */
 
-import type { ParseError, ParseResult, ParserAdapter, SourceDocument } from './adapter.js';
+import type {
+  CommentToken,
+  ParseError,
+  ParseResult,
+  ParserAdapter,
+  SourceDocument,
+} from './adapter.js';
 import type {
   ArrayNode,
   AttributeNode,
@@ -99,6 +105,7 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
     children?: NodeLike[];
     isMissing?: boolean;
     hasError?: boolean;
+    descendantsOfType?: (type: string | string[]) => NodeLike[];
   }
 
   function scanToken(source: string, index: number): { token: string; length: number } {
@@ -522,6 +529,38 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
     return errors;
   }
 
+  function extractComments(
+    root: NodeLike | undefined,
+    source: string,
+    boundaries: readonly DocumentBoundary[],
+  ): CommentToken[] {
+    const comments: CommentToken[] = [];
+    const commentNodes = root?.descendantsOfType?.('comment') ?? [];
+
+    for (const commentNode of commentNodes) {
+      const startIndex = Number(commentNode.startIndex ?? 0);
+      const endIndex = Number(commentNode.endIndex ?? startIndex);
+      const boundary = findDocumentForByte(startIndex, boundaries);
+      comments.push({
+        startByte: startIndex - boundary.startByte,
+        endByte: endIndex - boundary.startByte,
+        startRow: (Number(commentNode.startPosition?.row ?? 0) as number) - boundary.startRow,
+        endRow: (Number(commentNode.endPosition?.row ?? 0) as number) - boundary.startRow,
+        text: source.slice(startIndex, endIndex),
+        document: boundary.name,
+      });
+    }
+
+    comments.sort((a, b) => {
+      if (a.document !== b.document) {
+        return (a.document ?? '').localeCompare(b.document ?? '');
+      }
+      return a.startByte - b.startByte;
+    });
+
+    return comments;
+  }
+
   // Return the ParserAdapter-compatible object
   return {
     async parse(documents: readonly SourceDocument[]) {
@@ -558,8 +597,9 @@ export async function createParserFactory(init: ParserFactoryInit): Promise<Pars
       const hasError = Boolean(tree.hasError === true || root?.hasError === true);
       const errors = hasError ? extractErrors(root, boundaries, documents) : [];
       const documentNode = convertDocument(root, boundaries);
+      const comments = extractComments(root, concatenated, boundaries);
       const success = !hasError;
-      const result: ParseResult = { tree: documentNode, errors, success };
+      const result: ParseResult = { tree: documentNode, errors, success, comments };
       return result;
     },
   };
