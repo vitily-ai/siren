@@ -197,10 +197,11 @@ export class IRContext {
   static fromCst(cst: DocumentNode, source?: string): IRContext {
     const { document, diagnostics } = decodeDocument(cst, source);
     if (!document) {
-      // If decoding produced errors, create empty context with parse diagnostics
-      return new IRContext({ resources: [], source }, diagnostics);
+      // If decoding produced errors, delegate to fromResources with empty resources
+      return IRContext.fromResources([], source, diagnostics);
     }
-    return new IRContext({ ...document, source }, diagnostics);
+    // Delegate to fromResources so decoding and construction logic is centralized
+    return IRContext.fromResources(document.resources, source, diagnostics);
   }
 
   /**
@@ -209,8 +210,12 @@ export class IRContext {
    * File attribution is read from each resource's origin.document field.
    * This replaces the previous resourceSources parameter pattern.
    */
-  static fromResources(resources: readonly Resource[], source?: string): IRContext {
-    return new IRContext({ resources: resources.slice(), source }, []);
+  static fromResources(
+    resources: readonly Resource[],
+    source?: string,
+    parseDiagnostics: readonly ParseDiagnostic[] = [],
+  ): IRContext {
+    return new IRContext({ resources: resources.slice(), source }, parseDiagnostics);
   }
 
   private computeCycles(): readonly { nodes: readonly string[] }[] {
