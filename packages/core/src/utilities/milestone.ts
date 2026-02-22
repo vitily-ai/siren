@@ -58,11 +58,71 @@ function getDependsOn(resource: Resource): string[] {
 }
 
 /**
+ * Determines whether a milestone is implicitly complete.
+ *
+ * A milestone is implicitly complete when it has at least one dependency
+ * (`depends_on`) and every dependency is itself complete — either explicitly
+ * via the `complete` keyword, or implicitly through this same rule (recursive).
+ * Orphan milestones (no `depends_on`) are never implicitly complete.
+ * Only milestones can be implicitly complete; tasks cannot.
+ *
+ * Uses {@link DirectedGraph.dfs} for traversal and cycle detection rather
+ * than hand-rolling recursion.
+ *
+ * @param resource The resource to check
+ * @param resourceMap Lookup map of all resources by ID
+ * @param graph Dependency graph built from the same resource set
+ * @returns true if the resource is an implicitly-complete milestone
+ */
+export function isImplicitlyComplete(
+  resource: Resource,
+  resourceMap: ReadonlyMap<string, Resource>,
+  graph: DirectedGraph,
+): boolean {
+  if (resource.type !== 'milestone') return false;
+
+  const deps = graph.getSuccessors(resource.id);
+  if (deps.length === 0) return false; // orphan — never implicitly complete
+
+  let allComplete = true;
+
+  graph.dfs(
+    resource.id,
+    (node, _path, depth) => {
+      if (depth === 0) return true; // root milestone — expand
+
+      const dep = resourceMap.get(node);
+      if (!dep) {
+        allComplete = false;
+        return false; // dangling ref — not complete
+      }
+      if (dep.complete) return false; // explicitly complete — satisfied
+
+      // Incomplete milestone with deps: expand to check transitively
+      if (dep.type === 'milestone' && graph.getSuccessors(node).length > 0) {
+        return true;
+      }
+
+      // Incomplete task or orphan milestone
+      allComplete = false;
+      return false;
+    },
+    {
+      onBackEdge: () => {
+        allComplete = false;
+      },
+    },
+  );
+
+  return allComplete;
+}
+
+/**
  * Build a directed graph of resource dependencies from depends_on attributes.
  * @param resources Array of Siren resources
  * @returns DirectedGraph where edges represent dependencies
  */
-function buildDependencyGraph(resources: Resource[]): DirectedGraph {
+export function buildDependencyGraph(resources: Resource[]): DirectedGraph {
   const graph = new DirectedGraph();
 
   for (const resource of resources) {

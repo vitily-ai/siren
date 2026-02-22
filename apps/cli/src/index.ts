@@ -118,7 +118,9 @@ function renderDependencyTree(
 ): string[] {
   const lines: string[] = [];
 
+  
   // Filter out complete tasks from dependencies
+  // TODO this is redundant - core already does it
   const deps = tree.dependencies.filter((d) => !d.resource.complete);
 
   // If no dependencies (after filtering), return empty (leaf node)
