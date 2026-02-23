@@ -1,5 +1,5 @@
-import { decodeDocument, type ParseDiagnostic } from '../decoder/index.js';
-import type { DocumentNode } from '../parser/cst.js';
+import { CoreDiagnosticCode } from '../diagnostics/codes.js';
+import type { Diagnostic, DuplicateIdDiagnostic } from '../diagnostics/types.js';
 import {
   getDependencyTree as buildDependencyTree,
   type DependencyTree,
@@ -7,117 +7,71 @@ import {
 import { findResourceById } from '../utilities/entry.js';
 import { DirectedGraph } from '../utilities/graph.js';
 import {
-  isImplicitlyComplete,
   buildDependencyGraph,
   getMilestoneIds,
   getTasksByMilestone,
+  isImplicitlyComplete,
 } from '../utilities/milestone.js';
-import type { Document, Resource, ResourceReference } from './types.js';
+import type { Resource, ResourceReference } from './types.js';
 
 /**
- * Semantic diagnostic message produced from IR analysis
+ * Immutable IR context that wraps a list of resources and exposes
+ * semantic analysis as lazy, memoized getters.
  *
- * Structured as a discriminated union by code.
- * The `message` field is intentionally absent - frontends (CLI, web)
- * decide how to format diagnostics for display.
- */
-export type Diagnostic =
-  | DanglingDependencyDiagnostic
-  | CircularDependencyDiagnostic
-  | DuplicateIdDiagnostic;
-
-// TODO this looks like it should be an extension of a root interface instead of two separate interfaces
-/**
- * W005: Dangling dependency (resource depends on non-existent resource)
- */
-export interface DanglingDependencyDiagnostic {
-  readonly code: 'W005';
-  readonly severity: 'warning';
-  /** ID of the resource that has the dangling dependency */
-  readonly resourceId: string;
-  /** Type of the resource (task or milestone) */
-  readonly resourceType: 'task' | 'milestone';
-  /** ID of the missing dependency */
-  readonly dependencyId: string;
-  /** Source file path (when resourceSources available) */
-  readonly file?: string;
-  /** 1-based line number (when origin available) */
-  readonly line?: number;
-  /** 0-based column number (when origin available) */
-  readonly column?: number;
-}
-
-/**
- * W004: Circular dependency detected
- */
-export interface CircularDependencyDiagnostic {
-  readonly code: 'W004';
-  readonly severity: 'warning';
-  /** Nodes in the cycle, with the first node repeated at the end (e.g., ['a', 'b', 'c', 'a']) */
-  readonly nodes: readonly string[];
-  /** Source file path(s) (when resourceSources available) */
-  readonly file?: string;
-  /** 1-based line number of the first node in cycle (when origin available) */
-  readonly line?: number;
-  /** 0-based column number of the first node in cycle (when origin available) */
-  readonly column?: number;
-}
-
-/**
- * W006: Duplicate resource ID detected
+ * Construction is via static factories (`empty`, `fromResources`) and
+ * immutable accumulators (`withResource`, `withResources`). Each accumulator
+ * returns a new instance; caches are never shared between instances.
  *
- * Emitted when multiple resources share the same ID. The first occurrence is kept,
- * and all subsequent occurrences are dropped with a warning. File attribution
- * is derived from each resource's origin.document field.
- */
-export interface DuplicateIdDiagnostic {
-  readonly code: 'W006';
-  readonly severity: 'warning';
-  /** ID of the duplicate resource */
-  readonly resourceId: string;
-  /** Type of the resource (task or milestone) */
-  readonly resourceType: 'task' | 'milestone';
-  /** Source file path of the duplicate occurrence (from origin.document) */
-  readonly file?: string;
-  /** 1-based line number of the first (precedent) occurrence */
-  readonly firstLine?: number;
-  /** 0-based column number of the first (precedent) occurrence */
-  readonly firstColumn?: number;
-  /** Source file path of the first (precedent) occurrence (from origin.document) */
-  readonly firstFile?: string;
-  /** 1-based line number of the duplicate (second) occurrence - used for diagnostic position */
-  readonly secondLine?: number;
-  /** 0-based column number of the duplicate (second) occurrence */
-  readonly secondColumn?: number;
-}
-
-/**
- * Immutable IR context that wraps a `Document` and exposes utility functions as methods.
- *
- * The class intentionally holds plain data (no hidden mutability) and delegates
- * to the pure utility functions in `packages/core/src/utilities`. This provides a
- * unified OO-style API surface while keeping the underlying representation
- * data-oriented and serializable.
+ * The class delegates to pure utility functions in `src/utilities/`.
  */
 export class IRContext {
   /** All resources including duplicates - used for duplicate detection */
   private readonly _allResources: readonly Resource[];
   /** Deduplicated resources - computed lazily */
   private _uniqueResources?: readonly Resource[];
-  public readonly source?: string;
-  public readonly parseDiagnostics: readonly ParseDiagnostic[];
   private _diagnostics?: readonly Diagnostic[];
   private _cycles?: readonly { nodes: readonly string[] }[];
   private _danglingDiagnostics?: readonly Diagnostic[];
   private _duplicateDiagnostics?: readonly DuplicateIdDiagnostic[];
 
-  constructor(doc: Document, parseDiagnostics: readonly ParseDiagnostic[] = []) {
-    // Store all resources including duplicates - deduplication happens lazily
-    this._allResources = Object.freeze(doc.resources.slice());
-    this.source = doc.source;
-    this.parseDiagnostics = Object.freeze(parseDiagnostics.slice());
-    // Note: Don't freeze the object itself since we need lazy property assignment
+  private constructor(resources: readonly Resource[]) {
+    this._allResources = Object.freeze(resources.slice());
   }
+
+  // ---------------------------------------------------------------------------
+  // Factories
+  // ---------------------------------------------------------------------------
+
+  /** Create an empty IRContext with no resources. */
+  static empty(): IRContext {
+    return new IRContext([]);
+  }
+
+  /**
+   * Create an IRContext from a flat list of resources.
+   * This is the primary factory for constructing an IR from decoded output.
+   */
+  static fromResources(resources: readonly Resource[]): IRContext {
+    return new IRContext(resources);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Immutable accumulators
+  // ---------------------------------------------------------------------------
+
+  /** Return a new IRContext with the given resource appended. */
+  withResource(resource: Resource): IRContext {
+    return new IRContext([...this._allResources, resource]);
+  }
+
+  /** Return a new IRContext with the given resources appended. */
+  withResources(resources: readonly Resource[]): IRContext {
+    return new IRContext([...this._allResources, ...resources]);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Resources (lazy, deduplicated, milestone-resolved)
+  // ---------------------------------------------------------------------------
 
   /**
    * Get deduplicated resources with implicit milestone completeness resolved.
@@ -147,8 +101,6 @@ export class IRContext {
     // 2. Promote implicitly-complete milestones so .complete is the single
     //    source of truth for completeness (explicit and implicit).
     const resourceMap = new Map(unique.map((r) => [r.id, r]));
-    // TODO expose private memoized graph getter
-    // TODO unnecessary to use a deduplicated list here
     const graph = buildDependencyGraph(unique);
     const resolved = unique.map((r) =>
       !r.complete && isImplicitlyComplete(r, resourceMap, graph) ? { ...r, complete: true } : r,
@@ -156,6 +108,10 @@ export class IRContext {
 
     return Object.freeze(resolved);
   }
+
+  // ---------------------------------------------------------------------------
+  // Query methods
+  // ---------------------------------------------------------------------------
 
   findResourceById(id: string): Resource {
     return findResourceById([...this.resources], id);
@@ -169,27 +125,20 @@ export class IRContext {
     return getTasksByMilestone([...this.resources]);
   }
 
-  // TODO currently implemented with a sensible default traverse
-  // but eventually needs to support a more expressive query interface
   getDependencyTree(rootId: string): DependencyTree {
-    // By default, treat milestone nodes (except the root) as leaves when
-    // expanding from a root resource. This mirrors CLI/listing behavior
-    // where milestones act as grouping nodes and are not expanded further
-    // in dependency trees unless explicitly requested. Also filter out
-    // complete resources (explicit or implicitly-resolved) from the tree.
     const traversePredicate = (r: Resource) => {
-      // Exclude complete resources (includes implicitly-complete milestones
-      // since .complete is resolved before resources are exposed)
       if (r.complete) return false;
-      // Include non-root milestones as leaves (include but don't expand)
       if (r.type === 'milestone' && r.id !== rootId) {
         return { include: true, expand: false };
       }
-      // Include and expand everything else
       return true;
     };
     return buildDependencyTree(rootId, [...this.resources], traversePredicate);
   }
+
+  // ---------------------------------------------------------------------------
+  // Diagnostics (lazy, memoized)
+  // ---------------------------------------------------------------------------
 
   /** Get semantic diagnostics computed from IR analysis */
   get diagnostics(): readonly Diagnostic[] {
@@ -205,79 +154,6 @@ export class IRContext {
       this._cycles = this.computeCycles();
     }
     return this._cycles;
-  }
-
-  /**
-   * Create an IRContext from a parsed CST, performing decoding and validation.
-   * Diagnostics are collected and exposed via the context's `diagnostics` property.
-   * @param cst - The parsed concrete syntax tree
-   * @param source - Optional source file path or content
-   * @returns IRContext with diagnostics
-   */
-  static fromCst(cst: DocumentNode, source?: string): IRContext {
-    const { document, diagnostics } = decodeDocument(cst, source);
-    if (!document) {
-      // If decoding produced errors, delegate to fromResources with empty resources
-      return IRContext.fromResources([], source, diagnostics);
-    }
-    // Delegate to fromResources so decoding and construction logic is centralized
-    return IRContext.fromResources(document.resources, source, diagnostics);
-  }
-
-  /**
-   * Factory to create an IRContext from resources.
-   *
-   * File attribution is read from each resource's origin.document field.
-   * This replaces the previous resourceSources parameter pattern.
-   */
-  static fromResources(
-    resources: readonly Resource[],
-    source?: string,
-    parseDiagnostics: readonly ParseDiagnostic[] = [],
-  ): IRContext {
-    return new IRContext({ resources: resources.slice(), source }, parseDiagnostics);
-  }
-
-  private computeCycles(): readonly { nodes: readonly string[] }[] {
-    const graph = new DirectedGraph();
-    for (const resource of this.resources) {
-      graph.addNode(resource.id);
-      const dependsOn = IRContext.getDependsOn(resource);
-      for (const depId of dependsOn) {
-        graph.addEdge(resource.id, depId);
-      }
-    }
-    const cycles = graph.getCycles();
-    return Object.freeze(cycles.map((cycle) => ({ nodes: Object.freeze(cycle.slice()) })));
-  }
-
-  private computeDiagnostics(): readonly Diagnostic[] {
-    const diagnostics: Diagnostic[] = [];
-    const cycles = this.cycles; // This will trigger cycle computation if needed
-
-    // Add warnings for each cycle with file and position attribution
-    for (const cycle of cycles) {
-      const firstNodeId = cycle.nodes[0];
-      const firstResource = this.resources.find((r) => r.id === firstNodeId);
-
-      const fileInfo = this.getFileInfoForResources(cycle.nodes);
-      const positionInfo = firstResource?.origin
-        ? { line: firstResource.origin.startRow + 1, column: 0 }
-        : {};
-
-      diagnostics.push({
-        code: 'W004',
-        severity: 'warning',
-        nodes: cycle.nodes,
-        ...fileInfo,
-        ...positionInfo,
-      });
-    }
-
-    diagnostics.push(...this.danglingDiagnostics);
-    diagnostics.push(...this.duplicateDiagnostics);
-
-    return Object.freeze(diagnostics);
   }
 
   /** Memoized getter for dangling dependency diagnostics */
@@ -296,7 +172,44 @@ export class IRContext {
     return this._duplicateDiagnostics;
   }
 
-  /** Compute W006 diagnostics for duplicate resource IDs */
+  // ---------------------------------------------------------------------------
+  // Private diagnostic computation
+  // ---------------------------------------------------------------------------
+
+  private computeCycles(): readonly { nodes: readonly string[] }[] {
+    const graph = new DirectedGraph();
+    for (const resource of this.resources) {
+      graph.addNode(resource.id);
+      const dependsOn = IRContext.getDependsOn(resource);
+      for (const depId of dependsOn) {
+        graph.addEdge(resource.id, depId);
+      }
+    }
+    const cycles = graph.getCycles();
+    return Object.freeze(cycles.map((cycle) => ({ nodes: Object.freeze(cycle.slice()) })));
+  }
+
+  private computeDiagnostics(): readonly Diagnostic[] {
+    const diagnostics: Diagnostic[] = [];
+
+    for (const cycle of this.cycles) {
+      const firstNodeId = cycle.nodes[0];
+      const firstResource = this.resources.find((r) => r.id === firstNodeId);
+
+      diagnostics.push({
+        code: CoreDiagnosticCode.CIRCULAR_DEPENDENCY,
+        severity: 'warning',
+        nodes: cycle.nodes,
+        source: firstResource?.source,
+      });
+    }
+
+    diagnostics.push(...this.danglingDiagnostics);
+    diagnostics.push(...this.duplicateDiagnostics);
+
+    return Object.freeze(diagnostics);
+  }
+
   private computeDuplicateDiagnostics(): readonly DuplicateIdDiagnostic[] {
     const diagnostics: DuplicateIdDiagnostic[] = [];
     const seen = new Map<string, Resource>();
@@ -304,29 +217,13 @@ export class IRContext {
     for (const resource of this._allResources) {
       const first = seen.get(resource.id);
       if (first) {
-        // Duplicate detected - emit W006 diagnostic
-        const firstPos = first.origin
-          ? { firstLine: first.origin.startRow + 1, firstColumn: 0 }
-          : {};
-        // Determine precedent file using resource lookup to ensure attribution
-        // works even when origin.document may be absent on the stored `first` object.
-        const firstFile = this.getFileInfoForResources([resource.id]).file;
-        const secondPos = resource.origin
-          ? { secondLine: resource.origin.startRow + 1, secondColumn: 0 }
-          : {};
-
-        // File attribution: use duplicate's origin.document if available
-        const file = resource.origin?.document;
-
         diagnostics.push({
-          code: 'W006',
+          code: CoreDiagnosticCode.DUPLICATE_ID,
           severity: 'warning',
           resourceId: resource.id,
           resourceType: resource.type,
-          file,
-          firstFile,
-          ...firstPos,
-          ...secondPos,
+          source: resource.source,
+          firstSource: first.source,
         });
       } else {
         seen.set(resource.id, resource);
@@ -344,42 +241,19 @@ export class IRContext {
       const dependsOn = IRContext.getDependsOn(resource);
       for (const depId of dependsOn) {
         if (!resourcesById.has(depId)) {
-          const fileInfo = this.getFileInfoForResources([resource.id]);
-          const positionInfo = resource.origin
-            ? { line: resource.origin.startRow + 1, column: 0 }
-            : {};
-
           diagnostics.push({
-            code: 'W005',
+            code: CoreDiagnosticCode.DANGLING_DEPENDENCY,
             severity: 'warning',
             resourceId: resource.id,
             resourceType: resource.type,
             dependencyId: depId,
-            ...fileInfo,
-            ...positionInfo,
+            source: resource.source,
           });
         }
       }
     }
 
     return Object.freeze(diagnostics);
-  }
-
-  /**
-   * Build file attribution object from resource IDs using origin.document.
-   * Returns an object with a `file` property if sources are available, empty object otherwise.
-   * For multiple files, joins them with ", ".
-   */
-  private getFileInfoForResources(nodeIds: readonly string[]): { file?: string } {
-    if (nodeIds.length === 0) return {};
-    const files = new Set<string>();
-    for (const nodeId of nodeIds) {
-      const resource = this.resources.find((r) => r.id === nodeId);
-      if (resource?.origin?.document) {
-        files.add(resource.origin.document);
-      }
-    }
-    return files.size > 0 ? { file: Array.from(files).join(', ') } : {};
   }
 
   /**

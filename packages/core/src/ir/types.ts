@@ -5,8 +5,6 @@
  * They are environment-agnostic and used by all consumers of @siren/core.
  */
 
-import type { Origin } from '../parser/cst.js';
-
 /**
  * Primitive value types that can appear in attributes
  */
@@ -40,15 +38,10 @@ export interface Attribute {
   readonly key: string;
   readonly value: AttributeValue;
   /**
-   * Optional raw text from the source CST for this attribute's value
-   * (includes quotes for string literals when available).
+   * Optional serialized source location (e.g. "doc.siren:5:0").
+   * Opaque to core; produced by the parser/decoder or any resource producer.
    */
-  readonly raw?: string;
-  /**
-   * Optional source origin information for comment-aware formatting.
-   * This is not semantic and may differ across equivalent parses.
-   */
-  readonly origin?: Origin;
+  readonly source?: string;
 }
 
 /**
@@ -69,17 +62,16 @@ export interface Resource {
   readonly complete: boolean;
   readonly attributes: readonly Attribute[];
   /**
-   * Optional source origin information for comment preservation
-   * Used by formatters to interleave comments with exported IR
+   * Optional serialized source location (e.g. "doc.siren:5:0").
+   * Opaque to core; produced by the parser/decoder or any resource producer.
    */
-  readonly origin?: Origin;
+  readonly source?: string;
 }
 
 /**
  * A detected cycle in the dependency graph
  */
 export interface Cycle {
-  /** Nodes involved in the cycle, in order */
   /**
    * Nodes involved in the cycle, in order.
    *
@@ -89,15 +81,6 @@ export interface Cycle {
   readonly nodes: readonly string[];
   /** Edges in the cycle (optional, for detailed analysis) */
   readonly edges?: readonly [string, string][];
-}
-
-/**
- * Top-level document containing all resources
- */
-export interface Document {
-  readonly resources: readonly Resource[];
-  /** Source file path (if any) */
-  readonly source?: string;
 }
 
 /**

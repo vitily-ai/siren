@@ -1,15 +1,51 @@
 /**
  * Unit tests for IRContext
- * Tests diagnostic generation with and without file attribution
+ * Tests diagnostic generation with and without source attribution
  */
 
 import { describe, expect, it } from 'vitest';
+import { CoreDiagnosticCode } from '../diagnostics/codes.js';
 import { IRContext } from './context.js';
 import type { Resource } from './types.js';
 
 describe('IRContext', () => {
-  describe('fromResources without file attribution', () => {
-    it('generates dangling dependency diagnostics without file info', () => {
+  describe('factories and accumulators', () => {
+    it('empty() creates context with no resources', () => {
+      const ir = IRContext.empty();
+      expect(ir.resources).toHaveLength(0);
+      expect(ir.diagnostics).toHaveLength(0);
+    });
+
+    it('fromResources creates context from flat list', () => {
+      const resources: Resource[] = [{ type: 'task', id: 'a', complete: false, attributes: [] }];
+      const ir = IRContext.fromResources(resources);
+      expect(ir.resources).toHaveLength(1);
+      expect(ir.resources[0].id).toBe('a');
+    });
+
+    it('withResource appends a resource and returns new instance', () => {
+      const ir1 = IRContext.empty();
+      const ir2 = ir1.withResource({ type: 'task', id: 'a', complete: false, attributes: [] });
+      expect(ir1.resources).toHaveLength(0);
+      expect(ir2.resources).toHaveLength(1);
+      expect(ir2.resources[0].id).toBe('a');
+    });
+
+    it('withResources appends multiple resources', () => {
+      const ir1 = IRContext.fromResources([
+        { type: 'task', id: 'a', complete: false, attributes: [] },
+      ]);
+      const ir2 = ir1.withResources([
+        { type: 'task', id: 'b', complete: false, attributes: [] },
+        { type: 'task', id: 'c', complete: false, attributes: [] },
+      ]);
+      expect(ir1.resources).toHaveLength(1);
+      expect(ir2.resources).toHaveLength(3);
+    });
+  });
+
+  describe('fromResources without source attribution', () => {
+    it('generates dangling dependency diagnostics without source', () => {
       const resources: Resource[] = [
         {
           type: 'milestone',
@@ -26,20 +62,21 @@ describe('IRContext', () => {
 
       const ir = IRContext.fromResources(resources);
 
-      // PRESCRIPTIVE: W005 diagnostics must have structured fields
-      const danglingDiags = ir.diagnostics.filter((d) => d.code === 'W005');
+      const danglingDiags = ir.diagnostics.filter(
+        (d) => d.code === CoreDiagnosticCode.DANGLING_DEPENDENCY,
+      );
       expect(danglingDiags).toHaveLength(1);
 
       const diag: any = danglingDiags[0];
-      expect(diag.code).toBe('W005');
+      expect(diag.code).toBe('WC-002');
       expect(diag.severity).toBe('warning');
       expect(diag.resourceId).toBe('has-dangling');
       expect(diag.resourceType).toBe('milestone');
       expect(diag.dependencyId).toBe('missing-dep');
-      expect(diag.file).toBeUndefined(); // No file attribution without resourceSources
+      expect(diag.source).toBeUndefined();
     });
 
-    it('generates circular dependency diagnostics without file info', () => {
+    it('generates circular dependency diagnostics without source', () => {
       const resources: Resource[] = [
         {
           type: 'task',
@@ -57,15 +94,16 @@ describe('IRContext', () => {
 
       const ir = IRContext.fromResources(resources);
 
-      // PRESCRIPTIVE: W004 diagnostics must have structured fields
-      const cycleDiags = ir.diagnostics.filter((d) => d.code === 'W004');
+      const cycleDiags = ir.diagnostics.filter(
+        (d) => d.code === CoreDiagnosticCode.CIRCULAR_DEPENDENCY,
+      );
       expect(cycleDiags).toHaveLength(1);
 
       const diag: any = cycleDiags[0];
-      expect(diag.code).toBe('W004');
+      expect(diag.code).toBe('WC-001');
       expect(diag.severity).toBe('warning');
       expect(diag.nodes).toEqual(['a', 'b', 'a']);
-      expect(diag.file).toBeUndefined(); // No file attribution without resourceSources
+      expect(diag.source).toBeUndefined();
     });
 
     it('generates multiple dangling dependency diagnostics for multiple missing deps', () => {
@@ -98,10 +136,11 @@ describe('IRContext', () => {
 
       const ir = IRContext.fromResources(resources);
 
-      const danglingDiags = ir.diagnostics.filter((d) => d.code === 'W005');
+      const danglingDiags = ir.diagnostics.filter(
+        (d) => d.code === CoreDiagnosticCode.DANGLING_DEPENDENCY,
+      );
       expect(danglingDiags).toHaveLength(2);
 
-      // Find specific diagnostics
       const missing1Diag: any = danglingDiags.find((d: any) => d.dependencyId === 'missing1');
       expect(missing1Diag).toBeDefined();
       expect(missing1Diag.resourceId).toBe('multi-dangling');
@@ -114,206 +153,126 @@ describe('IRContext', () => {
     });
   });
 
-  describe('fromResources with file attribution', () => {
-    it('includes file info in dangling dependency diagnostics when origin.document set', () => {
+  describe('fromResources with source attribution', () => {
+    it('includes source in dangling dependency diagnostics', () => {
       const resources: Resource[] = [
         {
           type: 'task',
           id: 'has-dangling',
           complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'missing' } }],
-          origin: {
-            startByte: 0,
-            endByte: 10,
-            startRow: 0,
-            endRow: 0,
-            document: 'project/tasks.siren',
-          },
+          source: 'project/tasks.siren:1:0',
         },
       ];
 
       const ir = IRContext.fromResources(resources);
 
-      const danglingDiags = ir.diagnostics.filter((d) => d.code === 'W005');
+      const danglingDiags = ir.diagnostics.filter(
+        (d) => d.code === CoreDiagnosticCode.DANGLING_DEPENDENCY,
+      );
       expect(danglingDiags).toHaveLength(1);
 
       const diag: any = danglingDiags[0];
-      expect(diag.file).toBe('project/tasks.siren');
+      expect(diag.source).toBe('project/tasks.siren:1:0');
     });
 
-    it('includes file info in circular dependency diagnostics when origin.document set', () => {
+    it('includes source in circular dependency diagnostics', () => {
       const resources: Resource[] = [
         {
           type: 'task',
           id: 'x',
           complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'y' } }],
-          origin: {
-            startByte: 0,
-            endByte: 10,
-            startRow: 0,
-            endRow: 0,
-            document: 'project/main.siren',
-          },
+          source: 'project/main.siren:1:0',
         },
         {
           type: 'task',
           id: 'y',
           complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'z' } }],
-          origin: {
-            startByte: 20,
-            endByte: 30,
-            startRow: 1,
-            endRow: 1,
-            document: 'project/main.siren',
-          },
+          source: 'project/main.siren:2:0',
         },
         {
           type: 'task',
           id: 'z',
           complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'x' } }],
-          origin: {
-            startByte: 40,
-            endByte: 50,
-            startRow: 2,
-            endRow: 2,
-            document: 'project/main.siren',
-          },
+          source: 'project/main.siren:3:0',
         },
       ];
 
       const ir = IRContext.fromResources(resources);
 
-      const cycleDiags = ir.diagnostics.filter((d) => d.code === 'W004');
+      const cycleDiags = ir.diagnostics.filter(
+        (d) => d.code === CoreDiagnosticCode.CIRCULAR_DEPENDENCY,
+      );
       expect(cycleDiags).toHaveLength(1);
 
       const diag: any = cycleDiags[0];
       expect(diag.nodes).toEqual(['x', 'y', 'z', 'x']);
-      expect(diag.file).toBe('project/main.siren');
+      expect(diag.source).toBe('project/main.siren:1:0');
     });
 
-    it('handles cycle spanning multiple files', () => {
+    it('uses first node source for cycles spanning multiple files', () => {
       const resources: Resource[] = [
         {
           type: 'task',
           id: 'a',
           complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'b' } }],
-          origin: {
-            startByte: 0,
-            endByte: 10,
-            startRow: 0,
-            endRow: 0,
-            document: 'project/file1.siren',
-          },
+          source: 'project/file1.siren:1:0',
         },
         {
           type: 'task',
           id: 'b',
           complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'a' } }],
-          origin: {
-            startByte: 0,
-            endByte: 10,
-            startRow: 0,
-            endRow: 0,
-            document: 'project/file2.siren',
-          },
+          source: 'project/file2.siren:1:0',
         },
       ];
 
       const ir = IRContext.fromResources(resources);
 
-      const cycleDiags = ir.diagnostics.filter((d) => d.code === 'W004');
+      const cycleDiags = ir.diagnostics.filter(
+        (d) => d.code === CoreDiagnosticCode.CIRCULAR_DEPENDENCY,
+      );
       expect(cycleDiags).toHaveLength(1);
 
       const diag: any = cycleDiags[0];
       expect(diag.nodes).toEqual(['a', 'b', 'a']);
-      // PRESCRIPTIVE: For cycles spanning multiple files, file should contain all involved files
-      expect(diag.file).toBeDefined();
-      // Could be comma-separated or array - implementation decides
-      // For now, just assert it exists
+      expect(diag.source).toBeDefined();
     });
   });
 
-  describe('fromCst with origin.document', () => {
-    it('preserves origin.document through decoding and populates diagnostic file', async () => {
-      // Create a minimal CST with origin.document set
-      const cst: DocumentNode = {
-        type: 'document',
-        resources: [
-          {
-            type: 'resource',
-            resourceType: 'task',
-            identifier: { type: 'identifier', value: 'a', quoted: false },
-            complete: false,
-            body: [
-              {
-                type: 'attribute',
-                key: { type: 'identifier', value: 'depends_on', quoted: false },
-                value: {
-                  type: 'reference',
-                  identifier: { type: 'identifier', value: 'b', quoted: false },
-                },
-              },
-            ],
-            origin: {
-              startByte: 0,
-              endByte: 30,
-              startRow: 0,
-              endRow: 0,
-              document: 'test-file.siren',
-            },
-          } as ResourceNode,
-          {
-            type: 'resource',
-            resourceType: 'task',
-            identifier: { type: 'identifier', value: 'b', quoted: false },
-            complete: false,
-            body: [
-              {
-                type: 'attribute',
-                key: { type: 'identifier', value: 'depends_on', quoted: false },
-                value: {
-                  type: 'reference',
-                  identifier: { type: 'identifier', value: 'a', quoted: false },
-                },
-              },
-            ],
-            origin: {
-              startByte: 31,
-              endByte: 60,
-              startRow: 1,
-              endRow: 1,
-              document: 'test-file.siren',
-            },
-          } as ResourceNode,
-        ],
-      };
+  describe('duplicate ID diagnostics', () => {
+    it('detects duplicate resource IDs', () => {
+      const resources: Resource[] = [
+        { type: 'task', id: 'dup', complete: false, attributes: [], source: 'file.siren:1:0' },
+        { type: 'task', id: 'dup', complete: false, attributes: [], source: 'file.siren:5:0' },
+      ];
 
-      const ir = IRContext.fromCst(cst);
+      const ir = IRContext.fromResources(resources);
 
-      // Verify IR resources have origin.document
-      expect(ir.resources).toHaveLength(2);
-      for (const r of ir.resources) {
-        expect(r.origin?.document).toBe('test-file.siren');
-      }
+      const dupDiags = ir.diagnostics.filter((d) => d.code === CoreDiagnosticCode.DUPLICATE_ID);
+      expect(dupDiags).toHaveLength(1);
 
-      // Verify depends_on attribute was decoded
-      const resourceA = ir.resources.find((r) => r.id === 'a');
-      expect(resourceA).toBeDefined();
-      const dependsOnAttr = resourceA!.attributes.find((a) => a.key === 'depends_on');
-      expect(dependsOnAttr).toBeDefined();
-      expect(dependsOnAttr!.value).toMatchObject({ kind: 'reference', id: 'b' });
+      const diag: any = dupDiags[0];
+      expect(diag.code).toBe('WC-003');
+      expect(diag.resourceId).toBe('dup');
+      expect(diag.source).toBe('file.siren:5:0');
+      expect(diag.firstSource).toBe('file.siren:1:0');
+    });
 
-      // Verify cycle diagnostic has file
-      const cycleDiags = ir.diagnostics.filter((d) => d.code === 'W004');
-      expect(cycleDiags).toHaveLength(1);
+    it('deduplicates resources (first occurrence wins)', () => {
+      const resources: Resource[] = [
+        { type: 'task', id: 'dup', complete: false, attributes: [{ key: 'x', value: 1 }] },
+        { type: 'task', id: 'dup', complete: true, attributes: [{ key: 'x', value: 2 }] },
+      ];
 
-      const diag: any = cycleDiags[0];
-      expect(diag.file).toBe('test-file.siren');
+      const ir = IRContext.fromResources(resources);
+      expect(ir.resources).toHaveLength(1);
+      expect(ir.resources[0].complete).toBe(false);
+      expect(ir.resources[0].attributes[0].value).toBe(1);
     });
   });
 
@@ -340,6 +299,11 @@ describe('IRContext', () => {
 
     it('generates no diagnostics for empty project', () => {
       const ir = IRContext.fromResources([]);
+      expect(ir.diagnostics).toHaveLength(0);
+    });
+
+    it('generates no diagnostics for empty() context', () => {
+      const ir = IRContext.empty();
       expect(ir.diagnostics).toHaveLength(0);
     });
   });

@@ -735,6 +735,17 @@ __metadata:
     "@types/node": "npm:^25.0.6"
     typescript: "npm:^5.7.2"
     vitest: "npm:^4.0.16"
+  languageName: unknown
+  linkType: soft
+
+"@siren/parser@workspace:packages/parser":
+  version: 0.0.0-use.local
+  resolution: "@siren/parser@workspace:packages/parser"
+  dependencies:
+    "@siren/core": "workspace:*"
+    "@types/node": "npm:^25.0.6"
+    typescript: "npm:^5.7.2"
+    vitest: "npm:^4.0.16"
     web-tree-sitter: "npm:^0.26.3"
   languageName: unknown
   linkType: soft
