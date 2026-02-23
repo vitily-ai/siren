@@ -1,4 +1,4 @@
-task milestone-complete-implicit {
+task milestone-complete-implicit complete {
   description = "a milestone that has dependencies should be implicitly complete if all of its dependencies are complete. orphan milestones should not be implicitly completed."
 }
 
