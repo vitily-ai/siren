@@ -1,0 +1,9 @@
+task task-a complete {}
+
+milestone m-done {
+  depends_on = task-a
+}
+
+milestone root {
+  depends_on = m-done
+}

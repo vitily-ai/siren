@@ -6,7 +6,12 @@ import {
 } from '../utilities/dependency-tree.js';
 import { findResourceById } from '../utilities/entry.js';
 import { DirectedGraph } from '../utilities/graph.js';
-import { getMilestoneIds, getTasksByMilestone } from '../utilities/milestone.js';
+import {
+  isImplicitlyComplete,
+  buildDependencyGraph,
+  getMilestoneIds,
+  getTasksByMilestone,
+} from '../utilities/milestone.js';
 import type { Document, Resource, ResourceReference } from './types.js';
 
 /**
@@ -115,18 +120,21 @@ export class IRContext {
   }
 
   /**
-   * Get deduplicated resources. First occurrence of each ID is kept, duplicates are dropped.
+   * Get deduplicated resources with implicit milestone completeness resolved.
+   * Milestones whose every dependency is complete are promoted to `complete: true`.
+   * First occurrence of each ID is kept, duplicates are dropped.
    * Use `duplicateDiagnostics` to get warnings about dropped duplicates.
    */
   get resources(): readonly Resource[] {
     if (!this._uniqueResources) {
-      this._uniqueResources = this.computeUniqueResources();
+      this._uniqueResources = this.resolveResources();
     }
     return this._uniqueResources;
   }
 
-  /** Compute deduplicated resources - first occurrence wins */
-  private computeUniqueResources(): readonly Resource[] {
+  /** Deduplicate then resolve implicit milestone completeness */
+  private resolveResources(): readonly Resource[] {
+    // 1. Deduplicate — first occurrence wins
     const seen = new Set<string>();
     const unique: Resource[] = [];
     for (const resource of this._allResources) {
@@ -135,7 +143,18 @@ export class IRContext {
         unique.push(resource);
       }
     }
-    return Object.freeze(unique);
+
+    // 2. Promote implicitly-complete milestones so .complete is the single
+    //    source of truth for completeness (explicit and implicit).
+    const resourceMap = new Map(unique.map((r) => [r.id, r]));
+    // TODO expose private memoized graph getter
+    // TODO unnecessary to use a deduplicated list here
+    const graph = buildDependencyGraph(unique);
+    const resolved = unique.map((r) =>
+      !r.complete && isImplicitlyComplete(r, resourceMap, graph) ? { ...r, complete: true } : r,
+    );
+
+    return Object.freeze(resolved);
   }
 
   findResourceById(id: string): Resource {
@@ -157,9 +176,10 @@ export class IRContext {
     // expanding from a root resource. This mirrors CLI/listing behavior
     // where milestones act as grouping nodes and are not expanded further
     // in dependency trees unless explicitly requested. Also filter out
-    // complete tasks from the tree entirely.
+    // complete resources (explicit or implicitly-resolved) from the tree.
     const traversePredicate = (r: Resource) => {
-      // Exclude complete tasks entirely (don't include in tree)
+      // Exclude complete resources (includes implicitly-complete milestones
+      // since .complete is resolved before resources are exposed)
       if (r.complete) return false;
       // Include non-root milestones as leaves (include but don't expand)
       if (r.type === 'milestone' && r.id !== rootId) {
