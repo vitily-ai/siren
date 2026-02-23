@@ -384,7 +384,7 @@ describe('IRContext', () => {
     });
 
     it('creates synthetic milestone for empty document', () => {
-      const ir = IRContext.fromResources([], undefined, [], ['empty.siren']);
+      const ir = IRContext.fromResources([], { sourceDocuments: ['empty.siren'] });
 
       const synthetic = ir.resources.find((r) => r.id === 'empty');
       expect(synthetic).toBeDefined();

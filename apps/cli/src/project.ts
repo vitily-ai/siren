@@ -165,7 +165,10 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
   // Decode CST to IR - resources now have origin.document set by the parser
   // TODO this factory is getting complex
   //  Parse flow should return this information fully structured and/or this isn't the right starting point for IR construction
-  const ir = IRContext.fromCst(filteredTree, undefined, true, filteredSourceDocuments);
+  const ir = IRContext.fromCst(filteredTree, {
+    includeSyntheticMilestones: true,
+    sourceDocuments: filteredSourceDocuments,
+  });
 
   ctx.resources = [...ir.resources];
   ctx.ir = ir;

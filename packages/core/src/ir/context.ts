@@ -10,6 +10,32 @@ import { getMilestoneIds, getTasksByMilestone } from '../utilities/milestone.js'
 import type { Document, Resource, ResourceReference } from './types.js';
 
 /**
+ * Options for {@link IRContext.fromCst}.
+ */
+export interface FromCstOptions {
+  /** Source file path or content identifier */
+  readonly source?: string;
+  /** Whether to generate synthetic milestones from source documents (default: true) */
+  readonly includeSyntheticMilestones?: boolean;
+  /** Paths of all parsed source documents (used for synthetic milestone generation) */
+  readonly sourceDocuments?: readonly string[];
+}
+
+/**
+ * Options for {@link IRContext.fromResources}.
+ */
+export interface FromResourcesOptions {
+  /** Source file path or content identifier */
+  readonly source?: string;
+  /** Parse-level diagnostics forwarded from the decoder */
+  readonly parseDiagnostics?: readonly ParseDiagnostic[];
+  /** Paths of all parsed source documents (used for synthetic milestone generation) */
+  readonly sourceDocuments?: readonly string[];
+  /** Whether to generate synthetic milestones from source documents (default: true) */
+  readonly includeSyntheticMilestones?: boolean;
+}
+
+/**
  * Semantic diagnostic message produced from IR analysis
  *
  * Structured as a discriminated union by code.
@@ -202,34 +228,28 @@ export class IRContext {
    * Create an IRContext from a parsed CST, performing decoding and validation.
    * Diagnostics are collected and exposed via the context's `diagnostics` property.
    * @param cst - The parsed concrete syntax tree
-   * @param source - Optional source file path or content
+   * @param options - Optional configuration for decoding and milestone generation
    * @returns IRContext with diagnostics
    */
-  static fromCst(
-    cst: DocumentNode,
-    source?: string,
-    includeSyntheticMilestones = true,
-    sourceDocuments?: readonly string[],
-  ): IRContext {
+  static fromCst(cst: DocumentNode, options?: FromCstOptions): IRContext {
+    const { source, includeSyntheticMilestones = true, sourceDocuments } = options ?? {};
     const { document, diagnostics } = decodeDocument(cst, source);
     if (!document) {
       // If decoding produced errors, delegate to fromResources with empty resources
-      return IRContext.fromResources(
-        [],
+      return IRContext.fromResources([], {
         source,
-        diagnostics,
+        parseDiagnostics: diagnostics,
         sourceDocuments,
         includeSyntheticMilestones,
-      );
+      });
     }
     // Delegate to fromResources so decoding and construction logic is centralized
-    return IRContext.fromResources(
-      document.resources,
+    return IRContext.fromResources(document.resources, {
       source,
-      diagnostics,
+      parseDiagnostics: diagnostics,
       sourceDocuments,
       includeSyntheticMilestones,
-    );
+    });
   }
 
   /**
@@ -238,13 +258,13 @@ export class IRContext {
    * File attribution is read from each resource's origin.document field.
    * This replaces the previous resourceSources parameter pattern.
    */
-  static fromResources(
-    resources: readonly Resource[],
-    source?: string,
-    parseDiagnostics: readonly ParseDiagnostic[] = [],
-    sourceDocuments?: readonly string[],
-    includeSyntheticMilestones = true,
-  ): IRContext {
+  static fromResources(resources: readonly Resource[], options?: FromResourcesOptions): IRContext {
+    const {
+      source,
+      parseDiagnostics = [],
+      sourceDocuments,
+      includeSyntheticMilestones = true,
+    } = options ?? {};
     return new IRContext(
       { resources: resources.slice(), source },
       parseDiagnostics,

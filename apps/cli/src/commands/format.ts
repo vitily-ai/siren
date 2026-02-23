@@ -84,7 +84,10 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
         return result;
       }
 
-      const perFileIR = IRContext.fromCst(parseResult.tree, filePath, false);
+      const perFileIR = IRContext.fromCst(parseResult.tree, {
+        source: filePath,
+        includeSyntheticMilestones: false,
+      });
 
       // Build SourceIndex from parse result for comment preservation
       const sourceIndex = parseResult.comments
@@ -111,7 +114,9 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
         console.error(`Format produced unparsable output for ${filePath}`);
         return result;
       }
-      const decoded2 = IRContext.fromCst(parse2.tree, undefined, false);
+      const decoded2 = IRContext.fromCst(parse2.tree, {
+        includeSyntheticMilestones: false,
+      });
       if (!resourcesEqual(perFileIR.resources, decoded2.resources)) {
         console.error(`Format round-trip changed semantics for ${filePath}; skipping`);
         if (process.env.SIREN_FORMAT_DEBUG === '1') {
