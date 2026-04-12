@@ -37,6 +37,21 @@ node apps/cli/dist/index.js
 
 Use workspace commands for package-scoped tasks, e.g. `yarn workspace @siren/core test`.
 
+### Local CLI install (developer)
+
+To build the CLI and make the `siren` command available globally during development:
+
+```bash
+yarn install
+yarn workspace @siren/cli build
+mkdir -p ~/.local/bin
+ln -sf "$(pwd)/apps/cli/dist/index.js" ~/.local/bin/siren
+chmod +x ~/.local/bin/siren
+# ensure ~/.local/bin is in your PATH (add to shell profile if needed)
+```
+
+After this the `siren` command should be callable from any directory, e.g. `siren --version`.
+
 ## Developer notes
 
 - Core is environment-agnostic: do not introduce DOM or Node-specific APIs into `packages/core`.
