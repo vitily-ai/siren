@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - "release-*"
+      - "release-siren/core@*"
 
 permissions:
   contents: write # needed to create git tags for published packages
