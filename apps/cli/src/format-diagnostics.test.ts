@@ -2,7 +2,7 @@ import type {
   CircularDependencyDiagnostic,
   DanglingDependencyDiagnostic,
   DuplicateIdDiagnostic,
-} from '@siren/core';
+} from '@sirenpm/core';
 import { describe, expect, it } from 'vitest';
 import { formatDiagnostic } from './format-diagnostics.js';
 

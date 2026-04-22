@@ -1,5 +1,5 @@
 /**
- * @siren/core
+ * @sirenpm/core
  * Environment-agnostic core library for Siren PMaC framework
  */
 

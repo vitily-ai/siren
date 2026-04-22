@@ -1,4 +1,4 @@
-import type { ParseError } from '@siren/core';
+import type { ParseError } from '@sirenpm/core';
 
 function clamp(n: number, min: number, max: number): number {
   return Math.min(Math.max(n, min), max);

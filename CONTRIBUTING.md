@@ -48,7 +48,7 @@ deterministic by building first.
 Run core package tests:
 
 ```bash
-yarn workspace @siren/core test
+yarn workspace @sirenpm/core test
 ```
 
 Rebuild the Tree-sitter parser (only needed when editing grammar):

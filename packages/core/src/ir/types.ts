@@ -2,7 +2,7 @@
  * Intermediate Representation (IR) types for Siren
  *
  * These types represent the semantic model after parsing and validation.
- * They are environment-agnostic and used by all consumers of @siren/core.
+ * They are environment-agnostic and used by all consumers of @sirenpm/core.
  */
 
 import type { Origin } from '../parser/cst.js';

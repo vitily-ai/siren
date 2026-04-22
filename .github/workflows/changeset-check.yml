@@ -30,7 +30,7 @@ jobs:
       - name: Check for changeset
         run: |
           if yarn changeset status 2>&1 | grep -q "No unreleased changesets found"; then
-            echo "::warning::No changeset found for this PR. If this PR changes @siren/core behaviour, run 'yarn changeset' and commit the resulting file."
+            echo "::warning::No changeset found for this PR. If this PR changes @sirenpm/core behaviour, run 'yarn changeset' and commit the resulting file."
           else
             echo "Changeset found."
           fi

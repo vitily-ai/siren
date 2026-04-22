@@ -1,7 +1,7 @@
 # Plan: Per-Package Versions with Git SHA Prerelease Tag
 
 ## TL;DR
-Each package (`@siren/core`, `@siren/cli`) gets its own `version` constant. At build time, a `BUILD_METADATA` macro (resolved via git tag detection: tagged HEAD = release, untagged = prerelease with short SHA) is injected using esbuild/vite `define`. The CLI's `--version` prints two lines. Tests see an empty `BUILD_METADATA` so golden files stay valid.
+Each package (`@sirenpm/core`, `@siren/cli`) gets its own `version` constant. At build time, a `BUILD_METADATA` macro (resolved via git tag detection: tagged HEAD = release, untagged = prerelease with short SHA) is injected using esbuild/vite `define`. The CLI's `--version` prints two lines. Tests see an empty `BUILD_METADATA` so golden files stay valid.
 
 ---
 
@@ -46,7 +46,7 @@ Each package (`@siren/core`, `@siren/cli`) gets its own `version` constant. At b
 
 **Step 8.** Update `apps/cli/src/index.ts`:
 - Import `cliVersion` from `./version.ts` (new)
-- Import `version as coreVersion, buildMetadata` from `@siren/core`
+- Import `version as coreVersion, buildMetadata` from `@sirenpm/core`
 - Derive full versions: `const suffix = buildMetadata ? '-' + buildMetadata : '';`
 - Update `--version` handler to print two lines:
   ```
@@ -92,7 +92,7 @@ Each package (`@siren/core`, `@siren/cli`) gets its own `version` constant. At b
 
 ## Verification
 1. `yarn workspace @siren/cli test` — all golden tests pass (empty sha in test mode)
-2. `yarn workspace @siren/core test` — tests pass with import.meta.env.BUILD_METADATA defined
+2. `yarn workspace @sirenpm/core test` — tests pass with import.meta.env.BUILD_METADATA defined
 3. `yarn workspace @siren/cli build` — builds without errors; `node dist/index.js --version` shows two lines with sha (if untagged HEAD)
 4. Simulate release: create a git tag on HEAD, rebuild; `node dist/index.js --version` shows two lines WITHOUT sha
 5. TypeScript: `yarn workspace @siren/cli tsc --noEmit` passes with new env.d.ts declarations

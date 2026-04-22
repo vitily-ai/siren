@@ -11,7 +11,7 @@ import type {
   Diagnostic,
   DuplicateIdDiagnostic,
   ParseDiagnostic,
-} from '@siren/core';
+} from '@sirenpm/core';
 
 /**
  * Format a diagnostic for CLI display

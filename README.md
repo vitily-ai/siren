@@ -35,7 +35,7 @@ node apps/cli/dist/index.js
 2. Build everything: `yarn build`
 3. Run package tests: `yarn test`
 
-Use workspace commands for package-scoped tasks, e.g. `yarn workspace @siren/core test`.
+Use workspace commands for package-scoped tasks, e.g. `yarn workspace @sirenpm/core test`.
 
 ### Local CLI install (developer)
 

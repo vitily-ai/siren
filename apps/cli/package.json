@@ -17,7 +17,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@siren/core": "workspace:*",
+    "@sirenpm/core": "workspace:*",
     "web-tree-sitter": "^0.26.3"
   },
   "devDependencies": {

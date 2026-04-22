@@ -32,7 +32,7 @@ jobs:
         run: yarn install --immutable
 
       - name: Build core
-        run: yarn workspace @siren/core build
+        run: yarn workspace @sirenpm/core build
 
       - name: Publish changed packages
         run: yarn changeset publish

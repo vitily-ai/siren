@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { type DependencyTree, version } from '@siren/core';
+import { type DependencyTree, version } from '@sirenpm/core';
 import { runFormat } from './commands/format.js';
 import { getLoadedContext, loadProject } from './project.js';
 
@@ -118,7 +118,6 @@ function renderDependencyTree(
 ): string[] {
   const lines: string[] = [];
 
-  
   // Filter out complete tasks from dependencies
   // TODO this is redundant - core already does it
   const deps = tree.dependencies.filter((d) => !d.resource.complete);

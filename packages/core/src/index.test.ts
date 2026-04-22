@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { IRContext, type Resource, version } from './index.js';
 
-describe('@siren/core', () => {
+describe('@sirenpm/core', () => {
   it('exports version', () => {
     expect(version).toBe('0.1.0');
   });
