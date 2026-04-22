@@ -13,7 +13,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@siren/core": "workspace:*"
+    "@sirenpm/core": "workspace:*"
   },
   "devDependencies": {
     "vite": "^6.0.7",
