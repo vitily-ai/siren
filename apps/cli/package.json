@@ -1,5 +1,5 @@
 {
-  "name": "@siren/cli",
+  "name": "@sirenpm/cli",
   "version": "0.1.0",
   "description": "Siren command-line interface",
   "license": "GPL-3.0",
