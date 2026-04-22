@@ -7,5 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["@siren/web", "@siren/cli"]
+  "ignore": ["@sirenpm/web", "@sirenpm/cli"]
 }
