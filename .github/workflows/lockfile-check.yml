@@ -32,4 +32,4 @@ jobs:
           cache: 'yarn'
 
       - name: Check lockfile validity
-        run: yarn install --immutable --immutable-cache
+        run: yarn install --immutable

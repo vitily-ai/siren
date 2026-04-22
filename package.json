@@ -21,6 +21,8 @@
     "cli:link": "cd apps/cli && npm link",
     "create-fixture": "bash scripts/create_project_fixture.sh",
     "create-golden": "bash scripts/create-golden.sh",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -30,6 +32,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.11",
+    "@changesets/cli": "^2.31.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
     "typescript": "^5.7.2",

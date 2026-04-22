@@ -1,0 +1,36 @@
+name: Changeset Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check:
+    name: Check for changeset
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+          cache: "yarn"
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Check for changeset
+        run: |
+          if yarn changeset status 2>&1 | grep -q "No unreleased changesets found"; then
+            echo "::warning::No changeset found for this PR. If this PR changes @siren/core behaviour, run 'yarn changeset' and commit the resulting file."
+          else
+            echo "Changeset found."
+          fi
