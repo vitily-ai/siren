@@ -1,4 +1,4 @@
-import { version } from '@siren/core';
+import { version } from '@sirenpm/core';
 
 const app = document.getElementById('app');
 if (app) {

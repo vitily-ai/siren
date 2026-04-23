@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.4.12/schema.json",
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
     "enabled": true,
@@ -21,13 +21,13 @@
       },
       "suspicious": {
         "noEvolvingTypes": "error",
-        "noUnassignedVariables": "error"
+        "noUnassignedVariables": "error",
+        "noEmptySource": "error",
+        "noUnusedExpressions": "error"
       },
       "nursery": {
         "noUnnecessaryConditions": "error",
-        "useFind": "error",
-        "noUnusedExpressions": "error",
-        "noEmptySource": "error"
+        "useFind": "error"
       },
       "performance": {
         "noAwaitInLoops": "error",

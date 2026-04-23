@@ -7,7 +7,7 @@ import {
   type Resource,
   type SourceDocument,
   SourceIndex,
-} from '@siren/core';
+} from '@sirenpm/core';
 import { getParser } from '../parser.js';
 import { loadProject } from '../project.js';
 

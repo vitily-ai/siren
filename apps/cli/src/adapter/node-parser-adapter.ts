@@ -2,7 +2,7 @@
  * Node.js parser adapter shim.
  *
  * CLI owns the runtime wiring for `web-tree-sitter` and delegates parsing
- * semantics (CST conversion, diagnostics, comments) to `@siren/core`.
+ * semantics (CST conversion, diagnostics, comments) to `@sirenpm/core`.
  */
 
 import { existsSync } from 'node:fs';
@@ -13,7 +13,7 @@ import {
   type ParseResult,
   type ParserAdapter,
   type SourceDocument,
-} from '@siren/core';
+} from '@sirenpm/core';
 import { Language, Parser } from 'web-tree-sitter';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

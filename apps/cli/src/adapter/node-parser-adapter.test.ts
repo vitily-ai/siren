@@ -74,7 +74,7 @@ describe('NodeParserAdapter - Phase 2: Origin & Comments', () => {
     });
 
     it('preserves origin.document through IRContext.fromCst', async () => {
-      const { IRContext } = await import('@siren/core');
+      const { IRContext } = await import('@sirenpm/core');
       const source = 'task foo { description = "test" }';
       const documents = doc(source, 'my-project/main.siren');
       const result = await adapter.parse(documents);
@@ -87,7 +87,7 @@ describe('NodeParserAdapter - Phase 2: Origin & Comments', () => {
     });
 
     it('preserves origin.document for diagnostics in IRContext', async () => {
-      const { IRContext } = await import('@siren/core');
+      const { IRContext } = await import('@sirenpm/core');
       // Create a circular dependency to trigger W004
       const source = `
 task a { depends_on = b }
