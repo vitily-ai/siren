@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-describe('@siren/web', () => {
+describe('@sirenpm/web', () => {
   it('placeholder', () => {
     expect(true).toBe(true);
   });

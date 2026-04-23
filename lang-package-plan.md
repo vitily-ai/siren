@@ -1,12 +1,12 @@
-## Plan: Extract `@siren/language` from `@sirenpm/core`
+## Plan: Extract `@sirenpm/language` from `@sirenpm/core`
 
-Split parser/grammar/decoding and all export logic from `packages/core` into `packages/language` (`@siren/language`). Core keeps IR types, semantic validation, utilities, `DiagnosticBase`, and `IRExporter`; language owns grammar, CST types, parser factory, decoder (CST→IR), comment classification, exporters, and formatters. `web-tree-sitter` is a direct dependency of `@siren/language`; the language package owns WASM initialization internally and provides a zero-config `createParser()`. Dependency stays one-way: `@siren/language` → `@sirenpm/core`.
+Split parser/grammar/decoding and all export logic from `packages/core` into `packages/language` (`@sirenpm/language`). Core keeps IR types, semantic validation, utilities, `DiagnosticBase`, and `IRExporter`; language owns grammar, CST types, parser factory, decoder (CST→IR), comment classification, exporters, and formatters. `web-tree-sitter` is a direct dependency of `@sirenpm/language`; the language package owns WASM initialization internally and provides a zero-config `createParser()`. Dependency stays one-way: `@sirenpm/language` → `@sirenpm/core`.
 
 `DiagnosticBase` is message-free, and parse diagnostics stay in language and are surfaced separately from `IRContext`.
 
 **Architecture after split:**
 ```
-@siren/language (packages/language/)
+@sirenpm/language (packages/language/)
   ├── grammar/         ← tree-sitter grammar definition + WASM
   ├── src/
   │   ├── parser/      ← adapter interface, factory (owns web-tree-sitter init), CST types, source-index
@@ -23,8 +23,8 @@ Split parser/grammar/decoding and all export logic from `packages/core` into `pa
 ```
 
 **Consumer dependency graph:**
-- `@siren/cli` → `@siren/language` + `@sirenpm/core` (CLI no longer needs `web-tree-sitter` directly)
-- `@siren/web` → `@sirenpm/core` (minimal; add `@siren/language` when parsing is needed — browser-side `tree-sitter.wasm` engine loading is a deferred Vite config concern)
+- `@sirenpm/cli` → `@sirenpm/language` + `@sirenpm/core` (CLI no longer needs `web-tree-sitter` directly)
+- `@sirenpm/web` → `@sirenpm/core` (minimal; add `@sirenpm/language` when parsing is needed — browser-side `tree-sitter.wasm` engine loading is a deferred Vite config concern)
 
 ---
 
@@ -41,9 +41,9 @@ Split parser/grammar/decoding and all export logic from `packages/core` into `pa
 6. **Remove `IRContext.fromCst()`** — Delete the static bridge and `parseDiagnostics` from `IRContext`; `IRContext.fromResources()` becomes the sole factory. Parse diagnostics remain language-owned and are returned separately later.
 7. **Verify** — Core should compile without parser/decoder imports.
 
-### Phase 3: Create `@siren/language` Package
+### Phase 3: Create `@sirenpm/language` Package
 
-8. **Scaffold package** — Create `packages/language/` with `package.json` (name `@siren/language`, deps on `@sirenpm/core: workspace:*` and `web-tree-sitter: ^0.26.3`), `tsconfig.json`, `vitest.config.ts` (node env). Register in root `package.json` workspaces array. `yarn install`.
+8. **Scaffold package** — Create `packages/language/` with `package.json` (name `@sirenpm/language`, deps on `@sirenpm/core: workspace:*` and `web-tree-sitter: ^0.26.3`), `tsconfig.json`, `vitest.config.ts` (node env). Register in root `package.json` workspaces array. `yarn install`.
 9. **Move grammar** — `packages/core/grammar/` → `packages/language/grammar/`. Update grammar-related scripts in language `package.json`.
 10. **Move parser source and replace DI with direct initialization** — `packages/core/src/parser/` → `packages/language/src/parser/` (adapter.ts, factory.ts, cst.ts, source-index.ts, index.ts). Update `cst.ts`: import `Origin` from `@sirenpm/core` (instead of `../ir/types.js`). Remove temporary re-export. Rewrite `factory.ts`: delete `ParserFactoryInit`, `ParserLike`, `LanguageLike`, and the `loadWasm` callback. Import `Parser` and `Language` from `web-tree-sitter` directly. Resolve grammar WASM via `new URL('../grammar/tree-sitter-siren.wasm', import.meta.url)`. Export a zero-config `createParser()` that calls `Parser.init()` + `Language.load()` internally and returns a `ParserAdapter`.
 11. **Move decoder and rename all diagnostic codes** — `packages/core/src/decoder/` → `packages/language/src/decoder/` (index.ts, xfail.ts). Update imports to use local CST types and `@sirenpm/core`. Rename language-phase codes W001→WL001, W002→WL002, W003→WL003, E001→EL001, and renumber core semantic codes W004→W001, W005→W002, W006→W003 in the same commit.
@@ -54,7 +54,7 @@ Split parser/grammar/decoding and all export logic from `packages/core` into `pa
 ### Phase 4: Update Consumers
 
 15. **Trim core exports** — Remove parser, decoder, and export/formatter re-exports from `packages/core/src/index.ts`; keep IR/core types, `IRContext`, `IRExporter`, `DiagnosticBase`, semantic diagnostics, utilities, type guards, and `version`. Delete the moved `packages/core/src/parser/`, `packages/core/src/decoder/`, and `packages/core/src/export/` directories.
-16. **Update CLI imports** — Add `"@siren/language": "workspace:*"` to `apps/cli/package.json` and **remove `web-tree-sitter`** from CLI dependencies (it's now transitive through `@siren/language`). Switch parser/export/bridge imports to `@siren/language`, keep IR/diagnostic imports from `@sirenpm/core`, replace `IRContext.fromCst()` with `createIRContextFromCst()`. Delete `apps/cli/src/adapter/node-parser-adapter.ts` entirely — the CLI calls `createParser()` from `@siren/language` (zero-config, no `resolveWasmPath`, no DI callback).
+16. **Update CLI imports** — Add `"@sirenpm/language": "workspace:*"` to `apps/cli/package.json` and **remove `web-tree-sitter`** from CLI dependencies (it's now transitive through `@sirenpm/language`). Switch parser/export/bridge imports to `@sirenpm/language`, keep IR/diagnostic imports from `@sirenpm/core`, replace `IRContext.fromCst()` with `createIRContextFromCst()`. Delete `apps/cli/src/adapter/node-parser-adapter.ts` entirely — the CLI calls `createParser()` from `@sirenpm/language` (zero-config, no `resolveWasmPath`, no DI callback).
 17. **Update CLI diagnostics** — Refresh `apps/cli/src/format-diagnostics.ts` for the new code names (including W003's `secondLine` / `secondColumn` case) and update `apps/cli/src/project.ts` to combine `parseDiagnostics` with `ir.diagnostics`.
 
 ### Phase 5: Move Tests & Fixtures
@@ -69,7 +69,7 @@ Split parser/grammar/decoding and all export logic from `packages/core` into `pa
 22. **Delete emptied directories** — Remove the emptied `packages/core/src/parser/`, `packages/core/src/decoder/`, and `packages/core/src/export/` directories.
 23. **Update documentation** — Refresh the root README, `.github/copilot-instructions.md`, `AGENTS.md`, and `packages/core/STATUS.md` where they describe the old layout.
 24. **Verify isolation** — Confirm core no longer imports parser/decoder/export code and language only imports from core where intended.
-25. **Run the full test suite** — `yarn workspace @sirenpm/core test`, `yarn workspace @siren/language test`, `yarn workspace @siren/cli test`, then `yarn workspaces foreach -pv run test`.
+25. **Run the full test suite** — `yarn workspace @sirenpm/core test`, `yarn workspace @sirenpm/language test`, `yarn workspace @sirenpm/cli test`, then `yarn workspaces foreach -pv run test`.
 
 ---
 
@@ -97,8 +97,8 @@ Split parser/grammar/decoding and all export logic from `packages/core` into `pa
 - `packages/language/test/helpers/parser.ts` — moved from `packages/core/test/helpers/` (~70 lines, `getTestAdapter()`/`doc()` wrappers)
 
 ### CLI (to update)
-- `apps/cli/package.json` — add `@siren/language` dep, remove `web-tree-sitter` dep
-- `apps/cli/src/adapter/node-parser-adapter.ts` — **delete entirely** (replaced by `createParser()` from `@siren/language`)
+- `apps/cli/package.json` — add `@sirenpm/language` dep, remove `web-tree-sitter` dep
+- `apps/cli/src/adapter/node-parser-adapter.ts` — **delete entirely** (replaced by `createParser()` from `@sirenpm/language`)
 - `apps/cli/src/parser.ts` — imports
 - `apps/cli/src/project.ts` — `fromCst` → `createIRContextFromCst`, combine parse diagnostics with IR diagnostics
 - `apps/cli/src/commands/format.ts` — `fromCst` replacement
@@ -108,12 +108,12 @@ Split parser/grammar/decoding and all export logic from `packages/core` into `pa
 
 **Verification**
 1. `grep -r "parser/\|decoder/\|export/" packages/core/src/` → returns nothing
-2. `grep -r "@siren/language" packages/core/src/` → returns nothing (no reverse dep)
+2. `grep -r "@sirenpm/language" packages/core/src/` → returns nothing (no reverse dep)
 3. `yarn workspace @sirenpm/core tsc --noEmit` → compiles clean
-4. `yarn workspace @siren/language tsc --noEmit` → compiles clean
+4. `yarn workspace @sirenpm/language tsc --noEmit` → compiles clean
 5. `yarn workspace @sirenpm/core test` → IR, utility tests pass
-6. `yarn workspace @siren/language test` → parser, decoder, exporter tests pass
-7. `yarn workspace @siren/cli test` → golden-file tests pass (with updated diagnostic codes)
+6. `yarn workspace @sirenpm/language test` → parser, decoder, exporter tests pass
+7. `yarn workspace @sirenpm/cli test` → golden-file tests pass (with updated diagnostic codes)
 8. `yarn workspaces foreach -pv run test` → full suite green
 
 **Decisions**
@@ -122,10 +122,10 @@ Split parser/grammar/decoding and all export logic from `packages/core` into `pa
 - **`DiagnosticBase` carries no `message` field** — Frontends assemble display text from structured fields, and `ParseDiagnostic` may keep its own `message` internally.
 - **Language diagnostic code prefix: `L`** — W001→WL001, E001→EL001, with core semantic codes renumbered W004–W006 → W001–W003 in Phase 3 step 13.
 - **`Origin` relocates to core** — positional metadata, not grammar-specific; the temporary re-export in `cst.ts` is only for the transition.
-- **`ParseDiagnostic` remains in language** — it structurally satisfies `DiagnosticBase`, but its definition and creation remain in `@siren/language`.
+- **`ParseDiagnostic` remains in language** — it structurally satisfies `DiagnosticBase`, but its definition and creation remain in `@sirenpm/language`.
 - **`IRContext.fromCst()` replaced by `createIRContextFromCst()` in language** — the sole bridge between parsing and the IR layer.
 - **Phased PRs to main are acceptable** — transient breakage is fine if the phases land in order and quickly.
-- **`web-tree-sitter` is a direct dependency of `@siren/language`** — The language package imports `Parser` and `Language` from `web-tree-sitter` and owns WASM initialization. The grammar WASM is resolved via `new URL('../grammar/tree-sitter-siren.wasm', import.meta.url)` — a stable package-relative path that works in both Node ESM and browser bundlers. `Parser.init()` is called bare (no `locateFile`); in Node this works out of the box because Emscripten's runtime reads `tree-sitter.wasm` via `fs` from its own `node_modules`. For browser consumers (when the web app eventually needs parsing), serving the engine WASM is a one-line Vite config concern (`postinstall` copy to `public/` or `?url` import) — not something the language package needs to abstract over. The DI ceremony (`ParserFactoryInit`, `loadWasm`, `LanguageLike`, `ParserLike`) is eliminated. CLI no longer carries `web-tree-sitter` as a direct dependency.
+- **`web-tree-sitter` is a direct dependency of `@sirenpm/language`** — The language package imports `Parser` and `Language` from `web-tree-sitter` and owns WASM initialization. The grammar WASM is resolved via `new URL('../grammar/tree-sitter-siren.wasm', import.meta.url)` — a stable package-relative path that works in both Node ESM and browser bundlers. `Parser.init()` is called bare (no `locateFile`); in Node this works out of the box because Emscripten's runtime reads `tree-sitter.wasm` via `fs` from its own `node_modules`. For browser consumers (when the web app eventually needs parsing), serving the engine WASM is a one-line Vite config concern (`postinstall` copy to `public/` or `?url` import) — not something the language package needs to abstract over. The DI ceremony (`ParserFactoryInit`, `loadWasm`, `LanguageLike`, `ParserLike`) is eliminated. CLI no longer carries `web-tree-sitter` as a direct dependency.
 - **Scope excluded** — no grammar changes, no new features.
 
 **Further Considerations**
@@ -133,7 +133,7 @@ Split parser/grammar/decoding and all export logic from `packages/core` into `pa
 1. **Golden file updates** — The diagnostic-code changes are mechanical and should land with Phase 3 step 13.
 2. **W003 position formatting** — `formatPrefix()` still needs special handling for W003 because it uses `secondLine`/`secondColumn`.
 3. **Parse ordering** — Combined diagnostic ordering is an implementation detail; golden files are authoritative.
-4. **Parser factory test fixtures** — Tests can use `createParser()` directly; no special WASM setup needed since `@siren/language` resolves it internally.
+4. **Parser factory test fixtures** — Tests can use `createParser()` directly; no special WASM setup needed since `@sirenpm/language` resolves it internally.
 5. **Core test helpers** — `packages/core/test/helpers/node-adapter.ts` (~520 lines) and `parser.ts` (~70 lines) must move to `packages/language/test/helpers/`. With `web-tree-sitter` as a direct dep of language, these helpers simplify to thin wrappers around `createParser()`. All integration tests that use them (`node-adapter.test.ts`, `fixtures.test.ts`, `decode-fixtures.test.ts`, all project tests) move to language. Core's remaining tests (`factory.test.ts`, `milestone.test.ts`) may need rewriting to build IR directly via `IRContext.fromResources()`.
-6. **Browser engine WASM (deferred)** — `Parser.init()` loads the Emscripten engine binary (`tree-sitter.wasm`). In Node this resolves automatically via `fs`. In browser environments, the engine WASM must be served at an accessible URL. This is a well-documented concern (see `web-tree-sitter` docs on `locateFile` and Vite `postinstall`) and only becomes relevant when `@siren/web` adds parsing. The language package does NOT need to solve this — the browser host handles it with a one-line Vite config or `postinstall` script.
-6. **CLI tsup bundle** — Verify the bundle resolves both `@sirenpm/core` and `@siren/language` workspace imports.
+6. **Browser engine WASM (deferred)** — `Parser.init()` loads the Emscripten engine binary (`tree-sitter.wasm`). In Node this resolves automatically via `fs`. In browser environments, the engine WASM must be served at an accessible URL. This is a well-documented concern (see `web-tree-sitter` docs on `locateFile` and Vite `postinstall`) and only becomes relevant when `@sirenpm/web` adds parsing. The language package does NOT need to solve this — the browser host handles it with a one-line Vite config or `postinstall` script.
+6. **CLI tsup bundle** — Verify the bundle resolves both `@sirenpm/core` and `@sirenpm/language` workspace imports.

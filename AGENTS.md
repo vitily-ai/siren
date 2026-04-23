@@ -37,7 +37,7 @@ Notes
   - `yarn workspaces foreach -pv run test` OR run tests per workspace:
   - `yarn workspace <package-name> test`
 - Run the CLI tests (example):
-  - `yarn workspace @siren/cli test` (replace with actual package name from `apps/cli/package.json`)
+  - `yarn workspace @sirenpm/cli test` (replace with actual package name from `apps/cli/package.json`)
 - Run a single Vitest test by name:
 
 ```bash

@@ -43,7 +43,7 @@ To build the CLI and make the `siren` command available globally during developm
 
 ```bash
 yarn install
-yarn workspace @siren/cli build
+yarn workspace @sirenpm/cli build
 mkdir -p ~/.local/bin
 ln -sf "$(pwd)/apps/cli/dist/index.js" ~/.local/bin/siren
 chmod +x ~/.local/bin/siren

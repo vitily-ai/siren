@@ -5,7 +5,7 @@
  * a ParserAdapter using web-tree-sitter.
  */
 
-import type { ParserAdapter, ParseResult } from '@siren/core';
+import type { ParserAdapter, ParseResult } from '@sirenpm/core';
 
 /**
  * Browser/Node ParserAdapter using web-tree-sitter

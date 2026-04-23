@@ -1,7 +1,7 @@
 # Plan: Per-Package Versions with Git SHA Prerelease Tag
 
 ## TL;DR
-Each package (`@sirenpm/core`, `@siren/cli`) gets its own `version` constant. At build time, a `BUILD_METADATA` macro (resolved via git tag detection: tagged HEAD = release, untagged = prerelease with short SHA) is injected using esbuild/vite `define`. The CLI's `--version` prints two lines. Tests see an empty `BUILD_METADATA` so golden files stay valid.
+Each package (`@sirenpm/core`, `@sirenpm/cli`) gets its own `version` constant. At build time, a `BUILD_METADATA` macro (resolved via git tag detection: tagged HEAD = release, untagged = prerelease with short SHA) is injected using esbuild/vite `define`. The CLI's `--version` prints two lines. Tests see an empty `BUILD_METADATA` so golden files stay valid.
 
 ---
 
@@ -91,11 +91,11 @@ Each package (`@sirenpm/core`, `@siren/cli`) gets its own `version` constant. At
 ---
 
 ## Verification
-1. `yarn workspace @siren/cli test` — all golden tests pass (empty sha in test mode)
+1. `yarn workspace @sirenpm/cli test` — all golden tests pass (empty sha in test mode)
 2. `yarn workspace @sirenpm/core test` — tests pass with import.meta.env.BUILD_METADATA defined
-3. `yarn workspace @siren/cli build` — builds without errors; `node dist/index.js --version` shows two lines with sha (if untagged HEAD)
+3. `yarn workspace @sirenpm/cli build` — builds without errors; `node dist/index.js --version` shows two lines with sha (if untagged HEAD)
 4. Simulate release: create a git tag on HEAD, rebuild; `node dist/index.js --version` shows two lines WITHOUT sha
-5. TypeScript: `yarn workspace @siren/cli tsc --noEmit` passes with new env.d.ts declarations
+5. TypeScript: `yarn workspace @sirenpm/cli tsc --noEmit` passes with new env.d.ts declarations
 
 ---
 

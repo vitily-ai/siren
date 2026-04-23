@@ -43,5 +43,5 @@ task list-deps-not-tasks {
 }
 
 task parser-wasm-packaging {
-  description = "Make parser WASM publishing/runtime resolution robust for npm/npx installs. Current CLI adapter path resolution assumes monorepo layout. Decide and implement a distribution strategy: package WASM with runtime clients (e.g. @siren/cli dist) or publish a dedicated WASM package, and wire deterministic runtime resolution accordingly."
+  description = "Make parser WASM publishing/runtime resolution robust for npm/npx installs. Current CLI adapter path resolution assumes monorepo layout. Decide and implement a distribution strategy: package WASM with runtime clients (e.g. @sirenpm/cli dist) or publish a dedicated WASM package, and wire deterministic runtime resolution accordingly."
 }
