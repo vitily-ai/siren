@@ -5,6 +5,8 @@
 
 export const version = '0.1.0';
 
+export { buildMetadata } from './build-metadata';
+
 // Parse diagnostics
 export type { ParseDiagnostic } from './decoder/index.js';
 // Export text exporter utilities
