@@ -50,7 +50,13 @@ Goal: core compiles, tests, and publishes without any parser/decoder/export code
 
 3. **Define `DiagnosticBase` in core** — Create `packages/core/src/ir/diagnostics.ts` with `{ code, severity, file?, line?, column? }` (no `message`).
 4. **Extend semantic diagnostics** — Make `DanglingDependencyDiagnostic`, `CircularDependencyDiagnostic`, and `DuplicateIdDiagnostic` in `packages/core/src/ir/context.ts` extend `DiagnosticBase`.
-5. **Renumber core semantic codes** — W004→W001, W005→W002, W006→W003. Safe to do now because language-phase codes are about to leave core; no collision risk.
+5. **Renumber core semantic codes** — apply the mapping below in `packages/core/src/ir/context.ts`. All assertion sites (e.g. `ir/context.test.ts`, any in-core fixtures referencing the old codes) will surface as test failures and be updated as part of the same step. Safe to do now because language-phase codes are about to leave core; no collision risk.
+
+   | Old | New | Diagnostic |
+   |-----|-----|------------|
+   | W004 | W001 | CircularDependencyDiagnostic |
+   | W005 | W002 | DanglingDependencyDiagnostic |
+   | W006 | W003 | DuplicateIdDiagnostic |
 
 ### Phase 1.2: IRExporter Interface and Origin Relocation
 
@@ -59,12 +65,22 @@ Goal: core compiles, tests, and publishes without any parser/decoder/export code
 
 ### Phase 1.3: Remove parser/decoder/export from core
 
-8. **Record to staging doc** — Before deleting anything, append to `lang-package-migration-staging.md` under "Release 2 port targets":
-   - File inventory of `packages/core/src/parser/` (adapter.ts, factory.ts, cst.ts, source-index.ts, index.ts) with a note that `factory.ts` is to be rewritten (no DI; direct `web-tree-sitter` import; `createParser()` owns init; WASM via `new URL(...)`).
-   - File inventory of `packages/core/src/decoder/` (index.ts, xfail.ts) with the code-rename map W001→WL001, W002→WL002, W003→WL003, E001→EL001.
-   - File inventory of `packages/core/src/export/` (siren-exporter.ts, exportWithComments, formatters.ts) with a note that `siren-exporter.ts` must implement `IRExporter`.
+8. **Record to staging doc** — Before deleting anything, append to `lang-package-migration-staging.md`.
+
+   Under **"Release 2 port targets"**:
+   - File inventory of `packages/core/src/parser/` (adapter.ts, factory.ts, cst.ts, source-index.ts, index.ts) **plus colocated tests** (adapter.test.ts, cst.test.ts, source-index.test.ts), with a note that `factory.ts` is to be rewritten (no DI; direct `web-tree-sitter` import; `createParser()` owns init; WASM via `new URL(...)`).
+   - File inventory of `packages/core/src/decoder/` (index.ts, xfail.ts) **plus colocated `index.test.ts`**, with the code-rename map W001→WL001, W002→WL002, W003→WL003, E001→EL001.
+   - File inventory of `packages/core/src/export/` (siren-exporter.ts, comment-exporter.ts, formatters.ts, index.ts) **plus colocated `comment-exporter.test.ts`**, with a note that `siren-exporter.ts` must implement `IRExporter`.
    - Note: `IRContext.fromCst()` is being removed; Release 2 replaces it with `createIRContextFromCst()` in `packages/language/src/context-factory.ts` returning `{ context, parseDiagnostics }`.
-9. **Remove `IRContext.fromCst()`** — Delete the static bridge and `parseDiagnostics` from `IRContext` in `packages/core/src/ir/context.ts`. `IRContext.fromResources()` becomes the sole factory.
+
+   Under **"Release 3 port targets"** (authored now so Phase 3 has a single source of truth):
+   - `apps/cli/src/adapter/node-parser-adapter.ts` and its test — **delete entirely** in Phase 3.2.
+   - `apps/cli/src/parser.ts`, `apps/cli/src/project.ts`, `apps/cli/src/commands/format.ts` — switch parser/export/bridge imports to `@sirenpm/language`; replace `IRContext.fromCst()` with `createIRContextFromCst()`; combine returned `parseDiagnostics` with `ir.diagnostics`.
+   - `apps/cli/src/format-diagnostics.ts` — update code literals (WL001–WL003, EL001, core W001–W003); preserve WL003's `secondLine`/`secondColumn` special case.
+   - `apps/cli/src/format-parse-error.ts` — re-source `ParseError` import from `@sirenpm/language`.
+   - `apps/cli/package.json` — bump `@sirenpm/core` to `^0.2.0`, add `@sirenpm/language` pin, remove `web-tree-sitter`.
+   - `apps/cli/test/expected/*.txt` — regenerate every golden touching diagnostics for the new code literals.
+9. **Remove `IRContext.fromCst()`** — Delete the static bridge from `IRContext` in `packages/core/src/ir/context.ts`. Also remove the `parseDiagnostics` parameter from `IRContext.fromResources()`, the matching constructor argument, and the `parseDiagnostics` field/getter on `IRContext`. `IRContext.fromResources()` becomes the sole factory and carries semantic diagnostics only; parse diagnostics ride alongside it as a sibling returned by the future `createIRContextFromCst()` bridge.
 10. **Delete source directories** — `packages/core/src/parser/`, `packages/core/src/decoder/`, `packages/core/src/export/`.
 11. **Trim core exports** — `packages/core/src/index.ts` keeps IR/core types, `IRContext`, `IRExporter`, `DiagnosticBase`, semantic diagnostics, utilities, type guards, `version`.
 12. **Drop `web-tree-sitter`** — remove from `packages/core/package.json` devDependencies.
@@ -88,7 +104,7 @@ Goal: core compiles, tests, and publishes without any parser/decoder/export code
 
 ### Phase 1.5: Release
 
-17. **Changeset** — `@sirenpm/core` major bump (breaking: removed parser/decoder/export, renumbered diagnostics, removed `fromCst`). Likely `0.2.0`.
+17. **Changeset** — `@sirenpm/core` **breaking minor bump** (per 0.x conventions: minor = breaking). Use changeset type `minor` for `0.1.0 → 0.2.0`; the changelog body must enumerate the breaking surface (removed parser/decoder/export, renumbered diagnostics W004–W006 → W001–W003, removed `IRContext.fromCst()`, removed `parseDiagnostics` from `fromResources()`).
 18. **Merge + publish** — `release-core.yml` publishes `@sirenpm/core@0.2.0` to npm.
 
 **Release 1 exit criteria:** `@sirenpm/core@0.2.0` on npm; core tests pass with no parser/decoder/export code remaining; staging doc enumerates every piece of working code awaiting re-introduction in later releases.
@@ -102,14 +118,14 @@ New package consuming the freshly-published `@sirenpm/core@^0.2.0` from npm.
 ### Phase 2.1: Package scaffold
 
 19. **Create `packages/language/`** with:
-    - `package.json` — name `@sirenpm/language`, dependencies `"@sirenpm/core": "^0.2.0"` (**npm pin, not `workspace:*`**) and `"web-tree-sitter": "^0.26.3"`.
+    - `package.json` — name `@sirenpm/language`, dependencies `"@sirenpm/core": "^0.2.0"` (**npm pin, not `workspace:*`**) and `"web-tree-sitter": "0.26.3"` (**exact pin** — language is the sole owner of the parser engine version; CLI loses its direct dep in Release 3 and consumes WTS transitively).
     - `tsconfig.json`, `vitest.config.ts` (node env).
     - Register `packages/language` in root `package.json` workspaces.
     - `yarn install`.
 
 ### Phase 2.2: Port grammar + parser (consume staging doc)
 
-20. **Move grammar** — `packages/core/grammar/` (or its last-known path from staging doc) → `packages/language/grammar/`. Update grammar scripts in language `package.json`. Ensure `grammar/tree-sitter-siren.wasm` is included in `package.json` `files` glob.
+20. **Move grammar (flatten)** — `packages/core/grammar/` → `packages/language/grammar/`. **Delete the nested `packages/core/grammar/package.json`** so the grammar is no longer a separate workspace; fold any required scripts (e.g. `tree-sitter generate`, `tree-sitter build --wasm`) into `packages/language/package.json` as `grammar:*` scripts. Drop `packages/core/grammar` from the root `package.json` workspaces array. Ensure `grammar/tree-sitter-siren.wasm` is included in the language `package.json` `files` glob.
 21. **Port parser source** — Restore `adapter.ts`, `cst.ts`, `source-index.ts`, `index.ts` into `packages/language/src/parser/` from staging. `cst.ts` imports `Origin` from `@sirenpm/core`.
 22. **Rewrite `factory.ts`** — delete `ParserFactoryInit`, `ParserLike`, `LanguageLike`, `loadWasm`. Import `Parser` and `Language` from `web-tree-sitter` directly. Resolve grammar WASM via `new URL('../grammar/tree-sitter-siren.wasm', import.meta.url)`. Export zero-config `createParser()` that calls `Parser.init()` + `Language.load()` internally and returns a `ParserAdapter`.
 
@@ -133,6 +149,7 @@ New package consuming the freshly-published `@sirenpm/core@^0.2.0` from npm.
     - `yarn workspace @sirenpm/language test`
     - `grep -r "@sirenpm/language" packages/core/src/` → empty (no reverse dep).
     - Language resolves `@sirenpm/core` from npm, not workspace.
+    - **WASM packaging check**: `npm pack --dry-run` (or `yarn pack`) inside `packages/language/` lists `grammar/tree-sitter-siren.wasm` in the tarball contents.
 31. **Add CI release workflow** — `.github/workflows/release-language.yml` mirroring `release-core.yml`.
 32. **Changeset + publish** — `@sirenpm/language@0.1.0` via CI.
 33. **Update staging doc** — Tick off the "Release 2 port targets" section, leaving "Release 3 port targets" intact.
@@ -145,8 +162,8 @@ New package consuming the freshly-published `@sirenpm/core@^0.2.0` from npm.
 
 ### Phase 3.1: Record + swap dependencies
 
-34. **Append to staging doc** — Under "Release 3 port targets", confirm the CLI change list (code edits and golden-file regenerations) is complete; this was populated during Release 1 Phase 1.3.
-35. **Update `apps/cli/package.json`** — bump `"@sirenpm/core": "^0.2.0"`, add `"@sirenpm/language": "^0.1.0"`, remove `"web-tree-sitter"` (now transitive). `yarn install`.
+34. **Confirm staging doc** — The "Release 3 port targets" section was authored during Release 1 Phase 1.3 step 8. Re-read it; if any CLI surface has shifted since then, append updates before proceeding.
+35. **Update `apps/cli/package.json`** — bump `"@sirenpm/core": "^0.2.0"`, add `"@sirenpm/language": "^0.1.0"`, remove `"web-tree-sitter"` (now transitive via language). `yarn install`.
 
 ### Phase 3.2: Code updates
 
