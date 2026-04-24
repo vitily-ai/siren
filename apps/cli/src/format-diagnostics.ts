@@ -52,10 +52,7 @@ function formatPrefix(diagnostic: Diagnostic | ParseDiagnostic): string {
   const file = diagnostic.file ?? 'unknown';
 
   // Duplicate-ID diagnostics use secondLine/secondColumn for the diagnostic position.
-  if (
-    (diagnostic.code === 'W003' || diagnostic.code === 'WL003') &&
-    hasDuplicatePosition(diagnostic)
-  ) {
+  if (diagnostic.code === 'W003' && hasDuplicatePosition(diagnostic)) {
     const line = diagnostic.secondLine ?? 0;
     const column = diagnostic.secondColumn ?? 0;
     return `${file}:${line}:${column}`;
