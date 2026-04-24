@@ -1,0 +1,44 @@
+{
+  "name": "@sirenpm/language",
+  "version": "0.0.0",
+  "description": "Parser, decoder, and exporter for the Siren grammar",
+  "license": "GPL-3.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "grammar/tree-sitter-siren.wasm"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "build:quiet": "tsup --silent",
+    "prepack": "yarn run build",
+    "test": "vitest run --reporter=dot --passWithNoTests --silent",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "dependencies": {
+    "@sirenpm/core": "^0.2.0",
+    "web-tree-sitter": "0.26.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.6",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.16"
+  }
+}

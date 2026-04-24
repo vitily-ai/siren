@@ -1169,6 +1169,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@sirenpm/core@npm:^0.2.0":
+  version: 0.2.0
+  resolution: "@sirenpm/core@npm:0.2.0"
+  checksum: 10c0/f39612677f7d681b1e52c6548f629b008eddf06698c71313216fa1205766547798a34c48af9cbdceba9689492af9c28737115e328bdb4a459dd85661ce3250d1
+  languageName: node
+  linkType: hard
+
 "@sirenpm/core@workspace:*, @sirenpm/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@sirenpm/core@workspace:packages/core"
@@ -1177,6 +1184,19 @@ __metadata:
     tsup: "npm:^8.3.5"
     typescript: "npm:^5.7.2"
     vitest: "npm:^4.0.16"
+  languageName: unknown
+  linkType: soft
+
+"@sirenpm/language@workspace:packages/language":
+  version: 0.0.0-use.local
+  resolution: "@sirenpm/language@workspace:packages/language"
+  dependencies:
+    "@sirenpm/core": "npm:^0.2.0"
+    "@types/node": "npm:^25.0.6"
+    tsup: "npm:^8.3.5"
+    typescript: "npm:^5.7.2"
+    vitest: "npm:^4.0.16"
+    web-tree-sitter: "npm:0.26.3"
   languageName: unknown
   linkType: soft
 
