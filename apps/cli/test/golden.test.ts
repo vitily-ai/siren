@@ -51,7 +51,7 @@ function parseOutWithStdErr(
   // Expect: <json-meta>\n---\n<stdout>\n---\n<stderr>
   const parts = raw.split(/\r?\n---\r?\n/);
   if (parts.length < 2) throw new Error(`invalid .out.txt in ${file}`);
-  const metaRaw = parts[0] as string;
+  const [metaRaw = ''] = parts;
   let metadata: any;
   try {
     metadata = JSON.parse(metaRaw);
