@@ -3,7 +3,7 @@
   "command": "siren"
 }
 ---
-Siren CLI v0.1.0
+Siren CLI v{{cliVersion}}
 
 Usage: siren <command>
 
