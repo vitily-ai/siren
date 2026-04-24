@@ -2,7 +2,7 @@
  * Shared test helpers for CLI tests
  */
 
-import type { SourceDocument } from '@sirenpm/core';
+import type { SourceDocument } from '@sirenpm/language';
 
 /**
  * Helper to wrap a source string as a single SourceDocument for testing.

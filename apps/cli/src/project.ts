@@ -1,11 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { IRContext, type Resource } from '@sirenpm/core';
-import {
-  createIRContextFromCst,
-  type ParseError,
-  type SourceDocument,
-} from '@sirenpm/language';
+import type { IRContext, Resource } from '@sirenpm/core';
+import { createIRContextFromCst, type ParseError, type SourceDocument } from '@sirenpm/language';
 import { formatDiagnostic } from './format-diagnostics';
 import { formatParseError } from './format-parse-error';
 import { getParser } from './parser';

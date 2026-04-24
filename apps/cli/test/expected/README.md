@@ -10,7 +10,7 @@ self-contained and easy to review.
 Structure:
 
 1. JSON frontmatter (single JSON object) describing the scenario. Required keys:
-   - `fixture`: the fixture directory under `packages/core/test/fixtures/projects/`
+   - `fixture`: the fixture directory under `packages/language/test/fixtures/projects/`
    - `command`: the `siren` command line to run (as a single string)
 
 2. A line with three hyphens (`---`) on its own to separate the frontmatter from stdout.

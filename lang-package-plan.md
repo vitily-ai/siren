@@ -181,12 +181,9 @@ This entry exists so Phase 3.3 has a checklist of what to restore. Do not silent
 
 ### Phase 3.3: Test updates
 
-40. **Refresh CLI test infrastructure** — Refresh or delete `apps/cli/src/adapter/node-parser-adapter.test.ts` (likely delete since the adapter is gone) and `apps/cli/test/helpers/test-utils.ts`.
-41. **Regenerate golden files** — Every `apps/cli/test/expected/*.txt` touching diagnostics is updated for WL001–WL003, EL001, and core W001–W003. NOTE - refer to xfail override from Phase 2.2b. This step should remove the xfail override and rectify the failures.
-42. **Verify:**
-    - `yarn workspace @sirenpm/cli tsc --noEmit`
-    - `yarn workspace @sirenpm/cli test`
-    - tsup bundle resolves both `@sirenpm/core` and `@sirenpm/language` cleanly from npm.
+40. ~~**Refresh CLI test infrastructure**~~ ✅ Deleted obsolete `apps/cli/src/adapter/node-parser-adapter.test.ts`, repointed CLI fixture helpers/tests to `packages/language/test/fixtures/projects`, restored the excluded test suite, and updated test utility imports.
+41. ~~**Regenerate golden files**~~ ✅ Updated diagnostic golden files for core W001/W002/W003 and language WL001–WL003/EL001 expectations. Removed the Phase 2.2b xfail override from `apps/cli/vitest.config.ts`.
+42. ~~**Verify**~~ ✅ `yarn workspace @sirenpm/cli exec tsc --noEmit`, `yarn workspace @sirenpm/cli test`, `yarn workspace @sirenpm/cli build`, and `yarn lint` pass. The tsup bundle resolves both `@sirenpm/core` and `@sirenpm/language` from npm-pinned dependencies.
 
 ### Phase 3.4: Release
 

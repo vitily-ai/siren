@@ -51,7 +51,7 @@ function parseOutWithStdErr(
   // Expect: <json-meta>\n---\n<stdout>\n---\n<stderr>
   const parts = raw.split(/\r?\n---\r?\n/);
   if (parts.length < 2) throw new Error(`invalid .out.txt in ${file}`);
-  const metaRaw = parts[0];
+  const metaRaw = parts[0] ?? '';
   let metadata: any;
   try {
     metadata = JSON.parse(metaRaw);
@@ -248,7 +248,7 @@ describe('golden CLI tests (expected/)', () => {
       // Validate fixture exists
       const fixturePath = path.join(
         __dirname,
-        '../../../packages/core/test/fixtures/projects',
+        '../../../packages/language/test/fixtures/projects',
         metadata.fixture,
       );
       if (!fs.existsSync(fixturePath)) {

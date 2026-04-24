@@ -7,4 +7,4 @@ ms
 └─ a
    └─ … (dependency loop - check warnings)
 ---
-siren/siren/main.siren:7:0: W004: Circular dependency detected: a -> b -> c -> a
+siren/siren/main.siren:7:0: W001: Circular dependency detected: a -> b -> c -> a

@@ -11,7 +11,7 @@ const fixturesDir = path.join(
   '..',
   '..',
   'packages',
-  'core',
+  'language',
   'test',
   'fixtures',
   'projects',
@@ -172,7 +172,7 @@ milestone "MVP Release" {}`,
 
     expect(ctx.warnings).toHaveLength(1);
     expect(ctx.warnings[0]).toContain(
-      'siren/main.siren:1:0: W004: Circular dependency detected: task1 -> task2 -> task3 -> task1',
+      'siren/main.siren:1:0: W001: Circular dependency detected: task1 -> task2 -> task3 -> task1',
     );
   });
 });
