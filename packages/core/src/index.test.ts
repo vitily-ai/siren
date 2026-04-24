@@ -3,7 +3,7 @@ import { IRContext, type Resource, version } from './index.js';
 
 describe('@sirenpm/core', () => {
   it('exports version', () => {
-    expect(version).toBe('0.1.0');
+    expect(version).toMatch(/^\d+\.\d+\.\d+/);
   });
 
   describe('getMilestoneIds', () => {

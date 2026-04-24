@@ -3,10 +3,7 @@
  * Environment-agnostic core library for Siren PMaC framework
  */
 
-export const version = '0.1.0';
-
 export { buildMetadata } from './build-metadata';
-
 // Parse diagnostics
 export type { ParseDiagnostic } from './decoder/index';
 // Export text exporter utilities
@@ -44,9 +41,8 @@ export type {
   ResourceNode,
   SourceDocument,
 } from './parser/index';
-
 // Export SourceIndex for comment classification
 export { SourceIndex } from './parser/index';
-
 // Export dependency tree utilities
 export type { DependencyTree } from './utilities/dependency-tree';
+export { version } from './version';
