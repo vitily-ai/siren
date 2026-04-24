@@ -1,5 +1,3 @@
-import { decodeDocument, type ParseDiagnostic } from '../decoder/index';
-import type { DocumentNode } from '../parser/cst';
 import {
   getDependencyTree as buildDependencyTree,
   type DependencyTree,
@@ -92,17 +90,15 @@ export class IRContext {
   /** Deduplicated resources - computed lazily */
   private _uniqueResources?: readonly Resource[];
   public readonly source?: string;
-  public readonly parseDiagnostics: readonly ParseDiagnostic[];
   private _diagnostics?: readonly Diagnostic[];
   private _cycles?: readonly { nodes: readonly string[] }[];
   private _danglingDiagnostics?: readonly Diagnostic[];
   private _duplicateDiagnostics?: readonly DuplicateIdDiagnostic[];
 
-  constructor(doc: Document, parseDiagnostics: readonly ParseDiagnostic[] = []) {
+  constructor(doc: Document) {
     // Store all resources including duplicates - deduplication happens lazily
     this._allResources = Object.freeze(doc.resources.slice());
     this.source = doc.source;
-    this.parseDiagnostics = Object.freeze(parseDiagnostics.slice());
     // Note: Don't freeze the object itself since we need lazy property assignment
   }
 
@@ -195,34 +191,13 @@ export class IRContext {
   }
 
   /**
-   * Create an IRContext from a parsed CST, performing decoding and validation.
-   * Diagnostics are collected and exposed via the context's `diagnostics` property.
-   * @param cst - The parsed concrete syntax tree
-   * @param source - Optional source file path or content
-   * @returns IRContext with diagnostics
-   */
-  static fromCst(cst: DocumentNode, source?: string): IRContext {
-    const { document, diagnostics } = decodeDocument(cst, source);
-    if (!document) {
-      // If decoding produced errors, delegate to fromResources with empty resources
-      return IRContext.fromResources([], source, diagnostics);
-    }
-    // Delegate to fromResources so decoding and construction logic is centralized
-    return IRContext.fromResources(document.resources, source, diagnostics);
-  }
-
-  /**
    * Factory to create an IRContext from resources.
    *
    * File attribution is read from each resource's origin.document field.
    * This replaces the previous resourceSources parameter pattern.
    */
-  static fromResources(
-    resources: readonly Resource[],
-    source?: string,
-    parseDiagnostics: readonly ParseDiagnostic[] = [],
-  ): IRContext {
-    return new IRContext({ resources: resources.slice(), source }, parseDiagnostics);
+  static fromResources(resources: readonly Resource[], source?: string): IRContext {
+    return new IRContext({ resources: resources.slice(), source });
   }
 
   private computeCycles(): readonly { nodes: readonly string[] }[] {

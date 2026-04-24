@@ -57,27 +57,15 @@ Goal: core compiles, tests, and publishes without any parser/decoder/export code
 6. ~~**Define `IRExporter` in core** — Create `packages/core/src/ir/exporter.ts` with `interface IRExporter { export(ctx: IRContext): string }`; export from `packages/core/src/index.ts`.~~ ✅ Created; re-exported from `packages/core/src/index.ts`.
 7. ~~**Relocate `Origin`** — Move `Origin` from `packages/core/src/parser/cst.ts` into `packages/core/src/ir/types.ts`. No temporary re-export needed — `parser/` is about to be deleted; record the new canonical location in the staging doc so Release 2's `cst.ts` port knows to import it from `@sirenpm/core`.~~ ✅ `Origin` now lives in `ir/types.ts`; `parser/cst.ts` retains a transparent re-export for in-tree consumers until Phase 1.3 removes the directory. `source-index.ts` repointed to the new location. Staging doc updated with the canonical-location note under "Release 2 port targets". Verification: `tsc --noEmit` clean; 281 tests pass.
 
-### Phase 1.3: Remove parser/decoder/export from core
+### Phase 1.3: Remove parser/decoder/export from core ✅
 
-8. **Record to staging doc** — Before deleting anything, append to `lang-package-migration-staging.md`.
+8. ~~**Record to staging doc**~~ ✅ Appended Parser/Decoder/Export source inventories + `fromCst` removal note under "Release 2 port targets"; authored all six Release 3 CLI migration entries under "Release 3 port targets".
+9. ~~**Remove `IRContext.fromCst()`**~~ ✅ Deleted the static factory, the `parseDiagnostics` constructor arg, field, and getter. `fromResources(resources, source?)` is the sole factory, carrying semantic diagnostics only. Removed `ParseDiagnostic` import from `context.ts`; no internal decoder/parser coupling remained.
+10. ~~**Delete source directories**~~ ✅ Removed `packages/core/src/parser/`, `packages/core/src/decoder/`, `packages/core/src/export/`, plus the colocated `src/exporter.test.ts`.
+11. ~~**Trim core exports**~~ ✅ `packages/core/src/index.ts` now exports only IR types, `IRContext`, type guards, `Origin`, semantic diagnostics, `DiagnosticBase`, `IRExporter`, `DependencyTree`, utilities, `version`. All parser/decoder/export re-exports (and `ParseDiagnostic`) removed.
+12. ~~**Drop `web-tree-sitter`**~~ ✅ Removed from `packages/core/package.json` devDependencies. `yarn install` clean. Residual `web-tree-sitter` references remain only in test helpers/fixtures and stale docs (`ADAPTER_EXAMPLE.md`, `STATUS.md`, `TREE_SITTER_SETUP.md`) — addressed in Phase 1.4 / Release 4.
 
-   Under **"Release 2 port targets"**:
-   - File inventory of `packages/core/src/parser/` (adapter.ts, factory.ts, cst.ts, source-index.ts, index.ts) **plus colocated tests** (adapter.test.ts, cst.test.ts, source-index.test.ts), with a note that `factory.ts` is to be rewritten (no DI; direct `web-tree-sitter` import; `createParser()` owns init; WASM via `new URL(...)`).
-   - File inventory of `packages/core/src/decoder/` (index.ts, xfail.ts) **plus colocated `index.test.ts`**, with the code-rename map W001→WL001, W002→WL002, W003→WL003, E001→EL001.
-   - File inventory of `packages/core/src/export/` (siren-exporter.ts, comment-exporter.ts, formatters.ts, index.ts) **plus colocated `comment-exporter.test.ts`**, with a note that `siren-exporter.ts` must implement `IRExporter`.
-   - Note: `IRContext.fromCst()` is being removed; Release 2 replaces it with `createIRContextFromCst()` in `packages/language/src/context-factory.ts` returning `{ context, parseDiagnostics }`.
-
-   Under **"Release 3 port targets"** (authored now so Phase 3 has a single source of truth):
-   - `apps/cli/src/adapter/node-parser-adapter.ts` and its test — **delete entirely** in Phase 3.2.
-   - `apps/cli/src/parser.ts`, `apps/cli/src/project.ts`, `apps/cli/src/commands/format.ts` — switch parser/export/bridge imports to `@sirenpm/language`; replace `IRContext.fromCst()` with `createIRContextFromCst()`; combine returned `parseDiagnostics` with `ir.diagnostics`.
-   - `apps/cli/src/format-diagnostics.ts` — update code literals (WL001–WL003, EL001, core W001–W003); preserve WL003's `secondLine`/`secondColumn` special case.
-   - `apps/cli/src/format-parse-error.ts` — re-source `ParseError` import from `@sirenpm/language`.
-   - `apps/cli/package.json` — bump `@sirenpm/core` to `^0.2.0`, add `@sirenpm/language` pin, remove `web-tree-sitter`.
-   - `apps/cli/test/expected/*.txt` — regenerate every golden touching diagnostics for the new code literals.
-9. **Remove `IRContext.fromCst()`** — Delete the static bridge from `IRContext` in `packages/core/src/ir/context.ts`. Also remove the `parseDiagnostics` parameter from `IRContext.fromResources()`, the matching constructor argument, and the `parseDiagnostics` field/getter on `IRContext`. `IRContext.fromResources()` becomes the sole factory and carries semantic diagnostics only; parse diagnostics ride alongside it as a sibling returned by the future `createIRContextFromCst()` bridge.
-10. **Delete source directories** — `packages/core/src/parser/`, `packages/core/src/decoder/`, `packages/core/src/export/`.
-11. **Trim core exports** — `packages/core/src/index.ts` keeps IR/core types, `IRContext`, `IRExporter`, `DiagnosticBase`, semantic diagnostics, utilities, type guards, `version`.
-12. **Drop `web-tree-sitter`** — remove from `packages/core/package.json` devDependencies.
+**Verification:** `tsc --noEmit` clean; `grep parser/\\|decoder/\\|export/ packages/core/src/` empty. Tests: 91 pass / 57 fail / 11 skipped — 73 `IRContext.fromCst is not a function` + 1 missing `../src/parser/factory` module (expected input for Phase 1.4 triage).
 
 ### Phase 1.4: Test triage (core-only)
 

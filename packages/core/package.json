@@ -33,7 +33,6 @@
     "@types/node": "^25.0.6",
     "tsup": "^8.3.5",
     "typescript": "^5.7.2",
-    "vitest": "^4.0.16",
-    "web-tree-sitter": "^0.26.8"
+    "vitest": "^4.0.16"
   }
 }
