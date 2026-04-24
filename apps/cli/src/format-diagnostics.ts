@@ -32,6 +32,17 @@ export function formatDiagnostic(diagnostic: Diagnostic | ParseDiagnostic): stri
   return `${prefix}: ${diagnostic.code}: ${message}`;
 }
 
+type DuplicatePositionDiagnostic = {
+  readonly secondLine?: number;
+  readonly secondColumn?: number;
+};
+
+function hasDuplicatePosition(
+  diagnostic: Diagnostic | ParseDiagnostic,
+): diagnostic is (Diagnostic | ParseDiagnostic) & DuplicatePositionDiagnostic {
+  return 'secondLine' in diagnostic || 'secondColumn' in diagnostic;
+}
+
 /**
  * Format the position prefix (file:line:col)
  *
@@ -41,13 +52,13 @@ function formatPrefix(diagnostic: Diagnostic | ParseDiagnostic): string {
   const file = diagnostic.file ?? 'unknown';
 
   // Duplicate-ID diagnostics use secondLine/secondColumn for the diagnostic position.
-  if (diagnostic.code === 'W003' || diagnostic.code === 'WL003') {
-    const dup = diagnostic as Partial<DuplicateIdDiagnostic>;
-    const line = dup.secondLine ?? 0;
-    const column = dup.secondColumn ?? 0;
-    if (line !== 0 || column !== 0) {
-      return `${file}:${line}:${column}`;
-    }
+  if (
+    (diagnostic.code === 'W003' || diagnostic.code === 'WL003') &&
+    hasDuplicatePosition(diagnostic)
+  ) {
+    const line = diagnostic.secondLine ?? 0;
+    const column = diagnostic.secondColumn ?? 0;
+    return `${file}:${line}:${column}`;
   }
 
   // All other diagnostic types have standard line/column
@@ -67,10 +78,7 @@ function formatMessage(diagnostic: Diagnostic | ParseDiagnostic): string {
     case 'W002':
       return formatDanglingDependency(diagnostic as DanglingDependencyDiagnostic);
     case 'W003':
-      if ('resourceId' in diagnostic) {
-        return formatDuplicateId(diagnostic as DuplicateIdDiagnostic);
-      }
-      return (diagnostic as ParseDiagnostic).message;
+      return formatDuplicateId(diagnostic as DuplicateIdDiagnostic);
     default:
       // WL001, WL002, WL003, EL001 - pass through message
       return (diagnostic as ParseDiagnostic).message;
