@@ -87,8 +87,11 @@ Note that core must be rebuilt before any changes can be picked up by CLI tests.
 
 ## Build & Release
 
-- The core package is source-distributed and should remain environment-agnostic. Apps import `packages/core` as source via workspace linking (do not rely on pre-built core artifacts during local development).
-- CLI builds (if configured) live under `apps/cli/` and use bundlers (tsup/esbuild per `apps/cli/tsup.config.ts`). Check each package's `package.json` for `build` scripts.
+- The core package (`packages/core`) is bundled with tsup into a single ESM module (`dist/index.js`) plus types (`dist/index.d.ts`). Core source must remain environment-agnostic (no DOM or Node APIs) so the bundle runs in both browser and Node hosts.
+- The CLI (`apps/cli`) depends on `@sirenpm/core` from the npm registry (`npm:@sirenpm/core@^0.1.0`), not a workspace link. Normal builds consume the published core. `enableTransparentWorkspaces: false` in `.yarnrc.yml` enforces this: only dependencies declared with the `workspace:` protocol resolve locally.
+- Developers iterating on both core and CLI must link manually (e.g. `yarn link packages/core` in the CLI workspace, or temporarily swap the dep to `workspace:*`).
+- The web app (`apps/web`) uses `workspace:*` because it is not published.
+- CLI builds live under `apps/cli/` and use tsup (`apps/cli/tsup.config.ts`).
 
 ## Security & Secrets
 

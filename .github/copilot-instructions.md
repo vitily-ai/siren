@@ -23,7 +23,7 @@ milestone release-1 {
 **Error-tolerant**: Parser recovers from incomplete input (e.g., missing `}`).
 
 ## Architecture
-- **Core library** (`packages/core`): Environment-agnostic TypeScript - parsing, decoding, semantic validation, Mermaid emission. No DOM or Node dependencies.
+- **Core library** (`packages/core`): Environment-agnostic TypeScript - parsing, decoding, semantic validation, Mermaid emission. No DOM or Node dependencies. Bundled with tsup into a single ESM module + `.d.ts`.
 - **Parser**: Tree-sitter WASM with adapters for browser/Node. Hide environment-specific loading behind interfaces.
 - **IR Layer**: Resources parse into intermediate representation supporting multiple backends
 - **Web app**: Vite-based browser app, imports core via workspace linkage
@@ -46,10 +46,10 @@ apps/
 - Root `package.json` orchestrates cross-package scripts
 
 ## Key Development Rules
-1. **Core stays portable**: No DOM or Node APIs in `packages/core` - must run in both environments
-2. **No pre-building core**: Apps compile core as part of their own build; only build core artifacts when publishing standalone
-3. **Tree-sitter adapters**: Browser and Node loading hidden behind interface - core logic stays testable
-4. **Workspace linking**: Import core as source via pnpm/yarn/npm workspaces, not as pre-built package
+1. **Core stays portable**: No DOM or Node APIs in `packages/core` - must run in both environments. "Portable" means environment-agnostic code, not unbundled distribution.
+2. **Core is bundled**: `packages/core` builds to a single bundled ESM module + `.d.ts` via tsup.
+3. **Registry resolution by default**: The CLI (`apps/cli`) depends on `@sirenpm/core` via the npm registry (`npm:@sirenpm/core@^0.1.0`), not workspace linkage. Normal builds pull the published core. To iterate on core + CLI together locally, developers must link manually (e.g. `yarn link` or temporarily change the dependency to `workspace:*`). The web app (`apps/web`) uses `workspace:*` because it is not published.
+4. **Tree-sitter adapters**: Browser and Node loading hidden behind interface - core logic stays testable
 5. **Maximum core**: Core contains high level utility logic (example: listing milestones) in addition to parsing/decoding. The idea is that a utility that is useful for one frontend is likely useful for others.
 
 ## Testing
@@ -58,7 +58,6 @@ apps/
 - **Playwright** only for browser E2E tests requiring real WASM loading
 
 ### Testing guidelines for code changes
-
 - **Core changes**: Any change to `packages/core` that affects parsing or decoding should include an associated `snippets` fixture under `packages/core/test/fixtures/snippets/` demonstrating the grammar case being modified or added.
 - **IR changes**: Changes that affect the intermediate representation (IR) must include a corresponding `projects` fixture under `packages/core/test/fixtures/projects/` that exercises the IR behavior or decoding path.
 - **CLI changes**: Any change to the CLI behavior (commands, output formatting, warnings ordering) should include a golden-file test under `apps/cli/test/expected/` asserting stdout and, where applicable, stderr output. Use the `fixture-utils` helper to copy `projects` fixtures into temporary directories for CLI tests.

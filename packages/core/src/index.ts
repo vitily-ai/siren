@@ -8,20 +8,20 @@ export const version = '0.1.0';
 export { buildMetadata } from './build-metadata';
 
 // Parse diagnostics
-export type { ParseDiagnostic } from './decoder/index.js';
+export type { ParseDiagnostic } from './decoder/index';
 // Export text exporter utilities
-export * from './export/index.js';
+export * from './export/index';
 // IR context with diagnostics
 export type {
   CircularDependencyDiagnostic,
   DanglingDependencyDiagnostic,
   Diagnostic,
   DuplicateIdDiagnostic,
-} from './ir/context.js';
+} from './ir/context';
 // IR types (intermediate representation)
-export * from './ir/index.js';
+export * from './ir/index';
 // Export the parser factory so hosts (CLI/Web) can inject WASM loaders.
-export { createParserFactory } from './parser/factory.js';
+export { createParserFactory } from './parser/factory';
 // Parser types and interfaces
 // NOTE: parser types were intentionally not re-exported previously. The CLI
 // needs a small set of parser type declarations; re-export them as a
@@ -43,10 +43,10 @@ export type {
   ReferenceNode,
   ResourceNode,
   SourceDocument,
-} from './parser/index.js';
+} from './parser/index';
 
 // Export SourceIndex for comment classification
-export { SourceIndex } from './parser/index.js';
+export { SourceIndex } from './parser/index';
 
 // Export dependency tree utilities
-export type { DependencyTree } from './utilities/dependency-tree.js';
+export type { DependencyTree } from './utilities/dependency-tree';
