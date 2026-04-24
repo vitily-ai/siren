@@ -174,10 +174,10 @@ This entry exists so Phase 3.3 has a checklist of what to restore. Do not silent
 
 ### Phase 3.2: Code updates
 
-36. **Delete `apps/cli/src/adapter/node-parser-adapter.ts`** — the CLI calls `createParser()` from `@sirenpm/language` (zero-config).
-37. **Update CLI imports** — `apps/cli/src/parser.ts`, `apps/cli/src/project.ts`, `apps/cli/src/commands/format.ts`: switch parser/export/bridge imports to `@sirenpm/language`; keep IR/diagnostic imports from `@sirenpm/core`; replace `IRContext.fromCst()` with `createIRContextFromCst()`; combine returned `parseDiagnostics` with `ir.diagnostics`.
-38. **Update diagnostic formatting** — `apps/cli/src/format-diagnostics.ts` uses new code literals (WL001–WL003, EL001, core W001–W003). Preserve WL003's `secondLine`/`secondColumn` special case in `formatPrefix()`.
-39. **Update `ParseError` import source** — `apps/cli/src/format-parse-error.ts` now imports from `@sirenpm/language`.
+36. ~~**Delete `apps/cli/src/adapter/node-parser-adapter.ts`**~~ ✅ CLI now calls `createParser()` from `@sirenpm/language` (zero-config).
+37. ~~**Update CLI imports**~~ ✅ `apps/cli/src/parser.ts`, `apps/cli/src/project.ts`, `apps/cli/src/commands/format.ts` now source parser/export/bridge imports from `@sirenpm/language`; IR/semantic diagnostic imports stay in `@sirenpm/core`; `IRContext.fromCst()` usage has been replaced with `createIRContextFromCst()` and parse diagnostics are collected from the bridge result.
+38. ~~**Update diagnostic formatting**~~ ✅ `apps/cli/src/format-diagnostics.ts` uses new code literals (WL001–WL003, EL001, core W001–W003) and preserves duplicate-ID `secondLine`/`secondColumn` prefix handling.
+39. ~~**Update `ParseError` import source**~~ ✅ `apps/cli/src/format-parse-error.ts` now imports from `@sirenpm/language`.
 
 ### Phase 3.3: Test updates
 

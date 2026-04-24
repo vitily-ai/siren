@@ -1,7 +1,7 @@
 /**
  * CLI diagnostic formatter
  *
- * Formats structured diagnostics from core into standardized CLI output:
+ * Formats structured diagnostics into standardized CLI output:
  * `file:line:col: code: message`
  */
 
@@ -10,17 +10,18 @@ import type {
   DanglingDependencyDiagnostic,
   Diagnostic,
   DuplicateIdDiagnostic,
-  ParseDiagnostic,
 } from '@sirenpm/core';
+import type { ParseDiagnostic } from '@sirenpm/language';
 
 /**
  * Format a diagnostic for CLI display
  *
  * Output format: `file:line:col: code: message`
  *
- * - W004 (Circular dependency): message assembled from `nodes` array
- * - W005 (Dangling dependency): message assembled from resource info and dependency
- * - W001/W002/W003/E001: message passed through from ParseDiagnostic
+ * - W001 (Circular dependency): message assembled from `nodes` array
+ * - W002 (Dangling dependency): message assembled from resource info and dependency
+ * - W003 (Duplicate ID): message assembled from duplicate metadata
+ * - WL001/WL002/WL003/EL001: message passed through from ParseDiagnostic
  *
  * @param diagnostic - Structured diagnostic from core (Diagnostic or ParseDiagnostic)
  * @returns Formatted diagnostic string
@@ -34,17 +35,19 @@ export function formatDiagnostic(diagnostic: Diagnostic | ParseDiagnostic): stri
 /**
  * Format the position prefix (file:line:col)
  *
- * For W006 (duplicate ID), position is the duplicate (second) occurrence.
+ * For duplicate ID diagnostics, position is the duplicate (second) occurrence.
  */
 function formatPrefix(diagnostic: Diagnostic | ParseDiagnostic): string {
   const file = diagnostic.file ?? 'unknown';
 
-  // W006 uses secondLine/secondColumn for the diagnostic position
-  if (diagnostic.code === 'W006') {
-    const dup = diagnostic as DuplicateIdDiagnostic;
+  // Duplicate-ID diagnostics use secondLine/secondColumn for the diagnostic position.
+  if (diagnostic.code === 'W003' || diagnostic.code === 'WL003') {
+    const dup = diagnostic as Partial<DuplicateIdDiagnostic>;
     const line = dup.secondLine ?? 0;
     const column = dup.secondColumn ?? 0;
-    return `${file}:${line}:${column}`;
+    if (line !== 0 || column !== 0) {
+      return `${file}:${line}:${column}`;
+    }
   }
 
   // All other diagnostic types have standard line/column
@@ -59,20 +62,23 @@ function formatPrefix(diagnostic: Diagnostic | ParseDiagnostic): string {
  */
 function formatMessage(diagnostic: Diagnostic | ParseDiagnostic): string {
   switch (diagnostic.code) {
-    case 'W004':
+    case 'W001':
       return formatCircularDependency(diagnostic as CircularDependencyDiagnostic);
-    case 'W005':
+    case 'W002':
       return formatDanglingDependency(diagnostic as DanglingDependencyDiagnostic);
-    case 'W006':
-      return formatDuplicateId(diagnostic as DuplicateIdDiagnostic);
+    case 'W003':
+      if ('resourceId' in diagnostic) {
+        return formatDuplicateId(diagnostic as DuplicateIdDiagnostic);
+      }
+      return (diagnostic as ParseDiagnostic).message;
     default:
-      // W001, W002, W003, E001 - pass through message
+      // WL001, WL002, WL003, EL001 - pass through message
       return (diagnostic as ParseDiagnostic).message;
   }
 }
 
 /**
- * Format W004: Circular dependency detected
+ * Format W001: Circular dependency detected
  */
 function formatCircularDependency(diagnostic: CircularDependencyDiagnostic): string {
   const chain = (diagnostic.nodes ?? []).join(' -> ');
@@ -80,7 +86,7 @@ function formatCircularDependency(diagnostic: CircularDependencyDiagnostic): str
 }
 
 /**
- * Format W005: Dangling dependency
+ * Format W002: Dangling dependency
  */
 function formatDanglingDependency(diagnostic: DanglingDependencyDiagnostic): string {
   const { resourceType, resourceId, dependencyId } = diagnostic;
@@ -88,7 +94,7 @@ function formatDanglingDependency(diagnostic: DanglingDependencyDiagnostic): str
 }
 
 /**
- * Format W006: Duplicate resource ID detected
+ * Format W003: Duplicate resource ID detected
  */
 // TODO formalize {document}:{line}:{column} as a canonical address format in core diagnostics and refactor to use that consistently across all diagnostics for accurate CLI formatting without needing augmentation in the CLI layer.
 function formatDuplicateId(diagnostic: DuplicateIdDiagnostic): string {

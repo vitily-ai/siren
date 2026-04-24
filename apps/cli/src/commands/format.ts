@@ -1,13 +1,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import type { Resource } from '@sirenpm/core';
 import {
+  createIRContextFromCst,
   exportToSiren,
-  exportWithComments,
-  IRContext,
-  type Resource,
   type SourceDocument,
   SourceIndex,
-} from '@sirenpm/core';
+} from '@sirenpm/language';
 import { getParser } from '../parser';
 import { loadProject } from '../project';
 
@@ -84,7 +83,7 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
         return result;
       }
 
-      const perFileIR = IRContext.fromCst(parseResult.tree, filePath);
+      const { context: perFileIR } = createIRContextFromCst(parseResult.tree, filePath);
 
       // Build SourceIndex from parse result for comment preservation
       const sourceIndex = parseResult.comments
@@ -92,9 +91,7 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
         : undefined;
 
       // Export with comment preservation if available
-      const exported = sourceIndex
-        ? exportWithComments(perFileIR, sourceIndex)
-        : exportToSiren(perFileIR);
+      const exported = exportToSiren(perFileIR, sourceIndex);
 
       // If exporter would drop all content (e.g. a file that only contains
       // comments) or the source contains comments that would be lost, prefer
@@ -111,7 +108,7 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
         console.error(`Format produced unparsable output for ${filePath}`);
         return result;
       }
-      const decoded2 = IRContext.fromCst(parse2.tree);
+      const { context: decoded2 } = createIRContextFromCst(parse2.tree);
       if (!resourcesEqual(perFileIR.resources, decoded2.resources)) {
         console.error(`Format round-trip changed semantics for ${filePath}; skipping`);
         if (process.env.SIREN_FORMAT_DEBUG === '1') {
