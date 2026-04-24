@@ -154,19 +154,14 @@ This entry exists so Phase 3.3 has a checklist of what to restore. Do not silent
 - `grep -E "from ['\"](\\.\\./)+ir/" packages/language/src/` → empty.
 - `staging/language-tests/` removed.
 
-### Phase 2.5: Verify + release
+### Phase 2.5: Verify + release ✅
 
-30. **Verify:**
-    - `yarn workspace @sirenpm/language tsc --noEmit`
-    - `yarn workspace @sirenpm/language test`
-    - `grep -r "@sirenpm/language" packages/core/src/` → empty (no reverse dep).
-    - Language resolves `@sirenpm/core` from npm, not workspace.
-    - **WASM packaging check**: `npm pack --dry-run` (or `yarn pack`) inside `packages/language/` lists `grammar/tree-sitter-siren.wasm` in the tarball contents.
-31. **Add CI release workflow** — `.github/workflows/release-language.yml` mirroring `release-core.yml`.
-32. **Changeset + publish** — `@sirenpm/language@0.1.0` via CI.
-33. **Update staging doc** — Tick off the "Release 2 port targets" section, leaving "Release 3 port targets" intact.
+30. ~~**Verify**~~ ✅ All gates green at end of Phase 2.4: `tsc --noEmit` clean, 31 test files / 101 tests passing, no reverse dep, language resolves `@sirenpm/core` via npm pin, `grammar/tree-sitter-siren.wasm` ships in the published tarball.
+31. ~~**Add CI release workflow**~~ ✅ Handled by user.
+32. ~~**Changeset + publish**~~ ✅ `@sirenpm/language@0.1.0` published manually by user; live on npm at https://www.npmjs.com/package/@sirenpm/language. Smoke test under `/tmp/siren-lang-smoke/` (fresh `npm install @sirenpm/language` against a clean project) parsed a 2-resource document, decoded with zero parse/semantic diagnostics, and round-tripped through `exportToSiren` cleanly.
+33. ~~**Update staging doc**~~ ✅ "Release 2 port targets" section ticked off in Phase 2.4; "Release 3 port targets" untouched.
 
-**Release 2 exit criteria:** `@sirenpm/language@0.1.0` on npm; parse/decode/export tests pass inside the language package; staging doc reflects completion.
+**Release 2 exit criteria:** `@sirenpm/language@0.1.0` on npm; parse/decode/export tests pass inside the language package; staging doc reflects completion. ✅
 
 ---
 
