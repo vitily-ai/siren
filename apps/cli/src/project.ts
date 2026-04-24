@@ -1,9 +1,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { IRContext, type ParseError, type Resource, type SourceDocument } from '@sirenpm/core';
-import { formatDiagnostic } from './format-diagnostics.js';
-import { formatParseError } from './format-parse-error.js';
-import { getParser } from './parser.js';
+import { formatDiagnostic } from './format-diagnostics';
+import { formatParseError } from './format-parse-error';
+import { getParser } from './parser';
 
 const SIREN_DIR = 'siren';
 

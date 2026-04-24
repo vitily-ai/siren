@@ -17,7 +17,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@sirenpm/core": "npm:@sirenpm/core@^0.1.0",
+    "@sirenpm/core": "npm:@sirenpm/core@^0.1.2",
     "web-tree-sitter": "^0.26.3"
   },
   "devDependencies": {

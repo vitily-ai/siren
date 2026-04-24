@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { copyProjectFixture } from '../test/helpers/fixture-utils.js';
-import { runFormat } from './commands/format.js';
+import { copyProjectFixture } from '../test/helpers/fixture-utils';
+import { runFormat } from './commands/format';
 
 describe('runFormat integration: cli-mvp fixture', () => {
   it('detects semantic change for cli-mvp.siren', async () => {

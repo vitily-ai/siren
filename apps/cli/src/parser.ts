@@ -6,7 +6,7 @@
  */
 
 import type { ParserAdapter } from '@sirenpm/core';
-import { getNodeParser } from './adapter/node-parser-adapter.js';
+import { getNodeParser } from './adapter/node-parser-adapter';
 
 export async function getParser(): Promise<ParserAdapter> {
   return getNodeParser();

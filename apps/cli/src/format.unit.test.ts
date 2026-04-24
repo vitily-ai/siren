@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { copyProjectFixture } from '../test/helpers/fixture-utils.js';
-import { runFormat } from './commands/format.js';
+import { copyProjectFixture } from '../test/helpers/fixture-utils';
+import { runFormat } from './commands/format';
 
 describe('runFormat unit', () => {
   it('prints formatted output for multiple-files fixture', async () => {

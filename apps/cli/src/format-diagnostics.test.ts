@@ -4,7 +4,7 @@ import type {
   DuplicateIdDiagnostic,
 } from '@sirenpm/core';
 import { describe, expect, it } from 'vitest';
-import { formatDiagnostic } from './format-diagnostics.js';
+import { formatDiagnostic } from './format-diagnostics';
 
 /**
  * Mock ParseDiagnostic for testing (mimics core structure)

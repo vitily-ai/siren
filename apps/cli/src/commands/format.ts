@@ -8,8 +8,8 @@ import {
   type SourceDocument,
   SourceIndex,
 } from '@sirenpm/core';
-import { getParser } from '../parser.js';
-import { loadProject } from '../project.js';
+import { getParser } from '../parser';
+import { loadProject } from '../project';
 
 export interface FormatOptions {
   dryRun?: boolean;
