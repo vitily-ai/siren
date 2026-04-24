@@ -86,7 +86,7 @@ task improved-interleaving-formatter {
     reimplementation of the comment-aware formatter
     parsing produces 'templates' for nodes that preserve non-semantic information about nodes
     including spacing and comments
-    templates are returned from cst parse and can be provided to exporter to preserve
+    templates are returned from cst parse and can be provided optionally to exporter to preserve
     non-semantic features of sources efficiently without complex decision trees
     
     this is an idea needing further consideration and research before approaching
