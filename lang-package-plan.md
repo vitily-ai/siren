@@ -126,12 +126,16 @@ After Phase 2.2 the CLI test suite breaks: 6 of 7 test files fail because (a) th
 
 This entry exists so Phase 3.3 has a checklist of what to restore. Do not silently delete the exclude list when migrating; remove entries as each test file is updated.
 
-### Phase 2.3: Port decoder + exporters (consume staging doc)
+### Phase 2.3: Port decoder + exporters (consume staging doc) ✅
 
-23. **Port decoder** — Restore `index.ts`, `xfail.ts` into `packages/language/src/decoder/` from staging. Apply the code rename map (W001→WL001, W002→WL002, W003→WL003, E001→EL001). Update imports to use local CST types and `@sirenpm/core` IR types.
-24. **Port export logic** — Restore `packages/language/src/export/` from staging. `siren-exporter.ts` implements `IRExporter` from `@sirenpm/core`. `exportWithComments` stays standalone; `formatters.ts` moves as-is.
-25. **Create `createIRContextFromCst()` bridge** — New `packages/language/src/context-factory.ts` calling `decodeDocument()` and `IRContext.fromResources()`, returning `{ context, parseDiagnostics }`.
-26. **Create public API** — `packages/language/src/index.ts` exports `createParser`, `ParserAdapter`, `ParseResult`, `ParseError`, `SourceDocument`, `CommentToken`, CST types, decoder, comments, exporters (`SirenExporter`, `exportWithComments`), formatters, and the bridge.
+23. ~~**Port decoder**~~ ✅ Restored `decoder/index.ts` + `xfail.ts` from `fcd99bc` (= `a71ae25^`). Six diagnostic-code string-literal sites renamed (`W001→WL001`, `W002→WL002`, `W003→WL003`, `E001→EL001`); doc-comment `code:` annotation updated. IR-type imports → `@sirenpm/core`; CST imports stay relative. `ParseDiagnostic` defined and exported from `packages/language/src/decoder/index.ts` — not imported from or re-exported by core (per plan decision: structurally satisfies `DiagnosticBase` but lives in language).
+24. ~~**Port export logic**~~ ✅ Restored `siren-exporter.ts`, `comment-exporter.ts`, `formatters.ts`, `index.ts` to `packages/language/src/export/`. Added `class SirenExporter implements IRExporter` that wraps the original `exportToSiren` function (both kept on the public surface — class for the IR contract, function for ergonomic use). All `@sirenpm/core` imports collapsed and tightened.
+25. ~~**Create `createIRContextFromCst()` bridge**~~ ✅ New `packages/language/src/context-factory.ts` exporting `createIRContextFromCst(cst, source?) → { context, parseDiagnostics: readonly ParseDiagnostic[] }`. Single-document signature matches the original `IRContext.fromCst()` shape. Failed decodes still yield a valid empty `IRContext` (uses `document?.resources ?? []`).
+26. ~~**Create public API**~~ ✅ Re-exports added: decoder (`decode`, `decodeDocument`, `DecodeResult`, `ParseDiagnostic`); exporters (`exportToSiren`, `exportWithComments`, `SirenExporter`, `formatAttributeLine`, `formatAttributeValue`, `formatPrimitive`, `wrapResourceBlock`); bridge (`createIRContextFromCst`, `CreateIRContextResult`).
+
+**Verification:** `tsc --noEmit` clean; `tsup build` emits `dist/index.js` ~33.5 KB (up from 22 KB). Full-pipeline smoke (parse → bridge → export) round-trips a 2-resource source with zero diagnostics. Diagnostic-code smoke: `task t complete { complete = false }` emits exactly one `WL001` (no `W*`/`E*` literals remain in `packages/language/src/decoder/`).
+
+**Wrinkle deferred:** The `parser.parse` cast in `factory.ts` is unrelated to decoder concerns (bridges `web-tree-sitter`'s `Tree | null` to the permissive `NodeLike` shape). Out of scope; no-op.
 
 ### Phase 2.4: Port tests + fixtures (consume staging doc)
 
