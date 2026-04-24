@@ -26,7 +26,10 @@
     "prepack": "yarn run build",
     "test": "vitest run --reporter=dot --passWithNoTests --silent",
     "test:watch": "vitest",
-    "clean": "rm -rf dist *.tsbuildinfo"
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "grammar:generate": "cd grammar && npx tree-sitter-cli generate",
+    "grammar:build-wasm": "cd grammar && npx tree-sitter-cli build --wasm",
+    "grammar:test": "cd grammar && npx tree-sitter-cli test"
   },
   "engines": {
     "node": ">=24.0.0"
@@ -40,6 +43,7 @@
   "devDependencies": {
     "@sirenpm/core": "^0.2.0",
     "@types/node": "^25.0.6",
+    "tree-sitter-cli": "^0.23.2",
     "tsup": "^8.3.5",
     "typescript": "^5.7.2",
     "vitest": "^4.0.16"
