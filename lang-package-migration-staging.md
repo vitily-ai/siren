@@ -4,6 +4,10 @@ This file tracks working code removed from `@sirenpm/core` during Release 1 that
 
 ## Release 2 port targets
 
+> **Status (Phase 2.4 complete):** All Release-2 port targets below have been restored into `packages/language/`. The `staging/language-tests/` tree has been removed. The 34 deferred project fixtures were **copied** (not symlinked) into `packages/language/test/fixtures/projects/`; the originals under `packages/core/test/fixtures/projects/` remain untouched per Release-1 scope (CLI consumes them via hardcoded relative path until Phase 3.3). This duplication is temporary and will be reconciled in Phase 3.3.
+>
+> **WASM resolver fix (Phase 2.4 incidental):** `packages/language/src/parser/factory.ts` `resolveGrammarWasmPath()` originally only resolved `../grammar/tree-sitter-siren.wasm` relative to the bundled `dist/index.js`. When tests run against raw source (`src/parser/factory.ts`), that path is wrong by one level. The function now tries both `../grammar/...` and `../../grammar/...` and returns the first that exists on disk. No-op for the published bundle.
+
 _Populated during Release 1 Phase 1.3 and 1.4._
 
 **`Origin` canonical location (Phase 1.2):** `Origin` now lives in `packages/core/src/ir/types.ts`. When Phase 2.2 restores `packages/language/src/parser/cst.ts`, its `Origin` import must resolve to `@sirenpm/core`, not a local redeclaration.

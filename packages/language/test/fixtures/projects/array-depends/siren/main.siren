@@ -1,0 +1,7 @@
+milestone alpha {
+  depends_on = task1
+}
+milestone gamma {
+  depends_on = task1
+}
+task task1 {}

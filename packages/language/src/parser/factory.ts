@@ -8,6 +8,7 @@
  * Node. Browser support is deferred to a later phase.
  */
 
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Language, Parser } from 'web-tree-sitter';
 import type {
@@ -38,12 +39,20 @@ function ensureParserInitialized(): Promise<void> {
   return parserInitPromise;
 }
 
-// Resolve the grammar WASM location. `import.meta.url` points at the emitted
-// bundle (`dist/index.js`); the WASM ships at `<pkg>/grammar/tree-sitter-siren.wasm`,
-// one level up from `dist/`.
+// Resolve the grammar WASM location. The WASM ships at
+// `<pkg>/grammar/tree-sitter-siren.wasm`. When loaded from the bundled
+// `dist/index.js`, that's one level up. When tests run against the raw
+// source (`src/parser/factory.ts`), it's two levels up. Try both and use
+// whichever exists.
 function resolveGrammarWasmPath(): string {
-  const wasmUrl = new URL('../grammar/tree-sitter-siren.wasm', import.meta.url);
-  return fileURLToPath(wasmUrl);
+  const bundleRelative = new URL('../grammar/tree-sitter-siren.wasm', import.meta.url);
+  const sourceRelative = new URL('../../grammar/tree-sitter-siren.wasm', import.meta.url);
+  for (const url of [bundleRelative, sourceRelative]) {
+    const path = fileURLToPath(url);
+    if (existsSync(path)) return path;
+  }
+  // Fall back to the bundle-relative path; surfaces a clear ENOENT.
+  return fileURLToPath(bundleRelative);
 }
 
 /**

@@ -1,0 +1,18 @@
+task my-task {
+  description = "A task"
+  # Inline comment on attribute
+  complete = false
+  # Marks task as incomplete
+
+}
+
+milestone v1 {
+  # Release 1.0 milestone
+  depends_on = my-task
+  # Depends on task completion
+}
+
+task final-check {
+  description = "Final review"
+  # Last task before release
+}

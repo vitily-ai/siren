@@ -137,11 +137,22 @@ This entry exists so Phase 3.3 has a checklist of what to restore. Do not silent
 
 **Wrinkle deferred:** The `parser.parse` cast in `factory.ts` is unrelated to decoder concerns (bridges `web-tree-sitter`'s `Tree | null` to the permissive `NodeLike` shape). Out of scope; no-op.
 
-### Phase 2.4: Port tests + fixtures (consume staging doc)
+### Phase 2.4: Port tests + fixtures (consume staging doc) ✅
 
-27. **Move helpers** — Restore `node-adapter.ts` and `parser.ts` into `packages/language/test/helpers/`. Simplify: they now wrap `createParser()` directly.
-28. **Move fixtures** — Snippet fixtures → `packages/language/test/fixtures/snippets/`; decoding-exercising project fixtures → `packages/language/test/fixtures/projects/`.
-29. **Move integration + unit tests** — `node-adapter.test.ts`, `fixtures.test.ts`, `decode-fixtures.test.ts`, project integration tests, exporter tests (ex-`packages/core/src/exporter.test.ts`). Update diagnostic-code assertions to WL001–WL003, EL001, and core-renumbered W001–W003.
+27. ~~**Move helpers**~~ ✅ Restored a single thin helper at `packages/language/test/helpers/parser.ts` (memoizes a `createParser()` instance plus a `doc()` convenience). The legacy `node-adapter.ts` (~520 lines of CST-conversion logic) was **deleted**, not ported — `createParser()` already returns a fully-baked `ParserAdapter`, so the old test-only adapter would have duplicated production code.
+28. ~~**Move fixtures**~~ ✅ 8 snippet fixtures `git mv`'d to `packages/language/test/fixtures/snippets/`. The 34 deferred project fixtures were **copied** (not symlinked) to `packages/language/test/fixtures/projects/`; originals stay put under `packages/core/test/fixtures/projects/` until Phase 3.3 repoints CLI's `fixture-utils.ts`.
+29. ~~**Move integration + unit tests**~~ ✅ All restored: `integration/node-adapter.test.ts`, `integration/fixtures.test.ts`, `integration/decode-fixtures.test.ts`, all 28 `integration/projects/*.test.ts` plus `helper.ts`. The legacy `factory.test.ts` was dropped (it targeted the deleted `createParserFactory` DI surface; equivalent smoke coverage is provided by `node-adapter.test.ts`). Diagnostic-code assertions updated for `WL001`/`WL002`/`WL003`/`EL001` and core `W001`/`W002`/`W003`. Imports rewritten to source IR/`Origin`/`DependencyTree` from `@sirenpm/core` and parser/decoder/export/`createIRContextFromCst` from local `../../src/...`.
+
+**Incidental fix:** `packages/language/src/parser/factory.ts` `resolveGrammarWasmPath()` was Phase-2.2 only correct for the bundled `dist/index.js`. Updated to try both bundle-relative and source-relative URLs so vitest can run against raw `src/`.
+
+**Verification:**
+- `yarn workspace @sirenpm/language tsc --noEmit` clean.
+- `yarn workspace @sirenpm/language test` → **31 files / 101 tests passing**.
+- `yarn workspace @sirenpm/core test` → **7 files / 58 tests passing** (untouched).
+- `yarn workspace @sirenpm/cli test` → 1 file / 13 tests passing (Phase 2.2b xfail baseline preserved).
+- `grep "IRContext\.fromCst" packages/language/src/` → only stale JSDoc comments (no call sites). Cleanup in Phase 2.5/Release 4 docs pass.
+- `grep -E "from ['\"](\\.\\./)+ir/" packages/language/src/` → empty.
+- `staging/language-tests/` removed.
 
 ### Phase 2.5: Verify + release
 
