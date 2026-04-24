@@ -78,7 +78,7 @@ Goal: core compiles, tests, and publishes without any parser/decoder/export code
 
 ### Phase 1.5: Release
 
-17. **Changeset** — `@sirenpm/core` **breaking minor bump** (per 0.x conventions: minor = breaking). Use changeset type `minor` for `0.1.0 → 0.2.0`; the changelog body must enumerate the breaking surface (removed parser/decoder/export, renumbered diagnostics W004–W006 → W001–W003, removed `IRContext.fromCst()`, removed `parseDiagnostics` from `fromResources()`).
+17. Removed
 18. **Merge + publish** — `release-core.yml` publishes `@sirenpm/core@0.2.0` to npm.
 
 **Release 1 exit criteria:** `@sirenpm/core@0.2.0` on npm; core tests pass with no parser/decoder/export code remaining; staging doc enumerates every piece of working code awaiting re-introduction in later releases.
