@@ -1,6 +1,6 @@
 {
   "name": "@sirenpm/cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Siren command-line interface",
   "license": "GPL-3.0",
   "type": "module",
@@ -13,12 +13,13 @@
   "scripts": {
     "build": "tsup",
     "build:quiet": "tsup --silent",
+    "prepack": "yarn run build",
     "test": "npx vitest run --reporter=dot --silent",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@sirenpm/core": "npm:@sirenpm/core@^0.1.2",
-    "web-tree-sitter": "^0.26.3"
+    "@sirenpm/core": "0.1.2",
+    "web-tree-sitter": "0.26.3"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

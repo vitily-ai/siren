@@ -1153,16 +1153,16 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@sirenpm/cli@workspace:apps/cli"
   dependencies:
-    "@sirenpm/core": "npm:@sirenpm/core@^0.1.2"
+    "@sirenpm/core": "npm:0.1.2"
     "@types/node": "npm:^25.6.0"
     tsup: "npm:^8.3.5"
-    web-tree-sitter: "npm:^0.26.3"
+    web-tree-sitter: "npm:0.26.3"
   bin:
     siren: ./dist/index.js
   languageName: unknown
   linkType: soft
 
-"@sirenpm/core@npm:@sirenpm/core@^0.1.2":
+"@sirenpm/core@npm:0.1.2":
   version: 0.1.2
   resolution: "@sirenpm/core@npm:0.1.2"
   checksum: 10c0/4e771e7de2b98695f48eecf008eedb85957807b570ad9160b37acfb80f309d9c146f965a67e92fee7bf026ffa4e8e751f6450cc6bf46bb08dd69c1a435869526
@@ -1177,7 +1177,7 @@ __metadata:
     tsup: "npm:^8.3.5"
     typescript: "npm:^5.7.2"
     vitest: "npm:^4.0.16"
-    web-tree-sitter: "npm:^0.26.3"
+    web-tree-sitter: "npm:^0.26.8"
   languageName: unknown
   linkType: soft
 
@@ -3466,7 +3466,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"web-tree-sitter@npm:^0.26.3":
+"web-tree-sitter@npm:0.26.3":
+  version: 0.26.3
+  resolution: "web-tree-sitter@npm:0.26.3"
+  checksum: 10c0/26e9033648772d03af228c721fcdf644734b51b3bcc40f3584677ba54efcda176c7989e9dbda1ebf3984024df0636e857cbbf3e71acc1023cf1d6ab7f42a71c2
+  languageName: node
+  linkType: hard
+
+"web-tree-sitter@npm:^0.26.8":
   version: 0.26.8
   resolution: "web-tree-sitter@npm:0.26.8"
   checksum: 10c0/6382099fc8495dc6a464c532852b375ee05b8b3cc68682a8cddf7ba751c08088cd6ec5a34f6a752428fea6d8d6e29a9d281d6068adbc0831a29561c33cd1630f

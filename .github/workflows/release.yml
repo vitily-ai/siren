@@ -33,9 +33,6 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Build core
-        run: yarn workspace @sirenpm/core build
-
       - name: Validate prerelease versions (manual trigger only)
         if: github.event_name == 'workflow_dispatch'
         run: |
