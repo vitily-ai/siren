@@ -25,7 +25,6 @@ export type Diagnostic =
   | CircularDependencyDiagnostic
   | DuplicateIdDiagnostic;
 
-// TODO this looks like it should be an extension of a root interface instead of two separate interfaces
 /**
  * W002: Dangling dependency (resource depends on non-existent resource)
  */
