@@ -1,9 +1,15 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { type DependencyTree, version } from '@sirenpm/core';
-import { runFormat } from './commands/format.js';
-import { getLoadedContext, loadProject } from './project.js';
+import { version as coreVersion, type DependencyTree } from '@sirenpm/core';
+import { buildMetadata } from './build-metadata';
+import { runFormat } from './commands/format';
+import { getLoadedContext, loadProject } from './project';
+import { cliVersion } from './version';
+
+const cliSuffix = buildMetadata ? `-${buildMetadata}` : '';
+const cliVersionString = `${cliVersion}${cliSuffix}`;
+const coreVersionString = coreVersion;
 
 const SIREN_DIR = 'siren';
 const CONFIG_FILE = 'siren.config.yaml';
@@ -13,7 +19,7 @@ const CONFIG_CONTENTS = `# project_name: Siren Project
 `;
 
 function printUsage(): void {
-  console.log(`Siren CLI v${version}
+  console.log(`Siren CLI v${cliVersionString}
 
 Usage: siren <command>
 
@@ -293,7 +299,8 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
   const command = args[0];
 
   if (command === '--version') {
-    console.log(`Siren CLI v${version}`);
+    console.log(`Siren CLI v${cliVersionString}`);
+    console.log(`Siren Core v${coreVersionString}`);
     return;
   }
 

@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "@sirenpm/*@*"
+  workflow_dispatch:
+
+
+permissions:
+  contents: write # needed to create git tags for published packages
+
+jobs:
+  release:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # changesets needs full history to compare versions
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+          registry-url: "https://registry.npmjs.org"
+          cache: "yarn"
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build core
+        run: yarn workspace @sirenpm/core build
+
+      - name: Validate prerelease versions (manual trigger only)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          fail=0
+          while IFS= read -r line; do
+            location=$(echo "$line" | jq -r '.location')
+            [ "$location" = "." ] && continue
+            pkg_json="$location/package.json"
+            [ -f "$pkg_json" ] || continue
+            private=$(jq -r '.private // false' "$pkg_json")
+            [ "$private" = "true" ] && continue
+            name=$(jq -r '.name // ""' "$pkg_json")
+            version=$(jq -r '.version // ""' "$pkg_json")
+            [ -z "$name" ] || [ -z "$version" ] && continue
+            # If this exact version is already on npm, changeset publish will skip it
+            npm view "${name}@${version}" version > /dev/null 2>&1 && continue
+            # This version would be published — it must be a prerelease
+            if ! echo "$version" | grep -q '-'; then
+              echo "ERROR: ${name}@${version} is not a prerelease version but would be published"
+              fail=1
+            fi
+          done < <(yarn workspaces list --json)
+          if [ "$fail" -ne 0 ]; then
+            echo "Manual dispatch is for prereleases only. Use a tag push for stable releases."
+            exit 1
+          fi
+          echo "All packages to be published have prerelease versions - OK."
+
+      - name: Publish changed packages
+        run: yarn changeset publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,11 +1,17 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { version as coreVersion } from '@sirenpm/core';
 import { describe, expect, it, vi } from 'vitest';
-import { main } from '../src/index.js';
-import { copyProjectFixture } from './helpers/fixture-utils.js';
-import { assertDirMatchesExpected } from './helpers/fs-assert.js';
+import { main } from '../src/index';
+import { cliVersion } from '../src/version';
+import { copyProjectFixture } from './helpers/fixture-utils';
+import { assertDirMatchesExpected } from './helpers/fs-assert';
 
 const expectedDir = path.join(__dirname, 'expected');
+
+function substituteVersionPlaceholders(s: string): string {
+  return s.replaceAll('{{coreVersion}}', coreVersion).replaceAll('{{cliVersion}}', cliVersion);
+}
 
 /**
  * Parse golden file frontmatter (metadata) delimited by a line of 3+ hyphens (---).
@@ -89,9 +95,11 @@ describe('golden CLI tests (expected/)', () => {
         const rawOut = fs.readFileSync(full, 'utf8');
         const {
           metadata,
-          stdout: expectedStdout,
-          stderr: expectedStderr,
+          stdout: rawExpectedStdout,
+          stderr: rawExpectedStderr,
         } = parseOutWithStdErr(rawOut, full);
+        const expectedStdout = substituteVersionPlaceholders(rawExpectedStdout);
+        const expectedStderr = substituteVersionPlaceholders(rawExpectedStderr);
         if (!metadata || typeof metadata !== 'object') {
           throw new Error(`missing or invalid metadata in ${relPath}`);
         }
@@ -157,9 +165,11 @@ describe('golden CLI tests (expected/)', () => {
         const rawOut = fs.readFileSync(full, 'utf8');
         const {
           metadata,
-          stdout: expectedStdout,
-          stderr: expectedStderr,
+          stdout: rawExpectedStdout,
+          stderr: rawExpectedStderr,
         } = parseOutWithStdErr(rawOut, relPath);
+        const expectedStdout = substituteVersionPlaceholders(rawExpectedStdout);
+        const expectedStderr = substituteVersionPlaceholders(rawExpectedStderr);
         if (!metadata || typeof metadata !== 'object') {
           throw new Error(`missing or invalid metadata in ${relPath}`);
         }

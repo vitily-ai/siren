@@ -1153,7 +1153,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@sirenpm/cli@workspace:apps/cli"
   dependencies:
-    "@sirenpm/core": "npm:@sirenpm/core@^0.1.0"
+    "@sirenpm/core": "npm:@sirenpm/core@^0.1.2"
     "@types/node": "npm:^25.6.0"
     tsup: "npm:^8.3.5"
     web-tree-sitter: "npm:^0.26.3"
@@ -1162,10 +1162,10 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@sirenpm/core@npm:@sirenpm/core@^0.1.0":
-  version: 0.1.0
-  resolution: "@sirenpm/core@npm:0.1.0"
-  checksum: 10c0/70f22dfbdbbfdf921588b162284d70d0136ebc374753af7b8df09c7301919fbe0f2d0fd40c8b08e85f6fc145a8ad51d7e5a3f8015cc907bbaab9927a4abac2b3
+"@sirenpm/core@npm:@sirenpm/core@^0.1.2":
+  version: 0.1.2
+  resolution: "@sirenpm/core@npm:0.1.2"
+  checksum: 10c0/4e771e7de2b98695f48eecf008eedb85957807b570ad9160b37acfb80f309d9c146f965a67e92fee7bf026ffa4e8e751f6450cc6bf46bb08dd69c1a435869526
   languageName: node
   linkType: hard
 

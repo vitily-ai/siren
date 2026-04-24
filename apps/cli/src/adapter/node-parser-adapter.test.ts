@@ -8,8 +8,8 @@
  */
 
 import { beforeAll, describe, expect, it } from 'vitest';
-import { doc } from '../../test/helpers/test-utils.js';
-import { NodeParserAdapter } from './node-parser-adapter.js';
+import { doc } from '../../test/helpers/test-utils';
+import { NodeParserAdapter } from './node-parser-adapter';
 
 let adapter: NodeParserAdapter;
 

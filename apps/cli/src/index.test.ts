@@ -3,10 +3,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { copyProjectFixture } from '../test/helpers/fixture-utils.js';
-import { init, list, main } from './index.js';
-import * as project from './project.js';
-import { loadProject } from './project.js';
+import { copyProjectFixture } from '../test/helpers/fixture-utils';
+import { init, list, main } from './index';
+import * as project from './project';
+import { loadProject } from './project';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(
@@ -321,8 +321,9 @@ describe('siren main', () => {
   it('prints version with --version flag', async () => {
     await main(['--version']);
 
-    expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+    expect(consoleLogSpy).toHaveBeenCalledTimes(2);
     expect(consoleLogSpy.mock.calls[0][0]).toMatch(/^Siren CLI v\d+\.\d+\.\d+/);
+    expect(consoleLogSpy.mock.calls[1][0]).toMatch(/^Siren Core v\d+\.\d+\.\d+/);
     expect(loadProjectSpy).not.toHaveBeenCalled();
   });
 

@@ -1,0 +1,8 @@
+{
+  "fixture": "empty-files",
+  "command": "siren --version"
+}
+---
+Siren CLI v{{cliVersion}}
+Siren Core v{{coreVersion}}
+---
