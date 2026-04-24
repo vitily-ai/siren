@@ -6,7 +6,7 @@
  */
 export interface DiagnosticBase {
   readonly code: string;
-  readonly severity: 'warning' | 'error';
+  readonly severity: 'info' | 'warning' | 'error';
   /** Source file path (when available) */
   readonly file?: string;
   /** 1-based line number (when available) */
