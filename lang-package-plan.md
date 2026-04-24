@@ -92,7 +92,7 @@ New package consuming the freshly-published `@sirenpm/core@^0.2.0` from npm.
 ### Phase 2.1: Package scaffold
 
 19. **Create `packages/language/`** with:
-    - `package.json` — name `@sirenpm/language`, dependencies `"@sirenpm/core": "^0.2.0"` (**npm pin, not `workspace:*`**) and `"web-tree-sitter": "0.26.3"` (**exact pin** — language is the sole owner of the parser engine version; CLI loses its direct dep in Release 3 and consumes WTS transitively).
+    - `package.json` — name `@sirenpm/language`, peer dependency `"@sirenpm/core": "^0.2.0"` (**npm pin, not `workspace:*`**) and transient dependency on `"web-tree-sitter": "0.26.3"` (**exact pin** — language is the sole owner of the parser engine version; CLI loses its direct dep in Release 3 and consumes WTS transitively).
     - `tsconfig.json`, `vitest.config.ts` (node env).
     - Register `packages/language` in root `package.json` workspaces.
     - `yarn install`.
