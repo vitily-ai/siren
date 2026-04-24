@@ -238,62 +238,48 @@ describe('IRContext', () => {
     });
   });
 
-  describe('fromCst with origin.document', () => {
-    it('preserves origin.document through decoding and populates diagnostic file', async () => {
-      // Create a minimal CST with origin.document set
-      const cst: DocumentNode = {
-        type: 'document',
-        resources: [
-          {
-            type: 'resource',
-            resourceType: 'task',
-            identifier: { type: 'identifier', value: 'a', quoted: false },
-            complete: false,
-            body: [
-              {
-                type: 'attribute',
-                key: { type: 'identifier', value: 'depends_on', quoted: false },
-                value: {
-                  type: 'reference',
-                  identifier: { type: 'identifier', value: 'b', quoted: false },
-                },
-              },
-            ],
-            origin: {
-              startByte: 0,
-              endByte: 30,
-              startRow: 0,
-              endRow: 0,
-              document: 'test-file.siren',
+  describe('fromResources with origin.document', () => {
+    it('preserves origin.document and populates diagnostic file', () => {
+      const resources: Resource[] = [
+        {
+          type: 'task',
+          id: 'a',
+          complete: false,
+          attributes: [
+            {
+              key: 'depends_on',
+              value: { kind: 'reference', id: 'b' },
             },
-          } as ResourceNode,
-          {
-            type: 'resource',
-            resourceType: 'task',
-            identifier: { type: 'identifier', value: 'b', quoted: false },
-            complete: false,
-            body: [
-              {
-                type: 'attribute',
-                key: { type: 'identifier', value: 'depends_on', quoted: false },
-                value: {
-                  type: 'reference',
-                  identifier: { type: 'identifier', value: 'a', quoted: false },
-                },
-              },
-            ],
-            origin: {
-              startByte: 31,
-              endByte: 60,
-              startRow: 1,
-              endRow: 1,
-              document: 'test-file.siren',
+          ],
+          origin: {
+            startByte: 0,
+            endByte: 30,
+            startRow: 0,
+            endRow: 0,
+            document: 'test-file.siren',
+          },
+        },
+        {
+          type: 'task',
+          id: 'b',
+          complete: false,
+          attributes: [
+            {
+              key: 'depends_on',
+              value: { kind: 'reference', id: 'a' },
             },
-          } as ResourceNode,
-        ],
-      };
+          ],
+          origin: {
+            startByte: 31,
+            endByte: 60,
+            startRow: 1,
+            endRow: 1,
+            document: 'test-file.siren',
+          },
+        },
+      ];
 
-      const ir = IRContext.fromCst(cst);
+      const ir = IRContext.fromResources(resources);
 
       // Verify IR resources have origin.document
       expect(ir.resources).toHaveLength(2);
@@ -301,7 +287,7 @@ describe('IRContext', () => {
         expect(r.origin?.document).toBe('test-file.siren');
       }
 
-      // Verify depends_on attribute was decoded
+      // Verify depends_on attribute is present
       const resourceA = ir.resources.find((r) => r.id === 'a');
       expect(resourceA).toBeDefined();
       const dependsOnAttr = resourceA!.attributes.find((a) => a.key === 'depends_on');

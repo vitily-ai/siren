@@ -69,20 +69,12 @@ Goal: core compiles, tests, and publishes without any parser/decoder/export code
 
 ### Phase 1.4: Test triage (core-only)
 
-13. **Record to staging doc** — Append to "Release 2 port targets" a list of every test file and helper being moved out of `packages/core/test/`, with one-line descriptions:
-    - `packages/core/test/helpers/node-adapter.ts` (~520 lines — full `NodeParserAdapter` test impl with CST conversion).
-    - `packages/core/test/helpers/parser.ts` (~70 lines — `getTestAdapter()`/`doc()` wrappers).
-    - `packages/core/test/integration/node-adapter.test.ts`, `fixtures.test.ts`, `decode-fixtures.test.ts`, all project integration tests.
-    - Snippet fixtures under `packages/core/test/fixtures/snippets/`.
-    - Project fixtures that exercise decoding/parsing (enumerate which ones — some may remain in core if they only exercise IR).
-    - `packages/core/src/exporter.test.ts` and any remaining parser/decoder/export unit tests.
-14. **Relocate to staging area** — Move the files above to `staging/language-tests/` at repo root (or a feature branch held open for Release 2). Gitignore from core's vitest config so they don't run during Release 1.
-15. **Rewrite residual core tests** — Any surviving test in `packages/core/test/` (e.g. `factory.test.ts`, `milestone.test.ts`) that still used `IRContext.fromCst()` is rewritten to build IR directly via `IRContext.fromResources()`.
-16. **Verify core in isolation:**
-    - `yarn workspace @sirenpm/core tsc --noEmit`
-    - `yarn workspace @sirenpm/core test`
-    - `grep -r "parser/\|decoder/\|export/" packages/core/src/` → empty
-    - `grep -r "web-tree-sitter" packages/core/` → empty
+### Phase 1.4: Test triage (core-only) ✅
+
+13. ~~**Record to staging doc**~~ ✅ Appended "Tests, helpers, and fixtures (Phase 1.4)" subsection with full inventory: 2 helpers, 3 root integration tests, 28 project tests + helper, `factory.test.ts`, 8 snippet fixtures, 34 deferred project fixtures, and a note on deleted colocated units.
+14. ~~**Relocate to staging area**~~ ✅ 43 files moved to `staging/language-tests/` preserving relative paths under `test/`. Configured `biome.json` with `!staging` so lint/format skip it. Root + core `vitest.config.ts` glob scopes already exclude the directory. **Not gitignored** — tracked in git so the feature branch carries it to Release 2. **Deferred**: 34 project-fixture dirs under `packages/core/test/fixtures/projects/` stay put because `apps/cli/test/helpers/fixture-utils.ts` still references them by hardcoded relative path; CLI is out of Release 1 scope. Phase 2.4 will copy/symlink them into the language package; Phase 3.3 repoints CLI.
+15. ~~**Rewrite residual core tests**~~ ✅ Only one block needed rewriting: the cycle/origin test in `packages/core/src/ir/context.test.ts` now builds `Resource[]` by hand and calls `IRContext.fromResources()`. Other surviving tests (`milestone.test.ts`, `types.test.ts`, utility tests) are pure IR and required no changes.
+16. ~~**Verify core in isolation**~~ ✅ `tsc --noEmit` clean; `yarn workspace @sirenpm/core test` → **7 files / 58 tests passing, 0 failures**; both greps empty in `packages/core/src/`. Residual `web-tree-sitter` mentions remain only in stale `ADAPTER_EXAMPLE.md`, `STATUS.md`, `TREE_SITTER_SETUP.md` (Release 4 docs cleanup).
 
 ### Phase 1.5: Release
 

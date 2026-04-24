@@ -48,7 +48,7 @@
     }
   },
   "files": {
-    "includes": ["**", "!**/dist", "!**/node_modules", "!**/.yarn", "!**/grammar/src"]
+    "includes": ["**", "!**/dist", "!**/node_modules", "!**/.yarn", "!**/grammar/src", "!staging"]
   },
   "overrides": [
     {

@@ -93,6 +93,47 @@ export function createIRContextFromCst(
 
 Parse diagnostics now ride as a sibling to `IRContext`, not as a field on it. Consumers (Phase 3.2 for the CLI) must combine `parseDiagnostics` with `ir.diagnostics` at the call site.
 
+### Tests, helpers, and fixtures (Phase 1.4)
+
+Relocated from `packages/core/test/` to `staging/language-tests/test/`, preserving paths relative to `packages/core/`. Phase 2.4 restores into `packages/language/test/`.
+
+**Helpers:**
+- `test/helpers/node-adapter.ts` (~520 lines) — full `NodeParserAdapter` test implementation, CST conversion, comment extraction. Depends on `web-tree-sitter` and the parser sources staged above.
+- `test/helpers/parser.ts` (~70 lines) — `getTestAdapter()`/`doc()` wrappers around the node adapter; caches a singleton `ParserAdapter` for integration tests.
+
+**Integration tests (top-level):**
+- `test/integration/node-adapter.test.ts` — adapter smoke tests against real `web-tree-sitter` parses.
+- `test/integration/fixtures.test.ts` — snapshot-style parse over `fixtures/snippets/`.
+- `test/integration/decode-fixtures.test.ts` — CST→IR decode loop over `fixtures/snippets/` plus xfail metadata.
+
+**Project integration tests** (all under `test/integration/projects/`, every one consumes `helper.ts` which calls `IRContext.fromCst`):
+- `helper.ts` — `parseAndDecodeAll()` walks a fixture dir, parses every `.siren`, calls `IRContext.fromCst`.
+- `array-depends.test.ts`, `circular-depends.test.ts`, `complete-flag.test.ts`, `complete-short-circuit.test.ts`, `dangling-dependencies.test.ts`, `deep-dependencies.test.ts`, `deep-nested.test.ts`, `duplicate-ids.test.ts`, `empty-files.test.ts`, `incomplete-leaf-rendering.test.ts`, `init-with-broken.test.ts`, `list-milestones.test.ts`, `list-single-milestone.test.ts`, `list-tasks-alpha-only.test.ts`, `list-with-broken-and-valid.test.ts`, `list-with-broken.test.ts`, `loaded-project.test.ts`, `milestone-dependency.test.ts`, `milestone-implicit-complete.test.ts`, `multiple-files.test.ts`, `multiple-parse-errors.test.ts`, `no-milestones-only-tasks.test.ts`, `overlapping-cycles.test.ts`, `parse-errors.test.ts`, `quoted-identifiers.test.ts`, `recursive.test.ts`, `tasks-by-milestone.test.ts`, `unicode.test.ts`.
+
+**Root-level core tests:**
+- `test/factory.test.ts` — exercises `createParserFactory` + `IRContext.fromCst`; imports deleted `src/parser/factory`. Staged as-is.
+
+**Snippet fixtures** (all moved, consumed only by `fixtures.test.ts` / `decode-fixtures.test.ts`):
+- `test/fixtures/snippets/01-minimal.siren`
+- `test/fixtures/snippets/02-simple.siren`
+- `test/fixtures/snippets/03-dependencies.siren`
+- `test/fixtures/snippets/04-complete.siren`
+- `test/fixtures/snippets/comments-complex.siren`
+- `test/fixtures/snippets/comments-detached.siren`
+- `test/fixtures/snippets/comments-leading.siren`
+- `test/fixtures/snippets/comments-trailing.siren`
+
+**Project fixtures — DEFERRED, not staged.** All 34 directories under `packages/core/test/fixtures/projects/` remain in place because `apps/cli/test/helpers/fixture-utils.ts` and `apps/cli/test/golden.test.ts` reference them via hardcoded relative path (`../../../packages/core/test/fixtures/projects`). Moving them would require touching CLI, which is explicitly out of scope for Release 1. Phase 2.4 must either copy or symlink them into `packages/language/test/fixtures/projects/`; Phase 3.3 can then repoint CLI fixture-utils once the CLI migration lands.
+
+**Already-deleted colocated unit tests (reference only, for Phase 2.4 recreation):**
+- `packages/core/src/exporter.test.ts` — deleted in Phase 1.3 alongside `siren-exporter.ts`. Covered round-trip export of the existing project fixtures (printed output matched golden text). Recreate in `packages/language/src/export/` (or colocated) when the exporter sources are restored.
+- `packages/core/src/parser/adapter.test.ts`, `packages/core/src/parser/cst.test.ts`, `packages/core/src/parser/source-index.test.ts` — deleted with their src counterparts in Phase 1.3. Listed alongside their src files above under "Parser sources".
+- `packages/core/src/decoder/index.test.ts` — deleted with the decoder source. Listed under "Decoder sources".
+- `packages/core/src/export/comment-exporter.test.ts` — deleted with the export directory. Listed under "Export sources".
+
+**Residual `IRContext.fromCst` usage rewritten in place (not staged):**
+- `packages/core/src/ir/context.test.ts` — one describe block (`fromCst with origin.document`) ported to construct `Resource[]` directly and call `IRContext.fromResources(resources, source)`.
+
 ## Release 3 port targets
 
 _Populated during Release 1 Phase 1.3._
