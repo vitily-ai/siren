@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { version as coreVersion } from '@sirenpm/core';
 import { describe, expect, it, vi } from 'vitest';
 import { main } from '../src/index';
-import { cliVersion } from '../src/version.js';
+import { cliVersion } from '../src/version';
 import { copyProjectFixture } from './helpers/fixture-utils';
 import { assertDirMatchesExpected } from './helpers/fs-assert';
 

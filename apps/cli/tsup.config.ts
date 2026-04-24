@@ -1,5 +1,10 @@
 import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'tsup';
+
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8')) as {
+  version: string;
+};
 
 function getBuildMetadata(): string {
   try {
@@ -30,6 +35,7 @@ export default defineConfig({
     js: '#!/usr/bin/env node',
   },
   define: {
+    'import.meta.env.PACKAGE_VERSION': JSON.stringify(pkg.version),
     'import.meta.env.BUILD_METADATA': JSON.stringify(getBuildMetadata()),
   },
 });

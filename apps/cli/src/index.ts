@@ -1,14 +1,15 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildMetadata, version as coreVersion, type DependencyTree } from '@sirenpm/core';
+import { version as coreVersion, type DependencyTree } from '@sirenpm/core';
+import { buildMetadata } from './build-metadata';
 import { runFormat } from './commands/format';
 import { getLoadedContext, loadProject } from './project';
 import { cliVersion } from './version';
 
-const suffix = buildMetadata ? `-${buildMetadata}` : '';
-const cliVersionString = `${cliVersion}${suffix}`;
-const coreVersionString = `${coreVersion}${suffix}`;
+const cliSuffix = buildMetadata ? `-${buildMetadata}` : '';
+const cliVersionString = `${cliVersion}${cliSuffix}`;
+const coreVersionString = coreVersion;
 
 const SIREN_DIR = 'siren';
 const CONFIG_FILE = 'siren.config.yaml';
