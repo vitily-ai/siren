@@ -5,21 +5,12 @@
  * They represent the raw parse tree before semantic analysis.
  */
 
-/**
- * Origin metadata for CST nodes
- *
- * Tracks source code position (byte and row offsets) for a node.
- * Used by formatters to preserve comments and structure.
- * Optional on nodes—early code doesn't require origin tracking.
- */
-export interface Origin {
-  readonly startByte: number;
-  readonly endByte: number;
-  readonly startRow: number;
-  readonly endRow: number;
-  /** Document identifier (e.g., relative file path from project root) */
-  readonly document?: string;
-}
+// `Origin` is IR-agnostic positional metadata and now lives in core IR types.
+// Re-exported here so existing `parser/cst` consumers keep working until
+// this file is removed in Phase 1.3.
+export type { Origin } from '../ir/types';
+
+import type { Origin } from '../ir/types';
 
 /**
  * Base interface for all CST nodes

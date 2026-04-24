@@ -8,8 +8,8 @@
  * - Byte offset relationships
  */
 
+import type { Origin } from '../ir/types';
 import type { CommentToken } from './adapter';
-import type { Origin } from './cst';
 
 // TODO[SOURCEINDEX-ASSUME]: SourceIndex currently assumes `comments` are provided
 // pre-sorted by byte offset and that `source` is UTF-8. Add defensive checks

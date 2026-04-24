@@ -52,10 +52,10 @@ Goal: core compiles, tests, and publishes without any parser/decoder/export code
 4. ~~**Extend semantic diagnostics** — Make `DanglingDependencyDiagnostic`, `CircularDependencyDiagnostic`, and `DuplicateIdDiagnostic` in `packages/core/src/ir/context.ts` extend `DiagnosticBase`.~~ ✅ All three extend `DiagnosticBase`. Removed redundant `file`/`line`/`column` from `Dangling`/`Circular` (inherited); `DuplicateId` retains its `firstLine`/`firstColumn`/`firstFile`/`secondLine`/`secondColumn`. No `message` field existed on any of them, so the no-message design landed cleanly.
 5. ~~**Renumber core semantic codes**~~ ✅ W004→W001 (Circular), W005→W002 (Dangling), W006→W003 (Duplicate). All in-core assertion sites updated (`context.test.ts` plus five integration project tests). CLI left on old codes until Release 3 per scope. Verification: `tsc --noEmit` clean, `yarn workspace @sirenpm/core test` → 281 passed / 1 skipped, `grep W00[456] packages/core/{src,test}/` empty.
 
-### Phase 1.2: IRExporter Interface and Origin Relocation
+### Phase 1.2: IRExporter Interface and Origin Relocation ✅
 
-6. **Define `IRExporter` in core** — Create `packages/core/src/ir/exporter.ts` with `interface IRExporter { export(ctx: IRContext): string }`; export from `packages/core/src/index.ts`.
-7. **Relocate `Origin`** — Move `Origin` from `packages/core/src/parser/cst.ts` into `packages/core/src/ir/types.ts`. No temporary re-export needed — `parser/` is about to be deleted; record the new canonical location in the staging doc so Release 2's `cst.ts` port knows to import it from `@sirenpm/core`.
+6. ~~**Define `IRExporter` in core** — Create `packages/core/src/ir/exporter.ts` with `interface IRExporter { export(ctx: IRContext): string }`; export from `packages/core/src/index.ts`.~~ ✅ Created; re-exported from `packages/core/src/index.ts`.
+7. ~~**Relocate `Origin`** — Move `Origin` from `packages/core/src/parser/cst.ts` into `packages/core/src/ir/types.ts`. No temporary re-export needed — `parser/` is about to be deleted; record the new canonical location in the staging doc so Release 2's `cst.ts` port knows to import it from `@sirenpm/core`.~~ ✅ `Origin` now lives in `ir/types.ts`; `parser/cst.ts` retains a transparent re-export for in-tree consumers until Phase 1.3 removes the directory. `source-index.ts` repointed to the new location. Staging doc updated with the canonical-location note under "Release 2 port targets". Verification: `tsc --noEmit` clean; 281 tests pass.
 
 ### Phase 1.3: Remove parser/decoder/export from core
 
