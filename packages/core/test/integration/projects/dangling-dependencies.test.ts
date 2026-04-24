@@ -1,11 +1,11 @@
 import { expect, test } from 'vitest';
 import { getAdapter, parseAndDecodeAll } from './helper';
 
-test('emits W005 for dangling dependencies and does not include missing nodes in IR graph', async () => {
+test('emits W002 for dangling dependencies and does not include missing nodes in IR graph', async () => {
   const adapter = await getAdapter();
   const { resources, diagnostics } = await parseAndDecodeAll(adapter, 'dangling-dependencies');
 
-  const warnings = diagnostics.filter((d) => d.code === 'W005' && d.severity === 'warning');
+  const warnings = diagnostics.filter((d) => d.code === 'W002' && d.severity === 'warning');
   expect(warnings.length).toBe(3);
 
   // PRESCRIPTIVE: Core MUST provide structured diagnostic data
@@ -16,7 +16,7 @@ test('emits W005 for dangling dependencies and does not include missing nodes in
     (w: any) => w.resourceId === 'with-dangling' && w.dependencyId === 'missing-task',
   )!;
   expect(danglingMissingTask).toBeDefined();
-  expect(danglingMissingTask.code).toBe('W005');
+  expect(danglingMissingTask.code).toBe('W002');
   expect(danglingMissingTask.severity).toBe('warning');
   expect(danglingMissingTask.resourceId).toBe('with-dangling');
   expect(danglingMissingTask.resourceType).toBe('milestone');

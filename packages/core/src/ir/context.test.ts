@@ -26,12 +26,12 @@ describe('IRContext', () => {
 
       const ir = IRContext.fromResources(resources);
 
-      // PRESCRIPTIVE: W005 diagnostics must have structured fields
-      const danglingDiags = ir.diagnostics.filter((d) => d.code === 'W005');
+      // PRESCRIPTIVE: W002 diagnostics must have structured fields
+      const danglingDiags = ir.diagnostics.filter((d) => d.code === 'W002');
       expect(danglingDiags).toHaveLength(1);
 
       const diag: any = danglingDiags[0];
-      expect(diag.code).toBe('W005');
+      expect(diag.code).toBe('W002');
       expect(diag.severity).toBe('warning');
       expect(diag.resourceId).toBe('has-dangling');
       expect(diag.resourceType).toBe('milestone');
@@ -57,12 +57,12 @@ describe('IRContext', () => {
 
       const ir = IRContext.fromResources(resources);
 
-      // PRESCRIPTIVE: W004 diagnostics must have structured fields
-      const cycleDiags = ir.diagnostics.filter((d) => d.code === 'W004');
+      // PRESCRIPTIVE: W001 diagnostics must have structured fields
+      const cycleDiags = ir.diagnostics.filter((d) => d.code === 'W001');
       expect(cycleDiags).toHaveLength(1);
 
       const diag: any = cycleDiags[0];
-      expect(diag.code).toBe('W004');
+      expect(diag.code).toBe('W001');
       expect(diag.severity).toBe('warning');
       expect(diag.nodes).toEqual(['a', 'b', 'a']);
       expect(diag.file).toBeUndefined(); // No file attribution without resourceSources
@@ -98,7 +98,7 @@ describe('IRContext', () => {
 
       const ir = IRContext.fromResources(resources);
 
-      const danglingDiags = ir.diagnostics.filter((d) => d.code === 'W005');
+      const danglingDiags = ir.diagnostics.filter((d) => d.code === 'W002');
       expect(danglingDiags).toHaveLength(2);
 
       // Find specific diagnostics
@@ -134,7 +134,7 @@ describe('IRContext', () => {
 
       const ir = IRContext.fromResources(resources);
 
-      const danglingDiags = ir.diagnostics.filter((d) => d.code === 'W005');
+      const danglingDiags = ir.diagnostics.filter((d) => d.code === 'W002');
       expect(danglingDiags).toHaveLength(1);
 
       const diag: any = danglingDiags[0];
@@ -186,7 +186,7 @@ describe('IRContext', () => {
 
       const ir = IRContext.fromResources(resources);
 
-      const cycleDiags = ir.diagnostics.filter((d) => d.code === 'W004');
+      const cycleDiags = ir.diagnostics.filter((d) => d.code === 'W001');
       expect(cycleDiags).toHaveLength(1);
 
       const diag: any = cycleDiags[0];
@@ -226,7 +226,7 @@ describe('IRContext', () => {
 
       const ir = IRContext.fromResources(resources);
 
-      const cycleDiags = ir.diagnostics.filter((d) => d.code === 'W004');
+      const cycleDiags = ir.diagnostics.filter((d) => d.code === 'W001');
       expect(cycleDiags).toHaveLength(1);
 
       const diag: any = cycleDiags[0];
@@ -309,7 +309,7 @@ describe('IRContext', () => {
       expect(dependsOnAttr!.value).toMatchObject({ kind: 'reference', id: 'b' });
 
       // Verify cycle diagnostic has file
-      const cycleDiags = ir.diagnostics.filter((d) => d.code === 'W004');
+      const cycleDiags = ir.diagnostics.filter((d) => d.code === 'W001');
       expect(cycleDiags).toHaveLength(1);
 
       const diag: any = cycleDiags[0];

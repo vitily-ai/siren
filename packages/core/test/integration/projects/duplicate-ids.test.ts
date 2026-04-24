@@ -3,10 +3,10 @@ import type { Diagnostic, DuplicateIdDiagnostic } from '../../../src/ir/context'
 import { getAdapter, parseAndDecodeAll } from './helper';
 
 function isDuplicateIdDiagnostic(diagnostic: Diagnostic): diagnostic is DuplicateIdDiagnostic {
-  return diagnostic.code === 'W006' && diagnostic.severity === 'warning';
+  return diagnostic.code === 'W003' && diagnostic.severity === 'warning';
 }
 
-test('emits W006 for duplicate IDs and keeps only first occurrence of each', async () => {
+test('emits W003 for duplicate IDs and keeps only first occurrence of each', async () => {
   const adapter = await getAdapter();
   const { resources, diagnostics } = await parseAndDecodeAll(adapter, 'duplicate-ids');
 
@@ -30,14 +30,14 @@ test('emits W006 for duplicate IDs and keeps only first occurrence of each', asy
     'First milestone occurrence',
   );
 
-  // PRESCRIPTIVE: W006 diagnostics for dropped duplicates
+  // PRESCRIPTIVE: W003 diagnostics for dropped duplicates
   const duplicateWarnings = diagnostics.filter(isDuplicateIdDiagnostic);
   expect(duplicateWarnings).toHaveLength(3); // One for duplicate-task, two for duplicate-milestone
 
   // PRESCRIPTIVE: Check duplicate-task diagnostic
   const taskDuplicate = duplicateWarnings.find((w) => w.resourceId === 'duplicate-task');
   expect(taskDuplicate).toBeDefined();
-  expect(taskDuplicate!.code).toBe('W006');
+  expect(taskDuplicate!.code).toBe('W003');
   expect(taskDuplicate!.severity).toBe('warning');
   expect(taskDuplicate!.resourceId).toBe('duplicate-task');
   expect(taskDuplicate!.resourceType).toBe('task');
@@ -62,7 +62,7 @@ test('emits W006 for duplicate IDs and keeps only first occurrence of each', asy
   );
 
   for (const diag of milestoneDuplicates) {
-    expect(diag.code).toBe('W006');
+    expect(diag.code).toBe('W003');
     expect(diag.severity).toBe('warning');
     expect(diag.resourceId).toBe('duplicate-milestone');
     expect(diag.resourceType).toBe('milestone');
@@ -73,6 +73,6 @@ test('emits W006 for duplicate IDs and keeps only first occurrence of each', asy
   }
 
   // PRESCRIPTIVE: No other warnings or errors (no dangling deps, no cycles)
-  const otherDiagnostics = diagnostics.filter((d) => d.code !== 'W006');
+  const otherDiagnostics = diagnostics.filter((d) => d.code !== 'W003');
   expect(otherDiagnostics).toHaveLength(0);
 });

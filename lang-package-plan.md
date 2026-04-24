@@ -41,22 +41,16 @@ Split parser/grammar/decoding and all export logic from `packages/core` into `pa
 
 Goal: core compiles, tests, and publishes without any parser/decoder/export code. CLI is untouched and remains pinned to `@sirenpm/core@0.1.0` until Release 3.
 
-### Phase 1.0: Prework
+### Phase 1.0: Prework ✅
 
-1. **Delete orphaned `packages/parser/`** — separate PR before Phase 1.1.
-2. **Create staging doc** — add `lang-package-migration-staging.md` at repo root with sections: "Release 2 port targets" (files to move to `@sirenpm/language`) and "Release 3 port targets" (CLI changes). All subsequent removal steps append to it.
+1. ~~**Delete orphaned `packages/parser/`** — separate PR before Phase 1.1.~~ ✅ Directory contained only stale build artifacts (`dist/`, `node_modules/`, `.tsbuildinfo`) — no source, no `package.json`, fully gitignored. Deleted; `yarn install` confirmed it was not a workspace member.
+2. ~~**Create staging doc** — add `lang-package-migration-staging.md` at repo root with sections: "Release 2 port targets" (files to move to `@sirenpm/language`) and "Release 3 port targets" (CLI changes). All subsequent removal steps append to it.~~ ✅ Created at repo root with the two empty section skeletons.
 
-### Phase 1.1: Unified Diagnostics Foundation
+### Phase 1.1: Unified Diagnostics Foundation ✅
 
-3. **Define `DiagnosticBase` in core** — Create `packages/core/src/ir/diagnostics.ts` with `{ code, severity, file?, line?, column? }` (no `message`).
-4. **Extend semantic diagnostics** — Make `DanglingDependencyDiagnostic`, `CircularDependencyDiagnostic`, and `DuplicateIdDiagnostic` in `packages/core/src/ir/context.ts` extend `DiagnosticBase`.
-5. **Renumber core semantic codes** — apply the mapping below in `packages/core/src/ir/context.ts`. All assertion sites (e.g. `ir/context.test.ts`, any in-core fixtures referencing the old codes) will surface as test failures and be updated as part of the same step. Safe to do now because language-phase codes are about to leave core; no collision risk.
-
-   | Old | New | Diagnostic |
-   |-----|-----|------------|
-   | W004 | W001 | CircularDependencyDiagnostic |
-   | W005 | W002 | DanglingDependencyDiagnostic |
-   | W006 | W003 | DuplicateIdDiagnostic |
+3. ~~**Define `DiagnosticBase` in core** — Create `packages/core/src/ir/diagnostics.ts` with `{ code, severity, file?, line?, column? }` (no `message`).~~ ✅ Created and re-exported from `packages/core/src/index.ts`.
+4. ~~**Extend semantic diagnostics** — Make `DanglingDependencyDiagnostic`, `CircularDependencyDiagnostic`, and `DuplicateIdDiagnostic` in `packages/core/src/ir/context.ts` extend `DiagnosticBase`.~~ ✅ All three extend `DiagnosticBase`. Removed redundant `file`/`line`/`column` from `Dangling`/`Circular` (inherited); `DuplicateId` retains its `firstLine`/`firstColumn`/`firstFile`/`secondLine`/`secondColumn`. No `message` field existed on any of them, so the no-message design landed cleanly.
+5. ~~**Renumber core semantic codes**~~ ✅ W004→W001 (Circular), W005→W002 (Dangling), W006→W003 (Duplicate). All in-core assertion sites updated (`context.test.ts` plus five integration project tests). CLI left on old codes until Release 3 per scope. Verification: `tsc --noEmit` clean, `yarn workspace @sirenpm/core test` → 281 passed / 1 skipped, `grep W00[456] packages/core/{src,test}/` empty.
 
 ### Phase 1.2: IRExporter Interface and Origin Relocation
 

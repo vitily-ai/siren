@@ -12,6 +12,7 @@ import {
   getTasksByMilestone,
   isImplicitlyComplete,
 } from '../utilities/milestone';
+import type { DiagnosticBase } from './diagnostics';
 import type { Document, Resource, ResourceReference } from './types';
 
 /**
@@ -28,10 +29,10 @@ export type Diagnostic =
 
 // TODO this looks like it should be an extension of a root interface instead of two separate interfaces
 /**
- * W005: Dangling dependency (resource depends on non-existent resource)
+ * W002: Dangling dependency (resource depends on non-existent resource)
  */
-export interface DanglingDependencyDiagnostic {
-  readonly code: 'W005';
+export interface DanglingDependencyDiagnostic extends DiagnosticBase {
+  readonly code: 'W002';
   readonly severity: 'warning';
   /** ID of the resource that has the dangling dependency */
   readonly resourceId: string;
@@ -39,46 +40,32 @@ export interface DanglingDependencyDiagnostic {
   readonly resourceType: 'task' | 'milestone';
   /** ID of the missing dependency */
   readonly dependencyId: string;
-  /** Source file path (when resourceSources available) */
-  readonly file?: string;
-  /** 1-based line number (when origin available) */
-  readonly line?: number;
-  /** 0-based column number (when origin available) */
-  readonly column?: number;
 }
 
 /**
- * W004: Circular dependency detected
+ * W001: Circular dependency detected
  */
-export interface CircularDependencyDiagnostic {
-  readonly code: 'W004';
+export interface CircularDependencyDiagnostic extends DiagnosticBase {
+  readonly code: 'W001';
   readonly severity: 'warning';
   /** Nodes in the cycle, with the first node repeated at the end (e.g., ['a', 'b', 'c', 'a']) */
   readonly nodes: readonly string[];
-  /** Source file path(s) (when resourceSources available) */
-  readonly file?: string;
-  /** 1-based line number of the first node in cycle (when origin available) */
-  readonly line?: number;
-  /** 0-based column number of the first node in cycle (when origin available) */
-  readonly column?: number;
 }
 
 /**
- * W006: Duplicate resource ID detected
+ * W003: Duplicate resource ID detected
  *
  * Emitted when multiple resources share the same ID. The first occurrence is kept,
  * and all subsequent occurrences are dropped with a warning. File attribution
  * is derived from each resource's origin.document field.
  */
-export interface DuplicateIdDiagnostic {
-  readonly code: 'W006';
+export interface DuplicateIdDiagnostic extends DiagnosticBase {
+  readonly code: 'W003';
   readonly severity: 'warning';
   /** ID of the duplicate resource */
   readonly resourceId: string;
   /** Type of the resource (task or milestone) */
   readonly resourceType: 'task' | 'milestone';
-  /** Source file path of the duplicate occurrence (from origin.document) */
-  readonly file?: string;
   /** 1-based line number of the first (precedent) occurrence */
   readonly firstLine?: number;
   /** 0-based column number of the first (precedent) occurrence */
@@ -266,7 +253,7 @@ export class IRContext {
         : {};
 
       diagnostics.push({
-        code: 'W004',
+        code: 'W001',
         severity: 'warning',
         nodes: cycle.nodes,
         ...fileInfo,
@@ -296,7 +283,7 @@ export class IRContext {
     return this._duplicateDiagnostics;
   }
 
-  /** Compute W006 diagnostics for duplicate resource IDs */
+  /** Compute W003 diagnostics for duplicate resource IDs */
   private computeDuplicateDiagnostics(): readonly DuplicateIdDiagnostic[] {
     const diagnostics: DuplicateIdDiagnostic[] = [];
     const seen = new Map<string, Resource>();
@@ -304,7 +291,7 @@ export class IRContext {
     for (const resource of this._allResources) {
       const first = seen.get(resource.id);
       if (first) {
-        // Duplicate detected - emit W006 diagnostic
+        // Duplicate detected - emit W003 diagnostic
         const firstPos = first.origin
           ? { firstLine: first.origin.startRow + 1, firstColumn: 0 }
           : {};
@@ -319,7 +306,7 @@ export class IRContext {
         const file = resource.origin?.document;
 
         diagnostics.push({
-          code: 'W006',
+          code: 'W003',
           severity: 'warning',
           resourceId: resource.id,
           resourceType: resource.type,
@@ -350,7 +337,7 @@ export class IRContext {
             : {};
 
           diagnostics.push({
-            code: 'W005',
+            code: 'W002',
             severity: 'warning',
             resourceId: resource.id,
             resourceType: resource.type,

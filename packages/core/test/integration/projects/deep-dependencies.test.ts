@@ -50,7 +50,7 @@ describe('project:deep-dependencies', () => {
     expect(depsA).toContain('taskC');
 
     // Check for cycle warnings
-    const cycleWarnings = diagnostics.filter((d) => d.code === 'W004' && d.severity === 'warning');
+    const cycleWarnings = diagnostics.filter((d) => d.code === 'W001' && d.severity === 'warning');
     expect(cycleWarnings).toHaveLength(1); // One cycle: cycleX -> cycleY -> cycleZ -> cycleX
   });
 });

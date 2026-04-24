@@ -15,6 +15,7 @@ export type {
   Diagnostic,
   DuplicateIdDiagnostic,
 } from './ir/context';
+export type { DiagnosticBase } from './ir/diagnostics';
 // IR types (intermediate representation)
 export * from './ir/index';
 // Export the parser factory so hosts (CLI/Web) can inject WASM loaders.
