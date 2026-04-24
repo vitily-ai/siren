@@ -1,0 +1,23 @@
+# Incomplete leaf rendering fixture
+
+# A completed dependency (should not appear as an incomplete leaf)
+task dep_a complete {
+  description = "Completed dependency"
+}
+
+# A small chain dep_b -> dep_c
+task dep_b {
+  depends_on = dep_c
+}
+
+task dep_c {
+  description = "leaf task"
+}
+
+task dep_d {
+  depends_on = [dep_b]
+}
+
+milestone m_parent {
+  depends_on = [dep_a, dep_b, dep_d]
+}

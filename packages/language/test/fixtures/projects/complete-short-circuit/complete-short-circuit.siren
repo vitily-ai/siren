@@ -1,0 +1,11 @@
+milestone ms {
+  depends_on = [complete-and-should-not-show, incomplete-and-should-show]
+}
+
+task complete-and-should-not-show complete {}
+
+task incomplete-and-should-show {
+
+    depends_on = complete-and-should-not-show
+
+}

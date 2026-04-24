@@ -1,0 +1,13 @@
+task present {
+  description = "a present task"
+}
+
+milestone with-dangling {
+  description = "depends on a missing task"
+  depends_on = [missing-task, present]
+}
+
+// should emit two different warnings
+milestone with-two-dangling {
+  depends_on = [missing1, missing2]
+}

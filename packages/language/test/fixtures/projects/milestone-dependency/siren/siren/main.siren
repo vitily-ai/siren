@@ -1,0 +1,15 @@
+task does_not_show_as_root_dep {
+    
+}
+
+milestone shows_as_leaf_dep_of_root {
+    depends_on = does_not_show_as_root_dep
+}
+
+task shows_as_root_dep {
+    depends_on = shows_as_leaf_dep_of_root
+}
+
+milestone root {
+    depends_on = shows_as_root_dep
+}

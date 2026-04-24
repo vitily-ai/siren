@@ -45,3 +45,55 @@ task list-deps-not-tasks {
 task parser-wasm-packaging {
   description = "Make parser WASM publishing/runtime resolution robust for npm/npx installs. Current CLI adapter path resolution assumes monorepo layout. Decide and implement a distribution strategy: package WASM with runtime clients (e.g. @sirenpm/cli dist) or publish a dedicated WASM package, and wire deterministic runtime resolution accordingly."
 }
+
+task migrate-tsup-to-tsdown {
+  description = "tsup is unmaintained. migrate to tsdown for all packages"
+}
+
+task scrutinize-wl003 {
+  description = "determine if there are actually any valid scenarios where this error could be raised under current grammar. if not, remove it"
+}
+
+task parse-daigs-col-0 {
+  description = "parse diagnostics all set a column position of 0 - parse diagnostics should report real column position"
+}
+
+task export-bad-id-unquoted {
+  description = "copilot feedback. torture test scenario needs to be set up to verify."
+  feedback = "wrapResourceBlock interpolates id directly into the header (${type} ${id} ...). Resource IDs can require quoting (e.g., IDs with spaces or non-identifier characters), but decodeResource stores the unquoted identifier value. This will generate syntactically invalid Siren for quoted identifiers. Please format resource IDs using the same quoting rules as the parser grammar (bare identifier when safe, otherwise quoted)."
+  link = "https://github.com/vitily-ai/siren/pull/34#discussion_r3140654634"
+}
+
+task comment-byte-split-misalignment {
+  description = "copilot feedback. torture test scenarios needs to be set up to verify."
+  link = [
+    "https://github.com/vitily-ai/siren/pull/34#discussion_r3140583663",
+    "https://github.com/vitily-ai/siren/pull/34#discussion_r3140654598",
+    "https://github.com/vitily-ai/siren/pull/34#discussion_r3140583663"
+  ]
+}
+
+task comment-export-performance {
+  description = "copilot feedback. torture test scenarios needs to be set up to verify."
+  link = [
+    "https://github.com/vitily-ai/siren/pull/34#discussion_r3140583683",
+    "https://github.com/vitily-ai/siren/pull/34#discussion_r3140583769"
+  ]
+}
+
+task improved-interleaving-formatter {
+  description = "
+    reimplementation of the comment-aware formatter
+    parsing produces 'templates' for nodes that preserve non-semantic information about nodes
+    including spacing and comments
+    templates are returned from cst parse and can be provided optionally to exporter to preserve
+    non-semantic features of sources efficiently without complex decision trees
+    
+    this is an idea needing further consideration and research before approaching
+  "
+
+  obsoletes = [
+    comment-export-performance,
+    comment-byte-split-misalignment
+  ]
+}

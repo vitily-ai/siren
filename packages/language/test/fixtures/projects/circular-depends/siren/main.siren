@@ -1,0 +1,11 @@
+task task1 {
+  depends_on = task2
+}
+
+task task2 {
+  depends_on = task3
+}
+
+task task3 {
+  depends_on = task1
+}

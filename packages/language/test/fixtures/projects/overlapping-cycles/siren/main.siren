@@ -1,0 +1,17 @@
+milestone a {
+
+    depends_on = [b, c]
+
+}
+
+task b {
+
+    depends_on = [c]
+
+}
+
+task c {
+
+    depends_on = a
+
+}

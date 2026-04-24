@@ -1,0 +1,13 @@
+task task_done complete {
+}
+
+task task_incomplete {
+}
+
+task task_root {
+	depends_on = [task_done, task_incomplete]
+}
+
+milestone milestone1 {
+	depends_on = task_root
+}

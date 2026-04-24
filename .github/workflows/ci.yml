@@ -75,3 +75,49 @@ jobs:
 
       - name: Lint
         run: yarn lint || echo "Linting not configured yet"
+
+  grammar-drift:
+    name: Grammar drift check
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check grammar artifact freshness
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          GRAMMAR=packages/language/grammar/grammar.js
+          WASM=packages/language/grammar/tree-sitter-siren.wasm
+
+          if [ ! -f "$GRAMMAR" ]; then
+            echo "::error file=$GRAMMAR::Grammar source missing"; exit 1
+          fi
+          if [ ! -f "$WASM" ]; then
+            echo "::error file=$WASM::Compiled WASM missing — run 'yarn workspace @sirenpm/language grammar:build-wasm' and commit"; exit 1
+          fi
+
+          GRAMMAR_TS=$(git log -1 --format=%ct -- "$GRAMMAR")
+          WASM_TS=$(git log -1 --format=%ct -- "$WASM")
+
+          if [ -z "$GRAMMAR_TS" ] || [ -z "$WASM_TS" ]; then
+            echo "::error::Could not determine last-commit timestamp for grammar or WASM. Is this a shallow clone? Ensure fetch-depth: 0."
+            exit 1
+          fi
+
+          if [ "$GRAMMAR_TS" -gt "$WASM_TS" ]; then
+            GRAMMAR_DATE=$(git log -1 --format=%ci -- "$GRAMMAR")
+            WASM_DATE=$(git log -1 --format=%ci -- "$WASM")
+            echo "::error file=$GRAMMAR::grammar.js (last commit $GRAMMAR_DATE) is newer than tree-sitter-siren.wasm (last commit $WASM_DATE). Regenerate with 'yarn workspace @sirenpm/language grammar:build-wasm' and commit in the same PR."
+            exit 1
+          fi
+
+          echo "Grammar artifact is up to date."
+          echo "  grammar.js last commit:  $(git log -1 --format=%ci -- "$GRAMMAR")"
+          echo "  WASM      last commit:  $(git log -1 --format=%ci -- "$WASM")"

@@ -1,0 +1,5 @@
+milestone orphan {}
+
+task t {
+  depends_on = orphan
+}

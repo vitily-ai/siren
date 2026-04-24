@@ -1169,6 +1169,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@sirenpm/core@npm:^0.2.0":
+  version: 0.2.0
+  resolution: "@sirenpm/core@npm:0.2.0"
+  checksum: 10c0/f39612677f7d681b1e52c6548f629b008eddf06698c71313216fa1205766547798a34c48af9cbdceba9689492af9c28737115e328bdb4a459dd85661ce3250d1
+  languageName: node
+  linkType: hard
+
 "@sirenpm/core@workspace:*, @sirenpm/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@sirenpm/core@workspace:packages/core"
@@ -1177,6 +1184,22 @@ __metadata:
     tsup: "npm:^8.3.5"
     typescript: "npm:^5.7.2"
     vitest: "npm:^4.0.16"
+  languageName: unknown
+  linkType: soft
+
+"@sirenpm/language@workspace:packages/language":
+  version: 0.0.0-use.local
+  resolution: "@sirenpm/language@workspace:packages/language"
+  dependencies:
+    "@sirenpm/core": "npm:^0.2.0"
+    "@types/node": "npm:^25.0.6"
+    tree-sitter-cli: "npm:^0.23.2"
+    tsup: "npm:^8.3.5"
+    typescript: "npm:^5.7.2"
+    vitest: "npm:^4.0.16"
+    web-tree-sitter: "npm:0.26.3"
+  peerDependencies:
+    "@sirenpm/core": ^0.2.0
   languageName: unknown
   linkType: soft
 
@@ -3178,6 +3201,15 @@ __metadata:
   bin:
     tree-kill: cli.js
   checksum: 10c0/7b1b7c7f17608a8f8d20a162e7957ac1ef6cd1636db1aba92f4e072dc31818c2ff0efac1e3d91064ede67ed5dc57c565420531a8134090a12ac10cf792ab14d2
+  languageName: node
+  linkType: hard
+
+"tree-sitter-cli@npm:^0.23.2":
+  version: 0.23.2
+  resolution: "tree-sitter-cli@npm:0.23.2"
+  bin:
+    tree-sitter: cli.js
+  checksum: 10c0/26bc30b881992efd07c6da36d07de37594f16e5388ea38d3b6e59df5b3ba62620d60e5a19a9f9f3c95d0627edd52dda1a6134328e8d01235923aebed7bb389cf
   languageName: node
   linkType: hard
 
