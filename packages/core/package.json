@@ -1,6 +1,6 @@
 {
   "name": "@sirenpm/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Environment-agnostic core library for Siren PMaC",
   "license": "GPL-3.0",
   "type": "module",
