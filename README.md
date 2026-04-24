@@ -2,7 +2,24 @@
 
 Project Management as Code — define projects as atomic milestones using an HCL-inspired grammar.
 
-## Quick start
+## Install the CLI
+
+Run without installing (recommended for now):
+
+```bash
+npx @sirenpm/cli --version
+```
+
+Global install:
+
+```bash
+npm i -g @sirenpm/cli
+siren --version
+```
+
+> **TODO:** Global install (`npm i -g @sirenpm/cli`) is currently broken — the grammar WASM ships in `@sirenpm/core` but the CLI resolves it via monorepo-relative paths, so globally-installed bins hit `ENOENT` on the wasm file. This will be fixed when the `@sirenpm/language` package is extracted (see `lang-package-plan.md`), at which point the wasm travels with the package that owns the parser and resolution becomes package-relative. `npx @sirenpm/cli` works fine in the meantime.
+
+## Quick start (contributors)
 
 Install dependencies and run tests:
 
@@ -12,7 +29,7 @@ yarn build
 yarn test
 ```
 
-Run the CLI (after build):
+Run the CLI from source (after build):
 
 ```bash
 node apps/cli/dist/index.js
