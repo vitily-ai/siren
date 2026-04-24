@@ -91,7 +91,7 @@ New package consuming the freshly-published `@sirenpm/core@^0.2.0` from npm.
 
 ### Phase 2.1: Package scaffold ✅
 
-19. ~~**Create `packages/language/`**~~ ✅ Scaffolded `package.json`, `tsconfig.json`, `vitest.config.ts`, `tsup.config.ts`, and a placeholder `src/index.ts`. Root workspaces glob already matches `packages/*` — no change needed. `@sirenpm/core@^0.2.0` + `web-tree-sitter@0.26.3` (exact pin) placed in **`dependencies`** (not `peerDependencies` — the plan's header wording was a mismatch; runtime deps are correct given language owns the engine and ships a bundled ESM). `--passWithNoTests` added to the vitest script as a temporary accommodation; Phase 2.4 will drop it once tests arrive.
+19. ~~**Create `packages/language/`**~~ ✅ Scaffolded `package.json`, `tsconfig.json`, `vitest.config.ts`, `tsup.config.ts`, and a placeholder `src/index.ts`. Root workspaces glob already matches `packages/*` — no change needed. `@sirenpm/core@^0.2.0` is declared as a **peer dependency** (consumers supply core) with a matching `devDependencies` entry so local `tsc`/build can resolve it. `web-tree-sitter@0.26.3` (exact pin) is a runtime dependency — language owns the engine version. `--passWithNoTests` added to the vitest script as a temporary accommodation; Phase 2.4 will drop it once tests arrive.
 
     **Verification:** `yarn install` clean; lockfile confirms `@sirenpm/core@npm:0.2.0` resolves from registry (not workspace); `tsc --noEmit` pass; `tsup build` emits `dist/index.js` + `dist/index.d.ts`; `grep workspace:` in `packages/language/package.json` empty.
 

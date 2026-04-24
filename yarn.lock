@@ -1197,6 +1197,8 @@ __metadata:
     typescript: "npm:^5.7.2"
     vitest: "npm:^4.0.16"
     web-tree-sitter: "npm:0.26.3"
+  peerDependencies:
+    "@sirenpm/core": ^0.2.0
   languageName: unknown
   linkType: soft
 
