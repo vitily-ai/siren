@@ -37,6 +37,7 @@ type DuplicatePositionDiagnostic = {
   readonly secondColumn?: number;
 };
 
+// Centralize duplicate-position codes so additional duplicate diagnostics can opt in explicitly.
 const duplicatePositionCodes = new Set(['W003']);
 
 function usesDuplicatePosition(diagnostic: Diagnostic | ParseDiagnostic): boolean {
