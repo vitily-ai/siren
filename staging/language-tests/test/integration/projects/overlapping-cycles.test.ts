@@ -24,17 +24,17 @@ describe('project:overlapping-cycles', () => {
 
   it('detects overlapping circular dependencies and emits warnings', async () => {
     const { diagnostics } = await parseAndDecodeAll(adapter, 'overlapping-cycles');
-    const cycleWarnings = diagnostics.filter((d) => d.code === 'W004' && d.severity === 'warning');
+    const cycleWarnings = diagnostics.filter((d) => d.code === 'W001' && d.severity === 'warning');
     expect(cycleWarnings).toHaveLength(2);
 
     // PRESCRIPTIVE: Core MUST provide structured diagnostic data
-    // W004 diagnostics must have: code, severity, nodes (cycle chain), file
+    // W001 diagnostics must have: code, severity, nodes (cycle chain), file
     const cycles: any[] = cycleWarnings;
 
     // Find the a -> b -> c -> a cycle
     const longCycle = cycles.find((c) => c.nodes?.length === 4);
     expect(longCycle).toBeDefined();
-    expect(longCycle.code).toBe('W004');
+    expect(longCycle.code).toBe('W001');
     expect(longCycle.severity).toBe('warning');
     expect(longCycle.nodes).toEqual(['a', 'b', 'c', 'a']);
     expect(longCycle.file).toBe('siren/main.siren');
@@ -45,7 +45,7 @@ describe('project:overlapping-cycles', () => {
     // Find the a -> c -> a cycle
     const shortCycle = cycles.find((c) => c.nodes?.length === 3);
     expect(shortCycle).toBeDefined();
-    expect(shortCycle.code).toBe('W004');
+    expect(shortCycle.code).toBe('W001');
     expect(shortCycle.severity).toBe('warning');
     expect(shortCycle.nodes).toEqual(['a', 'c', 'a']);
     expect(shortCycle.file).toBe('siren/main.siren');

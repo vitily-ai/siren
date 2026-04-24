@@ -5,7 +5,24 @@
  * They are environment-agnostic and used by all consumers of @sirenpm/core.
  */
 
-import type { Origin } from '../parser/cst';
+/**
+ * Origin metadata for IR/CST nodes.
+ *
+ * Tracks source code position (byte and row offsets) for a node.
+ * Used by formatters to preserve comments and structure.
+ * Optional on nodes—early code doesn't require origin tracking.
+ *
+ * Positional metadata is IR-agnostic; it lives in core so that any
+ * frontend (parser, decoder, exporters) can share the same shape.
+ */
+export interface Origin {
+  readonly startByte: number;
+  readonly endByte: number;
+  readonly startRow: number;
+  readonly endRow: number;
+  /** Document identifier (e.g., relative file path from project root) */
+  readonly document?: string;
+}
 
 /**
  * Primitive value types that can appear in attributes

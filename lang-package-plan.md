@@ -41,70 +41,44 @@ Split parser/grammar/decoding and all export logic from `packages/core` into `pa
 
 Goal: core compiles, tests, and publishes without any parser/decoder/export code. CLI is untouched and remains pinned to `@sirenpm/core@0.1.0` until Release 3.
 
-### Phase 1.0: Prework
+### Phase 1.0: Prework ✅
 
-1. **Delete orphaned `packages/parser/`** — separate PR before Phase 1.1.
-2. **Create staging doc** — add `lang-package-migration-staging.md` at repo root with sections: "Release 2 port targets" (files to move to `@sirenpm/language`) and "Release 3 port targets" (CLI changes). All subsequent removal steps append to it.
+1. ~~**Delete orphaned `packages/parser/`** — separate PR before Phase 1.1.~~ ✅ Directory contained only stale build artifacts (`dist/`, `node_modules/`, `.tsbuildinfo`) — no source, no `package.json`, fully gitignored. Deleted; `yarn install` confirmed it was not a workspace member.
+2. ~~**Create staging doc** — add `lang-package-migration-staging.md` at repo root with sections: "Release 2 port targets" (files to move to `@sirenpm/language`) and "Release 3 port targets" (CLI changes). All subsequent removal steps append to it.~~ ✅ Created at repo root with the two empty section skeletons.
 
-### Phase 1.1: Unified Diagnostics Foundation
+### Phase 1.1: Unified Diagnostics Foundation ✅
 
-3. **Define `DiagnosticBase` in core** — Create `packages/core/src/ir/diagnostics.ts` with `{ code, severity, file?, line?, column? }` (no `message`).
-4. **Extend semantic diagnostics** — Make `DanglingDependencyDiagnostic`, `CircularDependencyDiagnostic`, and `DuplicateIdDiagnostic` in `packages/core/src/ir/context.ts` extend `DiagnosticBase`.
-5. **Renumber core semantic codes** — apply the mapping below in `packages/core/src/ir/context.ts`. All assertion sites (e.g. `ir/context.test.ts`, any in-core fixtures referencing the old codes) will surface as test failures and be updated as part of the same step. Safe to do now because language-phase codes are about to leave core; no collision risk.
+3. ~~**Define `DiagnosticBase` in core** — Create `packages/core/src/ir/diagnostics.ts` with `{ code, severity, file?, line?, column? }` (no `message`).~~ ✅ Created and re-exported from `packages/core/src/index.ts`.
+4. ~~**Extend semantic diagnostics** — Make `DanglingDependencyDiagnostic`, `CircularDependencyDiagnostic`, and `DuplicateIdDiagnostic` in `packages/core/src/ir/context.ts` extend `DiagnosticBase`.~~ ✅ All three extend `DiagnosticBase`. Removed redundant `file`/`line`/`column` from `Dangling`/`Circular` (inherited); `DuplicateId` retains its `firstLine`/`firstColumn`/`firstFile`/`secondLine`/`secondColumn`. No `message` field existed on any of them, so the no-message design landed cleanly.
+5. ~~**Renumber core semantic codes**~~ ✅ W004→W001 (Circular), W005→W002 (Dangling), W006→W003 (Duplicate). All in-core assertion sites updated (`context.test.ts` plus five integration project tests). CLI left on old codes until Release 3 per scope. Verification: `tsc --noEmit` clean, `yarn workspace @sirenpm/core test` → 281 passed / 1 skipped, `grep W00[456] packages/core/{src,test}/` empty.
 
-   | Old | New | Diagnostic |
-   |-----|-----|------------|
-   | W004 | W001 | CircularDependencyDiagnostic |
-   | W005 | W002 | DanglingDependencyDiagnostic |
-   | W006 | W003 | DuplicateIdDiagnostic |
+### Phase 1.2: IRExporter Interface and Origin Relocation ✅
 
-### Phase 1.2: IRExporter Interface and Origin Relocation
+6. ~~**Define `IRExporter` in core** — Create `packages/core/src/ir/exporter.ts` with `interface IRExporter { export(ctx: IRContext): string }`; export from `packages/core/src/index.ts`.~~ ✅ Created; re-exported from `packages/core/src/index.ts`.
+7. ~~**Relocate `Origin`** — Move `Origin` from `packages/core/src/parser/cst.ts` into `packages/core/src/ir/types.ts`. No temporary re-export needed — `parser/` is about to be deleted; record the new canonical location in the staging doc so Release 2's `cst.ts` port knows to import it from `@sirenpm/core`.~~ ✅ `Origin` now lives in `ir/types.ts`; `parser/cst.ts` retains a transparent re-export for in-tree consumers until Phase 1.3 removes the directory. `source-index.ts` repointed to the new location. Staging doc updated with the canonical-location note under "Release 2 port targets". Verification: `tsc --noEmit` clean; 281 tests pass.
 
-6. **Define `IRExporter` in core** — Create `packages/core/src/ir/exporter.ts` with `interface IRExporter { export(ctx: IRContext): string }`; export from `packages/core/src/index.ts`.
-7. **Relocate `Origin`** — Move `Origin` from `packages/core/src/parser/cst.ts` into `packages/core/src/ir/types.ts`. No temporary re-export needed — `parser/` is about to be deleted; record the new canonical location in the staging doc so Release 2's `cst.ts` port knows to import it from `@sirenpm/core`.
+### Phase 1.3: Remove parser/decoder/export from core ✅
 
-### Phase 1.3: Remove parser/decoder/export from core
+8. ~~**Record to staging doc**~~ ✅ Appended Parser/Decoder/Export source inventories + `fromCst` removal note under "Release 2 port targets"; authored all six Release 3 CLI migration entries under "Release 3 port targets".
+9. ~~**Remove `IRContext.fromCst()`**~~ ✅ Deleted the static factory, the `parseDiagnostics` constructor arg, field, and getter. `fromResources(resources, source?)` is the sole factory, carrying semantic diagnostics only. Removed `ParseDiagnostic` import from `context.ts`; no internal decoder/parser coupling remained.
+10. ~~**Delete source directories**~~ ✅ Removed `packages/core/src/parser/`, `packages/core/src/decoder/`, `packages/core/src/export/`, plus the colocated `src/exporter.test.ts`.
+11. ~~**Trim core exports**~~ ✅ `packages/core/src/index.ts` now exports only IR types, `IRContext`, type guards, `Origin`, semantic diagnostics, `DiagnosticBase`, `IRExporter`, `DependencyTree`, utilities, `version`. All parser/decoder/export re-exports (and `ParseDiagnostic`) removed.
+12. ~~**Drop `web-tree-sitter`**~~ ✅ Removed from `packages/core/package.json` devDependencies. `yarn install` clean. Residual `web-tree-sitter` references remain only in test helpers/fixtures and stale docs (`ADAPTER_EXAMPLE.md`, `STATUS.md`, `TREE_SITTER_SETUP.md`) — addressed in Phase 1.4 / Release 4.
 
-8. **Record to staging doc** — Before deleting anything, append to `lang-package-migration-staging.md`.
-
-   Under **"Release 2 port targets"**:
-   - File inventory of `packages/core/src/parser/` (adapter.ts, factory.ts, cst.ts, source-index.ts, index.ts) **plus colocated tests** (adapter.test.ts, cst.test.ts, source-index.test.ts), with a note that `factory.ts` is to be rewritten (no DI; direct `web-tree-sitter` import; `createParser()` owns init; WASM via `new URL(...)`).
-   - File inventory of `packages/core/src/decoder/` (index.ts, xfail.ts) **plus colocated `index.test.ts`**, with the code-rename map W001→WL001, W002→WL002, W003→WL003, E001→EL001.
-   - File inventory of `packages/core/src/export/` (siren-exporter.ts, comment-exporter.ts, formatters.ts, index.ts) **plus colocated `comment-exporter.test.ts`**, with a note that `siren-exporter.ts` must implement `IRExporter`.
-   - Note: `IRContext.fromCst()` is being removed; Release 2 replaces it with `createIRContextFromCst()` in `packages/language/src/context-factory.ts` returning `{ context, parseDiagnostics }`.
-
-   Under **"Release 3 port targets"** (authored now so Phase 3 has a single source of truth):
-   - `apps/cli/src/adapter/node-parser-adapter.ts` and its test — **delete entirely** in Phase 3.2.
-   - `apps/cli/src/parser.ts`, `apps/cli/src/project.ts`, `apps/cli/src/commands/format.ts` — switch parser/export/bridge imports to `@sirenpm/language`; replace `IRContext.fromCst()` with `createIRContextFromCst()`; combine returned `parseDiagnostics` with `ir.diagnostics`.
-   - `apps/cli/src/format-diagnostics.ts` — update code literals (WL001–WL003, EL001, core W001–W003); preserve WL003's `secondLine`/`secondColumn` special case.
-   - `apps/cli/src/format-parse-error.ts` — re-source `ParseError` import from `@sirenpm/language`.
-   - `apps/cli/package.json` — bump `@sirenpm/core` to `^0.2.0`, add `@sirenpm/language` pin, remove `web-tree-sitter`.
-   - `apps/cli/test/expected/*.txt` — regenerate every golden touching diagnostics for the new code literals.
-9. **Remove `IRContext.fromCst()`** — Delete the static bridge from `IRContext` in `packages/core/src/ir/context.ts`. Also remove the `parseDiagnostics` parameter from `IRContext.fromResources()`, the matching constructor argument, and the `parseDiagnostics` field/getter on `IRContext`. `IRContext.fromResources()` becomes the sole factory and carries semantic diagnostics only; parse diagnostics ride alongside it as a sibling returned by the future `createIRContextFromCst()` bridge.
-10. **Delete source directories** — `packages/core/src/parser/`, `packages/core/src/decoder/`, `packages/core/src/export/`.
-11. **Trim core exports** — `packages/core/src/index.ts` keeps IR/core types, `IRContext`, `IRExporter`, `DiagnosticBase`, semantic diagnostics, utilities, type guards, `version`.
-12. **Drop `web-tree-sitter`** — remove from `packages/core/package.json` devDependencies.
+**Verification:** `tsc --noEmit` clean; `grep parser/\\|decoder/\\|export/ packages/core/src/` empty. Tests: 91 pass / 57 fail / 11 skipped — 73 `IRContext.fromCst is not a function` + 1 missing `../src/parser/factory` module (expected input for Phase 1.4 triage).
 
 ### Phase 1.4: Test triage (core-only)
 
-13. **Record to staging doc** — Append to "Release 2 port targets" a list of every test file and helper being moved out of `packages/core/test/`, with one-line descriptions:
-    - `packages/core/test/helpers/node-adapter.ts` (~520 lines — full `NodeParserAdapter` test impl with CST conversion).
-    - `packages/core/test/helpers/parser.ts` (~70 lines — `getTestAdapter()`/`doc()` wrappers).
-    - `packages/core/test/integration/node-adapter.test.ts`, `fixtures.test.ts`, `decode-fixtures.test.ts`, all project integration tests.
-    - Snippet fixtures under `packages/core/test/fixtures/snippets/`.
-    - Project fixtures that exercise decoding/parsing (enumerate which ones — some may remain in core if they only exercise IR).
-    - `packages/core/src/exporter.test.ts` and any remaining parser/decoder/export unit tests.
-14. **Relocate to staging area** — Move the files above to `staging/language-tests/` at repo root (or a feature branch held open for Release 2). Gitignore from core's vitest config so they don't run during Release 1.
-15. **Rewrite residual core tests** — Any surviving test in `packages/core/test/` (e.g. `factory.test.ts`, `milestone.test.ts`) that still used `IRContext.fromCst()` is rewritten to build IR directly via `IRContext.fromResources()`.
-16. **Verify core in isolation:**
-    - `yarn workspace @sirenpm/core tsc --noEmit`
-    - `yarn workspace @sirenpm/core test`
-    - `grep -r "parser/\|decoder/\|export/" packages/core/src/` → empty
-    - `grep -r "web-tree-sitter" packages/core/` → empty
+### Phase 1.4: Test triage (core-only) ✅
+
+13. ~~**Record to staging doc**~~ ✅ Appended "Tests, helpers, and fixtures (Phase 1.4)" subsection with full inventory: 2 helpers, 3 root integration tests, 28 project tests + helper, `factory.test.ts`, 8 snippet fixtures, 34 deferred project fixtures, and a note on deleted colocated units.
+14. ~~**Relocate to staging area**~~ ✅ 43 files moved to `staging/language-tests/` preserving relative paths under `test/`. Configured `biome.json` with `!staging` so lint/format skip it. Root + core `vitest.config.ts` glob scopes already exclude the directory. **Not gitignored** — tracked in git so the feature branch carries it to Release 2. **Deferred**: 34 project-fixture dirs under `packages/core/test/fixtures/projects/` stay put because `apps/cli/test/helpers/fixture-utils.ts` still references them by hardcoded relative path; CLI is out of Release 1 scope. Phase 2.4 will copy/symlink them into the language package; Phase 3.3 repoints CLI.
+15. ~~**Rewrite residual core tests**~~ ✅ Only one block needed rewriting: the cycle/origin test in `packages/core/src/ir/context.test.ts` now builds `Resource[]` by hand and calls `IRContext.fromResources()`. Other surviving tests (`milestone.test.ts`, `types.test.ts`, utility tests) are pure IR and required no changes.
+16. ~~**Verify core in isolation**~~ ✅ `tsc --noEmit` clean; `yarn workspace @sirenpm/core test` → **7 files / 58 tests passing, 0 failures**; both greps empty in `packages/core/src/`. Residual `web-tree-sitter` mentions remain only in stale `ADAPTER_EXAMPLE.md`, `STATUS.md`, `TREE_SITTER_SETUP.md` (Release 4 docs cleanup).
 
 ### Phase 1.5: Release
 
-17. **Changeset** — `@sirenpm/core` **breaking minor bump** (per 0.x conventions: minor = breaking). Use changeset type `minor` for `0.1.0 → 0.2.0`; the changelog body must enumerate the breaking surface (removed parser/decoder/export, renumbered diagnostics W004–W006 → W001–W003, removed `IRContext.fromCst()`, removed `parseDiagnostics` from `fromResources()`).
+17. Removed
 18. **Merge + publish** — `release-core.yml` publishes `@sirenpm/core@0.2.0` to npm.
 
 **Release 1 exit criteria:** `@sirenpm/core@0.2.0` on npm; core tests pass with no parser/decoder/export code remaining; staging doc enumerates every piece of working code awaiting re-introduction in later releases.

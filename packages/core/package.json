@@ -1,6 +1,6 @@
 {
   "name": "@sirenpm/core",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Environment-agnostic core library for Siren PMaC",
   "license": "GPL-3.0",
   "type": "module",
@@ -33,7 +33,6 @@
     "@types/node": "^25.0.6",
     "tsup": "^8.3.5",
     "typescript": "^5.7.2",
-    "vitest": "^4.0.16",
-    "web-tree-sitter": "^0.26.8"
+    "vitest": "^4.0.16"
   }
 }
