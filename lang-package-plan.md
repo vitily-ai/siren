@@ -169,8 +169,8 @@ This entry exists so Phase 3.3 has a checklist of what to restore. Do not silent
 
 ### Phase 3.1: Record + swap dependencies
 
-34. **Confirm staging doc** — The "Release 3 port targets" section was authored during Release 1 Phase 1.3 step 8. Re-read it; if any CLI surface has shifted since then, append updates before proceeding.
-35. **Update `apps/cli/package.json`** — bump `"@sirenpm/core": "^0.2.0"`, add `"@sirenpm/language": "^0.1.0"`, remove `"web-tree-sitter"` (now transitive via language). `yarn install`.
+34. ~~**Confirm staging doc**~~ ✅ Re-read "Release 3 port targets"; no CLI surface drift found before proceeding.
+35. ~~**Update `apps/cli/package.json`**~~ ✅ Bumped `"@sirenpm/core": "^0.2.0"`, added `"@sirenpm/language": "^0.1.0"`, removed `"web-tree-sitter"` (now transitive via language), and refreshed `yarn.lock`.
 
 ### Phase 3.2: Code updates
 
