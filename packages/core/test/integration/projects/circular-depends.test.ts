@@ -2,10 +2,10 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { IRContext } from '../../../src/ir/context.js';
-import type { SourceDocument } from '../../../src/parser/adapter.js';
-import { getTestAdapter } from '../../helpers/parser.js';
-import { getAdapter, parseAndDecodeAll } from './helper.js';
+import { IRContext } from '../../../src/ir/context';
+import type { SourceDocument } from '../../../src/parser/adapter';
+import { getTestAdapter } from '../../helpers/parser';
+import { getAdapter, parseAndDecodeAll } from './helper';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectsDir = join(__dirname, '..', '..', 'fixtures', 'projects');

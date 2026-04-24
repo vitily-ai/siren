@@ -5,7 +5,7 @@
  * Apps provide concrete implementations for browser (WASM) or Node.
  */
 
-import type { DocumentNode } from './cst.js';
+import type { DocumentNode } from './cst';
 
 /**
  * Source document for parsing

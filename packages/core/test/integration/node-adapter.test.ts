@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { doc, getTestAdapter } from '../helpers/parser.js';
+import { doc, getTestAdapter } from '../helpers/parser';
 
 describe('NodeParserAdapter', () => {
   it('should parse an empty document', async () => {

@@ -10,8 +10,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Language, Parser, type Tree } from 'web-tree-sitter';
-import type { ParserAdapter, SourceDocument } from '../../src/parser/adapter.js';
-import { createNodeAdapter } from './node-adapter.js';
+import type { ParserAdapter, SourceDocument } from '../../src/parser/adapter';
+import { createNodeAdapter } from './node-adapter';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

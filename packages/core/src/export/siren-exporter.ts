@@ -1,5 +1,5 @@
-import type { IRContext } from '../ir/context.js';
-import { formatAttributeLine, wrapResourceBlock } from './formatters.js';
+import type { IRContext } from '../ir/context';
+import { formatAttributeLine, wrapResourceBlock } from './formatters';
 
 export function exportToSiren(ctx: IRContext): string {
   const lines: string[] = [];

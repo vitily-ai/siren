@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { exportToSiren, IRContext, type Resource } from './index.js';
+import { exportToSiren, IRContext, type Resource } from './index';
 
 describe('exportToSiren', () => {
   it('formats primitives and complete flag', () => {

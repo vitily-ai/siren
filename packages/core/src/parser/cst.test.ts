@@ -9,7 +9,7 @@ import type {
   Origin,
   ReferenceNode,
   ResourceNode,
-} from './cst.js';
+} from './cst';
 
 describe('CST types', () => {
   describe('Origin interface', () => {

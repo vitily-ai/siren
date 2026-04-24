@@ -14,7 +14,7 @@ import type {
   ParseResult,
   ParserAdapter,
   SourceDocument,
-} from '../../src/parser/adapter.js';
+} from '../../src/parser/adapter';
 import type {
   ArrayNode,
   AttributeNode,
@@ -25,7 +25,7 @@ import type {
   Origin,
   ReferenceNode,
   ResourceNode,
-} from '../../src/parser/cst.js';
+} from '../../src/parser/cst';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

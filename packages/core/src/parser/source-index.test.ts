@@ -13,8 +13,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { exportWithComments, IRContext, SourceIndex } from '../index.js';
-import type { CommentToken, Origin } from '../parser/cst.js';
+import { exportWithComments, IRContext, SourceIndex } from '../index';
+import type { CommentToken, Origin } from '../parser/cst';
 
 /**
  * Helper: Create a CommentToken for testing

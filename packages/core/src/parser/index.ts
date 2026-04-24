@@ -8,7 +8,7 @@ export type {
   ParseResult,
   ParserAdapter,
   SourceDocument,
-} from './adapter.js';
+} from './adapter';
 export type {
   ArrayNode,
   AttributeNode,
@@ -20,11 +20,11 @@ export type {
   Origin,
   ReferenceNode,
   ResourceNode,
-} from './cst.js';
+} from './cst';
 
 // Parser factory that allows WASM loader injection from hosts.
-export { createParserFactory } from './factory.js';
+export { createParserFactory } from './factory';
 
 // SourceIndex for comment classification
-export type { ClassifiedComment } from './source-index.js';
-export { SourceIndex } from './source-index.js';
+export type { ClassifiedComment } from './source-index';
+export { SourceIndex } from './source-index';

@@ -5,7 +5,7 @@
  * They are environment-agnostic and used by all consumers of @sirenpm/core.
  */
 
-import type { Origin } from '../parser/cst.js';
+import type { Origin } from '../parser/cst';
 
 /**
  * Primitive value types that can appear in attributes

@@ -320,7 +320,7 @@ describe('complete keyword handling', () => {
 });
 
 import { describe, expect, it } from 'vitest';
-import type { Attribute } from '../ir/index.js';
+import type { Attribute } from '../ir/index';
 import type {
   ArrayNode,
   AttributeNode,
@@ -330,8 +330,8 @@ import type {
   LiteralNode,
   ReferenceNode,
   ResourceNode,
-} from '../parser/cst.js';
-import { type DecodeResult, decode } from './index.js';
+} from '../parser/cst';
+import { type DecodeResult, decode } from './index';
 
 /** Helper to create a minimal identifier node */
 function makeIdentifier(value: string, quoted = false): IdentifierNode {

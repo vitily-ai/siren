@@ -1,9 +1,9 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { IRContext } from '../../../src/ir/context.js';
-import type { SourceDocument } from '../../../src/parser/adapter.js';
-import { getTestAdapter } from '../../helpers/parser.js';
+import { IRContext } from '../../../src/ir/context';
+import type { SourceDocument } from '../../../src/parser/adapter';
+import { getTestAdapter } from '../../helpers/parser';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectsDir = join(__dirname, '..', '..', 'fixtures', 'projects');

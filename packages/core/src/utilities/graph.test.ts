@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DirectedGraph } from './graph.js';
+import { DirectedGraph } from './graph';
 
 describe('DirectedGraph', () => {
   describe('basic operations', () => {

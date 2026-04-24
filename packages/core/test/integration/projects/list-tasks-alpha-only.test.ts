@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { getAdapter, parseAndDecodeAll } from './helper.js';
+import { getAdapter, parseAndDecodeAll } from './helper';
 
 describe('project:list-tasks-alpha-only', () => {
   let adapter: any;

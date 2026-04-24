@@ -1,8 +1,8 @@
-import type { IRContext } from '../ir/context.js';
-import type { AttributeValue } from '../ir/types.js';
-import type { SourceIndex } from '../parser/source-index.js';
-import { formatAttributeLine, wrapResourceBlock } from './formatters.js';
-import { exportToSiren } from './siren-exporter.js';
+import type { IRContext } from '../ir/context';
+import type { AttributeValue } from '../ir/types';
+import type { SourceIndex } from '../parser/source-index';
+import { formatAttributeLine, wrapResourceBlock } from './formatters';
+import { exportToSiren } from './siren-exporter';
 
 const BODY_INDENT = '  ';
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Resource } from '../ir/types.js';
-import { findResourceById } from './entry.js';
+import type { Resource } from '../ir/types';
+import { findResourceById } from './entry';
 
 describe('findResourceById', () => {
   const mockResources: Resource[] = [

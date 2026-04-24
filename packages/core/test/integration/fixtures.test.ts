@@ -7,7 +7,7 @@
 
 import { beforeAll, describe, expect, it } from 'vitest';
 import type Parser from 'web-tree-sitter';
-import { parseFixture } from '../helpers/parser.js';
+import { parseFixture } from '../helpers/parser';
 
 describe('Fixture Integration Tests', () => {
   describe('01-minimal.siren', () => {

@@ -9,10 +9,10 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { IRContext } from '../../src/ir/context.js';
-import { isReference } from '../../src/ir/types.js';
-import type { ParserAdapter, SourceDocument } from '../../src/parser/adapter.js';
-import { getTestAdapter } from '../helpers/parser.js';
+import { IRContext } from '../../src/ir/context';
+import { isReference } from '../../src/ir/types';
+import type { ParserAdapter, SourceDocument } from '../../src/parser/adapter';
+import { getTestAdapter } from '../helpers/parser';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixturesDir = join(__dirname, '../fixtures');

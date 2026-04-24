@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getDependencyTree } from './dependency-tree.js';
+import { getDependencyTree } from './dependency-tree';
 
 // helpers to build IR-compatible values
 const ref = (id: string) => ({ kind: 'reference', id });

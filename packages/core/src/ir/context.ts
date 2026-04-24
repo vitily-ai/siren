@@ -1,18 +1,18 @@
-import { decodeDocument, type ParseDiagnostic } from '../decoder/index.js';
-import type { DocumentNode } from '../parser/cst.js';
+import { decodeDocument, type ParseDiagnostic } from '../decoder/index';
+import type { DocumentNode } from '../parser/cst';
 import {
   getDependencyTree as buildDependencyTree,
   type DependencyTree,
-} from '../utilities/dependency-tree.js';
-import { findResourceById } from '../utilities/entry.js';
-import { DirectedGraph } from '../utilities/graph.js';
+} from '../utilities/dependency-tree';
+import { findResourceById } from '../utilities/entry';
+import { DirectedGraph } from '../utilities/graph';
 import {
-  isImplicitlyComplete,
   buildDependencyGraph,
   getMilestoneIds,
   getTasksByMilestone,
-} from '../utilities/milestone.js';
-import type { Document, Resource, ResourceReference } from './types.js';
+  isImplicitlyComplete,
+} from '../utilities/milestone';
+import type { Document, Resource, ResourceReference } from './types';
 
 /**
  * Semantic diagnostic message produced from IR analysis

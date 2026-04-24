@@ -13,7 +13,7 @@ import type {
   Resource,
   ResourceReference,
   ResourceType,
-} from '../ir/index.js';
+} from '../ir/index';
 import type {
   ArrayNode,
   AttributeNode,
@@ -22,7 +22,7 @@ import type {
   LiteralNode,
   ReferenceNode,
   ResourceNode,
-} from '../parser/cst.js';
+} from '../parser/cst';
 
 /**
  * Parse-level diagnostic message (grammar/syntax issues only)

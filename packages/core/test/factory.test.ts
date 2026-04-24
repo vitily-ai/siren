@@ -2,9 +2,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { Language, Parser } from 'web-tree-sitter';
-import { IRContext } from '../src/ir/context.js';
-import type { ParserAdapter, SourceDocument } from '../src/parser/adapter.js';
-import { createParserFactory } from '../src/parser/factory.js';
+import { IRContext } from '../src/ir/context';
+import type { ParserAdapter, SourceDocument } from '../src/parser/adapter';
+import { createParserFactory } from '../src/parser/factory';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const wasmPath = join(__dirname, '../grammar/tree-sitter-siren.wasm');

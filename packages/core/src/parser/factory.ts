@@ -12,7 +12,7 @@ import type {
   ParseResult,
   ParserAdapter,
   SourceDocument,
-} from './adapter.js';
+} from './adapter';
 import type {
   ArrayNode,
   AttributeNode,
@@ -22,7 +22,7 @@ import type {
   LiteralNode,
   ReferenceNode,
   ResourceNode,
-} from './cst.js';
+} from './cst';
 
 // Minimal structural types describing host-provided parser/runtime.
 export interface ParserLike {

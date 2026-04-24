@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { getAdapter, parseAndDecodeAll } from './helper.js';
+import { getAdapter, parseAndDecodeAll } from './helper';
 
 test('emits W005 for dangling dependencies and does not include missing nodes in IR graph', async () => {
   const adapter = await getAdapter();

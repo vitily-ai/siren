@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  exportToSiren,
-  exportWithComments,
-  IRContext,
-  type Resource,
-  SourceIndex,
-} from '../index.js';
-import type { CommentToken, Origin } from '../parser/cst.js';
+import { exportToSiren, exportWithComments, IRContext, type Resource, SourceIndex } from '../index';
+import type { CommentToken, Origin } from '../parser/cst';
 
 /**
  * Helper: Create a CommentToken for testing

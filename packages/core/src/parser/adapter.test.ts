@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CommentToken, ParseError, ParseResult } from './adapter.js';
+import type { CommentToken, ParseError, ParseResult } from './adapter';
 
 describe('Adapter types', () => {
   describe('CommentToken interface', () => {

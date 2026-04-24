@@ -1,4 +1,4 @@
-import type { Resource } from '../ir/types.js';
+import type { Resource } from '../ir/types';
 
 /**
  * Finds a resource by its ID from the given array of resources.

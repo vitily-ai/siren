@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Resource, ResourceType } from '../src/ir/types.js';
-import { isImplicitlyComplete, buildDependencyGraph } from '../src/utilities/milestone.js';
+import type { Resource, ResourceType } from '../src/ir/types';
+import { buildDependencyGraph, isImplicitlyComplete } from '../src/utilities/milestone';
 
 /** Build a minimal Resource for testing */
 function resource(

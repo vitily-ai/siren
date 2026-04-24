@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
-import type { Diagnostic, DuplicateIdDiagnostic } from '../../../src/ir/context.js';
-import { getAdapter, parseAndDecodeAll } from './helper.js';
+import type { Diagnostic, DuplicateIdDiagnostic } from '../../../src/ir/context';
+import { getAdapter, parseAndDecodeAll } from './helper';
 
 function isDuplicateIdDiagnostic(diagnostic: Diagnostic): diagnostic is DuplicateIdDiagnostic {
   return diagnostic.code === 'W006' && diagnostic.severity === 'warning';

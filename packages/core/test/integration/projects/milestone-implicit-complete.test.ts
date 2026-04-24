@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { IRContext } from '../../../src/ir/context.js';
-import { getAdapter, parseAndDecodeAll } from './helper.js';
+import { IRContext } from '../../../src/ir/context';
+import { getAdapter, parseAndDecodeAll } from './helper';
 
 describe('project:milestone-implicit-complete', () => {
   let irContext: IRContext;

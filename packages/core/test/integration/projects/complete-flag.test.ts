@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { IRContext } from '../../../src/index.js';
-import { getAdapter, parseAndDecodeAll } from './helper.js';
+import { IRContext } from '../../../src/index';
+import { getAdapter, parseAndDecodeAll } from './helper';
 
 describe('project:complete-flag', () => {
   let adapter: any;

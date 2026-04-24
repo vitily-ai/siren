@@ -1,5 +1,5 @@
-import type { AttributeValue } from '../ir/types.js';
-import { isArray, isReference } from '../ir/types.js';
+import type { AttributeValue } from '../ir/types';
+import { isArray, isReference } from '../ir/types';
 
 const INDENT = '  ';
 

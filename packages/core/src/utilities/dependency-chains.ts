@@ -1,6 +1,6 @@
-import type { Resource } from '../ir/types.js';
-import { isArray, isReference } from '../ir/types.js';
-import { DirectedGraph } from './graph.js';
+import type { Resource } from '../ir/types';
+import { isArray, isReference } from '../ir/types';
+import { DirectedGraph } from './graph';
 
 const MAX_DEPTH = 1000000;
 

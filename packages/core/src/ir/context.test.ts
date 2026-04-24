@@ -4,8 +4,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { IRContext } from './context.js';
-import type { Resource } from './types.js';
+import { IRContext } from './context';
+import type { Resource } from './types';
 
 describe('IRContext', () => {
   describe('fromResources without file attribution', () => {

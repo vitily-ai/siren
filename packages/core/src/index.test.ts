@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { IRContext, type Resource, version } from './index.js';
+import { IRContext, type Resource, version } from './index';
 
 describe('@sirenpm/core', () => {
   it('exports version', () => {
