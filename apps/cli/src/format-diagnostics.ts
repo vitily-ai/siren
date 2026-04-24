@@ -37,10 +37,16 @@ type DuplicatePositionDiagnostic = {
   readonly secondColumn?: number;
 };
 
+const duplicatePositionCodes = new Set(['W003']);
+
+function usesDuplicatePosition(diagnostic: Diagnostic | ParseDiagnostic): boolean {
+  return duplicatePositionCodes.has(diagnostic.code);
+}
+
 function hasDuplicatePosition(
   diagnostic: Diagnostic | ParseDiagnostic,
 ): diagnostic is (Diagnostic | ParseDiagnostic) & DuplicatePositionDiagnostic {
-  return 'secondLine' in diagnostic || 'secondColumn' in diagnostic;
+  return 'secondLine' in diagnostic && 'secondColumn' in diagnostic;
 }
 
 /**
@@ -52,7 +58,7 @@ function formatPrefix(diagnostic: Diagnostic | ParseDiagnostic): string {
   const file = diagnostic.file ?? 'unknown';
 
   // Duplicate-ID diagnostics use secondLine/secondColumn for the diagnostic position.
-  if (diagnostic.code === 'W003' && hasDuplicatePosition(diagnostic)) {
+  if (usesDuplicatePosition(diagnostic) && hasDuplicatePosition(diagnostic)) {
     const line = diagnostic.secondLine ?? 0;
     const column = diagnostic.secondColumn ?? 0;
     return `${file}:${line}:${column}`;
