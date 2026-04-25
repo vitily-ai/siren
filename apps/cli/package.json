@@ -1,6 +1,6 @@
 {
   "name": "@sirenpm/cli",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Siren command-line interface",
   "license": "GPL-3.0",
   "type": "module",
