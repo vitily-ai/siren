@@ -7,102 +7,246 @@ milestone milestone-files {
   requirements = "
     Example file siren/a/b/c/dirsareignored/somefile.siren produces synthetic milestone entry `somefile`.
     Two or more files with the same name in a project raise warnings using existing duplicate entry detection - no special treatment.
-    Treating files this way should be considered default behavior, with ways to opt out on a per-file basis later on.
+    Treating this way should be considered default behavior, with ways to opt out on a per-file basis later on.
     Implementation, in theory, should be entirely in core - frontends should not need to orchestrate this.
     It should be doable within the context during construction.
   "
-  // Implementation decisions:
-  // - ID derivation: basename only (foo.siren → foo), not full path
-  // - Collision: explicit milestone suppresses synthetic (no merge/warning)
-  // - Dependencies: all resources in file (tasks + milestones)
-  // - complete: always false (defer to milestone-complete-implicit task)
-  // - Origin: row 0 col 0 of source file for diagnostics
 
-  depends_on = [mf-group-resources, mf-derive-id, mf-check-collision, mf-generate-synthetic, mf-append-resources, mf-unit-tests, mf-project-fixture, mf-golden-tests]
+  // Implementation decisions (locked):
+  // - Synthesis lives in core (`packages/core/src/ir/context.ts`), driven entirely by
+  //   each Resource's `origin.document`. No CLI/Node code paths involved.
+  // - ID derivation: basename of `origin.document`, strip a trailing literal `.siren`
+  //   extension (case-sensitive). Path separators normalised on both `/` and `\`.
+  //   No further sanitisation - identifiers may contain spaces/punctuation; downstream
+  //   consumers that need quoted form already handle that via the quoted-identifier path.
+  // - Same-document explicit milestone = optional verbosity, NOT suppression. The
+  //   user authoring `milestone foo {}` inside `foo.siren` is declaring "this IS the
+  //   file's milestone, and I want to attach attributes to it" - it isn't a separate
+  //   resource being suppressed in favor of an implicit one. Behaviour: if any
+  //   *milestone* in that document has the derived ID, no synthesis happens for that
+  //   document. The explicit milestone stands alone. (Augmenting its depends_on with
+  //   the file's other resources is a deliberate follow-up - see follow-ups below.)
+  //   A *task* with the same ID does NOT block synthesis - the existing W003 pipeline
+  //   surfaces the conflict naturally.
+  // - Cross-document basename clash with one explicit, one implicit:
+  //   `a/foo.siren` has explicit `milestone foo` -> a/ does NOT synthesise (per above).
+  //   `b/foo.siren` has only tasks -> b/ DOES synthesise a `milestone foo`.
+  //   The existing duplicate detector then emits exactly one W003 attributing the
+  //   synthetic in b/ as the duplicate against the explicit in a/ (first-occurrence-wins,
+  //   explicit appears first in _allResources because synthetics are appended last).
+  // - Cross-document basename clash, both implicit (`a/foo.siren` + `b/foo.siren`,
+  //   tasks-only): both synthesise; existing duplicate detector emits one W003.
+  // - Dependencies: every resource produced from that document (tasks + milestones),
+  //   in source order, as an array of references. Empty document → empty array.
+  // - complete: always false at synthesis time. The new draft-state mechanism
+  //   (see milestone-draft-state) governs how empty-deps synthetics are reported -
+  //   they MUST NOT vacuously promote to `complete: true`.
+  // - Origin: { startByte: 0, endByte: 0, startRow: 0, endRow: 0, document: <docPath> }.
+  // - Synthetic resources are flagged so exporters and round-trip formatting can skip them.
+
+  // Open follow-ups (out of scope for this milestone, tracked separately):
+  // - Per-file opt-out syntax (e.g. a file-level pragma or config entry).
+  // - Augment-explicit: when a file contains an explicit milestone matching its
+  //   basename, automatically merge the file's other resources into that milestone's
+  //   depends_on. Today the user must list them by hand. Pure ergonomics.
+  // - CLI flag (e.g. `siren list --hide-synthetic`) to suppress synthetic milestones
+  //   from listings/trees without removing them from analysis.
+  // - Whether `siren list` should filter synthetics by default vs. surface them.
+  //   For this milestone we surface them and accept the golden-test churn.
+
+  depends_on = [
+    draft-states,
+    mf-cycle-tdd-prework,
+    mf-synthetic-flag,
+    mf-group-resources,
+    mf-derive-id,
+    mf-check-collision,
+    mf-generate-synthetic,
+    mf-append-resources,
+    mf-exporter-filter,
+    mf-unit-tests,
+    mf-roundtrip-test,
+    mf-golden-tests,
+  ]
 }
 
 // Implementation tasks for milestone-files
 
-task mf-group-resources {
-  description = "Group resources by origin.document in IRContext constructor"
+task mf-synthetic-flag {
+  description = "Add an optional `synthetic: true` marker to the Resource IR type"
   details = "
-    In packages/core/src/ir/context.ts constructor, after receiving doc.resources,
-    group resources by resource.origin?.document. Skip resources with undefined
-    origin.document (no file association).
+    In packages/core/src/ir/types.ts add an optional readonly `synthetic?: boolean`
+    field on `Resource`. Document that synthetic resources participate in semantic
+    analysis (dependencies, completeness, diagnostics) but MUST be excluded from
+    source-emitting exporters. Unset/false on every parsed resource - only
+    file-derived milestones set it to true.
+  "
+}
+
+task mf-group-resources {
+  description = "Group resources by origin.document inside IRContext"
+  depends_on = mf-synthetic-flag
+  details = "
+    In `packages/core/src/ir/context.ts` (constructor or a private helper invoked
+    before deduplication), bucket `_allResources` by `resource.origin?.document`.
+    Resources whose `origin.document` is undefined are skipped entirely - no
+    synthetic milestone is generated for them. The bucketing operates on the
+    parsed input only; synthetic resources added later must not feed back in.
   "
 }
 
 task mf-derive-id {
-  description = "Add helper to derive milestone ID from filename"
+  description = "Add a private helper to derive a milestone ID from a document path"
   details = "
-    Create private static fileToMilestoneId(documentPath: string): string.
-    Extract basename handling both / and \\ separators, strip .siren extension.
-    Example: siren/a/b/foo.siren → foo
+    Add `private static fileToMilestoneId(documentPath: string): string` on
+    IRContext (or a sibling util in `packages/core/src/utilities/`). Behaviour:
+    1. Split on either `/` or `\\`, take the final segment.
+    2. If the segment ends in `.siren` (literal, case-sensitive), strip the suffix.
+    3. Return the remainder verbatim - no further normalisation.
+    Examples:
+      `siren/a/b/foo.siren`        -> `foo`
+      `nested\\dir\\My Plan.siren` -> `My Plan`
+      `bare`                       -> `bare`
+      `notes.txt`                  -> `notes.txt`
   "
 }
 
 task mf-check-collision {
-  description = "Check for explicit milestone collision before synthesis"
+  description = "Skip synthesis when the file's explicit milestone already represents it"
   depends_on = [mf-group-resources, mf-derive-id]
   details = "
-    For each document, check if any parsed resource in _allResources is a
-    milestone with the derived ID. If found, skip synthetic generation for
-    that document (explicit wins).
+    For each document bucket: compute the candidate ID from the document path.
+    If any resource in that bucket has `type === 'milestone'` AND `id === candidate`,
+    do NOT synthesise. Framing: the explicit milestone IS the file's milestone -
+    we are not suppressing a competing synthetic, the synthetic was never warranted.
+    Tasks with the same ID do not block synthesis; W003 surfaces them naturally.
   "
 }
 
 task mf-generate-synthetic {
-  description = "Generate synthetic milestone resources"
+  description = "Generate synthetic milestone resources for surviving document buckets"
   depends_on = mf-check-collision
   details = "
-    For each document without collision, create Resource:
-      type: 'milestone'
-      id: derived from filename
-      complete: false
-      attributes: [{ key: 'depends_on', value: { kind: 'array', elements: resourceRefs } }]
-      origin: { startByte: 0, endByte: 0, startRow: 0, endRow: 0, document: docPath }
-    Where resourceRefs is array of { kind: 'reference', id } for all resources from that document.
+    For each non-suppressed bucket, build a Resource with:
+      type:       'milestone'
+      id:         derived from filename
+      complete:   false   (let resolveResources() promote it implicitly)
+      synthetic:  true
+      attributes: [{
+        key: 'depends_on',
+        value: { kind: 'array', elements: bucketResources.map(r => ({ kind: 'reference', id: r.id })) },
+      }]
+      origin:     { startByte: 0, endByte: 0, startRow: 0, endRow: 0, document: docPath }
+    References preserve source order from the parsed bucket. An empty bucket
+    yields `depends_on = []`.
   "
 }
 
 task mf-append-resources {
-  description = "Append synthetic milestones to _allResources"
+  description = "Append synthetic milestones to _allResources before lazy computation"
   depends_on = mf-generate-synthetic
   details = "
-    Add generated milestones after parsed resources.
-    Existing computeUniqueResources() and computeDuplicateDiagnostics() handle
-    duplicates (e.g., two files named foo.siren in different directories → W006).
+    Append synthetics after the parsed resources in `_allResources` so that an
+    explicit milestone with the same ID (rare cross-document case) wins precedence
+    via the existing first-occurrence-wins dedup. The existing
+    `computeUniqueResources()` and `computeDuplicateDiagnostics()` then handle
+    cross-document collisions (e.g. two files named `foo.siren` -> one W003).
+    Implicit-completeness promotion in `resolveResources()` already covers the
+    `complete` flag - no additional plumbing.
+  "
+}
+
+task mf-exporter-filter {
+  description = "Skip synthetic resources when emitting Siren source"
+  depends_on = mf-synthetic-flag
+  details = "
+    Update `packages/language/src/export/siren-exporter.ts` and
+    `packages/language/src/export/comment-exporter.ts` to skip resources where
+    `resource.synthetic === true`. Synthetic milestones are an analysis artefact
+    and must never appear in formatter output - they would otherwise be re-emitted
+    on every round-trip and double on the next parse.
+    Verify the existing format golden tests still pass byte-for-byte after this
+    change (synthetic milestones never carried source text, so output should be
+    identical to today).
+  "
+}
+
+task mf-cycle-tdd-prework {
+  description = "Pre-feature TDD: add a failing test for cycles involving synthetic milestones"
+  details = "
+    Before any synthesis code lands, add a red test (skipped or .todo if necessary,
+    but preferably a failing assertion) covering: a file containing a task whose
+    `depends_on` references the file's own basename ID. Expectation once the
+    feature exists: W001 cycle diagnostic with nodes [synthetic-id, task-id,
+    synthetic-id]. The test must fail today (no synthetic exists, no cycle
+    detected) and pass after mf-append-resources lands. This proves the cycle
+    detection path covers synthetics without requiring extra plumbing.
   "
 }
 
 task mf-unit-tests {
-  description = "Add unit tests in context.test.ts"
+  description = "Add IRContext unit tests for synthetic milestone behaviour"
   depends_on = mf-append-resources
   details = "
-    Test cases:
-    - File with tasks generates synthetic milestone with correct ID and depends_on
-    - Explicit milestone foo {} in foo.siren suppresses synthetic
-    - Empty file generates milestone with empty depends_on array
-    - Two files with same basename (a/foo.siren, b/foo.siren) produces W006 warning
-    - Resources without origin.document are not grouped (no synthetic)
+    In `packages/core/src/ir/context.test.ts` add cases covering:
+    - File with tasks only -> synthetic milestone with derived ID and depends_on
+      listing every task in source order, `synthetic: true`, `complete: false`.
+    - Explicit `milestone foo {}` in `foo.siren` -> no synthetic, no warning.
+    - Explicit `task foo {}` in `foo.siren` -> synthetic still generated, W003 emitted.
+    - Empty document (only comments / no resources) -> synthetic milestone with
+      empty depends_on array; lands in draft state per milestone-draft-state
+      (NOT vacuously complete).
+    - Resources without `origin.document` -> no synthesis attempted.
+    - Cross-document basename clash, both implicit (`a/foo.siren` + `b/foo.siren`,
+      tasks-only) -> both synthetics produced, exactly one W003.
+    - Cross-document basename clash, one explicit + one implicit
+      (`a/foo.siren` has `milestone foo`, `b/foo.siren` has only tasks) ->
+      a/ does NOT synthesise (explicit IS the file's milestone), b/ DOES
+      synthesise; W003 attributes the b/ synthetic against a/'s explicit.
+    - Synthetic referenced from another file: `bar.siren` has
+      `task t { depends_on = foo }` and `foo.siren` exists -> reference resolves
+      cleanly, no W002 dangling diagnostic.
+    - Quoted-identifier reference to a synthetic: filename with spaces produces
+      a synthetic with the unsanitised ID; another file references it via
+      quoted identifier -> resolves cleanly.
+    - Path separator handling: documents with `\\` separators derive correctly.
+    - All tasks complete in a synthetic-bearing document -> synthetic milestone
+      promotes per the rules established by milestone-draft-state.
+    Project-level fixtures: keep these as IRContext unit tests in core. No
+    language-package fixture is required because synthesis is invisible to the
+    parser/decoder (they never see synthetic resources).
   "
 }
 
-task mf-project-fixture {
-  description = "Add project fixture demonstrating synthetic milestones"
-  depends_on = mf-append-resources
+task mf-roundtrip-test {
+  description = "Round-trip determinism: synthetics never reach exporter output"
+  depends_on = [mf-exporter-filter, mf-append-resources]
   details = "
-    Create fixture under packages/core/test/fixtures/projects/ with multiple
-    .siren files demonstrating synthetic milestone behavior.
+    Add a test that: parses a multi-file project, builds an IRContext (with
+    synthetics present), exports each document via the Siren exporter,
+    re-parses the exported sources, and asserts the resulting IRContexts are
+    structurally equivalent (same explicit resources, same synthetic IDs, same
+    dependency lists). This proves:
+    1. Synthetics never leak into exporter output (no double-emission).
+    2. The next parse re-derives the same synthetics deterministically.
+    Use a small fixture (2-3 files) to keep the assertion tractable.
   "
 }
 
 task mf-golden-tests {
-  description = "Update CLI golden tests for new behavior"
-  depends_on = mf-unit-tests
+  description = "Refresh CLI golden expectations to reflect synthetic milestones"
+  depends_on = [mf-append-resources, mf-exporter-filter]
   details = "
-    Update existing multi-file test outputs in apps/cli/test/expected/ to
-    reflect synthetic milestones appearing in `siren list` output.
-    Add new golden test specifically for file-based milestones.
+    Synthetic milestones surface in `siren list` output (we are not filtering
+    them by default in this milestone), so most existing project-fixture-driven
+    golden files under `apps/cli/test/expected/` will change. Procedure:
+    1. Run the golden suite, inspect each diff to confirm only synthetic-milestone
+       additions and ordering changes, no unexpected semantic shifts.
+    2. Regenerate via `scripts/create-golden.sh` for affected tests.
+    3. Add a dedicated `apps/cli/test/expected/file-milestones.txt` (or
+       similarly-named) golden tied to the new fixture from mf-language-fixture,
+       asserting both the synthetic milestones and their dependency listings.
+    4. Verify `siren format` goldens are unchanged (mf-exporter-filter ensures
+       this).
   "
 }

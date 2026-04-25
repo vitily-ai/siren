@@ -1,0 +1,52 @@
+milestone draft-states {
+  description = "introduce a 'draft' state for resources"
+  // Planning Context
+  // Today, a milestone with `depends_on = []` (or no depends_on at all) and no
+  // explicit `complete` keyword is vacuously promoted to `complete: true` by
+  // isImplicitlyComplete (every dependency in the empty set is complete).
+  // This is technically correct but semantically wrong for PMaC: an empty
+  // milestone is more naturally "not yet planned" than "done".
+  //
+  // A 'draft' state captures that distinction. It is also a hard prerequisite
+  // for milestone-files: synthetic milestones for empty .siren files would
+  // otherwise all show up as complete on day one.
+
+  // Open questions (resolve during this milestone's planning loop):
+  //
+  // 1. Representation. Pick one:
+  //    a. New optional boolean `draft?: boolean` on Resource.
+  //    b. Tri-state `status: 'draft' | 'active' | 'complete'` replacing or
+  //       layering over the existing `complete: boolean`.
+  //    c. No new field; treat draft as a derived view (a predicate over
+  //       resources with no deps and no explicit complete).
+  //    Each option has different implications for IR stability, exporter
+  //    output, and existing `complete` consumers.
+  //
+  // 2. Trigger. What promotes a resource to draft?
+  //    - Milestone with empty/missing depends_on AND no explicit `complete`?
+  //    - Same rule for tasks, or milestone-only?
+  //    - Should explicitly-authored draft (e.g. a `draft` keyword) be allowed?
+  //
+  // 3. Interaction with isImplicitlyComplete.
+  //    - Draft must NOT promote to complete via the "all deps complete"
+  //      vacuous-truth path. The promotion rule needs an explicit guard:
+  //      "promote only if there is at least one dependency."
+  //    - Confirm no other call sites rely on the current vacuous-truth behavior.
+  //
+  // 4. Diagnostics / display.
+  //    - Should `siren list` surface draft resources distinctly?
+  //    - Should `siren tree` treat them differently from complete leaves?
+  //    - Out of scope for the implementation milestone, but worth flagging.
+  //
+  // 5. Synthetic-milestone interaction (the reason this exists).
+  //    - A file with zero resources -> synthetic milestone with empty deps ->
+  //      must land in draft, not complete. Confirm whichever representation we
+  //      pick handles this without special-casing in the milestone-files code.
+
+  // Once the questions above are resolved, this milestone fans out into
+  // implementation tasks (representation change, isImplicitlyComplete guard,
+  // tests, golden refresh). Those tasks are not enumerated yet — they depend
+  // on the answers above.
+
+  depends_on = []
+}
