@@ -1,6 +1,6 @@
 import type { Resource } from '../ir/types';
-import { isArray, isReference } from '../ir/types';
-import { DirectedGraph } from './graph';
+import type { DirectedGraph } from './graph';
+import { buildDependencyGraph } from './milestone';
 
 const MAX_DEPTH = 1000000;
 
@@ -143,42 +143,4 @@ function buildDependencyTree(
   );
 
   return tree;
-}
-
-/**
- * Build a directed graph of resource dependencies from depends_on attributes.
- * @param resources Array of Siren resources
- * @returns DirectedGraph where edges represent dependencies (from dependent to dependency)
- */
-function buildDependencyGraph(resources: readonly Resource[]): DirectedGraph {
-  const graph = new DirectedGraph();
-
-  for (const resource of resources) {
-    graph.addNode(resource.id);
-    const dependsOn = getDependsOn(resource);
-    for (const depId of dependsOn) {
-      graph.addEdge(resource.id, depId);
-    }
-  }
-
-  return graph;
-}
-
-/**
- * Extracts dependency IDs from a resource's depends_on attribute.
- * @param resource The resource to extract dependencies from
- * @returns Array of dependency IDs
- */
-function getDependsOn(resource: Resource): string[] {
-  const attr = resource.attributes.find((a) => a.key === 'depends_on');
-  if (!attr) return [];
-
-  const value = attr.value;
-  if (isReference(value)) {
-    return [value.id];
-  }
-  if (isArray(value)) {
-    return value.elements.filter(isReference).map((ref) => ref.id);
-  }
-  return [];
 }
