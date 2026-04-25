@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { IRContext, type ParseError, type Resource, type SourceDocument } from '@sirenpm/core';
+import type { IRContext, Resource } from '@sirenpm/core';
+import { createIRContextFromCst, type ParseError, type SourceDocument } from '@sirenpm/language';
 import { formatDiagnostic } from './format-diagnostics';
 import { formatParseError } from './format-parse-error';
 import { getParser } from './parser';
@@ -159,14 +160,14 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
         };
 
   // Decode CST to IR - resources now have origin.document set by the parser
-  const ir = IRContext.fromCst(filteredTree);
+  const { context: ir, parseDiagnostics } = createIRContextFromCst(filteredTree);
 
   ctx.resources = [...ir.resources];
   ctx.ir = ir;
   ctx.milestones = ir.getMilestoneIds();
 
-  // Collect parse-level diagnostics (W001, W002, W003, E001)
-  for (const diagnostic of ir.parseDiagnostics) {
+  // Collect parse-level diagnostics (WL001, WL002, WL003, EL001)
+  for (const diagnostic of parseDiagnostics) {
     const formatted = formatDiagnostic(diagnostic);
     if (diagnostic.severity === 'warning') {
       ctx.warnings.push(formatted);
@@ -175,7 +176,7 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
     }
   }
 
-  // Collect semantic diagnostics (W004, W005) - file attribution comes from origin.document
+  // Collect semantic diagnostics (W001, W002, W003) - file attribution comes from origin.document
   for (const diagnostic of ir.diagnostics) {
     const formatted = formatDiagnostic(diagnostic);
     if (diagnostic.severity === 'warning') {

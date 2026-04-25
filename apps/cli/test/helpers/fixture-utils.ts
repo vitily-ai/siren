@@ -2,7 +2,7 @@ import { cp, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-const fixturesDir = join(dirname(__dirname), '../../../packages/core/test/fixtures/projects');
+const fixturesDir = join(dirname(__dirname), '../../../packages/language/test/fixtures/projects');
 
 /**
  * Copies a project fixture to a temporary directory and returns the path to the copied siren/ directory.

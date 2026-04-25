@@ -46,7 +46,8 @@ describe('cli format round-trip for cli-mvp fixture', () => {
   it('does not emit round-trip changed semantics message', async () => {
     await runFormat({ dryRun: true });
 
-    const called = consoleErrorSpy.mock.calls.some((c) =>
+    const errorCalls = consoleErrorSpy.mock.calls as Parameters<typeof console.error>[];
+    const called = errorCalls.some((c) =>
       String(c[0]).includes('Format round-trip changed semantics'),
     );
 

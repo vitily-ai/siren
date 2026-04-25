@@ -15,7 +15,7 @@ const fixturesDir = path.join(
   '..',
   '..',
   'packages',
-  'core',
+  'language',
   'test',
   'fixtures',
   'projects',
@@ -293,7 +293,7 @@ describe('siren list', () => {
 describe('siren main', () => {
   let tempDir: string;
   let originalCwd: string;
-  let originalExitCode: number | undefined;
+  let originalExitCode: typeof process.exitCode;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
   let loadProjectSpy: ReturnType<typeof vi.spyOn>;
@@ -437,11 +437,11 @@ describe('siren main', () => {
     expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
     expect(consoleErrorSpy).toHaveBeenNthCalledWith(
       1,
-      'siren/main.siren:1:0: W004: Circular dependency detected: a -> b -> c -> a',
+      'siren/main.siren:1:0: W001: Circular dependency detected: a -> b -> c -> a',
     );
     expect(consoleErrorSpy).toHaveBeenNthCalledWith(
       2,
-      'siren/main.siren:1:0: W004: Circular dependency detected: a -> c -> a',
+      'siren/main.siren:1:0: W001: Circular dependency detected: a -> c -> a',
     );
     // The milestone output itself is validated by golden tests; ensure something was logged.
     expect(consoleLogSpy).toHaveBeenCalled();

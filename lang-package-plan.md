@@ -169,24 +169,21 @@ This entry exists so Phase 3.3 has a checklist of what to restore. Do not silent
 
 ### Phase 3.1: Record + swap dependencies
 
-34. **Confirm staging doc** — The "Release 3 port targets" section was authored during Release 1 Phase 1.3 step 8. Re-read it; if any CLI surface has shifted since then, append updates before proceeding.
-35. **Update `apps/cli/package.json`** — bump `"@sirenpm/core": "^0.2.0"`, add `"@sirenpm/language": "^0.1.0"`, remove `"web-tree-sitter"` (now transitive via language). `yarn install`.
+34. ~~**Confirm staging doc**~~ ✅ Re-read "Release 3 port targets"; no CLI surface drift found before proceeding.
+35. ~~**Update `apps/cli/package.json`**~~ ✅ Bumped `"@sirenpm/core": "^0.2.0"`, added `"@sirenpm/language": "^0.1.0"`, removed `"web-tree-sitter"` (now transitive via language), and refreshed `yarn.lock`.
 
 ### Phase 3.2: Code updates
 
-36. **Delete `apps/cli/src/adapter/node-parser-adapter.ts`** — the CLI calls `createParser()` from `@sirenpm/language` (zero-config).
-37. **Update CLI imports** — `apps/cli/src/parser.ts`, `apps/cli/src/project.ts`, `apps/cli/src/commands/format.ts`: switch parser/export/bridge imports to `@sirenpm/language`; keep IR/diagnostic imports from `@sirenpm/core`; replace `IRContext.fromCst()` with `createIRContextFromCst()`; combine returned `parseDiagnostics` with `ir.diagnostics`.
-38. **Update diagnostic formatting** — `apps/cli/src/format-diagnostics.ts` uses new code literals (WL001–WL003, EL001, core W001–W003). Preserve WL003's `secondLine`/`secondColumn` special case in `formatPrefix()`.
-39. **Update `ParseError` import source** — `apps/cli/src/format-parse-error.ts` now imports from `@sirenpm/language`.
+36. ~~**Delete `apps/cli/src/adapter/node-parser-adapter.ts`**~~ ✅ CLI now calls `createParser()` from `@sirenpm/language` (zero-config).
+37. ~~**Update CLI imports**~~ ✅ `apps/cli/src/parser.ts`, `apps/cli/src/project.ts`, `apps/cli/src/commands/format.ts` now source parser/export/bridge imports from `@sirenpm/language`; IR/semantic diagnostic imports stay in `@sirenpm/core`; `IRContext.fromCst()` usage has been replaced with `createIRContextFromCst()` and parse diagnostics are collected from the bridge result.
+38. ~~**Update diagnostic formatting**~~ ✅ `apps/cli/src/format-diagnostics.ts` uses new code literals (WL001–WL003, EL001, core W001–W003) and preserves duplicate-ID `secondLine`/`secondColumn` prefix handling.
+39. ~~**Update `ParseError` import source**~~ ✅ `apps/cli/src/format-parse-error.ts` now imports from `@sirenpm/language`.
 
 ### Phase 3.3: Test updates
 
-40. **Refresh CLI test infrastructure** — Refresh or delete `apps/cli/src/adapter/node-parser-adapter.test.ts` (likely delete since the adapter is gone) and `apps/cli/test/helpers/test-utils.ts`.
-41. **Regenerate golden files** — Every `apps/cli/test/expected/*.txt` touching diagnostics is updated for WL001–WL003, EL001, and core W001–W003. NOTE - refer to xfail override from Phase 2.2b. This step should remove the xfail override and rectify the failures.
-42. **Verify:**
-    - `yarn workspace @sirenpm/cli tsc --noEmit`
-    - `yarn workspace @sirenpm/cli test`
-    - tsup bundle resolves both `@sirenpm/core` and `@sirenpm/language` cleanly from npm.
+40. ~~**Refresh CLI test infrastructure**~~ ✅ Deleted obsolete `apps/cli/src/adapter/node-parser-adapter.test.ts`, repointed CLI fixture helpers/tests to `packages/language/test/fixtures/projects`, restored the excluded test suite, and updated test utility imports.
+41. ~~**Regenerate golden files**~~ ✅ Updated diagnostic golden files for core W001/W002/W003 and language WL001–WL003/EL001 expectations. Removed the Phase 2.2b xfail override from `apps/cli/vitest.config.ts`.
+42. ~~**Verify**~~ ✅ `yarn workspace @sirenpm/cli exec tsc --noEmit`, `yarn workspace @sirenpm/cli test`, `yarn workspace @sirenpm/cli build`, and `yarn lint` pass. The tsup bundle resolves both `@sirenpm/core` and `@sirenpm/language` from npm-pinned dependencies.
 
 ### Phase 3.4: Release
 
