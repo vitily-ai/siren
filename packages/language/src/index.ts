@@ -8,9 +8,9 @@
 export type { CreateIRContextResult } from './context-factory';
 // Bridge — decode a CST into a fully-populated IRContext.
 export { createIRContextFromCst } from './context-factory';
-export type { DecodeResult, ParseDiagnostic } from './decoder/index';
+export type { ParseDiagnostic } from './decoder/index';
 // Decoder — CST → IR transformation, with language-phase diagnostics (WL/EL codes).
-export { decode, decodeDocument } from './decoder/index';
+export { decodeDocument } from './decoder/index';
 // Exporter — render IR back to Siren source. Comments are preserved automatically
 // when a SourceIndex is supplied.
 export { exportToSiren, SirenExporter } from './export/siren-exporter';

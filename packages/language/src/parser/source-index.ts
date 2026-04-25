@@ -148,7 +148,7 @@ export class SourceIndex {
    * Comments are "leading" if they appear before the node's starting byte,
    * on a different line, and the line before the comment is not blank (not detached)
    */
-  getLeadingComments(origin: Origin): readonly ClassifiedComment[] {
+  private getLeadingComments(origin: Origin): readonly ClassifiedComment[] {
     const result: ClassifiedComment[] = [];
 
     for (const comment of this.comments) {
@@ -186,7 +186,7 @@ export class SourceIndex {
    * Get trailing (end-of-line) comments for a node
    * Comments are "trailing" if they appear on the same line as the node's ending byte
    */
-  getTrailingComments(origin: Origin): readonly ClassifiedComment[] {
+  private getTrailingComments(origin: Origin): readonly ClassifiedComment[] {
     const result: ClassifiedComment[] = [];
 
     for (const comment of this.comments) {
@@ -212,7 +212,7 @@ export class SourceIndex {
    * Get all detached comment blocks (preserved with blank line info)
    * Returns blocks of comments that are separated by blank lines
    */
-  getDetachedBlocks(): readonly (readonly ClassifiedComment[])[] {
+  private getDetachedBlocks(): readonly (readonly ClassifiedComment[])[] {
     const detachedBlocks: ClassifiedComment[][] = [];
 
     if (this.comments.length === 0) {
@@ -271,7 +271,7 @@ export class SourceIndex {
    * Get all EOF (trailing) comments after the last semantic node
    * These are comments at the end of file not classified as leading/trailing for any node
    */
-  getEOFComments(): readonly ClassifiedComment[] {
+  private getEOFComments(): readonly ClassifiedComment[] {
     const result: ClassifiedComment[] = [];
 
     // Sort comments by start byte to process in order
