@@ -2,7 +2,7 @@ import {
   getDependencyTree as buildDependencyTree,
   type DependencyTree,
 } from '../utilities/dependency-tree';
-import { findResourceById } from '../utilities/entry';
+import { findResourceById, getDependsOn } from '../utilities/entry';
 import { DirectedGraph } from '../utilities/graph';
 import {
   buildDependencyGraph,
@@ -11,7 +11,7 @@ import {
   isImplicitlyComplete,
 } from '../utilities/milestone';
 import type { DiagnosticBase } from './diagnostics';
-import type { Document, Resource, ResourceReference } from './types';
+import type { Document, Resource } from './types';
 
 /**
  * Semantic diagnostic message produced from IR analysis
@@ -203,7 +203,7 @@ export class IRContext {
     const graph = new DirectedGraph();
     for (const resource of this.resources) {
       graph.addNode(resource.id);
-      const dependsOn = IRContext.getDependsOn(resource);
+      const dependsOn = getDependsOn(resource);
       for (const depId of dependsOn) {
         graph.addEdge(resource.id, depId);
       }
@@ -302,7 +302,7 @@ export class IRContext {
     const resourcesById = new Map(this.resources.map((resource) => [resource.id, resource]));
 
     for (const resource of this.resources) {
-      const dependsOn = IRContext.getDependsOn(resource);
+      const dependsOn = getDependsOn(resource);
       for (const depId of dependsOn) {
         if (!resourcesById.has(depId)) {
           const fileInfo = this.getFileInfoForResources([resource.id]);
@@ -341,30 +341,5 @@ export class IRContext {
       }
     }
     return files.size > 0 ? { file: Array.from(files).join(', ') } : {};
-  }
-
-  /**
-   * Helper to extract dependency IDs from a resource's depends_on attribute.
-   */
-  private static getDependsOn(resource: Resource): string[] {
-    const attr = resource.attributes.find((a) => a.key === 'depends_on');
-    if (!attr) return [];
-
-    const value = attr.value;
-    if (value === null) return [];
-    if (typeof value === 'object' && 'kind' in value) {
-      if (value.kind === 'reference') {
-        return [value.id];
-      }
-      if (value.kind === 'array') {
-        return value.elements
-          .filter(
-            (el): el is ResourceReference =>
-              typeof el === 'object' && el !== null && 'kind' in el && el.kind === 'reference',
-          )
-          .map((ref) => ref.id);
-      }
-    }
-    return [];
   }
 }

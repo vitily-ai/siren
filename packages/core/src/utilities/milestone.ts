@@ -1,5 +1,5 @@
 import type { Resource } from '../ir/types';
-import { isArray, isReference } from '../ir/types';
+import { getDependsOn } from './entry';
 import { DirectedGraph } from './graph';
 
 /**
@@ -36,25 +36,6 @@ export function getTasksByMilestone(resources: Resource[]): Map<string, Resource
   }
 
   return tasksByMilestone;
-}
-
-/**
- * Extracts dependency IDs from a resource's depends_on attribute.
- * @param resource The resource to extract dependencies from
- * @returns Array of dependency IDs
- */
-function getDependsOn(resource: Resource): string[] {
-  const attr = resource.attributes.find((a) => a.key === 'depends_on');
-  if (!attr) return [];
-
-  const value = attr.value;
-  if (isReference(value)) {
-    return [value.id];
-  }
-  if (isArray(value)) {
-    return value.elements.filter(isReference).map((ref) => ref.id);
-  }
-  return [];
 }
 
 /**
@@ -122,7 +103,7 @@ export function isImplicitlyComplete(
  * @param resources Array of Siren resources
  * @returns DirectedGraph where edges represent dependencies
  */
-export function buildDependencyGraph(resources: Resource[]): DirectedGraph {
+export function buildDependencyGraph(resources: readonly Resource[]): DirectedGraph {
   const graph = new DirectedGraph();
 
   for (const resource of resources) {

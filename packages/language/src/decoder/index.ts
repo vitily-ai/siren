@@ -285,9 +285,3 @@ export function decodeDocument(cst: DocumentNode, source?: string): DecodeResult
     success: !hasErrors,
   };
 }
-
-/**
- * Alias for backwards compatibility with existing tests
- * @deprecated Use IRContext.fromCst() instead
- */
-export const decode = decodeDocument;
