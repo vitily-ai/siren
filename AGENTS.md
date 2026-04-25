@@ -2,17 +2,18 @@
 
 ## Project Overview
 
-Siren is a "Project Management as Code" (PMaC) framework for defining projects and milestones using a concise HCL-inspired grammar. This repository is a TypeScript monorepo containing the core library, a CLI, and a small web app.
+Siren is a "Project Management as Code" (PMaC) framework for defining projects and milestones using a concise HCL-inspired grammar. This repository is a TypeScript monorepo containing the core library, the language package (parser/decoder/exporters), a CLI, and a small web app.
 
 Key technologies
 - TypeScript (tsconfig.json)
 - Node.js 24+ runtimes
 - Yarn 4 (Berry) workspaces
 - Vitest for unit tests
-- Tree-sitter grammar for parsing (packages/core/grammar)
+- Tree-sitter grammar for parsing (`packages/language/grammar`)
 
 Repository layout (high level)
-- `packages/core/` — core parsing, IR, decoding, exporter logic
+- `packages/core/` — IR types, semantic validation, `DiagnosticBase`, `IRExporter` interface, utilities (env-agnostic)
+- `packages/language/` — tree-sitter grammar, parser factory, CST → IR decoder, exporters/formatters
 - `apps/cli/` — Node CLI and commands
 - `apps/web/` — small Vite-based web front-end
 - `siren/` — example `.siren` files and templates
@@ -73,11 +74,11 @@ yarn test -t "Test Name Pattern"
 ```
 
 - Core change testing rules (must follow):
-  - Parser changes → add `snippets` fixtures under `packages/core/test/fixtures/snippets/`
-  - IR changes → add `projects` fixtures under `packages/core/test/fixtures/projects/`
+  - Grammar/parser changes → add `snippets` fixtures under `packages/language/test/fixtures/snippets/`
+  - Decoder/IR changes → add `projects` fixtures under `packages/language/test/fixtures/projects/` (or core IR unit tests when purely semantic)
   - CLI behavior changes → add golden-file tests under `apps/cli/test/expected/`
 
-Note that core must be rebuilt before any changes can be picked up by CLI tests.
+Note that, when iterating across packages, downstream consumers must be rebuilt before changes are picked up. The CLI consumes `@sirenpm/core` and `@sirenpm/language` via npm pins, not workspace links — see Build & Release below.
 
 ## Code Style & Linting
 
@@ -87,9 +88,10 @@ Note that core must be rebuilt before any changes can be picked up by CLI tests.
 
 ## Build & Release
 
-- The core package (`packages/core`) is bundled with tsup into a single ESM module (`dist/index.js`) plus types (`dist/index.d.ts`). Core source must remain environment-agnostic (no DOM or Node APIs) so the bundle runs in both browser and Node hosts.
-- The CLI (`apps/cli`) depends on `@sirenpm/core` from the npm registry (`npm:@sirenpm/core@^0.1.0`), not a workspace link. Normal builds consume the published core. `enableTransparentWorkspaces: false` in `.yarnrc.yml` enforces this: only dependencies declared with the `workspace:` protocol resolve locally.
-- Developers iterating on both core and CLI must link manually (e.g. `yarn link packages/core` in the CLI workspace, or temporarily swap the dep to `workspace:*`).
+- The core package (`packages/core`, `@sirenpm/core`) is bundled with tsup into a single ESM module (`dist/index.js`) plus types (`dist/index.d.ts`). Core source must remain environment-agnostic (no DOM or Node APIs) so the bundle runs in both browser and Node hosts. Core has **no** parser/decoder/export code.
+- The language package (`packages/language`, `@sirenpm/language`) owns the tree-sitter grammar (with the committed `tree-sitter-siren.wasm`), parser factory (`createParser()`), decoder, and exporters. `web-tree-sitter` is a direct runtime dep. Depends on `@sirenpm/core` as a peer dep.
+- The CLI (`apps/cli`, `@sirenpm/cli`) depends on `@sirenpm/core` and `@sirenpm/language` from the npm registry, not via workspace links. Normal builds consume the published packages. `enableTransparentWorkspaces: false` in `.yarnrc.yml` enforces this: only deps declared with the `workspace:` protocol resolve locally.
+- Developers iterating across packages must link manually (e.g. `yarn link` or temporarily swap a dep to `workspace:*`).
 - The web app (`apps/web`) uses `workspace:*` because it is not published.
 - CLI builds live under `apps/cli/` and use tsup (`apps/cli/tsup.config.ts`).
 
@@ -106,7 +108,7 @@ Note that core must be rebuilt before any changes can be picked up by CLI tests.
 ## Contact & Context
 
 - The `siren/` directory contains example `.siren` files that are useful for testing and understanding the grammar and semantics.
-- If you modify the parser or grammar, update the `packages/core/test/fixtures/` to capture the new behavior.
+- If you modify the parser or grammar, update the fixtures under `packages/language/test/fixtures/` to capture the new behavior.
 
 ---
 

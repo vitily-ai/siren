@@ -17,8 +17,6 @@ npm i -g @sirenpm/cli
 siren --version
 ```
 
-> **TODO:** Global install (`npm i -g @sirenpm/cli`) is currently broken — the grammar WASM ships in `@sirenpm/core` but the CLI resolves it via monorepo-relative paths, so globally-installed bins hit `ENOENT` on the wasm file. This will be fixed when the `@sirenpm/language` package is extracted (see `lang-package-plan.md`), at which point the wasm travels with the package that owns the parser and resolution becomes package-relative. `npx @sirenpm/cli` works fine in the meantime.
-
 ## Quick start (contributors)
 
 Install dependencies and run tests:
@@ -42,9 +40,12 @@ node apps/cli/dist/index.js
 
 ## Project layout
 
-- `packages/core` — parsing, decoding, IR, utilities (environment-agnostic)
-- `apps/web` — Vite-based browser app (WASM + Mermaid integration) **STUB - NOT STARTED**
-- `apps/cli` — Node CLI built with `tsup`/`esbuild`
+- `packages/core` — IR types, semantic validation, `DiagnosticBase`, `IRExporter` interface, and shared utilities (environment-agnostic; no parser/decoder/export code)
+- `packages/language` — tree-sitter grammar, parser factory (`createParser()`), CST → IR decoder, exporters/formatters; depends on `@sirenpm/core`
+- `apps/web` — Vite-based browser app **STUB - NOT STARTED**
+- `apps/cli` — Node CLI built with `tsup`/`esbuild`; depends on `@sirenpm/core` + `@sirenpm/language` via npm pins
+
+CLI and language consume `@sirenpm/core` from the npm registry (not `workspace:*`); each package ships independently. The web app uses `workspace:*` because it is not published.
 
 ## Install & build (dev)
 
@@ -72,7 +73,8 @@ After this the `siren` command should be callable from any directory, e.g. `sire
 ## Developer notes
 
 - Core is environment-agnostic: do not introduce DOM or Node-specific APIs into `packages/core`.
-- The parser uses a Tree-sitter grammar (WASM) located in `packages/core/grammar`.
+- The parser uses a Tree-sitter grammar (WASM) located in `packages/language/grammar`. The committed `tree-sitter-siren.wasm` ships with the package; CI guards against grammar/WASM drift.
+- To iterate on `@sirenpm/core` and a downstream package together locally, link manually (`yarn link`) or temporarily swap the npm-pinned dep to `workspace:*`.
 - Tests use Vitest; run per-package tests via `yarn workspace <pkg> test`.
 
 ## Contributing
