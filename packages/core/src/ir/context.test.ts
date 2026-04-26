@@ -15,6 +15,8 @@ describe('IRContext', () => {
           type: 'milestone',
           id: 'has-dangling',
           status: 'active',
+          complete: false,
+          draft: false,
           attributes: [
             {
               key: 'depends_on',
@@ -45,12 +47,16 @@ describe('IRContext', () => {
           type: 'task',
           id: 'a',
           status: 'active',
+          complete: false,
+          draft: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'b' } }],
         },
         {
           type: 'task',
           id: 'b',
           status: 'active',
+          complete: false,
+          draft: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'a' } }],
         },
       ];
@@ -74,6 +80,8 @@ describe('IRContext', () => {
           type: 'milestone',
           id: 'multi-dangling',
           status: 'active',
+          complete: false,
+          draft: false,
           attributes: [
             {
               key: 'depends_on',
@@ -92,6 +100,8 @@ describe('IRContext', () => {
           type: 'task',
           id: 'present',
           status: 'active',
+          complete: false,
+          draft: false,
           attributes: [],
         },
       ];
@@ -121,6 +131,8 @@ describe('IRContext', () => {
           type: 'task',
           id: 'has-dangling',
           status: 'active',
+          complete: false,
+          draft: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'missing' } }],
           origin: {
             startByte: 0,
@@ -147,6 +159,8 @@ describe('IRContext', () => {
           type: 'task',
           id: 'x',
           status: 'active',
+          complete: false,
+          draft: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'y' } }],
           origin: {
             startByte: 0,
@@ -160,6 +174,8 @@ describe('IRContext', () => {
           type: 'task',
           id: 'y',
           status: 'active',
+          complete: false,
+          draft: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'z' } }],
           origin: {
             startByte: 20,
@@ -173,6 +189,8 @@ describe('IRContext', () => {
           type: 'task',
           id: 'z',
           status: 'active',
+          complete: false,
+          draft: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'x' } }],
           origin: {
             startByte: 40,
@@ -200,6 +218,8 @@ describe('IRContext', () => {
           type: 'task',
           id: 'a',
           status: 'active',
+          complete: false,
+          draft: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'b' } }],
           origin: {
             startByte: 0,
@@ -213,6 +233,8 @@ describe('IRContext', () => {
           type: 'task',
           id: 'b',
           status: 'active',
+          complete: false,
+          draft: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'a' } }],
           origin: {
             startByte: 0,
@@ -245,6 +267,8 @@ describe('IRContext', () => {
           type: 'task',
           id: 'a',
           status: 'active',
+          complete: false,
+          draft: false,
           attributes: [
             {
               key: 'depends_on',
@@ -263,6 +287,8 @@ describe('IRContext', () => {
           type: 'task',
           id: 'b',
           status: 'active',
+          complete: false,
+          draft: false,
           attributes: [
             {
               key: 'depends_on',
@@ -310,12 +336,16 @@ describe('IRContext', () => {
           type: 'task',
           id: 'leaf',
           status: 'active',
+          complete: false,
+          draft: false,
           attributes: [],
         },
         {
           type: 'task',
           id: 'parent',
           status: 'active',
+          complete: false,
+          draft: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'leaf' } }],
         },
       ];

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { IRContext } from '../src/ir/context';
 import type { Resource, ResourceStatus, ResourceType } from '../src/ir/types';
+import { withDerivedStatusFlags } from '../src/utilities/entry';
 import {
   buildDependencyGraph,
   isImplicitlyComplete,
@@ -27,7 +28,7 @@ function resource(
         },
       ]
     : [];
-  return { type, id, status: opts?.status ?? 'active', attributes };
+  return withDerivedStatusFlags({ type, id, status: opts?.status ?? 'active', attributes });
 }
 
 /** Build a Map<string, Resource> and DirectedGraph from resources */
@@ -180,6 +181,24 @@ describe('resolveStatus', () => {
   it('resolves a context milestone with an empty depends_on array to draft', () => {
     const milestone = resource('milestone', 'milestone', { dependsOn: [] });
     const context = IRContext.fromResources([milestone]);
-    expect(context.findResourceById('milestone').status).toBe('draft');
+    expect(context.findResourceById('milestone')).toMatchObject({
+      status: 'draft',
+      complete: false,
+      draft: true,
+    });
+  });
+
+  it('derives compatibility flags from resolved status', () => {
+    const dep = resource('task', 'dep', { status: 'complete' });
+    const milestone = {
+      ...resource('milestone', 'milestone', { dependsOn: ['dep'] }),
+      draft: true,
+    };
+    const context = IRContext.fromResources([dep, milestone]);
+    expect(context.findResourceById('milestone')).toMatchObject({
+      status: 'complete',
+      complete: true,
+      draft: false,
+    });
   });
 });

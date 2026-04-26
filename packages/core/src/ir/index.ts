@@ -11,6 +11,7 @@ export type {
   Document,
   PrimitiveValue,
   Resource,
+  ResourceInput,
   ResourceReference,
   ResourceStatus,
   ResourceType,

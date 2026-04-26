@@ -89,6 +89,14 @@ export interface Resource {
    * Resource status from explicit keywords or core milestone resolution.
    */
   readonly status: ResourceStatus;
+  /**
+   * Compatibility flag derived from status.
+   */
+  readonly complete: boolean;
+  /**
+   * Draft flag derived from status.
+   */
+  readonly draft: boolean;
   readonly attributes: readonly Attribute[];
   /**
    * Optional source origin information for comment preservation
@@ -96,6 +104,9 @@ export interface Resource {
    */
   readonly origin?: Origin;
 }
+
+export type ResourceInput = Omit<Resource, 'complete' | 'draft'> &
+  Partial<Pick<Resource, 'complete' | 'draft'>>;
 
 /**
  * A detected cycle in the dependency graph
@@ -117,7 +128,7 @@ export interface Cycle {
  * Top-level document containing all resources
  */
 export interface Document {
-  readonly resources: readonly Resource[];
+  readonly resources: readonly ResourceInput[];
   /** Source file path (if any) */
   readonly source?: string;
 }

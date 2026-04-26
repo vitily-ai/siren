@@ -9,6 +9,8 @@ const res = (id: string, dependsOn?: string[] | string) => ({
   type: 'task',
   id,
   status: 'active',
+  complete: false,
+  draft: false,
   attributes: dependsOn
     ? [
         attr(

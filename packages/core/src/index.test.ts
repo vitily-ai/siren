@@ -14,8 +14,22 @@ describe('@sirenpm/core', () => {
 
     it('returns empty array for only tasks', () => {
       const resources: Resource[] = [
-        { type: 'task', id: 'task1', status: 'active', attributes: [] },
-        { type: 'task', id: 'task2', status: 'complete', attributes: [] },
+        {
+          type: 'task',
+          id: 'task1',
+          status: 'active',
+          complete: false,
+          draft: false,
+          attributes: [],
+        },
+        {
+          type: 'task',
+          id: 'task2',
+          status: 'complete',
+          complete: true,
+          draft: false,
+          attributes: [],
+        },
       ];
       const ir = IRContext.fromResources(resources);
       expect(ir.getMilestoneIds()).toEqual([]);
@@ -23,10 +37,38 @@ describe('@sirenpm/core', () => {
 
     it('returns milestone IDs', () => {
       const resources: Resource[] = [
-        { type: 'task', id: 'task1', status: 'active', attributes: [] },
-        { type: 'milestone', id: 'milestone1', status: 'active', attributes: [] },
-        { type: 'task', id: 'task2', status: 'complete', attributes: [] },
-        { type: 'milestone', id: 'milestone2', status: 'complete', attributes: [] },
+        {
+          type: 'task',
+          id: 'task1',
+          status: 'active',
+          complete: false,
+          draft: false,
+          attributes: [],
+        },
+        {
+          type: 'milestone',
+          id: 'milestone1',
+          status: 'active',
+          complete: false,
+          draft: false,
+          attributes: [],
+        },
+        {
+          type: 'task',
+          id: 'task2',
+          status: 'complete',
+          complete: true,
+          draft: false,
+          attributes: [],
+        },
+        {
+          type: 'milestone',
+          id: 'milestone2',
+          status: 'complete',
+          complete: true,
+          draft: false,
+          attributes: [],
+        },
       ];
       const ir = IRContext.fromResources(resources);
       expect(ir.getMilestoneIds()).toEqual(['milestone1', 'milestone2']);
@@ -39,7 +81,14 @@ describe('@sirenpm/core', () => {
 
   it('returns empty arrays for milestones with no tasks', () => {
     const resources: Resource[] = [
-      { type: 'milestone', id: 'milestone1', status: 'active', attributes: [] },
+      {
+        type: 'milestone',
+        id: 'milestone1',
+        status: 'active',
+        complete: false,
+        draft: false,
+        attributes: [],
+      },
     ];
     const ir = IRContext.fromResources(resources);
     const result = ir.getTasksByMilestone();
@@ -52,12 +101,16 @@ describe('@sirenpm/core', () => {
         type: 'milestone',
         id: 'milestone1',
         status: 'active',
+        complete: false,
+        draft: false,
         attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'task1' } }],
       },
       {
         type: 'task',
         id: 'task1',
         status: 'complete',
+        complete: true,
+        draft: false,
         attributes: [],
       },
     ];
@@ -71,6 +124,8 @@ describe('@sirenpm/core', () => {
       type: 'task',
       id: 'task1',
       status: 'active',
+      complete: false,
+      draft: false,
       attributes: [],
     };
     const resources: Resource[] = [
@@ -78,6 +133,8 @@ describe('@sirenpm/core', () => {
         type: 'milestone',
         id: 'milestone1',
         status: 'active',
+        complete: false,
+        draft: false,
         attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'task1' } }],
       },
       task,
@@ -92,6 +149,8 @@ describe('@sirenpm/core', () => {
       type: 'task',
       id: 'task1',
       status: 'active',
+      complete: false,
+      draft: false,
       attributes: [],
     };
     const resources: Resource[] = [
@@ -99,6 +158,8 @@ describe('@sirenpm/core', () => {
         type: 'milestone',
         id: 'milestone1',
         status: 'active',
+        complete: false,
+        draft: false,
         attributes: [
           {
             key: 'depends_on',
@@ -125,12 +186,16 @@ describe('@sirenpm/core', () => {
         type: 'milestone',
         id: 'milestone1',
         status: 'active',
+        complete: false,
+        draft: false,
         attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'other_milestone' } }],
       },
       {
         type: 'task',
         id: 'task1',
         status: 'active',
+        complete: false,
+        draft: false,
         attributes: [],
       },
     ];

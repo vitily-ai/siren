@@ -1,4 +1,4 @@
-import type { Resource } from '../ir/types';
+import type { Resource, ResourceInput } from '../ir/types';
 import { isArray, isReference } from '../ir/types';
 
 /**
@@ -44,6 +44,14 @@ export function isDraft(resource: Pick<Resource, 'status'>): boolean {
 
 export function isActive(resource: Pick<Resource, 'status'>): boolean {
   return resource.status === 'active';
+}
+
+export function withDerivedStatusFlags(resource: ResourceInput): Resource {
+  return {
+    ...resource,
+    complete: isComplete(resource),
+    draft: isDraft(resource),
+  };
 }
 
 // TODO expose this as a method on an object oriented IR context
