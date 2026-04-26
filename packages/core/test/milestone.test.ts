@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { IRContext } from '../src/ir/context';
 import type { Resource, ResourceStatus, ResourceType } from '../src/ir/types';
-import { buildDependencyGraph, isImplicitlyComplete, resolveStatus } from '../src/utilities/milestone';
+import {
+  buildDependencyGraph,
+  isImplicitlyComplete,
+  resolveStatus,
+} from '../src/utilities/milestone';
 
 /** Build a minimal Resource for testing */
 function resource(
