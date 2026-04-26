@@ -146,6 +146,9 @@ export function resolveStatus(
   resourceMap: ReadonlyMap<string, Resource>,
   graph: DirectedGraph,
 ): ResourceStatus {
+  // Explicit status always wins — no implicit rules run.
+  if (resource.status !== undefined) return resource.status;
+
   const explicitlyComplete = isComplete(resource);
 
   if (resource.type === 'task') {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Resource, ResourceType } from '../src/ir/types';
+import type { Resource, ResourceStatus, ResourceType } from '../src/ir/types';
 import {
   buildDependencyGraph,
   isImplicitlyComplete,
@@ -10,7 +10,7 @@ import {
 function resource(
   type: ResourceType,
   id: string,
-  opts?: { complete?: boolean; dependsOn?: string[] },
+  opts?: { complete?: boolean; dependsOn?: string[]; status?: ResourceStatus },
 ): Resource {
   const attributes = opts?.dependsOn
     ? [
@@ -26,7 +26,13 @@ function resource(
         },
       ]
     : [];
-  return { type, id, complete: opts?.complete ?? false, attributes };
+  return {
+    type,
+    id,
+    complete: opts?.complete ?? false,
+    ...(opts?.status !== undefined ? { status: opts.status } : {}),
+    attributes,
+  };
 }
 
 /** Build a Map<string, Resource> and DirectedGraph from resources */
@@ -184,5 +190,42 @@ describe('resolveStatus', () => {
     const { map, graph } = context(a, m1, m2);
     expect(resolveStatus(m1, map, graph)).toBe('complete');
     expect(resolveStatus(m2, map, graph)).toBe('complete');
+  });
+
+  it("task with explicit status 'draft' stays draft", () => {
+    const t = resource('task', 't', { status: 'draft' });
+    const { map, graph } = context(t);
+    expect(resolveStatus(t, map, graph)).toBe('draft');
+  });
+
+  it("task with explicit status 'active' stays active", () => {
+    const t = resource('task', 't', { status: 'active' });
+    const { map, graph } = context(t);
+    expect(resolveStatus(t, map, graph)).toBe('active');
+  });
+
+  it("orphan milestone with explicit status 'active' stays active", () => {
+    // Without explicit status an orphan resolves to 'draft'.
+    // An explicit status: 'active' overrides that rule.
+    const m = resource('milestone', 'm', { status: 'active' });
+    const { map, graph } = context(m);
+    expect(resolveStatus(m, map, graph)).toBe('active');
+  });
+
+  it("milestone with all-complete deps but explicit status 'active' stays active", () => {
+    // Implicit completion is overridden by explicit status.
+    const a = resource('task', 'a', { complete: true });
+    const m = resource('milestone', 'm', { status: 'active', dependsOn: ['a'] });
+    const { map, graph } = context(a, m);
+    expect(resolveStatus(m, map, graph)).toBe('active');
+  });
+
+  it("milestone with deps and explicit status 'draft' stays draft", () => {
+    // Even with an incomplete dep that would normally resolve to 'active',
+    // explicit status: 'draft' wins.
+    const a = resource('task', 'a');
+    const m = resource('milestone', 'm', { status: 'draft', dependsOn: ['a'] });
+    const { map, graph } = context(a, m);
+    expect(resolveStatus(m, map, graph)).toBe('draft');
   });
 });
