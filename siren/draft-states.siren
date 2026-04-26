@@ -1,0 +1,167 @@
+milestone draft-states {
+  description = "introduce a tri-state 'draft' / 'active' / 'complete' status for resources, replacing Resource.complete: boolean"
+
+  // Decisions
+  // - Tri-state `status: 'draft' | 'active' | 'complete'` replaces `complete: boolean`
+  //   outright. Single source of truth via `status`; isComplete/isDraft/isActive
+  //   helpers absorb readability at call sites.
+  // - Tasks: never auto-promoted. Default `active`; only `draft`/`complete` via
+  //   explicit keyword.
+  // - Milestones: auto-`draft` when no deps and no explicit keyword. Auto-`complete`
+  //   via the existing `isImplicitlyComplete` rule (>=1 dep, all deps complete).
+  //   Otherwise `active`. Explicit keyword always wins.
+  // - `draft` is a grammar keyword mirroring `complete` (no `draft = true` attribute).
+  // - Conflict `task foo draft complete {}` -> WL004, status falls back to `active`.
+  //   Repeated `draft` keywords -> WL005.
+  // - No CLI display change here. UX (e.g. `(draft)` tagging, filtering) is a
+  //   separate follow-up milestone.
+  // - milestone-files keeps a hard depends_on on draft-states; a guard test ships
+  //   here locking the synthetic-becomes-draft contract.
+  // - The original "vacuous-truth promotion" framing in the previous planning
+  //   stub is obsolete: orphan milestones already return false from
+  //   isImplicitlyComplete. This milestone is a deliberate semantic upgrade,
+  //   not a bugfix.
+
+  // Verification
+  // - `yarn workspace @sirenpm/core test` passes with new resolveStatus cases.
+  // - `yarn workspace @sirenpm/language test` passes with new snippet, project,
+  //   and roundtrip fixtures.
+  // - `yarn workspace @sirenpm/cli test` golden files unchanged after migration.
+  // - `yarn workspaces foreach -pv run test` clean from repo root.
+  // - Manual roundtrip: a fixture mixing `complete` and `draft` resources
+  //   exports byte-identical to its source.
+
+  depends_on = [
+    ds-ir,
+    ds-parse,
+    ds-export,
+    ds-downstream,
+  ]
+}
+
+// Phase 1 — IR & resolution
+
+milestone ds-ir {
+  description = "introduce Resource.status tri-state in core IR and route promotion through it"
+  depends_on = [
+    ds-status-type,
+    ds-resolve-status,
+    ds-context-promotion,
+    ds-helpers,
+    ds-core-callsite-migration,
+    ds-core-tests,
+  ]
+}
+
+task ds-status-type {
+  description = "replace Resource.complete: boolean with status: 'draft' | 'active' | 'complete' in packages/core/src/ir/types.ts and re-export the union"
+}
+
+task ds-resolve-status {
+  description = "add resolveStatus(resource, resourceMap, graph) in packages/core/src/utilities/milestone.ts; tasks pass through, milestones with explicit keyword pass through, all-deps-complete -> complete, no-deps + no-keyword -> draft, else active; reuse isImplicitlyComplete internally"
+  depends_on = ds-status-type
+}
+
+task ds-context-promotion {
+  description = "in packages/core/src/ir/context.ts resolveResources(), replace the implicit-complete promotion with resolveStatus() so .status is the single source of truth"
+  depends_on = [ds-status-type, ds-resolve-status]
+}
+
+task ds-helpers {
+  description = "add isComplete / isDraft / isActive helpers in packages/core/src/utilities/entry.ts and re-export from the package entrypoint"
+  depends_on = ds-status-type
+}
+
+task ds-core-callsite-migration {
+  description = "migrate internal .complete reads in core (getDependencyTree predicate, getTasksByMilestone, isImplicitlyComplete) to use isComplete() / .status === 'complete'"
+  depends_on = ds-helpers
+}
+
+task ds-core-tests {
+  description = "update packages/core/test/milestone.test.ts for the new resolution rule; add cases for orphan-draft, explicit-draft, all-complete-deps -> complete, mixed -> active, cycle -> active"
+  depends_on = ds-resolve-status
+}
+
+// Phase 2 — Grammar & decoder
+
+milestone ds-parse {
+  description = "add the `draft` keyword to the grammar, decode it into status, and emit conflict diagnostics"
+  depends_on = [
+    ds-grammar-draft-keyword,
+    ds-decoder-status,
+    ds-parse-diagnostics,
+    ds-snippet-fixtures,
+  ]
+}
+
+task ds-grammar-draft-keyword {
+  description = "update packages/language/grammar/grammar.js modifier slot to repeat(choice('complete', 'draft')) to preserve error tolerance; regenerate parser and tree-sitter-siren.wasm; add tree-sitter test corpus cases for task/milestone draft, draft+complete conflict, and repeated draft"
+  depends_on = ds-status-type
+}
+
+task ds-decoder-status {
+  description = "in packages/language/src/decoder/index.ts replace complete extraction with status extraction; default active, set complete/draft only when exactly one matching keyword and no conflict; update CST type definitions in packages/language/src/parser/"
+  depends_on = [ds-grammar-draft-keyword, ds-status-type]
+}
+
+task ds-parse-diagnostics {
+  description = "add WL004 (resource has both `draft` and `complete` keywords; status falls back to active) and WL005 (multiple `draft` keywords, mirroring WL002); reuse WL003/EL001 patterns for misplaced `draft` if needed"
+  depends_on = ds-decoder-status
+}
+
+task ds-snippet-fixtures {
+  description = "add snippet fixtures under packages/language/test/fixtures/snippets/: task-draft, milestone-draft, draft-and-complete-conflict, multiple-draft-keywords, draft-then-complete, complete-then-draft; capture CST shape and expected diagnostics"
+  depends_on = ds-grammar-draft-keyword
+}
+
+// Phase 3 — Exporter & roundtrip
+
+milestone ds-export {
+  description = "emit `draft` and `complete` keywords from the exporter and lock roundtrip behavior"
+  depends_on = [
+    ds-exporter-status,
+    ds-export-tests,
+  ]
+}
+
+task ds-exporter-status {
+  description = "change wrapResourceBlock in packages/language/src/export/formatters.ts to take status: ResourceStatus; emit `complete` or `draft` (or nothing for active); update siren-exporter.ts and exportWithComments paths"
+  depends_on = [ds-status-type, ds-decoder-status]
+}
+
+task ds-export-tests {
+  description = "add roundtrip project fixtures under packages/language/test/fixtures/projects/ (draft-task, draft-milestone, draft-keyword-roundtrip, draft-vs-complete-conflict); update existing tests in packages/language/test/export/ that assumed complete: boolean"
+  depends_on = [ds-exporter-status, ds-snippet-fixtures]
+}
+
+// Phase 4 — Downstream consumers & milestone-files prereq
+
+milestone ds-downstream {
+  description = "migrate apps/cli and apps/web off .complete and lock the milestone-files synthetic-as-draft contract"
+  depends_on = [
+    ds-cli-callsite-migration,
+    ds-web-callsite-migration,
+    ds-cli-goldens,
+    ds-milestone-files-fixture,
+  ]
+}
+
+task ds-cli-callsite-migration {
+  description = "migrate .complete reads in apps/cli/src/ (notably the dependency-tree filter in apps/cli/src/index.ts) to isComplete(); no display change in this milestone"
+  depends_on = [ds-helpers, ds-context-promotion]
+}
+
+task ds-web-callsite-migration {
+  description = "audit apps/web/src/ for .complete reads and migrate to isComplete() / .status === 'complete'"
+  depends_on = ds-helpers
+}
+
+task ds-cli-goldens {
+  description = "re-run apps/cli/test/expected/ goldens; expect zero textual diff under the display-unchanged invariant; only re-record if a roundtrip-driven golden inadvertently shifts"
+  depends_on = [ds-cli-callsite-migration, ds-exporter-status]
+}
+
+task ds-milestone-files-fixture {
+  description = "add a core unit test asserting that a milestone with depends_on = [] and no explicit keyword resolves to status: 'draft'; this is the contract milestone-files depends on"
+  depends_on = ds-context-promotion
+}
