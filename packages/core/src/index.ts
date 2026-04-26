@@ -21,4 +21,7 @@ export type { Origin } from './ir/types';
 export { isArray, isPrimitive, isReference } from './ir/types';
 // Dependency tree utilities
 export type { DependencyTree } from './utilities/dependency-tree';
+// Resource status predicates
+export { isActive, isComplete, isDraft } from './utilities/entry';
+export { resolveStatus } from './utilities/milestone';
 export { version } from './version';
