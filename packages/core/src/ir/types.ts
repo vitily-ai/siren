@@ -103,10 +103,11 @@ export interface Resource {
    * Lifecycle status of the resource. New source of truth for resource state.
    *
    * Optional during the migration window: existing constructors that have not
-   * yet been updated may omit this field. Consumers MUST treat an absent
-   * `status` as `'active'`. Subsequent tasks (`ds-context-promotion`,
-   * `ds-decoder-status`) will populate it eagerly so it becomes effectively
-   * required.
+   * yet been updated may omit this field. In pre-resolution IR, an absent
+   * `status` should be resolved/defaulted via `resolveStatus`/`IRContext`
+   * rather than assumed to be any specific value. Subsequent tasks
+   * (`ds-context-promotion`, `ds-decoder-status`) will populate it eagerly so
+   * it becomes effectively required.
    */
   readonly status?: ResourceStatus;
   readonly attributes: readonly Attribute[];
