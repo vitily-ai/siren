@@ -78,6 +78,8 @@ export function isImplicitlyComplete(
         return false; // dangling ref — not complete
       }
       if (isComplete(dep)) return false; // complete — satisfied
+      // Explicit draft milestones are not complete even when their own deps
+      // would otherwise qualify them for implicit completion.
       if (dep.status === 'draft') {
         allComplete = false;
         return false;

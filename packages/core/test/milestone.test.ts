@@ -136,6 +136,12 @@ describe('resolveStatus', () => {
     expect(resolveStatus(milestone, map, graph)).toBe('draft');
   });
 
+  it('resolves an active milestone with an empty depends_on array to draft', () => {
+    const milestone = resource('milestone', 'milestone', { dependsOn: [] });
+    const { map, graph } = context(milestone);
+    expect(resolveStatus(milestone, map, graph)).toBe('draft');
+  });
+
   it('passes explicit draft milestones through', () => {
     const dep = resource('task', 'dep', { status: 'complete' });
     const milestone = resource('milestone', 'milestone', {
