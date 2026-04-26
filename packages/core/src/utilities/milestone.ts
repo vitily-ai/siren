@@ -78,15 +78,14 @@ export function isImplicitlyComplete(
         return false; // dangling ref — not complete
       }
       if (isComplete(dep)) return false; // complete — satisfied
-      // Explicit draft milestones are not satisfied dependencies during
-      // transitive completion checks.
-      if (dep.status === 'draft') {
-        allComplete = false;
-        return false;
-      }
 
-      // Incomplete milestone with deps: expand to check transitively
-      if (dep.type === 'milestone' && graph.getSuccessors(node).length > 0) {
+      // Active milestone with deps: expand to check transitively. Draft
+      // milestones are terminal incomplete dependencies.
+      if (
+        dep.status === 'active' &&
+        dep.type === 'milestone' &&
+        graph.getSuccessors(node).length > 0
+      ) {
         return true;
       }
 
