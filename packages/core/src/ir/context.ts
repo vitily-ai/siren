@@ -128,8 +128,6 @@ export class IRContext {
 
     // 2. Resolve milestone status so .status is the single source of truth.
     const resourceMap = new Map(unique.map((r) => [r.id, r]));
-    // TODO expose private memoized graph getter
-    // TODO unnecessary to use a deduplicated list here
     const graph = buildDependencyGraph(unique);
     const resolved = unique.map((r) => {
       const status = resolveStatus(r, resourceMap, graph);
