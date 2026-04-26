@@ -1,5 +1,5 @@
-import type { Resource } from '../ir/types';
-import { getDependsOn } from './entry';
+import type { Resource, ResourceStatus } from '../ir/types';
+import { getDependsOn, isComplete } from './entry';
 import { DirectedGraph } from './graph';
 
 /**
@@ -31,7 +31,7 @@ export function getTasksByMilestone(resources: Resource[]): Map<string, Resource
     const dependsOnIds = graph.getSuccessors(milestone.id);
     const tasks = dependsOnIds
       .map((id) => taskMap.get(id))
-      .filter((task): task is Resource => task !== undefined && !task.complete);
+      .filter((task): task is Resource => task !== undefined && !isComplete(task));
     tasksByMilestone.set(milestone.id, tasks);
   }
 
@@ -77,7 +77,11 @@ export function isImplicitlyComplete(
         allComplete = false;
         return false; // dangling ref — not complete
       }
-      if (dep.complete) return false; // explicitly complete — satisfied
+      if (isComplete(dep)) return false; // complete — satisfied
+      if (dep.status === 'draft') {
+        allComplete = false;
+        return false;
+      }
 
       // Incomplete milestone with deps: expand to check transitively
       if (dep.type === 'milestone' && graph.getSuccessors(node).length > 0) {
@@ -96,6 +100,18 @@ export function isImplicitlyComplete(
   );
 
   return allComplete;
+}
+
+export function resolveStatus(
+  resource: Resource,
+  resourceMap: ReadonlyMap<string, Resource>,
+  graph: DirectedGraph,
+): ResourceStatus {
+  if (resource.type === 'task') return resource.status;
+  if (resource.status !== 'active') return resource.status;
+  if (isImplicitlyComplete(resource, resourceMap, graph)) return 'complete';
+  if (graph.getSuccessors(resource.id).length === 0) return 'draft';
+  return 'active';
 }
 
 /**

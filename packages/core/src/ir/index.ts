@@ -12,5 +12,6 @@ export type {
   PrimitiveValue,
   Resource,
   ResourceReference,
+  ResourceStatus,
   ResourceType,
 } from './types';

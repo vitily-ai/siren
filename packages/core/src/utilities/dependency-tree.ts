@@ -98,7 +98,7 @@ function buildDependencyTree(
         ({
           type: 'task',
           id: nodeId,
-          complete: false,
+          status: 'active',
           attributes: [],
         } satisfies Resource);
 
@@ -132,7 +132,7 @@ function buildDependencyTree(
           ({
             type: 'task',
             id: to,
-            complete: false,
+            status: 'active',
             attributes: [],
           } satisfies Resource);
 

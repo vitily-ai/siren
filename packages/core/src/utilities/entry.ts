@@ -34,4 +34,16 @@ export function getDependsOn(resource: Resource): string[] {
   return [];
 }
 
+export function isComplete(resource: Pick<Resource, 'status'>): boolean {
+  return resource.status === 'complete';
+}
+
+export function isDraft(resource: Pick<Resource, 'status'>): boolean {
+  return resource.status === 'draft';
+}
+
+export function isActive(resource: Pick<Resource, 'status'>): boolean {
+  return resource.status === 'active';
+}
+
 // TODO expose this as a method on an object oriented IR context

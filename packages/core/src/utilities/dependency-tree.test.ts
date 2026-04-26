@@ -8,7 +8,7 @@ const attr = (key: string, value: any) => ({ key, value });
 const res = (id: string, dependsOn?: string[] | string) => ({
   type: 'task',
   id,
-  complete: false,
+  status: 'active',
   attributes: dependsOn
     ? [
         attr(

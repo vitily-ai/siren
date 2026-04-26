@@ -2,13 +2,13 @@ import {
   getDependencyTree as buildDependencyTree,
   type DependencyTree,
 } from '../utilities/dependency-tree';
-import { findResourceById, getDependsOn } from '../utilities/entry';
+import { findResourceById, getDependsOn, isComplete } from '../utilities/entry';
 import { DirectedGraph } from '../utilities/graph';
 import {
   buildDependencyGraph,
   getMilestoneIds,
   getTasksByMilestone,
-  isImplicitlyComplete,
+  resolveStatus,
 } from '../utilities/milestone';
 import type { DiagnosticBase } from './diagnostics';
 import type { Document, Resource } from './types';
@@ -102,8 +102,8 @@ export class IRContext {
   }
 
   /**
-   * Get deduplicated resources with implicit milestone completeness resolved.
-   * Milestones whose every dependency is complete are promoted to `complete: true`.
+   * Get deduplicated resources with milestone status resolved.
+   * Milestones can be promoted to `draft` or `complete` based on dependencies.
    * First occurrence of each ID is kept, duplicates are dropped.
    * Use `duplicateDiagnostics` to get warnings about dropped duplicates.
    */
@@ -114,7 +114,7 @@ export class IRContext {
     return this._uniqueResources;
   }
 
-  /** Deduplicate then resolve implicit milestone completeness */
+  /** Deduplicate then resolve milestone status */
   private resolveResources(): readonly Resource[] {
     // 1. Deduplicate — first occurrence wins
     const seen = new Set<string>();
@@ -126,15 +126,15 @@ export class IRContext {
       }
     }
 
-    // 2. Promote implicitly-complete milestones so .complete is the single
-    //    source of truth for completeness (explicit and implicit).
+    // 2. Resolve milestone status so .status is the single source of truth.
     const resourceMap = new Map(unique.map((r) => [r.id, r]));
     // TODO expose private memoized graph getter
     // TODO unnecessary to use a deduplicated list here
     const graph = buildDependencyGraph(unique);
-    const resolved = unique.map((r) =>
-      !r.complete && isImplicitlyComplete(r, resourceMap, graph) ? { ...r, complete: true } : r,
-    );
+    const resolved = unique.map((r) => {
+      const status = resolveStatus(r, resourceMap, graph);
+      return status === r.status ? r : { ...r, status };
+    });
 
     return Object.freeze(resolved);
   }
@@ -161,8 +161,8 @@ export class IRContext {
     // complete resources (explicit or implicitly-resolved) from the tree.
     const traversePredicate = (r: Resource) => {
       // Exclude complete resources (includes implicitly-complete milestones
-      // since .complete is resolved before resources are exposed)
-      if (r.complete) return false;
+      // since .status is resolved before resources are exposed)
+      if (isComplete(r)) return false;
       // Include non-root milestones as leaves (include but don't expand)
       if (r.type === 'milestone' && r.id !== rootId) {
         return { include: true, expand: false };

@@ -75,15 +75,20 @@ export interface Attribute {
 export type ResourceType = 'task' | 'milestone';
 
 /**
+ * Resolution status for a Siren resource.
+ */
+export type ResourceStatus = 'draft' | 'active' | 'complete';
+
+/**
  * A Siren resource (task or milestone)
  */
 export interface Resource {
   readonly type: ResourceType;
   readonly id: string;
   /**
-   * True if the resource is marked complete via the 'complete' keyword (not attribute)
+   * Resource status from explicit keywords or core milestone resolution.
    */
-  readonly complete: boolean;
+  readonly status: ResourceStatus;
   readonly attributes: readonly Attribute[];
   /**
    * Optional source origin information for comment preservation

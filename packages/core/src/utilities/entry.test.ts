@@ -7,13 +7,13 @@ describe('findResourceById', () => {
     {
       type: 'task',
       id: 'task1',
-      complete: false,
+      status: 'active',
       attributes: [],
     },
     {
       type: 'milestone',
       id: 'milestone1',
-      complete: true,
+      status: 'complete',
       attributes: [],
     },
   ];
