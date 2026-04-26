@@ -121,3 +121,47 @@ jobs:
           echo "Grammar artifact is up to date."
           echo "  grammar.js last commit:  $(git log -1 --format=%ci -- "$GRAMMAR")"
           echo "  WASM      last commit:  $(git log -1 --format=%ci -- "$WASM")"
+
+  integration:
+    name: Integration (linked workspaces)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [test, lint, grammar-drift]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4.2.0
+        with:
+          node-version: '24.x'
+          cache: 'yarn'
+
+      - name: Swap @sirenpm/* deps to workspace protocol
+        run: bash .github/workflow-utils/swap-to-workspace-protocol.sh
+
+      # `--immutable` is intentionally omitted: the swap above mutates
+      # package.json, so the lockfile will diverge. The integration job
+      # discards the regenerated lockfile.
+      - name: Install dependencies (linked)
+        run: YARN_ENABLE_IMMUTABLE_INSTALLS=false yarn install
+
+      - name: Build (linked)
+        run: yarn build
+
+      - name: CLI smoke test (linked)
+        run: node ./apps/cli/dist/index.js --version
+
+      - name: Test (linked)
+        run: yarn test
+
+      - name: Failure hint
+        if: failure()
+        run: |
+          echo "::warning::The integration job links @sirenpm/* deps via the workspace protocol to detect breaking changes between sibling packages. If a failure here is unexpected and the unlinked 'test' job passed, double-check that yarn.lock is fresh on main — a stale root lockfile can occasionally surface here even when the underlying code is fine."
