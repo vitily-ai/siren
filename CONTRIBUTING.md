@@ -75,6 +75,28 @@ Code style & reviews
 - Preserve public API shapes unless the change is explicitly part of a major version bump.
 - Before merging: run `yarn build`, `yarn test`.
 
+Continuous integration
+----------------------
+
+CI runs three baseline jobs against the registry-pinned dependency graph (the
+same graph end users install): `test`, `lint`, and `grammar-drift`. Once those
+pass, an `integration` job re-runs the build and full test suite with every
+`@sirenpm/*` dependency rewritten to the `workspace:*` protocol so sibling
+packages resolve to local sources. This catches breaking API or type changes
+between `core`, `language`, and `cli` that the registry-pinned baseline would
+silently mask.
+
+To reproduce the integration job locally:
+
+```bash
+bash .github/workflow-utils/swap-to-workspace-protocol.sh
+yarn install   # lockfile will diverge; do not commit
+yarn build
+yarn test
+```
+
+Restore the originals with `git checkout -- apps/cli/package.json packages/language/package.json yarn.lock` when done.
+
 Fixtures
 --------
 

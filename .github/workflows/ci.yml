@@ -5,7 +5,6 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -151,7 +150,7 @@ jobs:
       # package.json, so the lockfile will diverge. The integration job
       # discards the regenerated lockfile.
       - name: Install dependencies (linked)
-        run: yarn install
+        run: YARN_ENABLE_IMMUTABLE_INSTALLS=false yarn install
 
       - name: Build (linked)
         run: yarn build
