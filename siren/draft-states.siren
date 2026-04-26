@@ -5,6 +5,8 @@ milestone draft-states {
   // - Tri-state `status: 'draft' | 'active' | 'complete'` replaces `complete: boolean`
   //   outright. Single source of truth via `status`; isComplete/isDraft/isActive
   //   helpers absorb readability at call sites.
+  // - Core API surface remains intact - `complete` boolean remains, derived from status.
+  //   Consider transitioning `Resource` to a class with opaque getters to enable this.
   // - Tasks: never auto-promoted. Default `active`; only `draft`/`complete` via
   //   explicit keyword.
   // - Milestones: auto-`draft` when no deps and no explicit keyword. Auto-`complete`
@@ -53,8 +55,8 @@ milestone ds-ir {
   ]
 }
 
-task ds-status-type {
-  description = "replace Resource.complete: boolean with status: 'draft' | 'active' | 'complete' in packages/core/src/ir/types.ts and re-export the union"
+task ds-status-type complete {
+  description = "add status: 'draft' | 'active' | 'complete' to Resource in packages/core/src/ir/types.ts and re-export the union; keep complete: boolean as a derived property (computed from status === 'complete') so the existing API surface remains intact"
 }
 
 task ds-resolve-status {
