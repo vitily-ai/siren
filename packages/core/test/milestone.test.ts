@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { IRContext } from '../src/ir/context';
-import type { Resource, ResourceStatus, ResourceType } from '../src/ir/types';
+import type {
+  Resource,
+  ResourceBeforeDerivation,
+  ResourceStatus,
+  ResourceType,
+} from '../src/ir/types';
 import { withDerivedCompletionFlags } from '../src/utilities/entry';
 import {
   buildDependencyGraph,
@@ -190,9 +195,13 @@ describe('resolveStatus', () => {
 
   it('derives compatibility flags from resolved status', () => {
     const dep = resource('task', 'dep', { status: 'complete' });
-    const milestone = {
-      ...resource('milestone', 'milestone', { dependsOn: ['dep'] }),
+    const milestone: ResourceBeforeDerivation = {
+      type: 'milestone',
+      id: 'milestone',
+      status: 'active',
+      complete: false,
       draft: true,
+      attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'dep' } }],
     };
     const context = IRContext.fromResources([dep, milestone]);
     expect(context.findResourceById('milestone')).toMatchObject({

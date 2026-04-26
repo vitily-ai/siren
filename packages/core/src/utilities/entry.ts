@@ -46,6 +46,12 @@ export function isActive(resource: Pick<Resource, 'status'>): boolean {
   return resource.status === 'active';
 }
 
+/**
+ * Derives the `complete` and `draft` compatibility flags from `status`.
+ *
+ * IRContext uses this while resolving resources. Most downstream consumers
+ * should work with fully-derived `Resource` objects instead.
+ */
 export function withDerivedCompletionFlags(resource: ResourceBeforeDerivation): Resource {
   return {
     ...resource,
