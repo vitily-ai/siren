@@ -1,4 +1,4 @@
-import type { Resource, ResourceInput } from '../ir/types';
+import type { Resource, ResourceBeforeDerivation } from '../ir/types';
 import { isArray, isReference } from '../ir/types';
 
 /**
@@ -46,7 +46,7 @@ export function isActive(resource: Pick<Resource, 'status'>): boolean {
   return resource.status === 'active';
 }
 
-export function withDerivedStatusFlags(resource: ResourceInput): Resource {
+export function withDerivedCompletionFlags(resource: ResourceBeforeDerivation): Resource {
   return {
     ...resource,
     complete: isComplete(resource),

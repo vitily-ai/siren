@@ -16,10 +16,10 @@ export type { IRExporter } from './ir/exporter';
 // IR types (intermediate representation) and IRContext
 export * from './ir/index';
 // Origin is IR-agnostic positional metadata
-export type { Origin, ResourceInput, ResourceStatus } from './ir/types';
+export type { Origin, ResourceBeforeDerivation, ResourceStatus } from './ir/types';
 // Type guards for AttributeValue discrimination
 export { isArray, isPrimitive, isReference } from './ir/types';
 // Dependency tree utilities
 export type { DependencyTree } from './utilities/dependency-tree';
-export { isActive, isComplete, isDraft, withDerivedStatusFlags } from './utilities/entry';
+export { isActive, isComplete, isDraft, withDerivedCompletionFlags } from './utilities/entry';
 export { version } from './version';

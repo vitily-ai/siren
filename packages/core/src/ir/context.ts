@@ -6,7 +6,7 @@ import {
   findResourceById,
   getDependsOn,
   isComplete,
-  withDerivedStatusFlags,
+  withDerivedCompletionFlags,
 } from '../utilities/entry';
 import { DirectedGraph } from '../utilities/graph';
 import {
@@ -16,7 +16,7 @@ import {
   resolveStatus,
 } from '../utilities/milestone';
 import type { DiagnosticBase } from './diagnostics';
-import type { Document, Resource, ResourceInput } from './types';
+import type { Document, Resource, ResourceBeforeDerivation } from './types';
 
 /**
  * Semantic diagnostic message produced from IR analysis
@@ -90,7 +90,7 @@ export interface DuplicateIdDiagnostic extends DiagnosticBase {
  */
 export class IRContext {
   /** All resources including duplicates - used for duplicate detection */
-  private readonly _allResources: readonly ResourceInput[];
+  private readonly _allResources: readonly ResourceBeforeDerivation[];
   /** Deduplicated resources - computed lazily */
   private _uniqueResources?: readonly Resource[];
   public readonly source?: string;
@@ -123,7 +123,7 @@ export class IRContext {
   private resolveResources(): readonly Resource[] {
     // 1. Deduplicate — first occurrence wins
     const seen = new Set<string>();
-    const uniqueInputs: ResourceInput[] = [];
+    const uniqueInputs: ResourceBeforeDerivation[] = [];
     for (const resource of this._allResources) {
       if (!seen.has(resource.id)) {
         seen.add(resource.id);
@@ -132,12 +132,12 @@ export class IRContext {
     }
 
     // 2. Resolve milestone status so .status is the single source of truth.
-    const unique = uniqueInputs.map(withDerivedStatusFlags);
+    const unique = uniqueInputs.map(withDerivedCompletionFlags);
     const resourceMap = new Map(unique.map((r) => [r.id, r]));
     const graph = buildDependencyGraph(unique);
     const resolved = unique.map((r) => {
       const status = resolveStatus(r, resourceMap, graph);
-      return withDerivedStatusFlags(status === r.status ? r : { ...r, status });
+      return withDerivedCompletionFlags(status === r.status ? r : { ...r, status });
     });
 
     return Object.freeze(resolved);
@@ -199,7 +199,7 @@ export class IRContext {
    * File attribution is read from each resource's origin.document field.
    * This replaces the previous resourceSources parameter pattern.
    */
-  static fromResources(resources: readonly ResourceInput[], source?: string): IRContext {
+  static fromResources(resources: readonly ResourceBeforeDerivation[], source?: string): IRContext {
     return new IRContext({ resources: resources.slice(), source });
   }
 
@@ -264,7 +264,7 @@ export class IRContext {
   /** Compute W003 diagnostics for duplicate resource IDs */
   private computeDuplicateDiagnostics(): readonly DuplicateIdDiagnostic[] {
     const diagnostics: DuplicateIdDiagnostic[] = [];
-    const seen = new Map<string, ResourceInput>();
+    const seen = new Map<string, ResourceBeforeDerivation>();
 
     for (const resource of this._allResources) {
       const first = seen.get(resource.id);

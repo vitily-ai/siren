@@ -105,7 +105,7 @@ export interface Resource {
   readonly origin?: Origin;
 }
 
-export type ResourceInput = Omit<Resource, 'complete' | 'draft'> &
+export type ResourceBeforeDerivation = Omit<Resource, 'complete' | 'draft'> &
   Partial<Pick<Resource, 'complete' | 'draft'>>;
 
 /**
@@ -128,7 +128,7 @@ export interface Cycle {
  * Top-level document containing all resources
  */
 export interface Document {
-  readonly resources: readonly ResourceInput[];
+  readonly resources: readonly ResourceBeforeDerivation[];
   /** Source file path (if any) */
   readonly source?: string;
 }

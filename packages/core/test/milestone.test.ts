@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { IRContext } from '../src/ir/context';
 import type { Resource, ResourceStatus, ResourceType } from '../src/ir/types';
-import { withDerivedStatusFlags } from '../src/utilities/entry';
+import { withDerivedCompletionFlags } from '../src/utilities/entry';
 import {
   buildDependencyGraph,
   isImplicitlyComplete,
@@ -28,7 +28,7 @@ function resource(
         },
       ]
     : [];
-  return withDerivedStatusFlags({ type, id, status: opts?.status ?? 'active', attributes });
+  return withDerivedCompletionFlags({ type, id, status: opts?.status ?? 'active', attributes });
 }
 
 /** Build a Map<string, Resource> and DirectedGraph from resources */
