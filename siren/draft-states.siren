@@ -5,7 +5,7 @@ milestone draft-states {
   // - Tri-state `status: 'draft' | 'active' | 'complete'` replaces `complete: boolean`
   //   outright. Single source of truth via `status`; isComplete/isDraft/isActive
   //   helpers absorb readability at call sites.
-  // - Core API surface remains intact - `complete` boolean remains, derived from status.
+  // - Core API surface remains in tact - `complete` boolean remains, derived from status.
   //   Consider transitioning `Resource` to a class with opaque getters to enable this.
   // - Tasks: never auto-promoted. Default `active`; only `draft`/`complete` via
   //   explicit keyword.
@@ -56,30 +56,30 @@ milestone ds-ir {
 }
 
 task ds-status-type complete {
-  description = "add status: 'draft' | 'active' | 'complete' to Resource in packages/core/src/ir/types.ts and re-export the union; keep complete: boolean as a derived property (computed from status === 'complete') so the existing API surface remains intact"
+  description = "replace Resource.complete: boolean with status: 'draft' | 'active' | 'complete' in packages/core/src/ir/types.ts and re-export the union"
 }
 
-task ds-resolve-status {
+task ds-resolve-status complete {
   description = "add resolveStatus(resource, resourceMap, graph) in packages/core/src/utilities/milestone.ts; tasks pass through, milestones with explicit keyword pass through, all-deps-complete -> complete, no-deps + no-keyword -> draft, else active; reuse isImplicitlyComplete internally"
   depends_on = ds-status-type
 }
 
-task ds-context-promotion {
+task ds-context-promotion complete {
   description = "in packages/core/src/ir/context.ts resolveResources(), replace the implicit-complete promotion with resolveStatus() so .status is the single source of truth"
   depends_on = [ds-status-type, ds-resolve-status]
 }
 
-task ds-helpers {
+task ds-helpers complete {
   description = "add isComplete / isDraft / isActive helpers in packages/core/src/utilities/entry.ts and re-export from the package entrypoint"
   depends_on = ds-status-type
 }
 
-task ds-core-callsite-migration {
+task ds-core-callsite-migration complete {
   description = "migrate internal .complete reads in core (getDependencyTree predicate, getTasksByMilestone, isImplicitlyComplete) to use isComplete() / .status === 'complete'"
   depends_on = ds-helpers
 }
 
-task ds-core-tests {
+task ds-core-tests complete {
   description = "update packages/core/test/milestone.test.ts for the new resolution rule; add cases for orphan-draft, explicit-draft, all-complete-deps -> complete, mixed -> active, cycle -> active"
   depends_on = ds-resolve-status
 }

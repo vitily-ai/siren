@@ -1,5 +1,5 @@
-import type { Resource } from '../ir/types';
-import { getDependsOn } from './entry';
+import type { Resource, ResourceStatus } from '../ir/types';
+import { getDependsOn, isComplete } from './entry';
 import { DirectedGraph } from './graph';
 
 /**
@@ -31,7 +31,7 @@ export function getTasksByMilestone(resources: Resource[]): Map<string, Resource
     const dependsOnIds = graph.getSuccessors(milestone.id);
     const tasks = dependsOnIds
       .map((id) => taskMap.get(id))
-      .filter((task): task is Resource => task !== undefined && !task.complete);
+      .filter((task): task is Resource => task !== undefined && !isComplete(task));
     tasksByMilestone.set(milestone.id, tasks);
   }
 
@@ -77,7 +77,7 @@ export function isImplicitlyComplete(
         allComplete = false;
         return false; // dangling ref — not complete
       }
-      if (dep.complete) return false; // explicitly complete — satisfied
+      if (isComplete(dep)) return false; // explicitly complete — satisfied
 
       // Incomplete milestone with deps: expand to check transitively
       if (dep.type === 'milestone' && graph.getSuccessors(node).length > 0) {
@@ -115,4 +115,45 @@ export function buildDependencyGraph(resources: readonly Resource[]): DirectedGr
   }
 
   return graph;
+}
+
+/**
+ * Resolves the effective {@link ResourceStatus} for a resource.
+ *
+ * Tasks are never auto-promoted: they are `'complete'` when explicitly marked
+ * (via `status === 'complete'` or the legacy `complete` keyword), otherwise
+ * `'active'`. Tasks are never auto-`'draft'` in phase 1 — explicit `'draft'`
+ * keyword handling is reserved for a later phase.
+ *
+ * Milestones resolve as follows:
+ * 1. Explicitly complete (`status === 'complete'` or legacy `complete === true`) → `'complete'`.
+ * 2. {@link isImplicitlyComplete} (≥1 dep, all deps complete) → `'complete'`.
+ * 3. Orphan (zero `depends_on` entries) with no explicit status keyword → `'draft'`.
+ * 4. Otherwise → `'active'`.
+ *
+ * Cyclic milestones fall through to `'active'` because {@link isImplicitlyComplete}
+ * already treats back-edges as incomplete.
+ *
+ * Pure: does not mutate inputs and has no side effects.
+ *
+ * @param resource The resource to resolve status for
+ * @param resourceMap Lookup map of all resources by ID
+ * @param graph Dependency graph built from the same resource set
+ * @returns The resolved {@link ResourceStatus}
+ */
+export function resolveStatus(
+  resource: Resource,
+  resourceMap: ReadonlyMap<string, Resource>,
+  graph: DirectedGraph,
+): ResourceStatus {
+  const explicitlyComplete = isComplete(resource);
+
+  if (resource.type === 'task') {
+    return explicitlyComplete ? 'complete' : 'active';
+  }
+
+  if (explicitlyComplete) return 'complete';
+  if (isImplicitlyComplete(resource, resourceMap, graph)) return 'complete';
+  if (getDependsOn(resource).length === 0) return 'draft';
+  return 'active';
 }

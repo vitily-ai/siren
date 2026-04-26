@@ -84,7 +84,7 @@ describe('@sirenpm/core', () => {
     ];
     const ir = IRContext.fromResources(resources);
     const result = ir.getTasksByMilestone();
-    expect(result.get('milestone1')).toEqual([task]);
+    expect(result.get('milestone1')).toEqual([{ ...task, status: 'active' }]);
   });
 
   it('handles array depends_on', () => {
@@ -116,7 +116,7 @@ describe('@sirenpm/core', () => {
     ];
     const ir = IRContext.fromResources(resources);
     const result = ir.getTasksByMilestone();
-    expect(result.get('milestone1')).toEqual([task]);
+    expect(result.get('milestone1')).toEqual([{ ...task, status: 'active' }]);
   });
 
   it('ignores dependencies that are not tasks', () => {

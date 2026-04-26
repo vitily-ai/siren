@@ -75,6 +75,17 @@ export interface Attribute {
 export type ResourceType = 'task' | 'milestone';
 
 /**
+ * Lifecycle status of a resource.
+ *
+ * This is the new source of truth for resource state. The legacy
+ * `Resource.complete` boolean is retained transitionally for backwards
+ * compatibility and is derived from `status === 'complete'`. Subsequent
+ * tasks will migrate consumers to read `status` directly and eventually
+ * drop `complete`.
+ */
+export type ResourceStatus = 'draft' | 'active' | 'complete';
+
+/**
  * A Siren resource (task or milestone)
  */
 export interface Resource {
@@ -82,8 +93,22 @@ export interface Resource {
   readonly id: string;
   /**
    * True if the resource is marked complete via the 'complete' keyword (not attribute)
+   *
+   * @deprecated Transitional field retained for back-compat. Prefer `status`;
+   * `complete` is now derived from `status === 'complete'`. Future tasks will
+   * remove this field once all consumers migrate to `status`.
    */
   readonly complete: boolean;
+  /**
+   * Lifecycle status of the resource. New source of truth for resource state.
+   *
+   * Optional during the migration window: existing constructors that have not
+   * yet been updated may omit this field. Consumers MUST treat an absent
+   * `status` as `'active'`. Subsequent tasks (`ds-context-promotion`,
+   * `ds-decoder-status`) will populate it eagerly so it becomes effectively
+   * required.
+   */
+  readonly status?: ResourceStatus;
   readonly attributes: readonly Attribute[];
   /**
    * Optional source origin information for comment preservation
