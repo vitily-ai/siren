@@ -8,10 +8,11 @@ export { buildMetadata } from './build-metadata';
 export type {
   CircularDependencyDiagnostic,
   DanglingDependencyDiagnostic,
+  DependencyCycle,
   Diagnostic,
+  DiagnosticBase,
   DuplicateIdDiagnostic,
-} from './ir/context';
-export type { DiagnosticBase } from './ir/diagnostics';
+} from './ir/diagnostics';
 export type { IRExporter } from './ir/exporter';
 // IR types (intermediate representation) and IRContext
 export * from './ir/index';

@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { IRContext, type Resource, version } from './index';
+import { IRAssembly, IRContext, type Resource, version } from './index';
 
 describe('@sirenpm/core', () => {
   it('exports version', () => {
     expect(version).toMatch(/^\d+\.\d+\.\d+/);
+  });
+
+  it('exports IRAssembly', () => {
+    expect(IRAssembly.fromResources([]).rawResources).toEqual([]);
   });
 
   describe('getMilestoneIds', () => {
