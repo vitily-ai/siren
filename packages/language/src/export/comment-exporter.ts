@@ -1,6 +1,7 @@
 import type { AttributeValue, IRContext } from '@sirenpm/core';
 import type { SourceIndex } from '../parser/source-index';
-import { formatAttributeLine, wrapResourceBlock } from './formatters';
+import type { SyntaxDocument, SyntaxIdentifier } from '../syntax/types';
+import { formatAttributeLine, formatResourceIdentifier, wrapResourceBlock } from './formatters';
 
 const BODY_INDENT = '  ';
 
@@ -13,15 +14,56 @@ type Segment = { kind: 'comment-block' | 'resource'; lines: string[] };
 
 type Seg = Segment & { startRow: number; endRow: number };
 
+function makeResourceKey(document: string, startByte: number, endByte: number): string {
+  return `${document}:${startByte}:${endByte}`;
+}
+
+function buildSyntaxIdentifierLookup(
+  syntaxDocuments?: readonly SyntaxDocument[],
+): ReadonlyMap<string, SyntaxIdentifier> {
+  const lookup = new Map<string, SyntaxIdentifier>();
+  if (!syntaxDocuments) return lookup;
+
+  for (const syntaxDocument of syntaxDocuments) {
+    for (const syntaxResource of syntaxDocument.resources) {
+      lookup.set(
+        makeResourceKey(
+          syntaxResource.span.document,
+          syntaxResource.span.startByte,
+          syntaxResource.span.endByte,
+        ),
+        syntaxResource.identifier,
+      );
+    }
+  }
+
+  return lookup;
+}
+
+function findSyntaxIdentifierForResource(
+  syntaxIdentifierLookup: ReadonlyMap<string, SyntaxIdentifier>,
+  resourceOrigin: { document?: string; startByte: number; endByte: number } | undefined,
+): SyntaxIdentifier | undefined {
+  if (!resourceOrigin?.document) return undefined;
+  return syntaxIdentifierLookup.get(
+    makeResourceKey(resourceOrigin.document, resourceOrigin.startByte, resourceOrigin.endByte),
+  );
+}
+
 /**
  * Internal: render an IR context with classified comments interleaved.
  *
  * Called by {@link exportToSiren} when a SourceIndex is provided. Not part of
  * the public package surface — consumers go through `exportToSiren`.
  */
-export function exportWithComments(ctx: IRContext, sourceIndex: SourceIndex): string {
+export function exportWithComments(
+  ctx: IRContext,
+  sourceIndex: SourceIndex,
+  syntaxDocuments?: readonly SyntaxDocument[],
+): string {
   // Track emitted comments by byte span to avoid duplicates across contexts.
   const emitted = new Set<string>();
+  const syntaxIdentifierLookup = buildSyntaxIdentifierLookup(syntaxDocuments);
 
   const allComments = sourceIndex.getAllComments();
 
@@ -188,7 +230,14 @@ export function exportWithComments(ctx: IRContext, sourceIndex: SourceIndex): st
     bodyEntries.sort((a, b) => (a.order === b.order ? a.seq - b.seq : a.order - b.order));
     const body = bodyEntries.map((e) => e.text);
 
-    const block = wrapResourceBlock(res.type, res.id, res.complete, body, headerTrailingComment);
+    const syntaxIdentifier = findSyntaxIdentifierForResource(syntaxIdentifierLookup, res.origin);
+    const block = wrapResourceBlock(
+      res.type,
+      formatResourceIdentifier(res.id, syntaxIdentifier),
+      res.complete,
+      body,
+      headerTrailingComment,
+    );
     segments.push({
       kind: 'resource',
       lines: block.split('\n'),

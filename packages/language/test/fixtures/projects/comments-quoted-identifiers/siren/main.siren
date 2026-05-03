@@ -1,0 +1,14 @@
+# Leading comment before quoted-safe identifier
+task "safe_id" {
+  description = "first task"  # trailing attribute comment
+  # Inner comment inside first task
+}
+
+# Detached comment block between resources
+// Includes slash-style comment too
+
+milestone "Release 1" {  # trailing header comment
+  depends_on = safe_id
+}
+
+# EOF comment after quoted resource

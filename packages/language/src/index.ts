@@ -6,13 +6,17 @@
 // biome-ignore-all lint/performance/noBarrelFile: public package entrypoint; mirrors @sirenpm/core.
 
 export type { CreateIRContextResult } from './context-factory';
-// Bridge — decode a CST into a fully-populated IRContext.
-export { createIRContextFromCst } from './context-factory';
+// Bridge — decode parser output or syntax documents into a fully-populated IRContext.
+export {
+  createIRContextFromParseResult,
+  createIRContextFromSyntaxDocuments,
+} from './context-factory';
 export type { ParseDiagnostic } from './decoder/index';
-// Decoder — CST → IR transformation, with language-phase diagnostics (WL/EL codes).
-export { decodeDocument } from './decoder/index';
+// Decoder — Parsed Document Model → IR transformation, with language-phase diagnostics.
+export { decodeSyntaxDocuments } from './decoder/index';
+export type { ExportToSirenOptions } from './export/siren-exporter';
 // Exporter — render IR back to Siren source. Comments are preserved automatically
-// when a SourceIndex is supplied.
+// when syntax documents are supplied in options.
 export { exportToSiren, SirenExporter } from './export/siren-exporter';
 // Parser adapter contracts
 export type {
@@ -37,7 +41,16 @@ export type {
 } from './parser/cst';
 // Parser factory — owns web-tree-sitter runtime + grammar loading.
 export { createParser } from './parser/factory';
-// Comment classification types
-export type { ClassifiedComment } from './parser/source-index';
-// Source index for comment classification
-export { SourceIndex } from './parser/source-index';
+
+export type {
+  SourceSpan,
+  SyntaxAttribute,
+  SyntaxDocument,
+  SyntaxExpression,
+  SyntaxIdentifier,
+  SyntaxResource,
+  SyntaxSourceDocument,
+  SyntaxToken,
+  SyntaxTrivia,
+  SyntaxTriviaClassification,
+} from './syntax/types';

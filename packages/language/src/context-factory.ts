@@ -1,12 +1,13 @@
 /**
- * Bridge: decode a CST into an IRContext while surfacing parse-phase
+ * Bridge: decode syntax documents into an IRContext while surfacing parse-phase
  * diagnostics separately. Semantic diagnostics ride on the returned
  * IRContext; grammar/parse-time diagnostics are returned alongside.
  */
 
 import { IRContext, type Resource } from '@sirenpm/core';
-import { decodeDocument, type ParseDiagnostic } from './decoder/index';
-import type { DocumentNode } from './parser/cst';
+import { decodeSyntaxDocuments, type ParseDiagnostic } from './decoder/index';
+import type { ParseResult } from './parser/adapter';
+import type { SyntaxDocument } from './syntax/types';
 
 export interface CreateIRContextResult {
   readonly context: IRContext;
@@ -14,15 +15,23 @@ export interface CreateIRContextResult {
 }
 
 /**
- * Decode a single parsed document into an IRContext.
+ * Decode parsed syntax documents into an IRContext.
  *
- * @param cst - Root CST node from `createParser().parse(...)`
- * @param source - Optional source file path used for diagnostic attribution
- *                 when the CST nodes lack origin.document
+ * @param syntaxDocuments - Parsed document model values from parser output
  */
-export function createIRContextFromCst(cst: DocumentNode, source?: string): CreateIRContextResult {
-  const { document, diagnostics: parseDiagnostics } = decodeDocument(cst, source);
+export function createIRContextFromSyntaxDocuments(
+  syntaxDocuments: readonly SyntaxDocument[],
+): CreateIRContextResult {
+  const { document, diagnostics: parseDiagnostics } = decodeSyntaxDocuments(syntaxDocuments);
   const resources: readonly Resource[] = document?.resources ?? [];
+  const source = syntaxDocuments.length === 1 ? syntaxDocuments[0]?.source.name : undefined;
   const context = IRContext.fromResources(resources, source);
   return { context, parseDiagnostics };
+}
+
+/**
+ * Decode parser output into an IRContext using `ParseResult.syntaxDocuments`.
+ */
+export function createIRContextFromParseResult(parseResult: ParseResult): CreateIRContextResult {
+  return createIRContextFromSyntaxDocuments(parseResult.syntaxDocuments ?? []);
 }
