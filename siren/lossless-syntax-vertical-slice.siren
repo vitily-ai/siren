@@ -1,0 +1,111 @@
+// Decisions
+// - Scope is the first vertical-slice PR only, not the full lossless syntax roadmap.
+// - Keep @sirenpm/core unchanged; semantic IR remains syntax-free and comment-free.
+// - Do not change the grammar in this PR.
+// - Keep the existing CST and SourceIndex comment export path in place.
+// - Preserve originally quoted resource IDs when syntax context exists.
+
+milestone lossless-syntax-vertical-slice {
+  description = "Add a lossless parsed document model in @sirenpm/language, route semantic decode through it, and use syntax-preserved resource identifier spelling to fix quoted identifier format and export behavior"
+  depends_on = [lst-syntax-document-foundation, lst-semantic-decode-through-syntax, lst-syntax-aware-export, lst-fixtures-and-verification]
+}
+
+milestone lst-syntax-document-foundation {
+  description = "Define the lossless syntax document model and construct it from the existing Siren CST with source spans, raw text, identifier spelling, and trivia representation"
+  depends_on = [lst-define-syntax-types, lst-build-syntax-from-cst, lst-represent-comment-trivia, lst-test-syntax-model]
+}
+
+task lst-define-syntax-types {
+  description = "Define SyntaxDocument, SyntaxSourceDocument, SyntaxResource, SyntaxIdentifier, SyntaxAttribute, SyntaxExpression, SyntaxToken, SyntaxTrivia, and source span helpers under packages/language/src/syntax"
+}
+
+task lst-build-syntax-from-cst {
+  description = "Add CST-to-syntax construction that accepts a DocumentNode plus optional sources and comments, preserves identifier raw/value/quoted data, slices raw text from source content when available, and falls back to CST token text otherwise"
+  depends_on = lst-define-syntax-types
+}
+
+task lst-represent-comment-trivia {
+  description = "Convert parser CommentToken values into SyntaxTrivia and attach leading, trailing, inner, detached, and EOF trivia using current SourceIndex behavior as the baseline without replacing comment export"
+  depends_on = lst-build-syntax-from-cst
+}
+
+task lst-test-syntax-model {
+  description = "Add syntax model tests for resource identifiers, attribute raw text and spans, source slicing, and comment trivia representation using existing comment and quoted identifier fixtures"
+  depends_on = [lst-build-syntax-from-cst, lst-represent-comment-trivia]
+}
+
+milestone lst-semantic-decode-through-syntax {
+  description = "Make semantic decoding use the syntax document while preserving existing public APIs, parse diagnostics, and resource semantics"
+  depends_on = [lst-add-syntax-decoder, lst-route-cst-decode-through-syntax, lst-test-semantic-parity]
+}
+
+task lst-add-syntax-decoder {
+  description = "Add decodeSyntaxDocument to map SyntaxDocument to the same Document and Resource shape as the current CST decoder while preserving parse diagnostics and complete keyword behavior"
+  depends_on = lst-build-syntax-from-cst
+}
+
+task lst-route-cst-decode-through-syntax {
+  description = "Route decodeDocument and createIRContextFromCst through decodeCstToSyntax and decodeSyntaxDocument while preserving their current public signatures"
+  depends_on = lst-add-syntax-decoder
+}
+
+task lst-test-semantic-parity {
+  description = "Add semantic parity tests proving existing snippet and project fixtures decode to the same resources and parse diagnostics after the syntax layer is introduced"
+  depends_on = lst-route-cst-decode-through-syntax
+}
+
+milestone lst-syntax-aware-export {
+  description = "Thread syntax context into export and formatting so resource headers preserve quoted identifier spelling or safely quote unsafe identifiers when syntax is unavailable"
+  depends_on = [lst-format-resource-identifiers, lst-thread-export-syntax-options, lst-update-comment-export-headers, lst-decide-cli-wiring]
+}
+
+task lst-format-resource-identifiers {
+  description = "Add an identifier formatting helper that emits SyntaxIdentifier raw spelling when available and otherwise emits a bare identifier only when it matches the grammar-safe bare identifier pattern"
+  depends_on = lst-define-syntax-types
+}
+
+task lst-thread-export-syntax-options {
+  description = "Thread optional syntax context through exportToSiren while preserving backward compatibility for the existing exportToSiren(ctx, sourceIndex) call shape"
+  depends_on = [lst-test-syntax-model, lst-format-resource-identifiers]
+}
+
+task lst-update-comment-export-headers {
+  description = "Update wrapResourceBlock and the comment-preserving export path so resource headers use syntax-preserved identifier spelling while keeping the existing SourceIndex interleaving algorithm intact"
+  depends_on = lst-thread-export-syntax-options
+}
+
+task lst-decide-cli-wiring {
+  description = "Wire syntax creation into the language-level format and export test path, and only touch CLI formatting if local package resolution is made explicit despite registry-pinned CLI dependencies"
+  depends_on = lst-update-comment-export-headers
+}
+
+milestone lst-fixtures-and-verification {
+  description = "Add focused fixtures and tests for quoted resource identifiers, comment representation, syntax-aware export, fallback quoting, and semantic round-trip behavior"
+  depends_on = [lst-add-quoted-format-fixture, lst-add-comments-quoted-fixture, lst-add-export-tests, lst-run-focused-verification]
+}
+
+task lst-add-quoted-format-fixture {
+  description = "Add a quoted-identifiers-format project fixture with resource IDs that require quotes and at least one safe but originally quoted ID"
+  depends_on = lst-update-comment-export-headers
+}
+
+task lst-add-comments-quoted-fixture {
+  description = "Add a comments-quoted-identifiers project fixture, and a matching snippet if useful, covering leading, trailing, inner, detached, and EOF comments around quoted resource IDs"
+  depends_on = [lst-represent-comment-trivia, lst-update-comment-export-headers]
+}
+
+task lst-add-export-tests {
+  description = "Add focused language export tests for syntax-aware quoted resource IDs, fallback quoting without syntax context, comment preservation, and semantic round-trip after formatting"
+  depends_on = [lst-add-quoted-format-fixture, lst-add-comments-quoted-fixture]
+}
+
+// Verification
+// - Run yarn workspace @sirenpm/language test -t "syntax".
+// - Run yarn workspace @sirenpm/language test -t "quoted|comment|Decode Integration".
+// - Run yarn workspace @sirenpm/language build.
+// - If CLI wiring is included, run yarn workspace @sirenpm/cli test -t "format|golden" after ensuring the CLI resolves the local language build.
+
+task lst-run-focused-verification {
+  description = "Run focused language tests, language build verification, and optional CLI format golden tests if CLI wiring is included with explicit local language resolution"
+  depends_on = lst-add-export-tests
+}
