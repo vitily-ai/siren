@@ -71,4 +71,45 @@ describe('Syntax decode parity', () => {
     expect(warning?.severity).toBe('warning');
     expect(warning?.file).toBe('complete.siren');
   });
+
+  it('surfaces duplicate complete parser warnings as WL002 parse diagnostics', async () => {
+    const source = 'task deploy complete complete {\n  description = "ship it"\n}\n';
+
+    const parseResult = await adapter.parse([
+      { name: 'duplicate-complete.siren', content: source },
+    ]);
+    const { context, parseDiagnostics } = createIRContextFromParseResult(parseResult);
+
+    expect(context.resources[0]?.complete).toBe(true);
+
+    const warning = parseDiagnostics.find((diagnostic) => diagnostic.code === 'WL002');
+    expect(warning).toMatchObject({
+      code: 'WL002',
+      severity: 'warning',
+      file: 'duplicate-complete.siren',
+      line: 1,
+      column: 0,
+      message:
+        "Resource 'deploy' has 'complete' keyword specified more than once. Only one is allowed; resource will be treated as complete: true.",
+    });
+  });
+
+  it('surfaces parser errors as EL001 parse diagnostics', async () => {
+    const parseResult = await adapter.parse([
+      {
+        name: 'broken.siren',
+        content: 'task broken {\n',
+      },
+    ]);
+
+    const { parseDiagnostics } = createIRContextFromParseResult(parseResult);
+
+    const error = parseDiagnostics.find((diagnostic) => diagnostic.code === 'EL001');
+    expect(error).toBeDefined();
+    expect(error?.severity).toBe('error');
+    expect(error?.file).toBe('broken.siren');
+    expect(error?.line).toBeGreaterThan(0);
+    expect(error?.column).toBeGreaterThanOrEqual(0);
+    expect(error?.message).toContain('Invalid syntax:');
+  });
 });
