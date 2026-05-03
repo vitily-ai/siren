@@ -27,6 +27,6 @@ export type {
 // Parser factory — owns web-tree-sitter runtime + grammar loading.
 export { createParser } from './factory';
 
-// SourceIndex for comment classification
+// Legacy compatibility export — NOT-TO-BE-USED for new rendering code.
 export type { ClassifiedComment } from './source-index';
 export { SourceIndex } from './source-index';
