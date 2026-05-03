@@ -1,198 +1,172 @@
 // Top-level goal
 milestone diagnostic-pipeline-decoupling {
-  description = "Refactor core IR assembly so IRAssembly is the canonical raw-resource accumulation path and each built IRContext carries resolved resources plus a full semantic diagnostic snapshot."
-
+  description = "Trim diagnostic pipeline decoupling into a breaking 0.x core prerequisite: IRAssembly is the only public core construction path, IRContext is the built semantic snapshot, and language/CLI adoption follows explicitly."
   // Decisions:
-  // - Introduce a canonical core raw-resource assembly layer named IRAssembly.
-  // - IRAssembly accepts Resource inputs only for this refactor, has no source parameter, preserves raw order, and exposes a build-only API.
+  // - Siren is still semver 0.x, so the core prerequisite may remove vestigial public API instead of carrying deprecated compatibility paths.
+  // - IRAssembly.fromResources(resources) accepts Resource inputs only, owns frozen raw inputs, exposes them as resources, and builds repeatable IRContext snapshots.
   // - IRAssembly.build returns IRContext directly; there is no core IRBuildResult wrapper for semantic diagnostics.
-  // - IRContext is a recursively frozen built semantic snapshot with resolved resources, cycles, grouped diagnostics, and aggregate diagnostics.
-  // - Parse diagnostics remain separate in language-level APIs; semantic diagnostics remain on IRContext.
-  // - Diagnostic deltas are deferred UX sugar for CLI/editor flows and can be derived by comparing IRContext snapshots later.
-  // - The first implementation milestone is core-only; language and CLI adopt the new core surface explicitly later.
-  // - Language and CLI adoption tasks remain in this plan as follow-up dependencies for the broader initiative, not as scope for the first core-only implementation.
-  // Further refinement:
-  // - Immutable withResource/withResources append helpers are follow-up work when mutation workflows are implemented.
-  // - Direct IRContext constructor deprecation happens in this refactor, but the constructor remains functional; removal is deferred to a future major migration.
-  // - Document-based IRAssembly constructors are a follow-up quick-win enhancement.
-  // - Language and CLI golden updates are decided when those packages explicitly adopt the new core version.
-  depends_on = [dp-contract, dp-normalization, dp-analysis, dp-consumers, dp-verification]
+  // - IRContext remains a class with query methods, but callers do not construct it directly.
+  // - IRContext construction is internal to core via a private constructor plus symbol-keyed factory used by IRAssembly.
+  // - Remove IRContext.fromResources, the public document constructor, IRContext.source, core Document export, IRContext.cycles, grouped diagnostic getters, Cycle export, and public DependencyCycle export.
+  // - IRContext.resources exposes resolved resources; IRAssembly.resources exposes frozen raw inputs.
+  // - IRContext.diagnostics is the single public semantic diagnostic snapshot.
+  // - W001, W002, and W003 structures and ordering stay stable unless preserving them complicates the core model.
+  // - Source attribution comes from Resource.origin.document; document-level source metadata is not a core construction concept.
+  // - Parse diagnostics remain separate in language-level APIs.
+  // - Language and CLI adoption are follow-up entries, not part of the first core-only prerequisite.
+  // - Immutable withResource/withResources append helpers remain future work.
+  depends_on = [dp-core-prerequisite, dp-follow-up-adoption]
 }
 
-milestone dp-contract {
-  description = "Define the canonical core assembly and IRContext snapshot API boundaries"
-  depends_on = [dp-name-assembly-api, dp-assembly-resource-api, dp-diagnostic-type-location, dp-deep-freeze-snapshots, dp-context-snapshot-shape, dp-diagnostic-snapshot-contract, dp-built-context-boundary, dp-core-export, dp-from-resources-compatibility, dp-core-docs]
+milestone dp-core-prerequisite {
+  description = "Ship the breaking core-only IRAssembly and IRContext snapshot prerequisite"
+  depends_on = [dp-core-api, dp-core-snapshot, dp-core-verification]
 }
 
-milestone dp-normalization {
-  description = "Split raw resource accumulation, deduplication, and implicit completion into explicit phases"
-  depends_on = [dp-preserve-raw-resources, dp-extract-dedupe, dp-extract-implicit-completion, dp-source-address-helper]
+milestone dp-core-api {
+  description = "Make IRAssembly the only public core construction path and remove vestigial core API"
+  depends_on = [dp-assembly-api, dp-ircontext-internal-construction, dp-remove-legacy-core-surfaces, dp-core-export-surface]
 }
 
-milestone dp-analysis {
-  description = "Precompute semantic diagnostics through pure analysis passes over explicit resource views"
-  depends_on = [dp-duplicate-pass, dp-dangling-pass, dp-cycle-pass, dp-diagnostic-ordering]
+milestone dp-core-snapshot {
+  description = "Keep raw accumulation, normalization, source attribution, and semantic diagnostics as explicit core snapshot phases"
+  depends_on = [dp-snapshot-normalization, dp-source-attribution, dp-diagnostics-snapshot]
 }
 
-milestone dp-consumers {
-  description = "Plan explicit language and CLI adoption after core exposes IRAssembly"
-  depends_on = [dp-core-minor-release, dp-language-context-factory, dp-cli-load-project, dp-cli-new-resource-design]
+milestone dp-core-verification {
+  description = "Verify the new core contract and update core decision documentation"
+  depends_on = [dp-core-tests, dp-core-docs, dp-decision-docs]
 }
 
-milestone dp-verification {
-  description = "Preserve current core diagnostic behavior while defining follow-up adoption checks"
-  // Verification:
-  // - Preserve W001, W002, and W003 diagnostic structures and source attribution in core.
-  // - Preserve semantic diagnostic ordering: cycles, dangling dependencies, then duplicates.
-  // - Do not require language or CLI golden updates until those packages explicitly adopt the new core version.
-  // - Manually check duplicate IDs across files, cycles spanning files, dangling dependencies resolved by adding resources, and implicitly complete milestones.
-  depends_on = [dp-core-diagnostic-tests, dp-language-fixture-tests, dp-cli-golden-tests, dp-manual-edge-cases]
+milestone dp-follow-up-adoption {
+  description = "Track language and CLI adoption after the breaking core prerequisite is released"
+  depends_on = [dp-core-release, dp-language-adoption, dp-cli-adoption, dp-cli-new-resource-design]
 }
 
-task dp-name-assembly-api complete {
-  description = "Introduce the core raw-resource accumulation API as IRAssembly"
+task dp-assembly-api {
+  description = "Define IRAssembly.fromResources(resources), freeze caller inputs, expose frozen raw inputs as assembly.resources, and make build repeatable and non-consuming"
   // see packages/core/src/ir/assembly.ts
 }
 
-task dp-assembly-resource-api complete {
-  description = "Define IRAssembly with static fromResources construction, a readonly rawResources getter, and repeatable non-consuming build behavior that preserves caller order"
-  depends_on = dp-name-assembly-api
-  // see packages/core/src/ir/assembly.ts
-}
-
-task dp-context-snapshot-shape complete {
-  description = "Define IRContext snapshot fields for resolved resources, additive DependencyCycle values while preserving the existing Cycle export, aggregate diagnostics, and narrow grouped diagnostic views that preserve existing getter names"
-  depends_on = [dp-assembly-resource-api, dp-diagnostic-type-location, dp-deep-freeze-snapshots]
-  // see packages/core/src/ir/diagnostics.ts
-}
-
-task dp-diagnostic-type-location complete {
-  description = "Move W001, W002, and W003 diagnostic variant types from context.ts to diagnostics.ts, add a DependencyCycle type, and preserve public re-exports"
-  depends_on = dp-name-assembly-api
-  // see packages/core/src/ir/diagnostics.ts
-}
-
-task dp-deep-freeze-snapshots complete {
-  description = "Clone caller resources before recursively freezing IRAssembly raw resources and IRContext snapshot resources, cycles, and diagnostics"
-  depends_on = dp-assembly-resource-api
-}
-
-task dp-diagnostic-snapshot-contract complete {
-  description = "Document IRContext.diagnostics as the full semantic diagnostic snapshot for that context, not a delta"
-  depends_on = dp-context-snapshot-shape
-}
-
-task dp-built-context-boundary complete {
-  description = "Define IRContext as the immutable built semantic snapshot rather than a query-only context"
-  depends_on = dp-context-snapshot-shape
+task dp-ircontext-internal-construction {
+  description = "Keep IRContext as a query-oriented class while making construction internal through a private constructor plus symbol-keyed factory used by IRAssembly.build"
+  depends_on = dp-assembly-api
   // see packages/core/src/ir/context.ts
 }
 
-task dp-core-export complete {
-  description = "Export IRAssembly from the public @sirenpm/core surface"
-  depends_on = dp-name-assembly-api
+task dp-remove-legacy-core-surfaces {
+  description = "Remove IRContext.fromResources, public document construction, IRContext.source, the core Document export, IRContext.cycles, grouped diagnostic getters, the Cycle export, and the public DependencyCycle export"
+  depends_on = dp-ircontext-internal-construction
+  // see packages/core/src/ir/context.ts
+}
+
+task dp-core-export-surface {
+  description = "Export only the intentional core surface for resources, IRAssembly, IRContext, semantic diagnostics, exporters, utilities, and version metadata"
+  depends_on = dp-remove-legacy-core-surfaces
   // see packages/core/src/index.ts
 }
 
-task dp-from-resources-compatibility complete {
-  description = "Keep IRContext.fromResources as a deprecated compatibility convenience with JSDoc deprecation markers, route the legacy IRContext constructor through the shared snapshot builder, deprecate the direct constructor and legacy source metadata while keeping them functional, and defer removal"
-  depends_on = [dp-assembly-resource-api, dp-built-context-boundary]
-  // see packages/core/src/ir/context.ts
+task dp-snapshot-normalization {
+  description = "Preserve explicit raw-resource accumulation, first-occurrence resource deduplication, and implicit milestone completion before IRContext exposes resolved resources"
+  depends_on = dp-assembly-api
+  // see packages/core/src/ir/normalization.ts
 }
 
-task dp-core-docs complete {
-  description = "Update core package documentation to describe IRAssembly as canonical, IRContext as the built snapshot, and legacy construction paths as deprecated but functional"
-  depends_on = [dp-core-export, dp-from-resources-compatibility]
+task dp-source-attribution {
+  description = "Keep semantic diagnostic attribution resource-origin-first by deriving file and position data from Resource.origin.document and Origin row metadata"
+  depends_on = dp-snapshot-normalization
+  // see packages/core/src/ir/source-attribution.ts
+}
+
+task dp-diagnostics-snapshot {
+  description = "Expose IRContext.diagnostics as the complete semantic snapshot, with cycle, dangling-dependency, and duplicate-resource diagnostics ordered W001, W002, then W003"
+  depends_on = [dp-snapshot-normalization, dp-source-attribution]
+  // see packages/core/src/ir/analysis.ts
+}
+
+task dp-core-tests {
+  description = "Replace deprecated-construction tests with IRAssembly and IRContext snapshot tests for construction boundaries, freezing, ordering, source attribution, diagnostics, and implicit completion"
+  depends_on = [dp-core-export-surface, dp-diagnostics-snapshot]
+  // see packages/core/src/ir/assembly.test.ts
+}
+
+task dp-core-docs {
+  description = "Update core documentation to describe IRAssembly as canonical, IRContext as internally constructed, and removed legacy signatures as intentional 0.x cleanup"
+  depends_on = [dp-core-export-surface, dp-decision-docs]
   // see packages/core/STATUS.md
 }
 
-task dp-preserve-raw-resources complete {
-  description = "Keep raw accumulated resources available to assembly and build phases so duplicate-ID analysis can inspect original order and source attribution"
-  depends_on = dp-assembly-resource-api
+task dp-decision-docs complete {
+  description = "Update CONTEXT.md and add ADR 0002 to record the breaking 0.x core cleanup decision that supersedes the strictly additive plan"
+  // see CONTEXT.md
+  // see docs/adr/0002-core-irassembly-breaking-cleanup.md
 }
 
-task dp-extract-dedupe complete {
-  description = "Extract first-occurrence-wins resource deduplication from IRContext.resolveResources into an explicit normalization phase"
-  depends_on = dp-preserve-raw-resources
-  // see packages/core/src/ir/context.ts
-}
-
-task dp-extract-implicit-completion complete {
-  description = "Extract implicit milestone completion resolution into an explicit phase that runs after deduplication"
-  depends_on = dp-extract-dedupe
-  // see packages/core/src/utilities/milestone.ts
-}
-
-task dp-source-address-helper complete {
-  description = "Introduce shared source address or span helpers so diagnostic attribution is resource-origin-first and not duplicated across W001, W002, and W003"
-  depends_on = dp-preserve-raw-resources
-  // see packages/core/src/ir/diagnostics.ts
-}
-
-task dp-duplicate-pass complete {
-  description = "Implement duplicate-resource diagnostics as a pure pass over raw accumulated resources"
-  depends_on = [dp-preserve-raw-resources, dp-source-address-helper]
-}
-
-task dp-dangling-pass complete {
-  description = "Implement dangling-dependency diagnostics as a pure pass over normalized resources and resource indexes"
-  depends_on = [dp-extract-dedupe, dp-source-address-helper]
-}
-
-task dp-cycle-pass complete {
-  description = "Implement cycle diagnostics as a pure pass over the dependency graph while preserving existing canonical cycle ordering"
-  depends_on = [dp-extract-dedupe, dp-source-address-helper]
-  // see packages/core/src/utilities/graph.ts
-}
-
-task dp-diagnostic-ordering complete {
-  description = "Define and preserve stable semantic diagnostic ordering for core tests: cycles, dangling dependencies, then duplicates"
-  depends_on = [dp-duplicate-pass, dp-dangling-pass, dp-cycle-pass]
-}
-
-task dp-core-minor-release {
-  description = "Release the core package as a minor version after the additive IRAssembly API, deprecation markers, core docs, and core tests are complete so registry-pinned consumers can adopt it"
-  depends_on = [dp-core-export, dp-from-resources-compatibility, dp-core-docs, dp-core-diagnostic-tests]
+task dp-core-release {
+  description = "Release the breaking core 0.x prerequisite after the trimmed core API, core tests, and core docs are complete"
+  depends_on = [dp-core-export-surface, dp-core-tests, dp-core-docs]
   // see packages/core/package.json
 }
 
-task dp-language-context-factory {
-  description = "When language adopts the new core version, update its core peer/dev dependency range to the released minor line, keep createIRContextFromCst returning context plus parseDiagnostics while semantic diagnostics stay on IRContext, and deprecate its source parameter later"
-  depends_on = [dp-core-minor-release, dp-built-context-boundary, dp-diagnostic-ordering]
+task dp-language-adoption {
+  description = "After the core prerequisite, update language to build contexts through IRAssembly, own any parse/decode document wrapper, remove legacy source fallback plumbing, and preserve separate parse diagnostics"
+  depends_on = dp-core-release
   // see packages/language/src/context-factory.ts
 }
 
-task dp-cli-load-project {
-  description = "When CLI adopts the new core and language packages, pin exact released core and language versions and keep project loading consuming semantic diagnostics from ir.diagnostics and parse diagnostics separately"
-  depends_on = dp-language-context-factory
+task dp-cli-adoption {
+  description = "After language adoption, update CLI project loading and formatting flows to consume IRAssembly-built contexts and preserve parse and semantic diagnostic presentation intentionally"
+  depends_on = dp-language-adoption
   // see apps/cli/src/project.ts
 }
 
 task dp-cli-new-resource-design {
-  description = "Design future siren new resource creation around loading resources into an IRAssembly, rebuilding after a resource is added, and comparing IRContext diagnostic snapshots before writing"
-  depends_on = [dp-core-minor-release, dp-assembly-resource-api, dp-diagnostic-snapshot-contract]
+  description = "Design future siren new resource creation around rebuilding an IRAssembly and comparing IRContext.diagnostics snapshots before writing"
+  depends_on = [dp-core-release, dp-assembly-api]
   // see apps/cli/src/index.ts
 }
 
-task dp-core-diagnostic-tests complete {
-  description = "Keep the existing IRContext.fromResources diagnostic test bed as the compatibility guard and add direct IRAssembly tests for order preservation, recursive freezing, caller cloning, and expected build output"
-  depends_on = dp-diagnostic-ordering
-  // see packages/core/src/ir/context.test.ts
-}
+# ADDITIONAL CONTEXT ADDED OUT OF CONVERSATION BAND
+# This needs to eventually be refined and folded the ADRs, context, and the milestone tree
+#
+# Background
+# The separation of the IRContext into the IRAssembly and the read-only IRContext projection
+# at the planning level has surfaced some recurring inefficiencies and smells, particularly
+# when it comes to ownership of certain semantic features.
+#
+# For example, the construction and traversal of the depdency graph occurs multiple times for multiple reasons
+# <TODO include examples>.
+#
+# An efficient and simple codebase would reuse derived information instead of constructing it anew for isolated
+# use cases. Thus the proposal to consider:
+# IRAssembly (list of resources) --build()--> | [...series of pure forward pass calculations with strictly defined order] ----> | IRContext (diags, graph, preconstructed dep tree, deduped resources, etc)
+# This is "the pipeline", functioning like airflow DAGs, a step function state machine, or a langchain "chain".
+# Pure ins and outs, strict dependency order (e.g. need graph to calculate cycles), no crossing state mutations during intermediate construction.
+# The pipeline shall be composed on strongly typed modules. A module is essentially just a pure function definition.
+# Modules can be linked together so long as the prior output signature agrees with the latter input signature - functional piping in essence.
+# Modules can be siblings, depending on the same prerequisite module. These modules can be invoked independently, and their results passed forward as a tuple.
+# To keep the architecture, modules should not be able to depend directly on multiple other modules,
+# Modules can depend indirectly on multiple other modules, and this shall be achieved by modules opaquely passing data through
+#  via a rest param.
+# Modules shall not be able to mutate their inputs. Logical mutation shall be achieved by forwarding new values in the return. This will
+#  appear effectively identical downstream.
+# The elegance of this one-way pipeline is that it enables inserting new derivations and logical concepts into the construction of the built context
+#  while establishing clear ownership boundaries of different artifacts, and enabling surgical attribution of "what changes where" via module and
+#  pipeline-level tests.
+#
+# Here is a foreseen pipeline topography. This may not be complete:
 
-task dp-language-fixture-tests {
-  description = "When language adopts the new core version, preserve fixture assertions for resources, semantic diagnostics on IRContext, and separate parse diagnostics"
-  depends_on = dp-language-context-factory
-  // see packages/language/test/integration/decode-fixtures.test.ts
-}
-
-task dp-cli-golden-tests {
-  description = "When CLI adopts the new core and language packages, preserve or explicitly update golden tests for duplicate IDs, dangling dependencies, cycles, and parse/semantic diagnostic ordering"
-  depends_on = dp-cli-load-project
-  // see apps/cli/test/golden.test.ts
-}
-
-task dp-manual-edge-cases {
-  description = "Manually verify duplicate IDs across files, cycles spanning files, dangling dependencies resolved by adding resources, and implicitly complete milestones"
-  depends_on = [dp-core-diagnostic-tests, dp-language-fixture-tests, dp-cli-golden-tests]
-}
+# ## HEADERS
+# Dedup: Resource[] -> { Resource[], Diagnostic[] }
+# Graph: Resource[] -> { Graph<Resource> }
+# Cycles: Graph<Resource> -> { Diagnostic[] }
+# Context: * -> { IRContext }
+# 
+# ## PIPELINE ( Pipe symbol represents a forward-pass conntection )
+# Dedup | Graph
+# Graph | Cycles
+# Dedup | Context
+# Graph | Context
+# Cycles | Context
+#
+# [Note: This means the Context module would receive a tuple { { Resource[], Diagnostic[] }, Graph<Resource>, Diagnostic[] }]
