@@ -1,7 +1,22 @@
 import type { AttributeValue } from '@sirenpm/core';
 import { isArray, isReference } from '@sirenpm/core';
+import type { SyntaxIdentifier } from '../syntax/types';
 
 const INDENT = '  ';
+
+function isSafeBareIdentifier(value: string): boolean {
+  return /^[A-Za-z_][A-Za-z0-9_-]*$/u.test(value);
+}
+
+export function formatResourceIdentifier(id: string, syntaxIdentifier?: SyntaxIdentifier): string {
+  if (syntaxIdentifier?.raw) {
+    return syntaxIdentifier.raw;
+  }
+  if (isSafeBareIdentifier(id)) {
+    return id;
+  }
+  return JSON.stringify(id);
+}
 
 export function formatPrimitive(value: unknown): string {
   if (value === null) return 'null';

@@ -11,6 +11,7 @@
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Language, Parser } from 'web-tree-sitter';
+import { buildSyntaxDocuments } from '../syntax/builder';
 import type {
   CommentToken,
   ParseError,
@@ -580,8 +581,15 @@ function buildAdapter(parser: Parser): ParserAdapter {
       const errors = hasError ? extractErrors(root, boundaries, documents) : [];
       const documentNode = convertDocument(root, boundaries);
       const comments = extractComments(root, concatenated, boundaries);
+      const syntaxDocuments = buildSyntaxDocuments(documentNode, documents, comments);
       const success = !hasError;
-      const result: ParseResult = { tree: documentNode, errors, success, comments };
+      const result: ParseResult = {
+        tree: documentNode,
+        errors,
+        success,
+        comments,
+        syntaxDocuments,
+      };
       return result;
     },
   };

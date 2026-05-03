@@ -1,8 +1,5 @@
 /**
- * Decoder module - transforms CST to IR
- *
- * Converts the raw parse tree (CST) into a semantic intermediate
- * representation (IR) with validation and diagnostics.
+ * Decoder module - transforms parsed syntax documents to IR.
  */
 
 import type {
@@ -10,19 +7,21 @@ import type {
   Attribute,
   AttributeValue,
   Document,
+  Origin,
   Resource,
   ResourceReference,
   ResourceType,
 } from '@sirenpm/core';
 import type {
-  ArrayNode,
-  AttributeNode,
-  DocumentNode,
-  ExpressionNode,
-  LiteralNode,
-  ReferenceNode,
-  ResourceNode,
-} from '../parser/cst';
+  SourceSpan,
+  SyntaxArrayExpression,
+  SyntaxAttribute,
+  SyntaxDocument,
+  SyntaxExpression,
+  SyntaxLiteralExpression,
+  SyntaxReferenceExpression,
+  SyntaxResource,
+} from '../syntax/types';
 
 /**
  * Parse-level diagnostic message (grammar/syntax issues only)
@@ -57,50 +56,48 @@ export interface DecodeResult {
   readonly success: boolean;
 }
 
-/**
- * Check if an expression node is a literal
- */
-function isLiteralNode(node: ExpressionNode): node is LiteralNode {
-  return node.type === 'literal';
+function toOrigin(span: SourceSpan): Origin {
+  return {
+    startByte: span.startByte,
+    endByte: span.endByte,
+    startRow: span.startRow,
+    endRow: span.endRow,
+    document: span.document,
+  };
 }
 
 /**
- * Check if an expression node is a reference
+ * Check if a syntax expression is a literal.
  */
-function isReferenceNode(node: ExpressionNode): node is ReferenceNode {
-  return node.type === 'reference';
+function isLiteralExpression(node: SyntaxExpression): node is SyntaxLiteralExpression {
+  return node.kind === 'literal';
 }
 
 /**
- * Check if an expression node is an array
+ * Check if a syntax expression is a reference.
  */
-function isArrayNode(node: ExpressionNode): node is ArrayNode {
-  return node.type === 'array';
+function isReferenceExpression(node: SyntaxExpression): node is SyntaxReferenceExpression {
+  return node.kind === 'reference';
 }
 
 /**
- * Decode a literal node to a primitive AttributeValue
- *
- * @param node - The CST literal node
- * @returns The primitive value (string, number, boolean, or null)
+ * Check if a syntax expression is an array.
  */
-function decodeLiteral(node: LiteralNode): AttributeValue {
-  // LiteralNode.value is already the correct runtime type:
-  // - string literals have string value (quotes stripped by CST)
-  // - number literals have number value
-  // - boolean literals have boolean value
-  // - null literals have null value
+function isArrayExpression(node: SyntaxExpression): node is SyntaxArrayExpression {
+  return node.kind === 'array';
+}
+
+/**
+ * Decode a literal expression to a primitive AttributeValue.
+ */
+function decodeLiteral(node: SyntaxLiteralExpression): AttributeValue {
   return node.value;
 }
 
 /**
- * Decode a reference node to a ResourceReference
- *
- * @param node - The CST reference node
- * @returns The ResourceReference with target ID (quotes stripped if quoted)
+ * Decode a reference expression to a ResourceReference.
  */
-function decodeReference(node: ReferenceNode): ResourceReference {
-  // IdentifierNode.value has quotes already stripped by the CST
+function decodeReference(node: SyntaxReferenceExpression): ResourceReference {
   return {
     kind: 'reference',
     id: node.identifier.value,
@@ -108,22 +105,17 @@ function decodeReference(node: ReferenceNode): ResourceReference {
 }
 
 /**
- * Decode an array node to an ArrayValue
- *
- * @param node - The CST array node
- * @returns The ArrayValue with decoded elements
+ * Decode an array expression to an ArrayValue.
  */
-function decodeArray(node: ArrayNode): ArrayValue {
+function decodeArray(node: SyntaxArrayExpression): ArrayValue {
   const elements: AttributeValue[] = [];
   for (const element of node.elements) {
-    if (isLiteralNode(element)) {
+    if (isLiteralExpression(element)) {
       elements.push(decodeLiteral(element));
-    } else if (isReferenceNode(element)) {
+    } else if (isReferenceExpression(element)) {
       elements.push(decodeReference(element));
-    } else if (isArrayNode(element)) {
+    } else if (isArrayExpression(element)) {
       elements.push(decodeArray(element));
-    } else {
-      // Skip unsupported element types for now
     }
   }
   return {
@@ -133,41 +125,35 @@ function decodeArray(node: ArrayNode): ArrayValue {
 }
 
 /**
- * Decode an attribute node from CST to IR
- *
- * @param node - The CST attribute node
- * @returns The decoded Attribute, or null if expression type is not yet supported
+ * Decode a syntax attribute to IR.
  */
-function decodeAttribute(node: AttributeNode): Attribute | null {
+function decodeAttribute(node: SyntaxAttribute): Attribute | null {
   const key = node.key.value;
   const expr = node.value;
 
-  // Handle LiteralNode → primitive value
-  if (isLiteralNode(expr)) {
+  if (isLiteralExpression(expr)) {
     return {
       key,
       value: decodeLiteral(expr),
-      raw: expr.text,
-      origin: node.origin,
+      raw: expr.raw,
+      origin: toOrigin(node.span),
     };
   }
 
-  // Handle ReferenceNode → ResourceReference
-  if (isReferenceNode(expr)) {
+  if (isReferenceExpression(expr)) {
     return {
       key,
       value: decodeReference(expr),
-      raw: expr.identifier.text,
-      origin: node.origin,
+      raw: expr.identifier.raw,
+      origin: toOrigin(node.span),
     };
   }
 
-  // Handle ArrayNode → ArrayValue
-  if (isArrayNode(expr)) {
+  if (isArrayExpression(expr)) {
     return {
       key,
       value: decodeArray(expr),
-      origin: node.origin,
+      origin: toOrigin(node.span),
     };
   }
 
@@ -175,64 +161,27 @@ function decodeAttribute(node: AttributeNode): Attribute | null {
 }
 
 /**
- * Decode a resource node from CST to IR
- *
- * @param node - The CST resource node
- * @param diagnostics - Array to collect diagnostics
- * @param source - Optional source file path for diagnostic attribution
- * @returns The decoded Resource
+ * Decode a syntax resource to IR.
  */
-function decodeResource(
-  node: ResourceNode & { completeKeywordCount?: number; completeKeywordDiagnostics?: string[] },
-  diagnostics: ParseDiagnostic[],
-  _source?: string,
-): Resource {
+function decodeResource(node: SyntaxResource, diagnostics: ParseDiagnostic[]): Resource {
   const type: ResourceType = node.resourceType;
   const id = node.identifier.value;
-  const complete = typeof node.complete === 'boolean' ? node.complete : false;
+  const complete = node.completeKeyword !== undefined;
 
-  // Error-tolerant: handle multiple 'complete' keywords
-  if (typeof node.completeKeywordCount === 'number' && node.completeKeywordCount > 1) {
-    diagnostics.push({
-      code: 'WL002',
-      message: `Resource '${id}' has 'complete' keyword specified more than once. Only one is allowed; resource will be treated as complete: true.`,
-      severity: 'warning',
-      file: node.origin?.document,
-      line: node.origin ? node.origin.startRow + 1 : undefined,
-      column: node.origin ? 0 : undefined,
-    });
-  }
-
-  // Error-tolerant: handle 'complete' on unsupported resource types
   if (complete && type !== 'task' && type !== 'milestone') {
     diagnostics.push({
       code: 'WL003',
       message: `Resource type '${type}' does not support the 'complete' keyword. It will be ignored.`,
       severity: 'warning',
-      file: node.origin?.document,
-      line: node.origin ? node.origin.startRow + 1 : undefined,
-      column: node.origin ? 0 : undefined,
+      file: node.span.document,
+      line: node.span.startRow + 1,
+      column: 0,
     });
   }
 
-  // Error-tolerant: propagate parse-time diagnostics for misplaced/invalid 'complete'
-  if (Array.isArray(node.completeKeywordDiagnostics)) {
-    for (const msg of node.completeKeywordDiagnostics) {
-      diagnostics.push({
-        code: 'EL001',
-        message: msg,
-        severity: 'error',
-        file: node.origin?.document,
-        line: node.origin ? node.origin.startRow + 1 : undefined,
-        column: node.origin ? 0 : undefined,
-      });
-    }
-  }
-
-  // Decode attributes, filtering out null (unsupported expression types)
   const attributes: Attribute[] = [];
   let completeAttr: Attribute | undefined;
-  for (const attrNode of node.body) {
+  for (const attrNode of node.attributes) {
     const attr = decodeAttribute(attrNode);
     if (attr !== null) {
       if (attr.key === 'complete') completeAttr = attr;
@@ -240,16 +189,15 @@ function decodeResource(
     }
   }
 
-  // Emit warning if both keyword and attribute are present, and attribute is not true
   if (complete && completeAttr && completeAttr.value !== true) {
     diagnostics.push({
       code: 'WL001',
       message:
         "Resource has both 'complete' keyword and a 'complete' attribute whose value is not true. The resource will be treated as complete.",
       severity: 'warning',
-      file: node.origin?.document,
-      line: node.origin ? node.origin.startRow + 1 : undefined,
-      column: node.origin ? 0 : undefined,
+      file: node.span.document,
+      line: node.span.startRow + 1,
+      column: 0,
     });
   }
 
@@ -258,29 +206,32 @@ function decodeResource(
     id,
     complete,
     attributes,
-    origin: node.origin,
+    origin: toOrigin(node.span),
   };
 }
 
 /**
- * Decode a CST into an IR Document
- * @internal Not part of the public API; use IRContext.fromCst() instead.
- * @param cst - The parsed concrete syntax tree
- * @param source - Optional source file path for diagnostic attribution
- * @returns Decoded document with diagnostics
+ * Decode syntax documents into an IR Document.
  */
-export function decodeDocument(cst: DocumentNode, source?: string): DecodeResult {
+export function decodeSyntaxDocuments(syntaxDocuments: readonly SyntaxDocument[]): DecodeResult {
   const diagnostics: ParseDiagnostic[] = [];
   const resources: Resource[] = [];
 
-  for (const resourceNode of cst.resources) {
-    resources.push(decodeResource(resourceNode, diagnostics, source));
+  for (const syntaxDocument of syntaxDocuments) {
+    for (const resourceNode of syntaxDocument.resources) {
+      resources.push(decodeResource(resourceNode, diagnostics));
+    }
   }
 
   const hasErrors = diagnostics.some((d) => d.severity === 'error');
 
   return {
-    document: hasErrors ? null : { resources },
+    document: hasErrors
+      ? null
+      : {
+          resources,
+          source: syntaxDocuments.length === 1 ? syntaxDocuments[0]?.source.name : undefined,
+        },
     diagnostics,
     success: !hasErrors,
   };

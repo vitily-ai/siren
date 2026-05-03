@@ -5,6 +5,7 @@
  * Apps provide concrete implementations for browser (WASM) or Node.
  */
 
+import type { SyntaxDocument } from '../syntax/types';
 import type { DocumentNode } from './cst';
 
 /**
@@ -55,6 +56,12 @@ export interface ParseResult {
    * to preserve comments during export. Early code doesn't require this.
    */
   readonly comments?: readonly CommentToken[];
+
+  /**
+   * Parsed Document Model values built from the recovered CST and source
+   * documents. Present whenever a CST tree is available.
+   */
+  readonly syntaxDocuments?: readonly SyntaxDocument[];
 }
 
 /**

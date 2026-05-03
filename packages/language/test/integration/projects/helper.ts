@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createIRContextFromCst } from '../../../src/context-factory';
+import { createIRContextFromParseResult } from '../../../src/context-factory';
 import type { SourceDocument } from '../../../src/parser/adapter';
 import { getTestAdapter } from '../../helpers/parser';
 
@@ -37,7 +37,7 @@ export async function parseAndDecodeAll(adapter: any, projectName: string) {
 
   // Parse all documents at once - multi-document API handles file attribution
   const parseResult = await adapter.parse(documents);
-  const ir = createIRContextFromCst(parseResult.tree!).context;
+  const ir = createIRContextFromParseResult(parseResult).context;
 
   return { resources: ir.resources, diagnostics: ir.diagnostics };
 }
