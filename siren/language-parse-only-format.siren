@@ -1,0 +1,155 @@
+milestone language-parse-only-format {
+  description = "Add a language-only first pass for parse-only formatting by introducing a pure SyntaxDocument formatter and proving it with explicit in-memory tests before any CLI or core adoption."
+  // Decisions:
+  // - Scope is limited to @sirenpm/language; CLI and core adoption are follow-on work.
+  // - Keep exportToSiren(ctx, options), exportWithComments, and SourceIndex intact in this pass.
+  // - Codify `renderSyntaxDocument` as the pure SyntaxDocument -> source entrypoint.
+  // - The pure formatter accepts SyntaxDocument and must remain free of @sirenpm/core dependencies.
+  // Verification:
+  // - Run yarn workspace @sirenpm/language test -t "syntax formatter".
+  // - Run yarn workspace @sirenpm/language test -t "quoted|comment|syntax-aware export".
+  // - Run yarn workspace @sirenpm/language build.
+  depends_on = [
+    lpof-scope-and-api-boundary,
+    lpof-syntax-formatter-implementation,
+    lpof-in-memory-test-suite,
+    lpof-documentation-and-handoff,
+  ]
+}
+
+milestone lpof-scope-and-api-boundary {
+  description = "Define the pure language formatter boundary, public API, and module surface without changing CLI or core behavior."
+  // see packages/language/src/format/syntax-formatter.ts and packages/language/src/index.ts
+  depends_on = [
+    lpof-record-first-pass-scope,
+    lpof-define-pure-formatter-api,
+    lpof-decide-formatter-module-surface,
+  ]
+}
+
+milestone lpof-syntax-formatter-implementation {
+  description = "Implement syntax-only formatting from SyntaxDocument, SyntaxResource, SyntaxAttribute, and syntax trivia while preserving the existing semantic export path."
+  // see packages/language/src/syntax/types.ts, packages/language/src/export/formatters.ts, and packages/language/src/export/siren-exporter.ts
+  depends_on = [
+    lpof-split-no-core-format-helpers,
+    lpof-format-syntax-resources,
+    lpof-format-syntax-attributes,
+    lpof-format-syntax-trivia,
+    lpof-preserve-semantic-export-surfaces,
+  ]
+}
+
+milestone lpof-in-memory-test-suite {
+  description = "Prove the pure formatter with explicit in-memory tests covering formatting behavior, parser recovery, idempotence, parse safety, and raw slicing regressions."
+  // Decisions:
+  // - Proof comes from in-memory parser and formatter tests, not CLI golden files or filesystem mutation.
+  // - Keep assertions syntax-level; do not compare IR resources in this first pass.
+  // see packages/language/test/format/syntax-formatter.test.ts
+  depends_on = [
+    lpof-add-in-memory-formatter-test-file,
+    lpof-test-resource-headers,
+    lpof-test-attribute-formatting,
+    lpof-test-comment-and-trivia-formatting,
+    lpof-test-recovery-boundaries,
+    lpof-test-idempotence-and-parse-safety,
+    lpof-test-raw-slicing-regressions,
+  ]
+}
+
+milestone lpof-documentation-and-handoff {
+  description = "Document the new pure formatter boundary where needed and record CLI/core adoption as separate follow-on work."
+  // see docs/adr/0001-parsed-document-model-language-boundary.md
+  depends_on = [
+    lpof-document-formatter-boundary,
+    lpof-record-follow-on-adoption-work,
+  ]
+}
+
+task lpof-record-first-pass-scope complete {
+  description = "Record that this first pass is limited to @sirenpm/language, with no CLI behavior changes, no core changes, and no ProjectContext syntax cache work."
+}
+
+task lpof-define-pure-formatter-api complete {
+  description = "Define a pure rendering API in packages/language centered on renderSyntaxDocument(document: SyntaxDocument): string and returning Siren source without depending on source text, CST, ParseResult, or IRContext."
+  depends_on = lpof-record-first-pass-scope
+}
+
+task lpof-decide-formatter-module-surface complete {
+  description = "Choose the formatter module location and exported names, preferably packages/language/src/format/syntax-formatter.ts exported from packages/language/src/index.ts, codify renderSyntaxDocument as the pure entrypoint, and leave exportToSiren(ctx, options) intact for this pass."
+  depends_on = lpof-define-pure-formatter-api
+}
+
+task lpof-split-no-core-format-helpers complete {
+  description = "Split or introduce no-core formatting helpers for syntax-only formatting, including resource block wrapping, safe identifier detection, and comment line handling, without importing @sirenpm/core."
+  depends_on = lpof-decide-formatter-module-surface
+}
+
+task lpof-format-syntax-resources complete {
+  description = "Format resources directly from SyntaxResource, preserving resource type, identifier raw spelling, complete keyword presence, and source resource order without consulting semantic resources or diagnostics."
+  depends_on = lpof-split-no-core-format-helpers
+}
+
+task lpof-format-syntax-attributes complete {
+  description = "Format attributes directly from SyntaxAttribute, using raw key spelling and syntax-expression formatting for values while canonicalizing only the layout owned by the formatter."
+  depends_on = lpof-split-no-core-format-helpers
+}
+
+task lpof-format-syntax-trivia complete {
+  description = "Format leading, trailing, inner, detached, and EOF comments and structurally meaningful blank lines from SyntaxDocument.trivia and SyntaxResource.trivia, including empty and comment-only documents."
+  depends_on = [lpof-format-syntax-resources, lpof-format-syntax-attributes]
+}
+
+task lpof-preserve-semantic-export-surfaces complete {
+  description = "Keep exportToSiren(ctx, { syntaxDocuments }), exportWithComments, and SourceIndex behavior unchanged in this first pass except for any minimal internal helper splits required by the pure formatter."
+  depends_on = [lpof-split-no-core-format-helpers, lpof-format-syntax-trivia]
+}
+
+task lpof-add-in-memory-formatter-test-file complete {
+  description = "Add a dedicated in-memory formatter test file under packages/language/test/format that parses source strings through the language parser and asserts renderSyntaxDocument output without CLI goldens, filesystem mutation, or semantic IR assertions."
+  depends_on = lpof-preserve-semantic-export-surfaces
+}
+
+task lpof-test-resource-headers complete {
+  description = "Cover resource header formatting for bare identifiers, originally quoted safe identifiers, quoted unsafe identifiers, task and milestone resources, empty body blocks, and complete keyword preservation."
+  depends_on = lpof-add-in-memory-formatter-test-file
+}
+
+task lpof-test-attribute-formatting complete {
+  description = "Cover attribute formatting for strings, numbers, booleans, null, references, arrays, nested arrays when supported, raw expression spelling, raw key spelling where available, and stable attribute ordering."
+  depends_on = lpof-add-in-memory-formatter-test-file
+}
+
+task lpof-test-comment-and-trivia-formatting complete {
+  description = "Cover leading comments, trailing header comments, trailing attribute comments, inner comments, detached comments, EOF comments, blank lines between top-level sections, blank lines inside resources, empty files, and comment-only files."
+  depends_on = lpof-add-in-memory-formatter-test-file
+}
+
+task lpof-test-recovery-boundaries complete {
+  description = "Cover parser-recovery boundaries so recovered syntax documents from incomplete-but-parseable input do not crash the pure formatter and any unsupported malformed shapes are documented explicitly in tests."
+  depends_on = lpof-add-in-memory-formatter-test-file
+}
+
+task lpof-test-idempotence-and-parse-safety complete {
+  description = "Cover syntax-level idempotence and parse safety by parsing in-memory source, formatting the SyntaxDocument, reparsing the formatted output, formatting again, and asserting the second output equals the first without comparing IR resources."
+  depends_on = [
+    lpof-test-resource-headers,
+    lpof-test-attribute-formatting,
+    lpof-test-comment-and-trivia-formatting,
+    lpof-test-recovery-boundaries,
+  ]
+}
+
+task lpof-test-raw-slicing-regressions complete {
+  description = "Cover Unicode and CRLF raw slicing regressions when the formatter relies on raw spans so existing parser offset semantics do not corrupt pure syntax output."
+  depends_on = lpof-test-idempotence-and-parse-safety
+}
+
+task lpof-document-formatter-boundary complete {
+  description = "Update language package documentation or ADR notes only where needed to describe the new pure parse-only formatter boundary from SyntaxDocument to Siren source with no IR dependency."
+  depends_on = lpof-preserve-semantic-export-surfaces
+}
+
+task lpof-record-follow-on-adoption-work complete {
+  description = "Record CLI and core adoption as separate follow-on work so a later milestone can wire siren format to renderSyntaxDocument and plan any preload syntax reuse."
+  depends_on = lpof-document-formatter-boundary
+}
