@@ -18,6 +18,8 @@ export type { ExportToSirenOptions } from './export/siren-exporter';
 // Exporter — render IR back to Siren source. Comments are preserved automatically
 // when syntax documents are supplied in options.
 export { exportToSiren, SirenExporter } from './export/siren-exporter';
+// Formatter — render parsed syntax documents without semantic IR.
+export { renderSyntaxDocument } from './format/syntax-formatter';
 // Parser adapter contracts
 export type {
   CommentToken,

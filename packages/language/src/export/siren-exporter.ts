@@ -68,7 +68,9 @@ function buildSourceIndexFromSyntaxDocuments(
 }
 
 /**
- * Render an {@link IRContext} back to Siren source.
+ * NOT-TO-BE-USED: retained only for the legacy semantic IR export path.
+ *
+ * Prefer {@link renderSyntaxDocument} for syntax-driven source rendering.
  *
  * When `syntaxDocuments` are supplied, source-preserving identifier spelling
  * and comments are used where possible. Without syntax context, output falls
