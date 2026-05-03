@@ -19,6 +19,7 @@ task development {
 
 milestone qa {  # Quality assurance checkpoint
   depends_on = [setup, development]  # Both must be done
+
 }
 
 # Final release preparation

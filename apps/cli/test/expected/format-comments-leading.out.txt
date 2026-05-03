@@ -5,6 +5,8 @@
 # Multiple lines of documentation
 task my-task {
   description = "A task with leading comments"
+
+
 }
 
 # Second task with its own leading block

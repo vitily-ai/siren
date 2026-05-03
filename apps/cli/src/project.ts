@@ -1,7 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { IRContext, Resource } from '@sirenpm/core';
-import { createIRContextFromCst, type ParseError, type SourceDocument } from '@sirenpm/language';
+import {
+  createIRContextFromParseResult,
+  type ParseError,
+  type SourceDocument,
+} from '@sirenpm/language';
 import { formatDiagnostic } from './format-diagnostics';
 import { formatParseError } from './format-parse-error';
 import { getParser } from './parser';
@@ -135,12 +139,10 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
     const source = contentByDocument.get(doc) ?? '';
 
     for (const e of errors) {
+      if ((e.severity ?? 'error') === 'warning') continue;
+
       const formatted = formatParseError(e, source);
-      if ((e.severity ?? 'error') === 'warning') {
-        ctx.warnings.push(formatted);
-      } else {
-        ctx.errors.push(formatted);
-      }
+      ctx.errors.push(formatted);
     }
 
     if (errors.some((e) => (e.severity ?? 'error') === 'error')) {
@@ -149,18 +151,20 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
     }
   }
 
-  const filteredTree =
-    skippedDocs.size === 0
-      ? parseResult.tree
-      : {
-          ...parseResult.tree,
-          resources: parseResult.tree.resources.filter(
-            (r) => !skippedDocs.has(r.origin?.document ?? ''),
-          ),
-        };
+  const filteredSyntaxDocuments = (parseResult.syntaxDocuments ?? []).filter(
+    (syntaxDocument) => !skippedDocs.has(syntaxDocument.source.name),
+  );
+  const filteredParseErrors = parseResult.errors.filter((error) => {
+    const severity = error.severity ?? 'error';
+    const document = error.document ?? 'unknown';
+    return severity === 'warning' && !skippedDocs.has(document);
+  });
 
-  // Decode CST to IR - resources now have origin.document set by the parser
-  const { context: ir, parseDiagnostics } = createIRContextFromCst(filteredTree);
+  const { context: ir, parseDiagnostics } = createIRContextFromParseResult({
+    ...parseResult,
+    errors: filteredParseErrors,
+    syntaxDocuments: filteredSyntaxDocuments,
+  });
 
   ctx.resources = [...ir.resources];
   ctx.ir = ir;

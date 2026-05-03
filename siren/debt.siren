@@ -63,8 +63,8 @@ task duplicate-diagnostic-position-ownership {
   feedback = "The semantic diagnostic already inherits file/line/column from DiagnosticBase, so the duplicate occurrence position belongs in core. firstFile/firstLine/firstColumn are still useful as supplemental metadata, but the CLI should not be responsible for filling in the diagnostic's primary position."
 }
 
-task export-bad-id-unquoted {
-  description = "copilot feedback. torture test scenario needs to be set up to verify."
+task export-bad-id-unquoted complete {
+  description = "Verified that CLI formatting preserves or emits quoted resource identifiers through @sirenpm/language 0.2 SyntaxDocument formatting. Covered by the format-quoted-identifiers golden."
   feedback = "wrapResourceBlock interpolates id directly into the header (${type} ${id} ...). Resource IDs can require quoting (e.g., IDs with spaces or non-identifier characters), but decodeResource stores the unquoted identifier value. This will generate syntactically invalid Siren for quoted identifiers. Please format resource IDs using the same quoting rules as the parser grammar (bare identifier when safe, otherwise quoted)."
   link = "https://github.com/vitily-ai/siren/pull/34#discussion_r3140654634"
 }
