@@ -18,6 +18,15 @@ Repository layout (high level)
 - `apps/web/` — small Vite-based web front-end
 - `siren/` — example `.siren` files and templates
 
+## Project Status
+
+The project is prerelease and the API changes regularly, reflecting its 0.x semver posture.
+The API surface changes regularly, new package separations are introduces, and the ownership of different facets
+of the ecosystem shifts across package lines.
+
+Breaking changes are not currently a heuristic to avoid. The goal is to enable the utility to be useful, while
+retaining a critically simple and maintainable architecture in this early phase.
+
 ## Required Setup
 
 - Install Node.js 24.x (recommended)
