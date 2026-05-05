@@ -170,3 +170,6 @@ task dp-cli-new-resource-design {
 # Cycles | Context
 #
 # [Note: This means the Context module would receive a tuple { { Resource[], Diagnostic[] }, Graph<Resource>, Diagnostic[] }]
+#
+# The intention is that this entire pipeline is wrapped into `IRAssembly.build()` without the need for user input. It is not just
+# a tool for the library to be used - it is "the way" and the ONLY way the context gets built, as an implementation detail.
