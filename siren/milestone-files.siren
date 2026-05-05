@@ -11,7 +11,6 @@ milestone milestone-files {
     Implementation, in theory, should be entirely in core - frontends should not need to orchestrate this.
     It should be doable within the context during construction.
   "
-
   // Implementation decisions (locked):
   // - Synthesis lives in core (`packages/core/src/ir/context.ts`), driven entirely by
   //   each Resource's `origin.document`. No CLI/Node code paths involved.
@@ -43,7 +42,6 @@ milestone milestone-files {
   //   they MUST NOT vacuously promote to `complete: true`.
   // - Origin: { startByte: 0, endByte: 0, startRow: 0, endRow: 0, document: <docPath> }.
   // - Synthetic resources are flagged so exporters and round-trip formatting can skip them.
-
   // Open follow-ups (out of scope for this milestone, tracked separately):
   // - Per-file opt-out syntax (e.g. a file-level pragma or config entry).
   // - Augment-explicit: when a file contains an explicit milestone matching its
@@ -53,21 +51,7 @@ milestone milestone-files {
   //   from listings/trees without removing them from analysis.
   // - Whether `siren list` should filter synthetics by default vs. surface them.
   //   For this milestone we surface them and accept the golden-test churn.
-
-  depends_on = [
-    draft-states,
-    mf-cycle-tdd-prework,
-    mf-synthetic-flag,
-    mf-group-resources,
-    mf-derive-id,
-    mf-check-collision,
-    mf-generate-synthetic,
-    mf-append-resources,
-    mf-exporter-filter,
-    mf-unit-tests,
-    mf-roundtrip-test,
-    mf-golden-tests,
-  ]
+  depends_on = [draft-states, mf-cycle-tdd-prework, mf-synthetic-flag, mf-group-resources, mf-derive-id, mf-check-collision, mf-generate-synthetic, mf-append-resources, mf-exporter-filter, mf-unit-tests, mf-roundtrip-test, mf-golden-tests]
 }
 
 // Implementation tasks for milestone-files

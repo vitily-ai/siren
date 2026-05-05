@@ -1,0 +1,3 @@
+# IRContext Is the Built Semantic Snapshot
+
+Siren builds decoded raw resources through `IRAssembly` into an immutable `IRContext` that contains resolved resources and the complete semantic diagnostic snapshot for those resources. We chose this over a query-only context plus separate semantic build result so callers can treat resources, cycles, and W001/W002/W003 diagnostics as one coherent built view while parse diagnostics remain a language-level concern. The migration to `IRAssembly` is strictly additive: legacy construction paths remain functional but deprecated, diagnostic shapes and core ordering are preserved, runtime freezing enforces the existing readonly contract, and removals are deferred to a future major migration.

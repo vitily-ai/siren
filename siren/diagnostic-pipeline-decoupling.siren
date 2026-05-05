@@ -1,0 +1,175 @@
+// Top-level goal
+milestone diagnostic-pipeline-decoupling {
+  description = "Trim diagnostic pipeline decoupling into a breaking 0.x core prerequisite: IRAssembly is the only public core construction path, IRContext is the built semantic snapshot, and language/CLI adoption follows explicitly."
+  // Decisions:
+  // - Siren is still semver 0.x, so the core prerequisite may remove vestigial public API instead of carrying deprecated compatibility paths.
+  // - IRAssembly.fromResources(resources) accepts Resource inputs only, owns frozen raw inputs, exposes them as resources, and builds repeatable IRContext snapshots.
+  // - IRAssembly.build returns IRContext directly; there is no core IRBuildResult wrapper for semantic diagnostics.
+  // - IRContext remains a class with query methods, but callers do not construct it directly.
+  // - IRContext construction is internal to core via a private constructor plus symbol-keyed factory used by IRAssembly.
+  // - Remove IRContext.fromResources, the public document constructor, IRContext.source, core Document export, IRContext.cycles, grouped diagnostic getters, Cycle export, and public DependencyCycle export.
+  // - IRContext.resources exposes resolved resources; IRAssembly.resources exposes frozen raw inputs.
+  // - IRContext.diagnostics is the single public semantic diagnostic snapshot.
+  // - W001, W002, and W003 structures and ordering stay stable unless preserving them complicates the core model.
+  // - Source attribution comes from Resource.origin.document; document-level source metadata is not a core construction concept.
+  // - Parse diagnostics remain separate in language-level APIs.
+  // - Language and CLI adoption are follow-up entries, not part of the first core-only prerequisite.
+  // - Immutable withResource/withResources append helpers remain future work.
+  depends_on = [dp-core-prerequisite, dp-follow-up-adoption]
+}
+
+milestone dp-core-prerequisite {
+  description = "Ship the breaking core-only IRAssembly and IRContext snapshot prerequisite"
+  depends_on = [dp-core-api, dp-core-snapshot, dp-core-verification]
+}
+
+milestone dp-core-api {
+  description = "Make IRAssembly the only public core construction path and remove vestigial core API"
+  depends_on = [dp-assembly-api, dp-ircontext-internal-construction, dp-remove-legacy-core-surfaces, dp-core-export-surface]
+}
+
+milestone dp-core-snapshot {
+  description = "Keep raw accumulation, normalization, source attribution, and semantic diagnostics as explicit core snapshot phases"
+  depends_on = [dp-snapshot-normalization, dp-source-attribution, dp-diagnostics-snapshot]
+}
+
+milestone dp-core-verification {
+  description = "Verify the new core contract and update core decision documentation"
+  depends_on = [dp-core-tests, dp-core-docs, dp-decision-docs]
+}
+
+milestone dp-follow-up-adoption {
+  description = "Track language and CLI adoption after the breaking core prerequisite is released"
+  depends_on = [dp-core-release, dp-language-adoption, dp-cli-adoption, dp-cli-new-resource-design]
+}
+
+task dp-assembly-api {
+  description = "Define IRAssembly.fromResources(resources), freeze caller inputs, expose frozen raw inputs as assembly.resources, and make build repeatable and non-consuming"
+  // see packages/core/src/ir/assembly.ts
+}
+
+task dp-ircontext-internal-construction {
+  description = "Keep IRContext as a query-oriented class while making construction internal through a private constructor plus symbol-keyed factory used by IRAssembly.build"
+  depends_on = dp-assembly-api
+  // see packages/core/src/ir/context.ts
+}
+
+task dp-remove-legacy-core-surfaces {
+  description = "Remove IRContext.fromResources, public document construction, IRContext.source, the core Document export, IRContext.cycles, grouped diagnostic getters, the Cycle export, and the public DependencyCycle export"
+  depends_on = dp-ircontext-internal-construction
+  // see packages/core/src/ir/context.ts
+}
+
+task dp-core-export-surface {
+  description = "Export only the intentional core surface for resources, IRAssembly, IRContext, semantic diagnostics, exporters, utilities, and version metadata"
+  depends_on = dp-remove-legacy-core-surfaces
+  // see packages/core/src/index.ts
+}
+
+task dp-snapshot-normalization {
+  description = "Preserve explicit raw-resource accumulation, first-occurrence resource deduplication, and implicit milestone completion before IRContext exposes resolved resources"
+  depends_on = dp-assembly-api
+  // see packages/core/src/ir/normalization.ts
+}
+
+task dp-source-attribution {
+  description = "Keep semantic diagnostic attribution resource-origin-first by deriving file and position data from Resource.origin.document and Origin row metadata"
+  depends_on = dp-snapshot-normalization
+  // see packages/core/src/ir/source-attribution.ts
+}
+
+task dp-diagnostics-snapshot {
+  description = "Expose IRContext.diagnostics as the complete semantic snapshot, with cycle, dangling-dependency, and duplicate-resource diagnostics ordered W001, W002, then W003"
+  depends_on = [dp-snapshot-normalization, dp-source-attribution]
+  // see packages/core/src/ir/analysis.ts
+}
+
+task dp-core-tests {
+  description = "Replace deprecated-construction tests with IRAssembly and IRContext snapshot tests for construction boundaries, freezing, ordering, source attribution, diagnostics, and implicit completion"
+  depends_on = [dp-core-export-surface, dp-diagnostics-snapshot]
+  // see packages/core/src/ir/assembly.test.ts
+}
+
+task dp-core-docs {
+  description = "Update core documentation to describe IRAssembly as canonical, IRContext as internally constructed, and removed legacy signatures as intentional 0.x cleanup"
+  depends_on = [dp-core-export-surface, dp-decision-docs]
+  // see packages/core/STATUS.md
+}
+
+task dp-decision-docs complete {
+  description = "Update CONTEXT.md and add ADR 0002 to record the breaking 0.x core cleanup decision that supersedes the strictly additive plan"
+  // see CONTEXT.md
+  // see docs/adr/0002-core-irassembly-breaking-cleanup.md
+}
+
+task dp-core-release {
+  description = "Release the breaking core 0.x prerequisite after the trimmed core API, core tests, and core docs are complete"
+  depends_on = [dp-core-export-surface, dp-core-tests, dp-core-docs]
+  // see packages/core/package.json
+}
+
+task dp-language-adoption {
+  description = "After the core prerequisite, update language to build contexts through IRAssembly, own any parse/decode document wrapper, remove legacy source fallback plumbing, and preserve separate parse diagnostics"
+  depends_on = dp-core-release
+  // see packages/language/src/context-factory.ts
+}
+
+task dp-cli-adoption {
+  description = "After language adoption, update CLI project loading and formatting flows to consume IRAssembly-built contexts and preserve parse and semantic diagnostic presentation intentionally"
+  depends_on = dp-language-adoption
+  // see apps/cli/src/project.ts
+}
+
+task dp-cli-new-resource-design {
+  description = "Design future siren new resource creation around rebuilding an IRAssembly and comparing IRContext.diagnostics snapshots before writing"
+  depends_on = [dp-core-release, dp-assembly-api]
+  // see apps/cli/src/index.ts
+}
+
+# ADDITIONAL CONTEXT ADDED OUT OF CONVERSATION BAND
+# This needs to eventually be refined and folded the ADRs, context, and the milestone tree
+#
+# Background
+# The separation of the IRContext into the IRAssembly and the read-only IRContext projection
+# at the planning level has surfaced some recurring inefficiencies and smells, particularly
+# when it comes to ownership of certain semantic features.
+#
+# For example, the construction and traversal of the depdency graph occurs multiple times for multiple reasons
+# <TODO include examples>.
+#
+# An efficient and simple codebase would reuse derived information instead of constructing it anew for isolated
+# use cases. Thus the proposal to consider:
+# IRAssembly (list of resources) --build()--> | [...series of pure forward pass calculations with strictly defined order] ----> | IRContext (diags, graph, preconstructed dep tree, deduped resources, etc)
+# This is "the pipeline", functioning like airflow DAGs, a step function state machine, or a langchain "chain".
+# Pure ins and outs, strict dependency order (e.g. need graph to calculate cycles), no crossing state mutations during intermediate construction.
+# The pipeline shall be composed on strongly typed modules. A module is essentially just a pure function definition.
+# Modules can be linked together so long as the prior output signature agrees with the latter input signature - functional piping in essence.
+# Modules can be siblings, depending on the same prerequisite module. These modules can be invoked independently, and their results passed forward as a tuple.
+# To keep the architecture, modules should not be able to depend directly on multiple other modules,
+# Modules can depend indirectly on multiple other modules, and this shall be achieved by modules opaquely passing data through
+#  via a rest param.
+# Modules shall not be able to mutate their inputs. Logical mutation shall be achieved by forwarding new values in the return. This will
+#  appear effectively identical downstream.
+# The elegance of this one-way pipeline is that it enables inserting new derivations and logical concepts into the construction of the built context
+#  while establishing clear ownership boundaries of different artifacts, and enabling surgical attribution of "what changes where" via module and
+#  pipeline-level tests.
+#
+# Here is a foreseen pipeline topography. This may not be complete:
+
+# ## HEADERS
+# Dedup: Resource[] -> { Resource[], Diagnostic[] }
+# Graph: Resource[] -> { Graph<Resource> }
+# Cycles: Graph<Resource> -> { Diagnostic[] }
+# Context: * -> { IRContext }
+# 
+# ## PIPELINE ( Pipe symbol represents a forward-pass conntection )
+# Dedup | Graph
+# Graph | Cycles
+# Dedup | Context
+# Graph | Context
+# Cycles | Context
+#
+# [Note: This means the Context module would receive a tuple { { Resource[], Diagnostic[] }, Graph<Resource>, Diagnostic[] }]
+#
+# The intention is that this entire pipeline is wrapped into `IRAssembly.build()` without the need for user input. It is not just
+# a tool for the library to be used - it is "the way" and the ONLY way the context gets built, as an implementation detail.

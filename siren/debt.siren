@@ -75,19 +75,12 @@ task export-bad-id-unquoted complete {
 
 task comment-byte-split-misalignment {
   description = "copilot feedback. torture test scenarios needs to be set up to verify."
-  link = [
-    "https://github.com/vitily-ai/siren/pull/34#discussion_r3140583663",
-    "https://github.com/vitily-ai/siren/pull/34#discussion_r3140654598",
-    "https://github.com/vitily-ai/siren/pull/34#discussion_r3140583663"
-  ]
+  link = ["https://github.com/vitily-ai/siren/pull/34#discussion_r3140583663", "https://github.com/vitily-ai/siren/pull/34#discussion_r3140654598", "https://github.com/vitily-ai/siren/pull/34#discussion_r3140583663"]
 }
 
 task comment-export-performance {
   description = "copilot feedback. torture test scenarios needs to be set up to verify."
-  link = [
-    "https://github.com/vitily-ai/siren/pull/34#discussion_r3140583683",
-    "https://github.com/vitily-ai/siren/pull/34#discussion_r3140583769"
-  ]
+  link = ["https://github.com/vitily-ai/siren/pull/34#discussion_r3140583683", "https://github.com/vitily-ai/siren/pull/34#discussion_r3140583769"]
 }
 
 task loadproject-cache-per-file-artifacts {
