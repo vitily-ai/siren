@@ -1,0 +1,179 @@
+milestone ir-pipeline-modules complete {
+  description = "Refactor IRAssembly.build() into a strict forward-pass pipeline of pure modules with cached derivations on IRContext"
+  // Decisions:
+  // - The pipeline is the only path used to construct an IRContext.
+  // - Modules are pure, immutable-input, single-direct-upstream; indirect deps are carried opaquely through the envelope.
+  // - "Logical mutation" is a module returning a key that already exists on the envelope; downstream modules see the new value.
+  // - IRContextSnapshot and buildIRContextSnapshot are removed in this 0.x cleanup; the pipeline envelope is the new internal shape.
+  // - IRContext caches `graph` and `resourcesById`; getDependencyTree/getTasksByMilestone reuse the cached graph.
+  // - getDependencyTree and getTasksByMilestone utilities now accept an optional injected DirectedGraph.
+  // - Diagnostic ordering (W001 → W002 → W003) and source attribution are preserved byte-for-byte; this is a structural refactor.
+  // - Implicit completion does not invalidate graph (complete=true does not affect id or depends_on); resourcesById is rebuilt because Resource references change.
+  // - Pipeline runner is linear; parallel/sibling combinators are future work if needed.
+  // - Module return shape: caller-side merge — the runner spreads additions onto the envelope in one place.
+  // - Source attribution stays a per-diagnostic utility, not its own module.
+  depends_on = [pipe-primitives, pipe-modules, pipe-rewire, pipe-graph-reuse, pipe-tests, pipe-docs]
+}
+
+milestone pipe-primitives complete {
+  description = "Pipeline runner and Module type primitives"
+  depends_on = [pipe-module-type, pipe-runner, pipe-runner-tests]
+}
+
+milestone pipe-modules complete {
+  description = "Decompose IR build into pure modules"
+  depends_on = [pipe-dedup-module, pipe-index-module, pipe-graph-module, pipe-completion-module, pipe-cycles-module, pipe-dangling-module, pipe-finalize-module]
+}
+
+milestone pipe-rewire complete {
+  description = "Rewire IRAssembly.build() through the pipeline and remove vestigial snapshot types"
+  depends_on = [pipe-build-rewrite, pipe-context-cached-derivations, pipe-remove-snapshot-shim]
+}
+
+milestone pipe-graph-reuse complete {
+  description = "Eliminate redundant graph builds across utilities by injecting the cached graph"
+  depends_on = [pipe-utility-graph-injection, pipe-context-getdeptree-reuse]
+}
+
+milestone pipe-tests complete {
+  description = "Pipeline + module + redundancy regression coverage"
+  depends_on = [pipe-runner-tests, pipe-pipeline-integration-tests, pipe-redundancy-regression-test]
+}
+
+milestone pipe-docs complete {
+  description = "Decision records and folded planning notes"
+  depends_on = [pipe-adr, pipe-fold-comment-block]
+}
+
+task pipe-module-type complete {
+  description = "Define Module<TIn, TAdd> interface and defineModule helper"
+  // see packages/core/src/ir/pipeline/types.ts
+}
+
+task pipe-runner complete {
+  description = "Implement Pipeline runner with typed .then() chaining and frozen-envelope merge"
+  depends_on = pipe-module-type
+  // see packages/core/src/ir/pipeline/runner.ts
+}
+
+task pipe-runner-tests complete {
+  description = "Cover ordering, pass-through, logical replacement, and frozen seed for the Pipeline runner"
+  depends_on = pipe-runner
+  // see packages/core/src/ir/pipeline/runner.test.ts
+}
+
+task pipe-dedup-module complete {
+  description = "DedupModule emits deduplicated resources and W003 duplicate diagnostics"
+  depends_on = pipe-module-type
+  // see packages/core/src/ir/pipeline/modules/dedup.ts
+}
+
+task pipe-index-module complete {
+  description = "IndexModule builds the id → Resource map"
+  depends_on = pipe-module-type
+  // see packages/core/src/ir/pipeline/modules/index-by-id.ts
+}
+
+task pipe-graph-module complete {
+  description = "GraphModule builds the dependency graph once for the whole pipeline"
+  depends_on = pipe-module-type
+  // see packages/core/src/ir/pipeline/modules/graph.ts
+}
+
+task pipe-completion-module complete {
+  description = "ImplicitCompletionModule rewrites resources and resourcesById without rebuilding the graph"
+  depends_on = [pipe-module-type, pipe-graph-module]
+  // see packages/core/src/ir/pipeline/modules/completion.ts
+  // see packages/core/src/ir/normalization.ts (applyImplicitMilestoneCompletion helper)
+}
+
+task pipe-cycles-module complete {
+  description = "CyclesModule emits W001 cycle diagnostics over the cached graph"
+  depends_on = pipe-module-type
+  // see packages/core/src/ir/pipeline/modules/cycles.ts
+}
+
+task pipe-dangling-module complete {
+  description = "DanglingModule emits W002 dangling-dependency diagnostics"
+  depends_on = pipe-module-type
+  // see packages/core/src/ir/pipeline/modules/dangling.ts
+}
+
+task pipe-finalize-module complete {
+  description = "FinalizeModule collapses W001/W002/W003 into the ordered diagnostics snapshot"
+  depends_on = pipe-module-type
+  // see packages/core/src/ir/pipeline/modules/finalize.ts
+}
+
+task pipe-build-rewrite complete {
+  description = "Replace buildIRContextSnapshot with runIRBuildPipeline composed from the modules"
+  depends_on = [pipe-runner, pipe-dedup-module, pipe-index-module, pipe-graph-module, pipe-completion-module, pipe-cycles-module, pipe-dangling-module, pipe-finalize-module]
+  // see packages/core/src/ir/pipeline/index.ts
+}
+
+task pipe-context-cached-derivations complete {
+  description = "IRContext exposes cached graph and stores the pipeline envelope"
+  depends_on = pipe-build-rewrite
+  // see packages/core/src/ir/context.ts
+}
+
+task pipe-remove-snapshot-shim complete {
+  description = "Delete IRContextSnapshot type and buildIRContextSnapshot export"
+  depends_on = pipe-context-cached-derivations
+  // see packages/core/src/ir (builder.ts removed)
+}
+
+task pipe-utility-graph-injection complete {
+  description = "Inject DirectedGraph into getDependencyTree and getTasksByMilestone instead of rebuilding"
+  depends_on = pipe-context-cached-derivations
+  // see packages/core/src/utilities/dependency-tree.ts
+  // see packages/core/src/utilities/milestone.ts
+}
+
+task pipe-context-getdeptree-reuse complete {
+  description = "IRContext.getDependencyTree and IRContext.getTasksByMilestone pass the cached graph"
+  depends_on = pipe-utility-graph-injection
+  // see packages/core/src/ir/context.ts
+}
+
+task pipe-pipeline-integration-tests complete {
+  description = "Full pipeline test on a representative project covering ordering, completion, and cached derivations"
+  depends_on = pipe-build-rewrite
+  // see packages/core/src/ir/pipeline/pipeline.test.ts
+}
+
+task pipe-redundancy-regression-test complete {
+  description = "Spy on buildDependencyGraph and assert exactly one invocation per IRAssembly.build()"
+  depends_on = [pipe-build-rewrite, pipe-context-getdeptree-reuse]
+  // see packages/core/src/ir/pipeline/pipeline.test.ts
+}
+
+task pipe-adr complete {
+  description = "Capture pipeline decision in ADR 0003"
+  // see docs/adr/0003-ir-pipeline-modules.md
+}
+
+task pipe-fold-comment-block complete {
+  description = "Remove the 'ADDITIONAL CONTEXT ADDED OUT OF CONVERSATION BAND' block from diagnostic-pipeline-decoupling.siren now that ADR 0003 captures the decision"
+  depends_on = pipe-adr
+  // see siren/diagnostic-pipeline-decoupling.siren
+}
+
+# Deferred — not yet scheduled
+task pipe-existing-test-migration {
+  description = "Migrate normalization.test.ts and assembly.test.ts content into module-scoped tests; consider whether normalization.ts and analysis.ts free-function exports should remain"
+  // Current state: normalization.test.ts and assembly.test.ts still target the helper-level API and pass unchanged. Module-scoped tests live alongside the modules; deeper migration is opportunistic.
+}
+
+task pipe-perf-spotcheck {
+  description = "Optional micro-benchmark showing graph-build count drops from 4-5x to 1x on a representative project"
+  // The redundancy regression test already proves the count is exactly 1; a perf benchmark is nice-to-have.
+}
+
+task pipe-context-md-update {
+  description = "Update CONTEXT.md with a 'Pipeline Modules' section once the wider context document is next refreshed"
+}
+
+task pipe-status-md-update {
+  description = "Refresh packages/core/STATUS.md to describe the pipeline as canonical"
+}

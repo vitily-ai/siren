@@ -39,8 +39,8 @@ export function getDependencyTree(
   rootId: string,
   resources: readonly Resource[],
   traversePredicate: TraversePredicate = () => true,
+  graph: DirectedGraph = buildDependencyGraph(resources),
 ): DependencyTree {
-  const graph = buildDependencyGraph(resources);
   const rootResource = resources.find((r) => r.id === rootId);
   if (!rootResource) {
     throw new Error(`Resource with id ${rootId} not found`);
