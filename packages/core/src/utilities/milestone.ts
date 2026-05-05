@@ -16,14 +16,15 @@ export function getMilestoneIds(resources: Resource[]): string[] {
 /**
  * Returns a Map where keys are milestone IDs and values are arrays of incomplete tasks that the milestone depends on.
  * @param resources Array of Siren resources
+ * @param graph Optional pre-built dependency graph; built from `resources` if omitted.
  * @returns Map<string, Resource[]>
  */
-export function getTasksByMilestone(resources: Resource[]): Map<string, Resource[]> {
+export function getTasksByMilestone(
+  resources: Resource[],
+  graph: DirectedGraph = buildDependencyGraph(resources),
+): Map<string, Resource[]> {
   const taskMap = new Map(resources.filter((r) => r.type === 'task').map((r) => [r.id, r]));
   const tasksByMilestone = new Map<string, Resource[]>();
-
-  // Build dependency graph
-  const graph = buildDependencyGraph(resources);
 
   // Initialize map with all milestones
   const milestones = resources.filter((r) => r.type === 'milestone');

@@ -37,8 +37,23 @@ export function deduplicateResources(rawResources: readonly Resource[]): readonl
 export function resolveImplicitMilestoneCompletion(
   resources: readonly Resource[],
 ): readonly Resource[] {
-  const resourcesById = indexResourcesById(resources);
-  const dependencyGraph = buildDependencyGraph(resources);
+  return applyImplicitMilestoneCompletion(
+    resources,
+    indexResourcesById(resources),
+    buildDependencyGraph(resources),
+  );
+}
+
+/**
+ * Apply implicit-milestone completion using a caller-provided index and graph.
+ * The pipeline uses this variant to avoid rebuilding the graph and index that
+ * later modules (cycles, dangling) also need.
+ */
+export function applyImplicitMilestoneCompletion(
+  resources: readonly Resource[],
+  resourcesById: ReadonlyMap<string, Resource>,
+  dependencyGraph: DirectedGraph,
+): readonly Resource[] {
   const resolvedResources = resources.map(
     (resource): Resource =>
       !resource.complete && isImplicitlyComplete(resource, resourcesById, dependencyGraph)
