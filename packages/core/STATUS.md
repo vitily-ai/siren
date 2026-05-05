@@ -4,9 +4,9 @@
 
 ## Public surface
 
-- **IR types** (`src/ir/types.ts`): `Document`, `Resource`, `Task`, `Milestone`, `Attribute`, `AttributeValue`, `Origin`, plus type guards.
-- **`IRAssembly`** (`src/ir/assembly.ts`): **canonical** raw resource accumulation path. Preserves caller order, including duplicates, and builds an immutable `IRContext` through `assembly.build()`.
-- **`IRContext`** (`src/ir/context.ts`): **immutable built semantic snapshot**. Contains resolved resources (deduplication + implicit milestone completion), dependency cycles, grouped diagnostics, and aggregate diagnostics. `IRContext.diagnostics` provides the **full semantic diagnostic snapshot** for that context (W001/W002/W003), not a delta. **Deprecated but functional**: `IRContext.fromResources(resources, source?)` and `new IRContext(doc)` remain as compatibility construction paths; prefer `IRAssembly` for new code. Removal deferred to future major version.
+- **IR types** (`src/ir/types.ts`): `Resource`, `Attribute`, `AttributeValue`, `Origin`, plus type guards.
+- **`IRAssembly`** (`src/ir/assembly.ts`): **canonical and only public construction path**. Preserves caller order, including duplicates, exposes recursively frozen raw inputs on `assembly.resources`, and builds an immutable `IRContext` through `assembly.build()`.
+- **`IRContext`** (`src/ir/context.ts`): **immutable built semantic snapshot**. Contains resolved resources (deduplication + implicit milestone completion), query helpers, and aggregate diagnostics. `IRContext.diagnostics` provides the **full semantic diagnostic snapshot** for that context (W001/W002/W003), not a delta. `IRContext` is non-publicly constructible and is created internally via a symbol-keyed factory used by `IRAssembly`.
 - **Semantic diagnostics** (`src/ir/diagnostics.ts`, `src/ir/analysis.ts`): `CircularDependencyDiagnostic` (W001), `DanglingDependencyDiagnostic` (W002), `DuplicateIdDiagnostic` (W003). All extend `DiagnosticBase`; analysis preserves ordering as cycles, dangling dependencies, then duplicates.
 - **`DiagnosticBase`** (`src/ir/diagnostics.ts`): structural shape `{ code, severity, file?, line?, column? }` with no `message`. Frontends assemble display text from structured fields.
 - **`IRExporter`** (`src/ir/exporter.ts`): `interface IRExporter { export(ctx: IRContext): string }`. Implemented in `@sirenpm/language` (e.g. `SirenExporter`).

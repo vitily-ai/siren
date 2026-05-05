@@ -5,44 +5,42 @@ import {
 import { findResourceById } from '../utilities/entry';
 import { getMilestoneIds, getTasksByMilestone } from '../utilities/milestone';
 import { buildIRContextSnapshot, type IRContextSnapshot } from './builder';
-import type { DependencyCycle, Diagnostic, DuplicateIdDiagnostic } from './diagnostics';
-import type { Document, Resource } from './types';
+import { IR_CONTEXT_FACTORY } from './context-internal';
+import type { Diagnostic } from './diagnostics';
+import type { Resource } from './types';
 
 export type {
   CircularDependencyDiagnostic,
   DanglingDependencyDiagnostic,
-  DependencyCycle,
   Diagnostic,
   DuplicateIdDiagnostic,
 } from './diagnostics';
 
 /**
- * Immutable IR context that wraps a `Document` and exposes utility functions as methods.
+ * Immutable IR context that exposes semantic snapshot data and query helpers.
  *
- * The class intentionally holds plain data (no hidden mutability) and delegates
- * to the pure utility functions in `packages/core/src/utilities`. This provides a
- * unified OO-style API surface while keeping the underlying representation
- * data-oriented and serializable.
+ * Instances are built internally from IRAssembly and cannot be publicly
+ * constructed.
  */
 export class IRContext {
   private readonly snapshot: IRContextSnapshot;
-  /** Legacy readable source metadata. Semantic attribution comes from resource origins. */
-  public readonly source?: string;
+
+  private constructor(resources: readonly Resource[]) {
+    this.snapshot = buildIRContextSnapshot(resources);
+    Object.freeze(this);
+  }
 
   /**
-   * @deprecated Prefer `IRAssembly.fromResources(resources).build()` for new construction paths.
+   * Internal construction path used by IRAssembly.
    */
-  constructor(doc: Document) {
-    this.snapshot = buildIRContextSnapshot(doc.resources);
-    this.source = doc.source;
-    Object.freeze(this);
+  static [IR_CONTEXT_FACTORY](resources: readonly Resource[]): IRContext {
+    return new IRContext(resources);
   }
 
   /**
    * Get deduplicated resources with implicit milestone completeness resolved.
    * Milestones whose every dependency is complete are promoted to `complete: true`.
    * First occurrence of each ID is kept, duplicates are dropped.
-   * Use `duplicateDiagnostics` to get warnings about dropped duplicates.
    */
   get resources(): readonly Resource[] {
     return this.snapshot.resources;
@@ -85,32 +83,5 @@ export class IRContext {
   /** Get semantic diagnostics computed from IR analysis */
   get diagnostics(): readonly Diagnostic[] {
     return this.snapshot.diagnostics;
-  }
-
-  /** Get dependency cycles detected in the IR */
-  get cycles(): readonly DependencyCycle[] {
-    return this.snapshot.cycles;
-  }
-
-  /**
-   * Factory to create an IRContext from resources.
-   *
-   * File attribution is read from each resource's origin.document field.
-   * This replaces the previous resourceSources parameter pattern.
-   *
-   * @deprecated Prefer `IRAssembly.fromResources(resources).build()` for new construction paths.
-   */
-  static fromResources(resources: readonly Resource[], source?: string): IRContext {
-    return new IRContext({ resources: resources.slice(), source });
-  }
-
-  /** Get dangling dependency diagnostics from the built semantic snapshot */
-  get danglingDiagnostics(): readonly Diagnostic[] {
-    return this.snapshot.danglingDiagnostics;
-  }
-
-  /** Get duplicate ID diagnostics from the built semantic snapshot */
-  get duplicateDiagnostics(): readonly DuplicateIdDiagnostic[] {
-    return this.snapshot.duplicateDiagnostics;
   }
 }

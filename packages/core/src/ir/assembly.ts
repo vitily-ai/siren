@@ -1,4 +1,5 @@
 import { IRContext } from './context';
+import { IR_CONTEXT_FACTORY } from './context-internal';
 import { cloneAndFreezeResources } from './snapshot';
 import type { Resource } from './types';
 
@@ -11,11 +12,11 @@ export class IRAssembly {
     return new IRAssembly(cloneAndFreezeResources(resources));
   }
 
-  get rawResources(): readonly Resource[] {
+  get resources(): readonly Resource[] {
     return this.resourcesSnapshot;
   }
 
   build(): IRContext {
-    return IRContext.fromResources(this.resourcesSnapshot);
+    return IRContext[IR_CONTEXT_FACTORY](this.resourcesSnapshot);
   }
 }

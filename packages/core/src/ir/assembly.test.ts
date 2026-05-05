@@ -14,7 +14,7 @@ function origin(document: string, startRow: number): Origin {
 }
 
 describe('IRAssembly', () => {
-  it('preserves caller resource order in raw resources and first-occurrence order in the built context', () => {
+  it('preserves caller resource order in assembly resources and first-occurrence order in the built context', () => {
     const resources: Resource[] = [
       { type: 'task', id: 'second', complete: false, attributes: [] },
       { type: 'task', id: 'first', complete: false, attributes: [] },
@@ -24,7 +24,7 @@ describe('IRAssembly', () => {
     const assembly = IRAssembly.fromResources(resources);
     const context = assembly.build();
 
-    expect(assembly.rawResources.map((resource) => resource.id)).toEqual([
+    expect(assembly.resources.map((resource) => resource.id)).toEqual([
       'second',
       'first',
       'second',
@@ -32,7 +32,7 @@ describe('IRAssembly', () => {
     expect(context.resources.map((resource) => resource.id)).toEqual(['second', 'first']);
   });
 
-  it('clones and recursively freezes raw resources', () => {
+  it('clones and recursively freezes assembly resources', () => {
     const sourceResource = {
       type: 'task' as const,
       id: 'task-a',
@@ -62,7 +62,7 @@ describe('IRAssembly', () => {
       },
     };
     const assembly = IRAssembly.fromResources([sourceResource]);
-    const rawResource = assembly.rawResources[0];
+    const rawResource = assembly.resources[0];
 
     expect(rawResource).toBeDefined();
     if (!rawResource) throw new Error('expected raw resource');
@@ -74,7 +74,7 @@ describe('IRAssembly', () => {
     expect(rawResource.attributes).not.toBe(sourceResource.attributes);
     expect(rawAttribute).not.toBe(sourceResource.attributes[0]);
     expect(Object.isFrozen(assembly)).toBe(true);
-    expect(Object.isFrozen(assembly.rawResources)).toBe(true);
+    expect(Object.isFrozen(assembly.resources)).toBe(true);
     expect(Object.isFrozen(rawResource)).toBe(true);
     expect(Object.isFrozen(rawResource.attributes)).toBe(true);
     expect(Object.isFrozen(rawAttribute)).toBe(true);
@@ -118,7 +118,7 @@ describe('IRAssembly', () => {
     expect(firstContext).not.toBe(secondContext);
     expect(firstContext.resources.map((resource) => resource.id)).toEqual(['task-a', 'task-b']);
     expect(secondContext.resources.map((resource) => resource.id)).toEqual(['task-a', 'task-b']);
-    expect(assembly.rawResources.map((resource) => resource.id)).toEqual(['task-a', 'task-b']);
+    expect(assembly.resources.map((resource) => resource.id)).toEqual(['task-a', 'task-b']);
   });
 
   it('keeps raw duplicates available while the built context uses first occurrence wins', () => {
@@ -130,10 +130,10 @@ describe('IRAssembly', () => {
     const assembly = IRAssembly.fromResources(resources);
     const context = assembly.build();
 
-    expect(assembly.rawResources.map((resource) => resource.complete)).toEqual([false, true]);
+    expect(assembly.resources.map((resource) => resource.complete)).toEqual([false, true]);
     expect(context.resources).toHaveLength(1);
     expect(context.resources[0]?.complete).toBe(false);
-    expect(context.duplicateDiagnostics).toHaveLength(1);
+    expect(context.diagnostics.filter((diagnostic) => diagnostic.code === 'W003')).toHaveLength(1);
   });
 
   it('builds the expected immutable context output with ordered diagnostics and source attribution', () => {
@@ -191,7 +191,6 @@ describe('IRAssembly', () => {
       ['finished-task', true],
       ['release', true],
     ]);
-    expect(context.cycles).toEqual([{ nodes: ['cycle-a', 'cycle-b', 'cycle-a'] }]);
     expect(context.diagnostics).toEqual([
       {
         code: 'W001',
@@ -224,10 +223,11 @@ describe('IRAssembly', () => {
         secondColumn: 0,
       },
     ]);
-    expect(context.danglingDiagnostics).toEqual([context.diagnostics[1]]);
-    expect(context.duplicateDiagnostics).toEqual([context.diagnostics[2]]);
     expect(Object.isFrozen(context.resources)).toBe(true);
     expect(Object.isFrozen(context.diagnostics)).toBe(true);
-    expect(Object.isFrozen(context.cycles)).toBe(true);
+    expect(Object.isFrozen(context.diagnostics[0])).toBe(true);
+    expect('cycles' in (context as Record<string, unknown>)).toBe(false);
+    expect('danglingDiagnostics' in (context as Record<string, unknown>)).toBe(false);
+    expect('duplicateDiagnostics' in (context as Record<string, unknown>)).toBe(false);
   });
 });

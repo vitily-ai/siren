@@ -7,7 +7,6 @@ export { IRContext } from './context';
 export type {
   CircularDependencyDiagnostic,
   DanglingDependencyDiagnostic,
-  DependencyCycle,
   Diagnostic,
   DiagnosticBase,
   DuplicateIdDiagnostic,
@@ -16,8 +15,6 @@ export type {
   ArrayValue,
   Attribute,
   AttributeValue,
-  Cycle,
-  Document,
   PrimitiveValue,
   Resource,
   ResourceReference,

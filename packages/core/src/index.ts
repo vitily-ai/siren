@@ -8,7 +8,6 @@ export { buildMetadata } from './build-metadata';
 export type {
   CircularDependencyDiagnostic,
   DanglingDependencyDiagnostic,
-  DependencyCycle,
   Diagnostic,
   DiagnosticBase,
   DuplicateIdDiagnostic,
