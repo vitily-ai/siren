@@ -10,7 +10,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isReference } from '@sirenpm/core';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { createIRContextFromCst } from '../../src/context-factory';
+import { createIRContextFromParseResult } from '../../src/context-factory';
 import type { ParserAdapter, SourceDocument } from '../../src/parser/adapter';
 import { getTestAdapter } from '../helpers/parser';
 
@@ -36,7 +36,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes successfully with no errors', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       expect(ir.diagnostics.filter((d) => d.severity === 'error').length === 0).toBe(true);
       expect(ir.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
@@ -45,7 +45,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes correct number of resources (4)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       expect(ir).not.toBeNull();
       expect(ir.resources).toHaveLength(4);
@@ -54,7 +54,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes resource types correctly (3 tasks, 1 milestone)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       const resources = ir.resources;
       const tasks = resources.filter((r) => r.type === 'task');
@@ -67,7 +67,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes resource IDs correctly (quotes stripped)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       const ids = ir.resources.map((r) => r.id);
 
@@ -80,7 +80,7 @@ describe('Decode Integration: Fixtures', () => {
     it('preserves resource order from source', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       const resources = ir.resources;
 
@@ -99,7 +99,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes successfully with no errors', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       expect(ir.diagnostics.filter((d) => d.severity === 'error').length === 0).toBe(true);
       expect(ir.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
@@ -108,7 +108,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes correct number of resources (3)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       expect(ir).not.toBeNull();
       expect(ir.resources).toHaveLength(3);
@@ -117,7 +117,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes resource types correctly (2 tasks, 1 milestone)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       const resources = ir.resources;
       const tasks = resources.filter((r) => r.type === 'task');
@@ -130,7 +130,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes resource IDs correctly (quotes stripped)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       const ids = ir.resources.map((r) => r.id);
 
@@ -142,7 +142,7 @@ describe('Decode Integration: Fixtures', () => {
     it('preserves resource order from source', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       const resources = ir.resources;
 
@@ -156,7 +156,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes string attributes to string values (quotes stripped)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       const withAttributes = ir.resources.find((r) => r.id === 'with_attributes')!;
       const description = withAttributes.attributes.find((a) => a.key === 'description');
@@ -171,7 +171,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes number attributes to number values (not strings)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       const withAttributes = ir.resources.find((r) => r.id === 'with_attributes')!;
       const points = withAttributes.attributes.find((a) => a.key === 'points');
@@ -184,7 +184,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes boolean attributes to boolean values', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       const milestone = ir.resources.find((r) => r.id === 'Q1 Launch')!;
       const critical = milestone.attributes.find((a) => a.key === 'critical');
@@ -197,7 +197,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes complex_example with mixed attribute types', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       const complex = ir.resources.find((r) => r.id === 'complex_example')!;
       const attrs = complex.attributes;
@@ -218,7 +218,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes milestone Q1 Launch with year as number', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       const milestone = ir.resources.find((r) => r.id === 'Q1 Launch')!;
       const year = milestone.attributes.find((a) => a.key === 'year');
@@ -235,7 +235,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes successfully with no errors', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       expect(ir.diagnostics.filter((d) => d.severity === 'error').length === 0).toBe(true);
       expect(ir.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
@@ -244,7 +244,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes correct number of resources (8)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       expect(ir).not.toBeNull();
       expect(ir.resources).toHaveLength(8);
@@ -253,7 +253,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes resource types correctly (6 tasks, 2 milestones)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       const resources = ir.resources;
       const tasks = resources.filter((r) => r.type === 'task');
@@ -266,7 +266,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes resource IDs correctly (quotes stripped)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       const ids = ir.resources.map((r) => r.id);
 
@@ -285,7 +285,7 @@ describe('Decode Integration: Fixtures', () => {
     it('preserves resource order from source', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       const resources = ir.resources;
 
@@ -302,7 +302,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes single reference attribute (B.depends_on = A)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       const resourceB = ir.resources.find((r) => r.id === 'B')!;
       const dependsOn = resourceB.attributes.find((a) => a.key === 'depends_on');
@@ -318,7 +318,7 @@ describe('Decode Integration: Fixtures', () => {
       // as reference expressions, but a quoted string in value position is a literal.
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       const deploy = ir.resources.find((r) => r.id === 'deploy')!;
       const dependsOn = deploy.attributes.find((a) => a.key === 'depends_on');
@@ -332,7 +332,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes forward reference (early.depends_on = late)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       const early = ir.resources.find((r) => r.id === 'early')!;
       const dependsOn = early.attributes.find((a) => a.key === 'depends_on');
@@ -344,7 +344,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes array references (C.depends_on = [A, B])', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       // Decode should succeed
       expect(ir.diagnostics.filter((d) => d.severity === 'error').length === 0).toBe(true);
@@ -367,7 +367,7 @@ describe('Decode Integration: Fixtures', () => {
     it('identifies which resources have single vs array references', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       const resources = ir.resources;
 
@@ -423,7 +423,7 @@ describe('Decode Integration: Fixtures', () => {
     it('01-minimal resources have empty attributes (no attributes in source)', async () => {
       const source = readFileSync(join(fixturesDir, 'snippets', '01-minimal.siren'), 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       for (const resource of ir.resources) {
         expect(resource.attributes).toEqual([]);
@@ -433,7 +433,7 @@ describe('Decode Integration: Fixtures', () => {
     it('02-simple resources have decoded attributes', async () => {
       const source = readFileSync(join(fixturesDir, 'snippets', '02-simple.siren'), 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       // All resources in 02-simple have attributes
       for (const resource of ir.resources) {
@@ -448,7 +448,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes successfully with no errors', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       expect(ir.diagnostics.filter((d) => d.severity === 'error').length === 0).toBe(true);
       expect(ir.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
@@ -457,7 +457,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes correct number of resources (3)', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       expect(ir).not.toBeNull();
       expect(ir.resources).toHaveLength(3);
@@ -466,7 +466,7 @@ describe('Decode Integration: Fixtures', () => {
     it('decodes complete status correctly', async () => {
       const source = readFileSync(fixturePath, 'utf-8');
       const parseResult = await adapter.parse(doc(source));
-      const ir = createIRContextFromCst(parseResult.tree!).context;
+      const ir = createIRContextFromParseResult(parseResult).context;
 
       const resources = ir.resources;
       expect(resources[0].complete).toBe(true); // task done complete

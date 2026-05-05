@@ -1,0 +1,128 @@
+// Decisions
+// - Scope is limited to @sirenpm/cli dependency metadata, CLI source, CLI tests, CLI goldens, and backlog hygiene.
+// - Consume the registry-published @sirenpm/language@0.2.0 package; do not link to the workspace package for this migration.
+// - Keep @sirenpm/core and @sirenpm/language source unchanged.
+// - Preserve the CLI command surface: no new flags, no output-mode changes, and no intentional list/show behavior changes.
+// - Keep loadProject's rich parse-error formatter and skipped-document policy, while decoding filtered ParseResult syntaxDocuments through the new language abstractions.
+// - Use renderSyntaxDocument as the siren format rendering path instead of manual SourceIndex and exportToSiren plumbing.
+// - Keep the existing runFormat semantic round-trip comparator and non-atomic write behavior as separate debt items.
+// - Do not add ProjectContext syntax caching in this migration.
+// - Mark export-bad-id-unquoted complete because CLI format now has quoted identifier golden coverage.
+
+milestone cli-language-0-2-migration {
+  description = "Migrate @sirenpm/cli to @sirenpm/language 0.2 APIs by consuming ParseResult syntax documents for project loading and renderSyntaxDocument for siren format while preserving the CLI command surface"
+  depends_on = [cl20-api-boundary, cl20-project-decode, cl20-format-command, cl20-tests-and-goldens, cl20-backlog-hygiene]
+}
+
+milestone cl20-api-boundary {
+  description = "Update the CLI package dependency and remove legacy CST and SourceIndex API usage from the CLI source boundary"
+  depends_on = [cl20-bump-language-dependency, cl20-confirm-020-runtime-surface, cl20-audit-legacy-language-imports]
+}
+
+milestone cl20-project-decode {
+  description = "Route project loading through ParseResult syntax documents while preserving existing CLI diagnostics and ProjectContext behavior"
+  depends_on = [cl20-preserve-loadproject-error-policy, cl20-decode-project-from-syntax-documents, cl20-keep-project-context-contract]
+}
+
+milestone cl20-format-command {
+  description = "Render siren format from SyntaxDocument values and keep the existing round-trip safety guard and command output contract"
+  depends_on = [cl20-render-format-from-syntax-document, cl20-guard-format-parse-errors, cl20-keep-format-roundtrip-check, cl20-preserve-format-cli-output]
+}
+
+milestone cl20-tests-and-goldens {
+  description = "Refresh CLI tests and golden outputs for the syntax formatter path, including quoted resource identifier coverage"
+  depends_on = [cl20-update-project-load-tests, cl20-add-format-quoted-goldens, cl20-refresh-format-goldens, cl20-run-cli-verification]
+}
+
+milestone cl20-backlog-hygiene {
+  description = "Record the migration and close only the debt made obsolete by the new CLI path"
+  depends_on = [cl20-update-format-debt-backlog, cl20-record-migration-handoff]
+}
+
+task cl20-bump-language-dependency complete {
+  description = "Update apps/cli/package.json and yarn.lock so @sirenpm/cli resolves @sirenpm/language@^0.2.0 from the registry"
+}
+
+task cl20-confirm-020-runtime-surface complete {
+  description = "Verify the CLI can build against the installed 0.2 API surface, including createIRContextFromParseResult, renderSyntaxDocument, and createParser WASM loading"
+  depends_on = cl20-bump-language-dependency
+}
+
+task cl20-audit-legacy-language-imports complete {
+  description = "Remove CLI source usage of createIRContextFromCst, SourceIndex, and the old positional exportToSiren source-index argument"
+  depends_on = cl20-confirm-020-runtime-surface
+}
+
+task cl20-preserve-loadproject-error-policy complete {
+  description = "Keep loadProject parse-error formatting and skipped-document notes while filtering syntaxDocuments for documents with error-severity parse failures"
+  depends_on = cl20-audit-legacy-language-imports
+}
+
+task cl20-decode-project-from-syntax-documents complete {
+  description = "Decode filtered ParseResult syntaxDocuments through the language 0.2 context factory so parse and semantic diagnostics still populate ProjectContext warnings and errors"
+  depends_on = cl20-preserve-loadproject-error-policy
+}
+
+task cl20-keep-project-context-contract complete {
+  description = "Preserve ProjectContext fields, resource population, milestone ordering, loadedContext behavior, and list/show command behavior without adding syntax caches"
+  depends_on = cl20-decode-project-from-syntax-documents
+}
+
+task cl20-render-format-from-syntax-document complete {
+  description = "Replace runFormat's per-file CST, SourceIndex, and exportToSiren path with renderSyntaxDocument(parseResult.syntaxDocuments[0])"
+  depends_on = cl20-audit-legacy-language-imports
+}
+
+task cl20-guard-format-parse-errors complete {
+  description = "Skip formatting files with error-severity parse failures or missing syntax documents before writing or dry-run output"
+  depends_on = cl20-render-format-from-syntax-document
+}
+
+task cl20-keep-format-roundtrip-check complete {
+  description = "Keep runFormat's semantic round-trip validation by decoding the original and formatted ParseResult values through the new language context factory"
+  depends_on = cl20-guard-format-parse-errors
+}
+
+task cl20-preserve-format-cli-output complete {
+  description = "Preserve dry-run stdout, update counts, verbose file listing, and current write behavior while accepting renderSyntaxDocument's canonical whitespace"
+  depends_on = cl20-keep-format-roundtrip-check
+}
+
+task cl20-update-project-load-tests complete {
+  description = "Run the project loading and format command unit tests to verify parse-error skipping, quoted identifiers, warnings, and semantic diagnostics remain compatible"
+  depends_on = cl20-keep-project-context-contract
+}
+
+task cl20-add-format-quoted-goldens complete {
+  description = "Add a CLI golden for siren format --dry-run on the quoted-identifiers-format fixture to prove quoted resource IDs survive CLI formatting"
+  depends_on = cl20-preserve-format-cli-output
+}
+
+task cl20-refresh-format-goldens complete {
+  description = "Refresh format comment and multiple-file goldens for the canonical renderSyntaxDocument blank-line and comment layout"
+  depends_on = cl20-add-format-quoted-goldens
+}
+
+task cl20-run-cli-verification complete {
+  description = "Run the CLI build and test suite after migration, including focused project loading, format, and golden coverage"
+  depends_on = [cl20-update-project-load-tests, cl20-refresh-format-goldens]
+}
+
+task cl20-update-format-debt-backlog complete {
+  description = "Mark export-bad-id-unquoted complete while leaving runformat-roundtrip, runformat-atomic-backup, and ProjectContext syntax cache debt as future work"
+  depends_on = cl20-run-cli-verification
+}
+
+task cl20-record-migration-handoff complete {
+  description = "Record the CLI language 0.2 migration scope, decisions, completed tasks, and verification notes in this Siren backlog file"
+  depends_on = cl20-update-format-debt-backlog
+}
+
+// Verification
+// - Ran yarn install and confirmed @sirenpm/language@0.2.0 replaced 0.1.0 in yarn.lock.
+// - Ran yarn workspace @sirenpm/cli build.
+// - Ran yarn workspace @sirenpm/cli test -- project.test.ts format.unit.test.ts format.cli-mvp.test.ts golden.test.ts --reporter=dot --silent.
+// - Ran yarn workspace @sirenpm/cli test.
+// - Ran node apps/cli/dist/index.js list and confirmed cli-language-0-2-migration appears.
+// - Ran node apps/cli/dist/index.js format --dry-run --verbose; it completed and reported existing format drift in siren/debt.siren and siren/todos.siren.
+// - Ran git diff --check.

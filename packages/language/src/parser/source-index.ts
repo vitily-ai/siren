@@ -1,4 +1,10 @@
 /**
+ * NOT-TO-BE-USED: legacy comment-classification helper retained only for the
+ * semantic IR export path.
+ *
+ * Prefer syntax trivia plus {@link renderSyntaxDocument} for new source
+ * rendering work. Avoid introducing new callers of SourceIndex.
+ *
  * SourceIndex: Comment Classification Engine
  *
  * Anchors comments to IR nodes using line-based heuristics.
@@ -32,7 +38,7 @@ export interface ClassifiedComment {
 }
 
 /**
- * Comment index providing fast lookup and classification
+ * NOT-TO-BE-USED: compatibility class for legacy semantic export internals.
  *
  * Uses line-based heuristics to classify comments:
  * - Trailing: comment on same line as previous token end
