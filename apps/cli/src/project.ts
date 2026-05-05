@@ -154,7 +154,10 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
   const filteredSyntaxDocuments = (parseResult.syntaxDocuments ?? []).filter(
     (syntaxDocument) => !skippedDocs.has(syntaxDocument.source.name),
   );
-  const filteredParseErrors = parseResult.errors.filter((error) => {
+  // TODO[PARSER-DIAGNOSTIC-OWNERSHIP]: Unify parser diagnostic ownership so the
+  // CLI does not split rich syntax errors above from warning-only parse/decode
+  // diagnostics here. See task `parser-diagnostic-ownership` in siren/debt.siren.
+  const retainedParseWarnings = parseResult.errors.filter((error) => {
     const severity = error.severity ?? 'error';
     const document = error.document ?? 'unknown';
     return severity === 'warning' && !skippedDocs.has(document);
@@ -162,7 +165,7 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
 
   const { context: ir, parseDiagnostics } = createIRContextFromParseResult({
     ...parseResult,
-    errors: filteredParseErrors,
+    errors: retainedParseWarnings,
     syntaxDocuments: filteredSyntaxDocuments,
   });
 
@@ -170,7 +173,9 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
   ctx.ir = ir;
   ctx.milestones = ir.getMilestoneIds();
 
-  // Collect parse-level diagnostics (WL001, WL002, WL003, EL001)
+  // Collect retained parse/decode diagnostics. Error-severity parser errors are
+  // reported above via formatParseError + skip notes, so this path is currently
+  // warning-oriented until parser diagnostic ownership is unified.
   for (const diagnostic of parseDiagnostics) {
     const formatted = formatDiagnostic(diagnostic);
     if (diagnostic.severity === 'warning') {

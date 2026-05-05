@@ -58,6 +58,10 @@ task parse-daigs-col-0 {
   description = "parse diagnostics all set a column position of 0 - parse diagnostics should report real column position"
 }
 
+task parser-diagnostic-ownership {
+  description = "Unify parse diagnostics under parser ownership so CLI consumers do not split rich syntax errors through formatParseError and warning-only ParseDiagnostic handoff in apps/cli/src/project.ts. Decide whether parser output should be the sole source of both EL and WL diagnostics, then simplify the CLI boundary accordingly."
+}
+
 task duplicate-diagnostic-position-ownership {
   description = "DuplicateIdDiagnostic should carry its own duplicate-occurrence file/line/column in core, instead of the CLI hydrating secondLine/secondColumn for formatting."
   feedback = "The semantic diagnostic already inherits file/line/column from DiagnosticBase, so the duplicate occurrence position belongs in core. firstFile/firstLine/firstColumn are still useful as supplemental metadata, but the CLI should not be responsible for filling in the diagnostic's primary position."
@@ -119,4 +123,10 @@ task improved-interleaving-formatter {
     comment-export-performance,
     comment-byte-split-misalignment
   ]
+}
+
+task bad-golden {
+
+  description = "the format-dry-run cli test is erroneously leaving space before comments after ast refactor"
+
 }

@@ -1,4 +1,0 @@
-{"fixture":"comments-trailing","command":"siren format --dry-run"}
----
-Updated 0 files out of 1
----
