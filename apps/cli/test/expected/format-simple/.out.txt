@@ -1,4 +1,0 @@
-{"fixture":"multiple-files","command":"siren format"}
----
-Updated 2 files out of 2
----

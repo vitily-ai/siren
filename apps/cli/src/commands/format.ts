@@ -2,10 +2,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Resource } from '@sirenpm/core';
 import {
-  createIRContextFromCst,
-  exportToSiren,
+  createIRContextFromParseResult,
+  renderSyntaxDocument,
   type SourceDocument,
-  SourceIndex,
 } from '@sirenpm/language';
 import { getParser } from '../parser';
 import { loadProject } from '../project';
@@ -78,37 +77,33 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
       const source = fs.readFileSync(filePath, 'utf-8');
       const relPath = path.relative(process.cwd(), filePath);
       const parseResult = await parser.parse(doc(source, relPath));
-      if (!parseResult.tree) {
+      const hasParseErrors = parseResult.errors.some(
+        (error) => (error.severity ?? 'error') === 'error',
+      );
+      if (!parseResult.tree || hasParseErrors) {
         console.error(`Skipping ${relPath} (parse error)`);
         return result;
       }
 
-      const { context: perFileIR } = createIRContextFromCst(parseResult.tree, filePath);
-
-      // Build SourceIndex from parse result for comment preservation
-      const sourceIndex = parseResult.comments
-        ? new SourceIndex(parseResult.comments, source)
-        : undefined;
-
-      // Export with comment preservation if available
-      const exported = exportToSiren(perFileIR, sourceIndex);
-
-      // If exporter would drop all content (e.g. a file that only contains
-      // comments) or the source contains comments that would be lost, prefer
-      // to preserve the original source so comments are not discarded.
-      let toWrite = exported;
-      const sourceHasComments = /(^|\n)\s*(#|\/\/)\s*/.test(source);
-      if (exported.trim() === '' && sourceHasComments) {
-        toWrite = source;
+      const syntaxDocument = parseResult.syntaxDocuments?.[0];
+      if (!syntaxDocument) {
+        console.error(`Skipping ${relPath} (parse error)`);
+        return result;
       }
 
-      // Validate round-trip: parse exported text and decode
+      const { context: perFileIR } = createIRContextFromParseResult(parseResult);
+      const toWrite = renderSyntaxDocument(syntaxDocument);
+
+      // Validate round-trip: parse formatted text and decode
       const parse2 = await parser.parse(doc(toWrite, relPath));
-      if (!parse2.tree) {
+      const formattedHasParseErrors = parse2.errors.some(
+        (error) => (error.severity ?? 'error') === 'error',
+      );
+      if (!parse2.tree || formattedHasParseErrors) {
         console.error(`Format produced unparsable output for ${filePath}`);
         return result;
       }
-      const { context: decoded2 } = createIRContextFromCst(parse2.tree);
+      const { context: decoded2 } = createIRContextFromParseResult(parse2);
       if (!resourcesEqual(perFileIR.resources, decoded2.resources)) {
         console.error(`Format round-trip changed semantics for ${filePath}; skipping`);
         if (process.env.SIREN_FORMAT_DEBUG === '1') {
@@ -123,7 +118,7 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
         return result;
       }
 
-      // If exported equals original source, do not write or count as updated.
+      // If formatted output equals original source, do not write or count as updated.
       if (toWrite === source) {
         return result;
       }

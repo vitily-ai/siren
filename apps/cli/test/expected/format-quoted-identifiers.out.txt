@@ -1,0 +1,12 @@
+{"fixture":"quoted-identifiers-format","command":"siren format --dry-run"}
+---
+task "safe_id" {}
+
+milestone "Release 1" {}
+
+task bare_ok {}
+
+task "dash-ok" {}
+
+Updated 1 files out of 1
+---
