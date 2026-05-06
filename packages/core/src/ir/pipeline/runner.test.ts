@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { Pipeline } from './runner';
 import { defineModule, type Envelope } from './types';
 
+function expectReadOnlyCollectionMutation(callback: () => unknown, message: string): void {
+  expect(callback).toThrow(message);
+}
+
 describe('Pipeline', () => {
   it('runs modules in order, accumulating envelope additions', () => {
     const A = defineModule('A', (_input: { readonly seed: number }) => ({ a: 1 }));
@@ -11,9 +15,9 @@ describe('Pipeline', () => {
     }));
 
     const result = Pipeline.start<{ readonly seed: number }>()
-      .then(A)
-      .then(B)
-      .then(C)
+      .pipe(A)
+      .pipe(B)
+      .pipe(C)
       .run({ seed: 0 });
 
     expect(result).toEqual({ seed: 0, a: 1, b: 11, sum: 12 });
@@ -23,7 +27,7 @@ describe('Pipeline', () => {
     const Add = defineModule('Add', (input: { readonly x: number }) => ({ doubled: input.x * 2 }));
 
     const result = Pipeline.start<{ readonly x: number; readonly carryThrough: string }>()
-      .then(Add)
+      .pipe(Add)
       .run({ x: 5, carryThrough: 'opaque' });
 
     expect(result.carryThrough).toBe('opaque');
@@ -39,7 +43,7 @@ describe('Pipeline', () => {
       sum: input.resources.reduce((acc, n) => acc + n, 0),
     }));
 
-    const result = Pipeline.start<Envelope>().then(Init).then(Replace).then(Read).run({});
+    const result = Pipeline.start<Envelope>().pipe(Init).pipe(Replace).pipe(Read).run({});
     expect(result.resources).toEqual([10, 20, 30]);
     expect(result.sum).toBe(60);
   });
@@ -50,7 +54,7 @@ describe('Pipeline', () => {
       observed = input;
       return {};
     });
-    Pipeline.start<{ readonly tag: string }>().then(Spy).run({ tag: 'frozen' });
+    Pipeline.start<{ readonly tag: string }>().pipe(Spy).run({ tag: 'frozen' });
     expect(Object.isFrozen(observed)).toBe(true);
   });
 
@@ -64,10 +68,55 @@ describe('Pipeline', () => {
       return {};
     });
 
-    Pipeline.start<Envelope>().then(Producer).then(Consumer).run({});
+    Pipeline.start<Envelope>().pipe(Producer).pipe(Consumer).run({});
     expect(downstreamView).toEqual([1, 2]);
-    expect(Object.isFrozen(downstreamView)).toBe(false);
-    // The envelope itself is frozen (so callers cannot reassign top-level keys),
-    // even though nested arrays returned by modules retain their own freeze state.
+    expect(Object.isFrozen(downstreamView)).toBe(true);
+    expect(() => {
+      (downstreamView as number[]).push(3);
+    }).toThrow();
+  });
+
+  it('deep-freezes nested Map and Set additions before downstream modules observe them', () => {
+    const steps = ['seed'];
+    const tags = new Set(['core']);
+    const Producer = defineModule('Producer', (_: Envelope) => ({
+      metadata: new Map([
+        ['steps', steps],
+        ['tags', tags],
+      ]),
+    }));
+
+    let downstreamMetadata: ReadonlyMap<string, unknown> | null = null;
+    const Consumer = defineModule(
+      'Consumer',
+      (input: { readonly metadata: ReadonlyMap<string, unknown> }) => {
+        downstreamMetadata = input.metadata;
+        return {};
+      },
+    );
+
+    Pipeline.start<Envelope>().pipe(Producer).pipe(Consumer).run({});
+
+    expect(downstreamMetadata).not.toBeNull();
+    expect(downstreamMetadata).toBeInstanceOf(Map);
+    expectReadOnlyCollectionMutation(
+      () => (downstreamMetadata as Map<string, unknown>).set('extra', true),
+      'map is read-only',
+    );
+
+    const frozenSteps = downstreamMetadata?.get('steps');
+    expect(frozenSteps).toBe(steps);
+    expect(Object.isFrozen(frozenSteps)).toBe(true);
+    expect(() => {
+      (frozenSteps as string[]).push('done');
+    }).toThrow();
+
+    const frozenTags = downstreamMetadata?.get('tags');
+    expect(frozenTags).toBe(tags);
+    expect(frozenTags).toBeInstanceOf(Set);
+    expectReadOnlyCollectionMutation(
+      () => (frozenTags as Set<string>).add('lang'),
+      'set is read-only',
+    );
   });
 });

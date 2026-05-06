@@ -44,13 +44,13 @@ export interface IRBuildEnvelope {
  */
 export function runIRBuildPipeline(rawResources: readonly Resource[]): IRBuildEnvelope {
   const pipeline = Pipeline.start<{ readonly rawResources: readonly Resource[] }>()
-    .then(DedupModule)
-    .then(IndexModule)
-    .then(GraphModule)
-    .then(ImplicitCompletionModule)
-    .then(CyclesModule)
-    .then(DanglingModule)
-    .then(FinalizeModule);
+    .pipe(DedupModule)
+    .pipe(IndexModule)
+    .pipe(GraphModule)
+    .pipe(ImplicitCompletionModule)
+    .pipe(CyclesModule)
+    .pipe(DanglingModule)
+    .pipe(FinalizeModule);
 
   const env = pipeline.run({ rawResources });
   return {

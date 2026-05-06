@@ -51,7 +51,7 @@ task pipe-module-type complete {
 }
 
 task pipe-runner complete {
-  description = "Implement Pipeline runner with typed .then() chaining and frozen-envelope merge"
+  description = "Implement Pipeline runner with typed .pipe() chaining and frozen-envelope merge"
   depends_on = pipe-module-type
   // see packages/core/src/ir/pipeline/runner.ts
 }

@@ -1174,6 +1174,7 @@ __metadata:
   resolution: "@sirenpm/core@workspace:packages/core"
   dependencies:
     "@types/node": "npm:^25.0.6"
+    deep-freeze-es6: "npm:^5.0.0"
     tsup: "npm:^8.3.5"
     typescript: "npm:^5.7.2"
     vitest: "npm:^4.0.16"
@@ -1592,6 +1593,13 @@ __metadata:
     supports-color:
       optional: true
   checksum: 10c0/d79136ec6c83ecbefd0f6a5593da6a9c91ec4d7ddc4b54c883d6e71ec9accb5f67a1a5e96d00a328196b5b5c86d365e98d8a3a70856aaf16b4e7b1985e67f5a6
+  languageName: node
+  linkType: hard
+
+"deep-freeze-es6@npm:^5.0.0":
+  version: 5.0.0
+  resolution: "deep-freeze-es6@npm:5.0.0"
+  checksum: 10c0/f33c02b802ca8e2b47d47e3e9e6d11f4ffee221a6f71bbc985ef437ec0e671debd567c1b8f7d4759f668e6baa46567a3f9b4ef018bb94a25b0de7e1bd7ca38c6
   languageName: node
   linkType: hard
 
