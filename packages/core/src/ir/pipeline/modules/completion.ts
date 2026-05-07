@@ -15,15 +15,10 @@ import { defineModule } from '../types';
  * than hand-rolling recursion.
  *
  * @param resource The resource to check
- * @param resourceMap Lookup map of all resources by ID
  * @param graph Dependency graph built from the same resource set
  * @returns true if the resource is an implicitly-complete milestone
  */
-function isImplicitlyComplete(
-  resource: Resource,
-  resourceMap: ReadonlyMap<string, Resource>,
-  graph: ResourceGraph,
-): boolean {
+function isImplicitlyComplete(resource: Resource, graph: ResourceGraph): boolean {
   if (resource.type !== 'milestone') return false;
 
   const deps = graph.getSuccessors(resource.id);
@@ -36,7 +31,7 @@ function isImplicitlyComplete(
     (node, _path, depth) => {
       if (depth === 0) return true; // root milestone — expand
 
-      const dep = resourceMap.get(node);
+      const dep = graph.getResource(node);
       if (!dep) {
         allComplete = false;
         return false; // dangling ref — not complete
@@ -69,11 +64,10 @@ function isImplicitlyComplete(
  */
 function applyImplicitMilestoneCompletion(graph: ResourceGraph): ResourceGraph {
   const resources = graph.resources;
-  const resourcesById = graph.resourcesById;
 
   const resolvedResources = resources.map(
     (resource): Resource =>
-      !resource.complete && isImplicitlyComplete(resource, resourcesById, graph)
+      !resource.complete && isImplicitlyComplete(resource, graph)
         ? { ...resource, complete: true }
         : resource,
   );

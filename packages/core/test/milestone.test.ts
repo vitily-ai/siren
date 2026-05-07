@@ -38,7 +38,7 @@ function resolveCompletion(...resources: Resource[]): ImplicitCompletionResult {
 }
 
 function completionOf(result: ImplicitCompletionResult, id: string): boolean | undefined {
-  return result.graph.resourcesById.get(id)?.complete;
+  return result.graph.getResource(id)?.complete;
 }
 
 describe('ImplicitCompletionModule', () => {

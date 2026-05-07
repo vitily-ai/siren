@@ -26,7 +26,8 @@ export const CyclesModule = defineModule(
     readonly cycleDiagnostics: readonly CircularDependencyDiagnostic[];
   } => {
     const cycles = detectDependencyCycles(input.graph);
-    const cycleDiagnostics = diagnoseCycles(cycles, input.graph.resourcesById);
+    const resourcesById = new Map(input.graph.resources.map((resource) => [resource.id, resource]));
+    const cycleDiagnostics = diagnoseCycles(cycles, resourcesById);
     return { cycles, cycleDiagnostics };
   },
 );

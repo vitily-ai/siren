@@ -59,7 +59,7 @@ describe('runIRBuildPipeline', () => {
       expect.arrayContaining(['dup', 'has-dangling', 'cycle-a', 'cycle-b', 'finished', 'release']),
     );
 
-    expect(env.graph.resourcesById.get('release')?.complete).toBe(true);
+    expect(env.graph.getResource('release')?.complete).toBe(true);
   });
 });
 

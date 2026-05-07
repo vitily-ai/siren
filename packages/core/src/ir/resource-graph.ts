@@ -33,7 +33,6 @@ function makeMissingResource(id: string): Resource {
  */
 export class ResourceGraph {
   private constructor(
-    private readonly resourceList: readonly Resource[],
     private readonly resourceIndex: ReadonlyMap<string, Resource>,
     private readonly adjacency: Map<string, Set<string>>,
   ) {
@@ -66,7 +65,7 @@ export class ResourceGraph {
       }
     }
 
-    return new ResourceGraph(frozenResources, resourcesById, adjacency);
+    return new ResourceGraph(resourcesById, adjacency);
   }
 
   /**
@@ -80,11 +79,7 @@ export class ResourceGraph {
   }
 
   get resources(): readonly Resource[] {
-    return this.resourceList;
-  }
-
-  get resourcesById(): ReadonlyMap<string, Resource> {
-    return this.resourceIndex;
+    return Object.freeze(Array.from(this.resourceIndex.values()));
   }
 
   getResource(id: string): Resource | undefined {
