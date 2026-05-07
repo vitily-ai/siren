@@ -68,16 +68,6 @@ export class ResourceGraph {
     return new ResourceGraph(resourcesById, adjacency);
   }
 
-  /**
-   * Convenience projection helper for graph "mutation" style call sites.
-   *
-   * This baseline implementation always reconstructs a fresh graph snapshot
-   * from the provided resources.
-   */
-  withResources(resources: readonly Resource[]): ResourceGraph {
-    return ResourceGraph.fromResources(resources);
-  }
-
   get resources(): readonly Resource[] {
     return Object.freeze(Array.from(this.resourceIndex.values()));
   }
@@ -110,27 +100,67 @@ export class ResourceGraph {
     const path: string[] = [];
     const pathSet = new Set<string>();
 
-    const recurse = (node: string, depth: number): void => {
-      path.push(node);
-      pathSet.add(node);
+    type Frame = {
+      node: string;
+      depth: number;
+      successors: string[];
+      successorIndex: number;
+      entered: boolean;
+      expand: boolean;
+    };
 
-      const cont = onVisit(node, [...path], depth);
+    const stack: Frame[] = [
+      {
+        node: start,
+        depth: 0,
+        successors: [],
+        successorIndex: 0,
+        entered: false,
+        expand: false,
+      },
+    ];
 
-      if (cont !== false && depth < maxDepth) {
-        for (const successor of this.getSuccessors(node)) {
-          if (pathSet.has(successor)) {
-            options?.onBackEdge?.(node, successor, [...path]);
-          } else {
-            recurse(successor, depth + 1);
-          }
+    while (stack.length > 0) {
+      const frame = stack[stack.length - 1]!;
+
+      if (!frame.entered) {
+        frame.entered = true;
+        path.push(frame.node);
+        pathSet.add(frame.node);
+
+        const cont = onVisit(frame.node, [...path], frame.depth);
+        frame.expand = cont !== false && frame.depth < maxDepth;
+        frame.successors = frame.expand ? this.getSuccessors(frame.node) : [];
+      }
+
+      if (frame.expand && frame.successorIndex < frame.successors.length) {
+        const successor = frame.successors[frame.successorIndex];
+        if (successor === undefined) {
+          frame.successorIndex = frame.successors.length;
+          continue;
         }
+        frame.successorIndex += 1;
+
+        if (pathSet.has(successor)) {
+          options?.onBackEdge?.(frame.node, successor, [...path]);
+          continue;
+        }
+
+        stack.push({
+          node: successor,
+          depth: frame.depth + 1,
+          successors: [],
+          successorIndex: 0,
+          entered: false,
+          expand: false,
+        });
+        continue;
       }
 
       path.pop();
-      pathSet.delete(node);
-    };
-
-    recurse(start, 0);
+      pathSet.delete(frame.node);
+      stack.pop();
+    }
   }
 
   hasCycle(): boolean {

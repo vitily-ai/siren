@@ -1,4 +1,4 @@
-import type { ResourceGraph } from '../../resource-graph';
+import { ResourceGraph } from '../../resource-graph';
 import type { Resource } from '../../types';
 import { defineModule } from '../types';
 
@@ -72,7 +72,7 @@ function applyImplicitMilestoneCompletion(graph: ResourceGraph): ResourceGraph {
         : resource,
   );
 
-  return graph.withResources(resolvedResources);
+  return ResourceGraph.fromResources(resolvedResources);
 }
 
 /**
