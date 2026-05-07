@@ -44,12 +44,10 @@ export interface ParseDiagnostic {
 
 export interface DecodedDocument {
   readonly resources: readonly Resource[];
-  readonly source?: string;
 }
 
 /**
- * Result of decoding a CST into IR
- * @internal - Use IRContext.fromCst() instead
+ * Result of decoding a CST into a Project
  */
 export interface DecodeResult {
   /** The decoded document, or null if decoding failed with errors */
@@ -234,7 +232,6 @@ export function decodeSyntaxDocuments(syntaxDocuments: readonly SyntaxDocument[]
       ? null
       : {
           resources,
-          source: syntaxDocuments.length === 1 ? syntaxDocuments[0]?.source.name : undefined,
         },
     diagnostics,
     success: !hasErrors,

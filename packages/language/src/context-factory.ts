@@ -1,7 +1,7 @@
 /**
- * Bridge: decode syntax documents into an IRContext while surfacing parse-phase
+ * Bridge: decode syntax documents into a SirenProject while surfacing parse-phase
  * diagnostics separately. Semantic diagnostics ride on the returned
- * IRContext; grammar/parse-time diagnostics are returned alongside.
+ * SirenProject; grammar/parse-time diagnostics are returned alongside.
  */
 
 import { type Resource, SirenBuilder, type SirenProject } from '@sirenpm/core';
@@ -15,7 +15,7 @@ export interface CreateSirenProjectResult {
 }
 
 /**
- * Decode parsed syntax documents into an IRContext.
+ * Decode parsed syntax documents into a fully resolved SirenProject.
  *
  * @param syntaxDocuments - Parsed document model values from parser output
  */
