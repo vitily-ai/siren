@@ -35,6 +35,7 @@ export interface DependencyTree {
   missing?: boolean;
 }
 
+// TODO make this a projection method/field on the graph class
 export function getDependencyTree(
   rootId: string,
   resources: readonly Resource[],

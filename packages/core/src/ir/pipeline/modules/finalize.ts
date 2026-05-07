@@ -1,4 +1,3 @@
-import { orderSemanticDiagnostics } from '../../analysis';
 import type {
   CircularDependencyDiagnostic,
   DanglingDependencyDiagnostic,
@@ -6,6 +5,18 @@ import type {
   DuplicateIdDiagnostic,
 } from '../../diagnostics';
 import { defineModule } from '../types';
+
+function orderSemanticDiagnostics(input: {
+  readonly cycleDiagnostics: readonly CircularDependencyDiagnostic[];
+  readonly danglingDiagnostics: readonly DanglingDependencyDiagnostic[];
+  readonly duplicateDiagnostics: readonly DuplicateIdDiagnostic[];
+}): readonly Diagnostic[] {
+  return Object.freeze([
+    ...input.cycleDiagnostics,
+    ...input.danglingDiagnostics,
+    ...input.duplicateDiagnostics,
+  ]);
+}
 
 /**
  * Finalize module: collapse the per-rule diagnostic arrays into the single

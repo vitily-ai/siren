@@ -170,6 +170,12 @@ task pipe-perf-spotcheck {
   // The redundancy regression test already proves the count is exactly 1; a perf benchmark is nice-to-have.
 }
 
+task pipe-resource-graph-snapshot {
+  description = "Evaluate a richer immutable resource-graph snapshot that owns topology and resource lookup together"
+  details = "Only adopt this if it preserves the current no-op completion fast-path, uses structural sharing for any lookup rebuilds, and simplifies downstream query helpers enough to justify changing the graph abstraction."
+  // see packages/core/src/ir/pipeline/modules/completion.ts
+}
+
 task pipe-context-md-update {
   description = "Update CONTEXT.md with a 'Pipeline Modules' section once the wider context document is next refreshed"
 }

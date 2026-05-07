@@ -1,8 +1,16 @@
 import type { DirectedGraph } from '../../../utilities/graph';
-import { detectDependencyCycles, diagnoseCycles } from '../../analysis';
+import { diagnoseCycles } from '../../analysis';
 import type { CircularDependencyDiagnostic, DependencyCycle } from '../../diagnostics';
 import type { Resource } from '../../types';
 import { defineModule } from '../types';
+
+function detectDependencyCycles(graph: DirectedGraph): readonly DependencyCycle[] {
+  return Object.freeze(
+    graph
+      .getCycles()
+      .map((cycle): DependencyCycle => Object.freeze({ nodes: Object.freeze(cycle.slice()) })),
+  );
+}
 
 /**
  * Cycles module: detect dependency cycles and emit W001 diagnostics.

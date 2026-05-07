@@ -30,32 +30,6 @@ export interface SemanticAnalysisSnapshot {
   readonly duplicateDiagnostics: readonly DuplicateIdDiagnostic[];
 }
 
-export function analyzeResources(input: SemanticAnalysisInput): SemanticAnalysisSnapshot {
-  const cycles = detectDependencyCycles(input.dependencyGraph);
-  const cycleDiagnostics = diagnoseCycles(cycles, input.resourcesById);
-  const danglingDiagnostics = diagnoseDanglingDependencies(input.resources, input.resourcesById);
-  const duplicateDiagnostics = diagnoseDuplicateResources(input.rawResources);
-
-  return Object.freeze({
-    cycles,
-    diagnostics: orderSemanticDiagnostics({
-      cycleDiagnostics,
-      danglingDiagnostics,
-      duplicateDiagnostics,
-    }),
-    danglingDiagnostics,
-    duplicateDiagnostics,
-  });
-}
-
-export function detectDependencyCycles(graph: DirectedGraph): readonly DependencyCycle[] {
-  return Object.freeze(
-    graph
-      .getCycles()
-      .map((cycle): DependencyCycle => Object.freeze({ nodes: Object.freeze(cycle.slice()) })),
-  );
-}
-
 export function diagnoseCycles(
   cycles: readonly DependencyCycle[],
   resourcesById: ReadonlyMap<string, Resource>,
@@ -135,18 +109,6 @@ export function diagnoseDuplicateResources(
   }
 
   return Object.freeze(diagnostics);
-}
-
-export function orderSemanticDiagnostics(input: {
-  readonly cycleDiagnostics: readonly CircularDependencyDiagnostic[];
-  readonly danglingDiagnostics: readonly DanglingDependencyDiagnostic[];
-  readonly duplicateDiagnostics: readonly DuplicateIdDiagnostic[];
-}): readonly Diagnostic[] {
-  return Object.freeze([
-    ...input.cycleDiagnostics,
-    ...input.danglingDiagnostics,
-    ...input.duplicateDiagnostics,
-  ]);
 }
 
 function freezeDiagnostic<TDiagnostic extends Diagnostic>(diagnostic: TDiagnostic): TDiagnostic {
