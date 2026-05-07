@@ -69,7 +69,7 @@ export class ResourceGraph {
   }
 
   get resources(): readonly Resource[] {
-    return Object.freeze(Array.from(this.resourceIndex.values()));
+    return Array.from(this.resourceIndex.values());
   }
 
   getResource(id: string): Resource | undefined {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ResourceGraph } from './resource-graph';
 import {
   firstOccurrencePositionForResource,
   positionForResource,
@@ -48,39 +49,39 @@ describe('sourceFileForResource', () => {
 
 describe('sourceFilesForResourceIds', () => {
   it('returns an empty attribution for an empty id list', () => {
-    expect(sourceFilesForResourceIds([], new Map())).toEqual({});
+    expect(sourceFilesForResourceIds([], ResourceGraph.fromResources([]))).toEqual({});
   });
 
   it('joins distinct files in iteration order', () => {
-    const resources = new Map<string, Resource>([
-      ['a', task('a', origin('one.siren', 0))],
-      ['b', task('b', origin('two.siren', 0))],
+    const graph = ResourceGraph.fromResources([
+      task('a', origin('one.siren', 0)),
+      task('b', origin('two.siren', 0)),
     ]);
-    expect(sourceFilesForResourceIds(['a', 'b'], resources)).toEqual({
+    expect(sourceFilesForResourceIds(['a', 'b'], graph)).toEqual({
       file: 'one.siren, two.siren',
     });
   });
 
   it('deduplicates files that appear multiple times across the id list', () => {
-    const resources = new Map<string, Resource>([
-      ['a', task('a', origin('shared.siren', 0))],
-      ['b', task('b', origin('shared.siren', 1))],
+    const graph = ResourceGraph.fromResources([
+      task('a', origin('shared.siren', 0)),
+      task('b', origin('shared.siren', 1)),
     ]);
-    expect(sourceFilesForResourceIds(['a', 'b', 'a'], resources)).toEqual({
+    expect(sourceFilesForResourceIds(['a', 'b', 'a'], graph)).toEqual({
       file: 'shared.siren',
     });
   });
 
   it('skips ids missing from the resource map', () => {
-    const resources = new Map<string, Resource>([['a', task('a', origin('a.siren', 0))]]);
-    expect(sourceFilesForResourceIds(['a', 'missing'], resources)).toEqual({
+    const graph = ResourceGraph.fromResources([task('a', origin('a.siren', 0))]);
+    expect(sourceFilesForResourceIds(['a', 'missing'], graph)).toEqual({
       file: 'a.siren',
     });
   });
 
   it('omits the file field when no id has an attributable file', () => {
-    const resources = new Map<string, Resource>([['a', task('a')]]);
-    expect(sourceFilesForResourceIds(['a', 'missing'], resources)).toEqual({});
+    const graph = ResourceGraph.fromResources([task('a')]);
+    expect(sourceFilesForResourceIds(['a', 'missing'], graph)).toEqual({});
   });
 });
 

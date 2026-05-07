@@ -32,6 +32,15 @@ describe('ResourceGraph', () => {
       expect(graph.getNodes()).toEqual([]);
     });
 
+    it('exposes a consistent resource index', () => {
+      const graph = ResourceGraph.fromResources([resource('a'), resource('b')]);
+
+      expect(graph.getNodes()).toEqual(['a', 'b']);
+      expect(graph.getResource('a')).toBe(graph.resources[0]);
+      expect(graph.getResource('b')).toBe(graph.resources[1]);
+      expect(graph.resources.map((current) => current.id)).toEqual(['a', 'b']);
+    });
+
     it('adds resource ids as nodes', () => {
       const graph = ResourceGraph.fromResources([resource('a'), resource('b')]);
       expect(graph.getNodes()).toEqual(['a', 'b']);

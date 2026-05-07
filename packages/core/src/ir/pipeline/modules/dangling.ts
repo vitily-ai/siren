@@ -14,11 +14,8 @@ export const DanglingModule = defineModule(
   (input: {
     readonly graph: ResourceGraph;
   }): { readonly danglingDiagnostics: readonly DanglingDependencyDiagnostic[] } => {
-    const resources = input.graph.resources;
-    const resourcesById = new Map(resources.map((resource) => [resource.id, resource]));
-
     return {
-      danglingDiagnostics: diagnoseDanglingDependencies(resources, resourcesById),
+      danglingDiagnostics: diagnoseDanglingDependencies(input.graph),
     };
   },
 );

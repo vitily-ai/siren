@@ -1,3 +1,4 @@
+import type { ResourceGraph } from './resource-graph';
 import type { Resource } from './types';
 
 export interface FileAttribution {
@@ -26,13 +27,13 @@ export function sourceFileForResource(resource: Resource | undefined): string | 
 
 export function sourceFilesForResourceIds(
   resourceIds: readonly string[],
-  resourcesById: ReadonlyMap<string, Resource>,
+  graph: ResourceGraph,
 ): FileAttribution {
   if (resourceIds.length === 0) return {};
 
   const files = new Set<string>();
   for (const resourceId of resourceIds) {
-    const file = sourceFileForResource(resourcesById.get(resourceId));
+    const file = sourceFileForResource(graph.getResource(resourceId));
     if (file !== undefined) {
       files.add(file);
     }

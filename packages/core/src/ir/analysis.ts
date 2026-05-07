@@ -18,9 +18,7 @@ import type { Resource } from './types';
 
 export interface SemanticAnalysisInput {
   readonly rawResources: readonly Resource[];
-  readonly resources: readonly Resource[];
-  readonly resourcesById: ReadonlyMap<string, Resource>;
-  readonly dependencyGraph: ResourceGraph;
+  readonly graph: ResourceGraph;
 }
 
 export interface SemanticAnalysisSnapshot {
@@ -32,20 +30,20 @@ export interface SemanticAnalysisSnapshot {
 
 export function diagnoseCycles(
   cycles: readonly DependencyCycle[],
-  resourcesById: ReadonlyMap<string, Resource>,
+  graph: ResourceGraph,
 ): readonly CircularDependencyDiagnostic[] {
   const diagnostics: CircularDependencyDiagnostic[] = [];
 
   for (const cycle of cycles) {
     const firstNodeId = cycle.nodes[0];
-    const firstResource = firstNodeId === undefined ? undefined : resourcesById.get(firstNodeId);
+    const firstResource = firstNodeId === undefined ? undefined : graph.getResource(firstNodeId);
 
     diagnostics.push(
       freezeDiagnostic({
         code: 'W001',
         severity: 'warning',
         nodes: cycle.nodes,
-        ...sourceFilesForResourceIds(cycle.nodes, resourcesById),
+        ...sourceFilesForResourceIds(cycle.nodes, graph),
         ...positionForResource(firstResource),
       }),
     );
@@ -55,15 +53,15 @@ export function diagnoseCycles(
 }
 
 export function diagnoseDanglingDependencies(
-  resources: readonly Resource[],
-  resourcesById: ReadonlyMap<string, Resource>,
+  graph: ResourceGraph,
 ): readonly DanglingDependencyDiagnostic[] {
   const diagnostics: DanglingDependencyDiagnostic[] = [];
+  const resources = graph.resources;
 
   for (const resource of resources) {
     const dependsOn = getDependsOn(resource);
     for (const dependencyId of dependsOn) {
-      if (!resourcesById.has(dependencyId)) {
+      if (!graph.hasResource(dependencyId)) {
         diagnostics.push(
           freezeDiagnostic({
             code: 'W002',
@@ -71,7 +69,7 @@ export function diagnoseDanglingDependencies(
             resourceId: resource.id,
             resourceType: resource.type,
             dependencyId,
-            ...sourceFilesForResourceIds([resource.id], resourcesById),
+            ...sourceFilesForResourceIds([resource.id], graph),
             ...positionForResource(resource),
           }),
         );
