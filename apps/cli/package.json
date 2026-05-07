@@ -15,6 +15,7 @@
     "build:quiet": "tsup --silent",
     "prepack": "yarn run build",
     "test": "npx vitest run --reporter=dot --silent",
+    "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
   "dependencies": {
