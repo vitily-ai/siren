@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { ResourceGraph } from '../../../../src/ir/resource-graph';
-import type { Resource, ResourceType } from '../../../../src/ir/types';
-import { ImplicitCompletionModule } from './completion';
+import { ImplicitCompletionModule } from '../src/ir/pipeline/modules/completion';
+import { ResourceGraph } from '../src/ir/resource-graph';
+import type { Resource, ResourceType } from '../src/ir/types';
 
 /** Build a minimal Resource for testing */
 function resource(

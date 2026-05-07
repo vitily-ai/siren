@@ -1,6 +1,4 @@
-import type { DirectedGraph } from '../../../utilities/graph';
-import { indexResourcesById } from '../../normalization';
-import { cloneAndFreezeResources } from '../../snapshot';
+import { ResourceGraph } from '../../resource-graph';
 import type { Resource } from '../../types';
 import { defineModule } from '../types';
 
@@ -13,19 +11,14 @@ import { defineModule } from '../types';
  * Orphan milestones (no `depends_on`) are never implicitly complete.
  * Only milestones can be implicitly complete; tasks cannot.
  *
- * Uses {@link DirectedGraph.dfs} for traversal and cycle detection rather
+ * Uses {@link ResourceGraph.dfs} for traversal and cycle detection rather
  * than hand-rolling recursion.
  *
  * @param resource The resource to check
- * @param resourceMap Lookup map of all resources by ID
  * @param graph Dependency graph built from the same resource set
  * @returns true if the resource is an implicitly-complete milestone
  */
-function isImplicitlyComplete(
-  resource: Resource,
-  resourceMap: ReadonlyMap<string, Resource>,
-  graph: DirectedGraph,
-): boolean {
+function isImplicitlyComplete(resource: Resource, graph: ResourceGraph): boolean {
   if (resource.type !== 'milestone') return false;
 
   const deps = graph.getSuccessors(resource.id);
@@ -38,7 +31,7 @@ function isImplicitlyComplete(
     (node, _path, depth) => {
       if (depth === 0) return true; // root milestone — expand
 
-      const dep = resourceMap.get(node);
+      const dep = graph.getResource(node);
       if (!dep) {
         allComplete = false;
         return false; // dangling ref — not complete
@@ -69,56 +62,36 @@ function isImplicitlyComplete(
  * The pipeline uses this variant to avoid rebuilding the graph and index that
  * later modules (cycles, dangling) also need.
  */
-function applyImplicitMilestoneCompletion(
-  resources: readonly Resource[],
-  resourcesById: ReadonlyMap<string, Resource>,
-  dependencyGraph: DirectedGraph,
-): readonly Resource[] {
+function applyImplicitMilestoneCompletion(graph: ResourceGraph): ResourceGraph {
+  const resources = graph.resources;
+
   const resolvedResources = resources.map(
     (resource): Resource =>
-      !resource.complete && isImplicitlyComplete(resource, resourcesById, dependencyGraph)
+      !resource.complete && isImplicitlyComplete(resource, graph)
         ? { ...resource, complete: true }
         : resource,
   );
 
-  return cloneAndFreezeResources(resolvedResources);
+  return ResourceGraph.fromResources(resolvedResources);
 }
 
 /**
  * Implicit-completion module.
  *
- * Reads:  { resources, resourcesById, graph }
- * Writes: { resources, resourcesById }    // logical replacement
+ * Reads:  { graph }
+ * Writes: { graph }    // logical replacement
  *
  * Implicit completion only flips `complete: true` on milestones whose
- * dependencies are all complete. It does not change ids or `depends_on`,
- * so the dependency `graph` remains valid and is NOT rebuilt.
- *
- * The `resourcesById` map, however, holds Resource references whose
- * `complete` flag has now changed, so the module returns a fresh index
- * over the resolved resource array.
- *
- * If `resources` is referentially unchanged (no implicit promotions),
- * the module returns the same envelope values to avoid unnecessary churn.
+ * dependencies are all complete. The stable baseline reconstructs a fresh
+ * ResourceGraph from the resolved resource snapshot.
  */
 export const ImplicitCompletionModule = defineModule(
   'ImplicitCompletion',
   (input: {
-    readonly resources: readonly Resource[];
-    readonly resourcesById: ReadonlyMap<string, Resource>;
-    readonly graph: DirectedGraph;
+    readonly graph: ResourceGraph;
   }): {
-    readonly resources: readonly Resource[];
-    readonly resourcesById: ReadonlyMap<string, Resource>;
+    readonly graph: ResourceGraph;
   } => {
-    const resolved = applyImplicitMilestoneCompletion(
-      input.resources,
-      input.resourcesById,
-      input.graph,
-    );
-    if (resolved === input.resources) {
-      return { resources: input.resources, resourcesById: input.resourcesById };
-    }
-    return { resources: resolved, resourcesById: indexResourcesById(resolved) };
+    return { graph: applyImplicitMilestoneCompletion(input.graph) };
   },
 );

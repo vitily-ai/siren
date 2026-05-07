@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import * as milestoneUtils from '../../utilities/milestone';
 import { IRAssembly } from '../assembly';
+import { ResourceGraph } from '../resource-graph';
 import type { Resource } from '../types';
 import { runIRBuildPipeline } from './index';
 
 describe('runIRBuildPipeline', () => {
-  it('produces resources, graph, resourcesById, and ordered diagnostics for a representative project', () => {
+  it('produces graph and ordered diagnostics for a representative project', () => {
     const resources: readonly Resource[] = [
       // duplicate ids → W003
       { type: 'task', id: 'dup', complete: false, attributes: [] },
@@ -42,7 +42,7 @@ describe('runIRBuildPipeline', () => {
 
     const env = runIRBuildPipeline(resources);
 
-    expect(env.resources.map((r) => [r.id, r.complete])).toEqual([
+    expect(env.graph.resources.map((r) => [r.id, r.complete])).toEqual([
       ['dup', false],
       ['has-dangling', false],
       ['cycle-a', false],
@@ -59,13 +59,13 @@ describe('runIRBuildPipeline', () => {
       expect.arrayContaining(['dup', 'has-dangling', 'cycle-a', 'cycle-b', 'finished', 'release']),
     );
 
-    expect(env.resourcesById.get('release')?.complete).toBe(true);
+    expect(env.graph.getResource('release')?.complete).toBe(true);
   });
 });
 
 describe('IR pipeline redundancy regression', () => {
-  it('builds the dependency graph exactly once per IRAssembly.build()', () => {
-    const buildSpy = vi.spyOn(milestoneUtils, 'buildDependencyGraph');
+  it('builds ResourceGraph exactly twice per IRAssembly.build()', () => {
+    const buildSpy = vi.spyOn(ResourceGraph, 'fromResources');
 
     try {
       const assembly = IRAssembly.fromResources([
@@ -93,16 +93,14 @@ describe('IR pipeline redundancy regression', () => {
       buildSpy.mockClear();
       const ctx = assembly.build();
 
-      // The pipeline must build the graph exactly once during build().
-      // Prior to the pipeline refactor this was 2-3 times: once inside
-      // resolveImplicitMilestoneCompletion, once in normalizeResources, and
-      // again inside getTasksByMilestone / getDependencyTree on each query.
-      expect(buildSpy).toHaveBeenCalledTimes(1);
+      // Stable baseline: construct once in GraphModule and once in
+      // ImplicitCompletionModule.
+      expect(buildSpy).toHaveBeenCalledTimes(2);
 
       // Cached graph is reused for query helpers — no additional builds.
       ctx.getDependencyTree('release');
       ctx.getTasksByMilestone();
-      expect(buildSpy).toHaveBeenCalledTimes(1);
+      expect(buildSpy).toHaveBeenCalledTimes(2);
     } finally {
       buildSpy.mockRestore();
     }

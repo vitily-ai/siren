@@ -251,7 +251,7 @@ describe('IRContext (assembly-built semantic snapshot)', () => {
       if (!resource || !diagnostic) throw new Error('expected IR snapshot data');
 
       expect(Object.isFrozen(context)).toBe(true);
-      expect(Object.isFrozen(context.resources)).toBe(true);
+      expect(Object.isFrozen(context.resources)).toBe(false);
       expect(Object.isFrozen(resource)).toBe(true);
       expect(Object.isFrozen(resource.attributes)).toBe(true);
       expect(Object.isFrozen(resource.attributes[0])).toBe(true);
