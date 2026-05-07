@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Resource } from '@sirenpm/core';
 import {
-  createIRContextFromParseResult,
+  createSirenProjectFromParseResult,
   renderSyntaxDocument,
   type SourceDocument,
 } from '@sirenpm/language';
@@ -91,7 +91,7 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
         return result;
       }
 
-      const { context: perFileIR } = createIRContextFromParseResult(parseResult);
+      const { context: perFileIR } = createSirenProjectFromParseResult(parseResult);
       const toWrite = renderSyntaxDocument(syntaxDocument);
 
       // Validate round-trip: parse formatted text and decode
@@ -103,7 +103,7 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
         console.error(`Format produced unparsable output for ${filePath}`);
         return result;
       }
-      const { context: decoded2 } = createIRContextFromParseResult(parse2);
+      const { context: decoded2 } = createSirenProjectFromParseResult(parse2);
       if (!resourcesEqual(perFileIR.resources, decoded2.resources)) {
         console.error(`Format round-trip changed semantics for ${filePath}; skipping`);
         if (process.env.SIREN_FORMAT_DEBUG === '1') {

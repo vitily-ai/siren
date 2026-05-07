@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { IRContext, Resource } from '@sirenpm/core';
+import type { Resource, SirenProject } from '@sirenpm/core';
 import {
-  createIRContextFromParseResult,
+  createSirenProjectFromParseResult,
   type ParseError,
   type SourceDocument,
 } from '@sirenpm/language';
@@ -19,7 +19,7 @@ export interface ProjectContext {
   files: string[];
   resources: Resource[];
   milestones: string[];
-  ir?: IRContext;
+  ir?: SirenProject;
   warnings: string[];
   errors: string[];
 }
@@ -163,7 +163,7 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
     return severity === 'warning' && !skippedDocs.has(document);
   });
 
-  const { context: ir, parseDiagnostics } = createIRContextFromParseResult({
+  const { context: ir, parseDiagnostics } = createSirenProjectFromParseResult({
     ...parseResult,
     errors: retainedParseWarnings,
     syntaxDocuments: filteredSyntaxDocuments,

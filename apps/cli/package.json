@@ -19,12 +19,13 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@sirenpm/core": "^0.2.0",
-    "@sirenpm/language": "^0.2.0"
+    "@sirenpm/core": "0.3.0",
+    "@sirenpm/language": "0.3.0"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
-    "tsup": "^8.3.5"
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2"
   },
   "engines": {
     "node": ">=24.0.0"
