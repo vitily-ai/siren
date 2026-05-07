@@ -1,4 +1,4 @@
-import { IRContext } from '@sirenpm/core';
+import { SirenBuilder } from '@sirenpm/core';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { getAdapter, parseAndDecodeAll } from './helper';
 
@@ -29,8 +29,8 @@ describe('short circuit defect is fixed', () => {
     expect(complete!.complete).toBe(true);
     expect(incomplete!.complete).toBe(false);
 
-    // Calculate dependency tree of root using IRContext
-    const irContext = IRContext.fromResources(resources);
+    // Calculate dependency tree of root from a built semantic project context
+    const irContext = SirenBuilder.fromResources(resources).build();
     const tree = irContext.getDependencyTree('ms');
 
     // ACCEPTANCE CRITERIA:

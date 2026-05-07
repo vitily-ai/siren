@@ -5,11 +5,11 @@
 
 // biome-ignore-all lint/performance/noBarrelFile: public package entrypoint; mirrors @sirenpm/core.
 
-export type { CreateIRContextResult } from './context-factory';
-// Bridge — decode parser output or syntax documents into a fully-populated IRContext.
+export type { CreateSirenProjectResult } from './context-factory';
+// Bridge — decode parser output or syntax documents into a fully-populated SirenProject.
 export {
-  createIRContextFromParseResult,
-  createIRContextFromSyntaxDocuments,
+  createSirenProjectFromParseResult,
+  createSirenProjectFromSyntaxDocuments,
 } from './context-factory';
 export type { ParseDiagnostic } from './decoder/index';
 // Decoder — Parsed Document Model → IR transformation, with language-phase diagnostics.

@@ -1,31 +1,30 @@
 /**
- * Bridge: decode syntax documents into an IRContext while surfacing parse-phase
+ * Bridge: decode syntax documents into a SirenProject while surfacing parse-phase
  * diagnostics separately. Semantic diagnostics ride on the returned
- * IRContext; grammar/parse-time diagnostics are returned alongside.
+ * SirenProject; grammar/parse-time diagnostics are returned alongside.
  */
 
-import { IRContext, type Resource } from '@sirenpm/core';
+import { type Resource, SirenBuilder, type SirenProject } from '@sirenpm/core';
 import { decodeSyntaxDocuments, type ParseDiagnostic } from './decoder/index';
 import type { ParseError, ParseResult } from './parser/adapter';
 import type { SyntaxDocument, SyntaxResource } from './syntax/types';
 
-export interface CreateIRContextResult {
-  readonly context: IRContext;
+export interface CreateSirenProjectResult {
+  readonly context: SirenProject;
   readonly parseDiagnostics: readonly ParseDiagnostic[];
 }
 
 /**
- * Decode parsed syntax documents into an IRContext.
+ * Decode parsed syntax documents into a fully resolved SirenProject.
  *
  * @param syntaxDocuments - Parsed document model values from parser output
  */
-export function createIRContextFromSyntaxDocuments(
+export function createSirenProjectFromSyntaxDocuments(
   syntaxDocuments: readonly SyntaxDocument[],
-): CreateIRContextResult {
+): CreateSirenProjectResult {
   const { document, diagnostics: parseDiagnostics } = decodeSyntaxDocuments(syntaxDocuments);
   const resources: readonly Resource[] = document?.resources ?? [];
-  const source = syntaxDocuments.length === 1 ? syntaxDocuments[0]?.source.name : undefined;
-  const context = IRContext.fromResources(resources, source);
+  const context = SirenBuilder.fromResources(resources).build();
   return { context, parseDiagnostics };
 }
 
@@ -110,9 +109,11 @@ function parseErrorsToDiagnostics(
 /**
  * Decode parser output into an IRContext using `ParseResult.syntaxDocuments`.
  */
-export function createIRContextFromParseResult(parseResult: ParseResult): CreateIRContextResult {
+export function createSirenProjectFromParseResult(
+  parseResult: ParseResult,
+): CreateSirenProjectResult {
   const syntaxDocuments = parseResult.syntaxDocuments ?? [];
-  const result = createIRContextFromSyntaxDocuments(syntaxDocuments);
+  const result = createSirenProjectFromSyntaxDocuments(syntaxDocuments);
   const parserDiagnostics = parseErrorsToDiagnostics(parseResult.errors, syntaxDocuments);
 
   return {

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { createIRContextFromParseResult } from '../../../src/context-factory';
+import { createSirenProjectFromParseResult } from '../../../src/context-factory';
 import type { SourceDocument } from '../../../src/parser/adapter';
 import { getTestAdapter } from '../../helpers/parser';
 import { getAdapter, parseAndDecodeAll } from './helper';
@@ -59,9 +59,13 @@ describe('project:overlapping-cycles', () => {
     const src = readFileSync(join(projectDir, 'main.siren'), 'utf-8');
     const parseResult = await adapterLocal.parse(doc(src));
     expect(parseResult.success).toBe(true);
-    const ir = createIRContextFromParseResult(parseResult).context;
-    expect(ir.cycles).toHaveLength(2);
-    const cycleNodes = ir.cycles.map((c) => c.nodes);
+    const ir = createSirenProjectFromParseResult(parseResult).context;
+    const cycleDiagnostics = ir.diagnostics.filter(
+      (diagnostic): diagnostic is { readonly code: 'W001'; readonly nodes: readonly string[] } =>
+        diagnostic.code === 'W001',
+    );
+    expect(cycleDiagnostics).toHaveLength(2);
+    const cycleNodes = cycleDiagnostics.map((cycle) => cycle.nodes);
     expect(cycleNodes).toContainEqual(['a', 'b', 'c', 'a']);
     expect(cycleNodes).toContainEqual(['a', 'c', 'a']);
   });

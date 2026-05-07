@@ -1,4 +1,4 @@
-import type { IRContext, IRExporter } from '@sirenpm/core';
+import type { IRExporter, SirenProject } from '@sirenpm/core';
 import type { CommentToken } from '../parser/adapter';
 import { SourceIndex } from '../parser/source-index';
 import type { SyntaxDocument, SyntaxIdentifier } from '../syntax/types';
@@ -76,7 +76,7 @@ function buildSourceIndexFromSyntaxDocuments(
  * and comments are used where possible. Without syntax context, output falls
  * back to semantic formatting.
  */
-export function exportToSiren(ctx: IRContext, options: ExportToSirenOptions = {}): string {
+export function exportToSiren(ctx: SirenProject, options: ExportToSirenOptions = {}): string {
   const syntaxDocuments = options.syntaxDocuments;
   const syntaxIdentifierLookup = buildSyntaxIdentifierLookup(syntaxDocuments);
 
@@ -110,7 +110,7 @@ export function exportToSiren(ctx: IRContext, options: ExportToSirenOptions = {}
 export class SirenExporter implements IRExporter {
   constructor(private readonly options: ExportToSirenOptions = {}) {}
 
-  export(ctx: IRContext): string {
+  export(ctx: SirenProject): string {
     return exportToSiren(ctx, this.options);
   }
 }

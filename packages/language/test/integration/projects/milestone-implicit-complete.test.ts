@@ -1,14 +1,14 @@
-import { IRContext } from '@sirenpm/core';
+import { SirenBuilder, type SirenProject } from '@sirenpm/core';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { getAdapter, parseAndDecodeAll } from './helper';
 
 describe('project:milestone-implicit-complete', () => {
-  let irContext: IRContext;
+  let irContext: SirenProject;
 
   beforeAll(async () => {
     const adapter = await getAdapter();
     const decoded = await parseAndDecodeAll(adapter, 'milestone-implicit-complete');
-    irContext = IRContext.fromResources(decoded.resources);
+    irContext = SirenBuilder.fromResources(decoded.resources).build();
   });
 
   it('resolves .complete to true on a milestone whose all direct deps are complete', () => {
@@ -40,12 +40,12 @@ describe('project:milestone-implicit-complete', () => {
 });
 
 describe('project:milestone-orphan-not-complete', () => {
-  let irContext: IRContext;
+  let irContext: SirenProject;
 
   beforeAll(async () => {
     const adapter = await getAdapter();
     const decoded = await parseAndDecodeAll(adapter, 'milestone-orphan-not-complete');
-    irContext = IRContext.fromResources(decoded.resources);
+    irContext = SirenBuilder.fromResources(decoded.resources).build();
   });
 
   it('does not resolve .complete on an orphan milestone with no depends_on', () => {

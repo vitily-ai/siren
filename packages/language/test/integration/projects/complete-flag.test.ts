@@ -1,17 +1,17 @@
-import { IRContext } from '@sirenpm/core';
+import { SirenBuilder, type SirenProject } from '@sirenpm/core';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { getAdapter, parseAndDecodeAll } from './helper';
 
 describe('project:complete-flag', () => {
   let adapter: any;
   let resources: any[];
-  let irContext: IRContext;
+  let irContext: SirenProject;
 
   beforeAll(async () => {
     adapter = await getAdapter();
     const decoded = await parseAndDecodeAll(adapter, 'complete-flag');
     resources = decoded.resources;
-    irContext = IRContext.fromResources(resources);
+    irContext = SirenBuilder.fromResources(resources).build();
   });
 
   it('decodes fixture and respects completed tasks (complete = true)', () => {

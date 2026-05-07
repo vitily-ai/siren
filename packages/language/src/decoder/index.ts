@@ -6,7 +6,6 @@ import type {
   ArrayValue,
   Attribute,
   AttributeValue,
-  Document,
   Origin,
   Resource,
   ResourceReference,
@@ -43,13 +42,16 @@ export interface ParseDiagnostic {
   readonly column?: number;
 }
 
+export interface DecodedDocument {
+  readonly resources: readonly Resource[];
+}
+
 /**
- * Result of decoding a CST into IR
- * @internal - Use IRContext.fromCst() instead
+ * Result of decoding a CST into a Project
  */
 export interface DecodeResult {
   /** The decoded document, or null if decoding failed with errors */
-  readonly document: Document | null;
+  readonly document: DecodedDocument | null;
   /** Parse-level diagnostics (grammar/syntax issues only) */
   readonly diagnostics: readonly ParseDiagnostic[];
   /** True if decoding succeeded without errors (warnings allowed) */
@@ -230,7 +232,6 @@ export function decodeSyntaxDocuments(syntaxDocuments: readonly SyntaxDocument[]
       ? null
       : {
           resources,
-          source: syntaxDocuments.length === 1 ? syntaxDocuments[0]?.source.name : undefined,
         },
     diagnostics,
     success: !hasErrors,
