@@ -136,7 +136,10 @@ export class ResourceGraph {
       if (frame.expand && frame.successorIndex < frame.successors.length) {
         const successor = frame.successors[frame.successorIndex];
         if (successor === undefined) {
-          frame.successorIndex = frame.successors.length;
+          // this can only happen if the successors array was malformed (e.g. had holes or non-string values)
+          // skip it for error tolerance
+          // TODO figure out how to report this as a non-fatal error
+          frame.successorIndex += 1;
           continue;
         }
         frame.successorIndex += 1;
