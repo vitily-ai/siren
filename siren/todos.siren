@@ -8,3 +8,7 @@ milestone assignment-streams {
 }
 
 milestone depends-on-regex {}
+
+task templates {
+  description = "Design and implement a templates feature for reusable task/milestone patterns"
+}
