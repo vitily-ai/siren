@@ -1,9 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { type AttributeValue, IRContext, isArray, isReference, type Resource } from '@sirenpm/core';
+import {
+  type AttributeValue,
+  isArray,
+  isReference,
+  type Resource,
+  SirenBuilder,
+} from '@sirenpm/core';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { createIRContextFromParseResult } from '../../src/context-factory';
+import { createSirenProjectFromParseResult } from '../../src/context-factory';
 import { exportToSiren } from '../../src/export/siren-exporter';
 import type { ParserAdapter, SourceDocument } from '../../src/parser/adapter';
 import { getTestAdapter } from '../helpers/parser';
@@ -54,7 +60,7 @@ describe('syntax-aware export', () => {
   it('preserves syntax identifier spelling for quoted IDs when syntaxDocuments are provided', async () => {
     const source = readProjectFixture('quoted-identifiers-format');
     const parseResult = await adapter.parse(doc(source));
-    const { context } = createIRContextFromParseResult(parseResult);
+    const { context } = createSirenProjectFromParseResult(parseResult);
 
     const exported = exportToSiren(context, { syntaxDocuments: parseResult.syntaxDocuments });
 
@@ -65,11 +71,11 @@ describe('syntax-aware export', () => {
   });
 
   it('quotes unsafe semantic IDs when syntax context is unavailable', () => {
-    const context = IRContext.fromResources([
+    const context = SirenBuilder.fromResources([
       { type: 'task', id: 'needs quote', complete: false, attributes: [] },
       { type: 'milestone', id: 'safe_id', complete: false, attributes: [] },
       { type: 'task', id: 'quote"inside', complete: false, attributes: [] },
-    ]);
+    ]).build();
 
     const exported = exportToSiren(context);
 
@@ -81,7 +87,7 @@ describe('syntax-aware export', () => {
   it('preserves comments and quoted headers in syntax-aware export', async () => {
     const source = readProjectFixture('comments-quoted-identifiers');
     const parseResult = await adapter.parse(doc(source));
-    const { context } = createIRContextFromParseResult(parseResult);
+    const { context } = createSirenProjectFromParseResult(parseResult);
 
     const exported = exportToSiren(context, { syntaxDocuments: parseResult.syntaxDocuments });
 
@@ -96,11 +102,11 @@ describe('syntax-aware export', () => {
     const source = readProjectFixture('comments-quoted-identifiers');
 
     const parseResult1 = await adapter.parse(doc(source));
-    const { context: context1 } = createIRContextFromParseResult(parseResult1);
+    const { context: context1 } = createSirenProjectFromParseResult(parseResult1);
     const exported = exportToSiren(context1, { syntaxDocuments: parseResult1.syntaxDocuments });
 
     const parseResult2 = await adapter.parse(doc(exported));
-    const { context: context2 } = createIRContextFromParseResult(parseResult2);
+    const { context: context2 } = createSirenProjectFromParseResult(parseResult2);
 
     expect(normalizeResources(context2.resources)).toEqual(normalizeResources(context1.resources));
   });

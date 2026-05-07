@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { createIRContextFromParseResult } from '../../../src/context-factory';
+import { createSirenProjectFromParseResult } from '../../../src/context-factory';
 import type { SourceDocument } from '../../../src/parser/adapter';
 import { getTestAdapter } from '../../helpers/parser';
 import { getAdapter, parseAndDecodeAll } from './helper';
@@ -44,8 +44,12 @@ describe('project:circular-depends', () => {
     const projectDir = join(projectsDir, 'circular-depends', 'siren');
     const src = readFileSync(join(projectDir, 'main.siren'), 'utf-8');
     const parseResult = await adapterLocal.parse(doc(src));
-    const ir = createIRContextFromParseResult(parseResult).context;
-    expect(ir.cycles).toHaveLength(1);
-    expect(ir.cycles[0].nodes).toEqual(['task1', 'task2', 'task3', 'task1']);
+    const ir = createSirenProjectFromParseResult(parseResult).context;
+    const cycleDiagnostics = ir.diagnostics.filter(
+      (diagnostic): diagnostic is { readonly code: 'W001'; readonly nodes: readonly string[] } =>
+        diagnostic.code === 'W001',
+    );
+    expect(cycleDiagnostics).toHaveLength(1);
+    expect(cycleDiagnostics[0]?.nodes).toEqual(['task1', 'task2', 'task3', 'task1']);
   });
 });

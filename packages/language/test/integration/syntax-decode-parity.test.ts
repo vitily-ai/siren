@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { createIRContextFromParseResult } from '../../src/context-factory';
+import { createSirenProjectFromParseResult } from '../../src/context-factory';
 import type { ParserAdapter, SourceDocument } from '../../src/parser/adapter';
 import { getTestAdapter } from '../helpers/parser';
 
@@ -23,7 +23,7 @@ describe('Syntax decode parity', () => {
     ];
 
     const parseResult = await adapter.parse(documents);
-    const { context } = createIRContextFromParseResult(parseResult);
+    const { context } = createSirenProjectFromParseResult(parseResult);
 
     expect(
       context.resources.map((resource) => `${resource.origin?.document}:${resource.id}`),
@@ -40,7 +40,7 @@ describe('Syntax decode parity', () => {
     ].join('\n');
 
     const parseResult = await adapter.parse([{ name: 'origin.siren', content: source }]);
-    const { context } = createIRContextFromParseResult(parseResult);
+    const { context } = createSirenProjectFromParseResult(parseResult);
 
     const resource = context.resources[0];
     expect(resource).toBeDefined();
@@ -63,7 +63,7 @@ describe('Syntax decode parity', () => {
     const source = 'task done complete {\n  complete = false\n}\n';
 
     const parseResult = await adapter.parse([{ name: 'complete.siren', content: source }]);
-    const { context, parseDiagnostics } = createIRContextFromParseResult(parseResult);
+    const { context, parseDiagnostics } = createSirenProjectFromParseResult(parseResult);
 
     expect(context.resources[0]?.complete).toBe(true);
 
@@ -78,7 +78,7 @@ describe('Syntax decode parity', () => {
     const parseResult = await adapter.parse([
       { name: 'duplicate-complete.siren', content: source },
     ]);
-    const { context, parseDiagnostics } = createIRContextFromParseResult(parseResult);
+    const { context, parseDiagnostics } = createSirenProjectFromParseResult(parseResult);
 
     expect(context.resources[0]?.complete).toBe(true);
 
@@ -102,7 +102,7 @@ describe('Syntax decode parity', () => {
       },
     ]);
 
-    const { parseDiagnostics } = createIRContextFromParseResult(parseResult);
+    const { parseDiagnostics } = createSirenProjectFromParseResult(parseResult);
 
     const error = parseDiagnostics.find((diagnostic) => diagnostic.code === 'EL001');
     expect(error).toBeDefined();

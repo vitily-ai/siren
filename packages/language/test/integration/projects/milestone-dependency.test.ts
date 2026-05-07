@@ -1,4 +1,4 @@
-import { IRContext } from '@sirenpm/core';
+import { SirenBuilder } from '@sirenpm/core';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { getAdapter, parseAndDecodeAll } from './helper';
 
@@ -17,7 +17,7 @@ describe('project:milestone-dependency', () => {
   });
 
   it('treats milestone dependencies as leaves when expanded from a root milestone', () => {
-    const context = IRContext.fromResources(resources);
+    const context = SirenBuilder.fromResources(resources).build();
     const tree = context.getDependencyTree('root');
 
     // root -> shows_as_root_dep (task) -> shows_as_leaf_dep_of_root (milestone)

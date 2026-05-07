@@ -1,4 +1,4 @@
-import type { AttributeValue, IRContext } from '@sirenpm/core';
+import type { AttributeValue, SirenProject } from '@sirenpm/core';
 import type { SourceIndex } from '../parser/source-index';
 import type { SyntaxDocument, SyntaxIdentifier } from '../syntax/types';
 import { formatAttributeLine, formatResourceIdentifier, wrapResourceBlock } from './formatters';
@@ -57,7 +57,7 @@ function findSyntaxIdentifierForResource(
  * the public package surface — consumers go through `exportToSiren`.
  */
 export function exportWithComments(
-  ctx: IRContext,
+  ctx: SirenProject,
   sourceIndex: SourceIndex,
   syntaxDocuments?: readonly SyntaxDocument[],
 ): string {
