@@ -80,13 +80,13 @@ describe('Pipeline', () => {
     const steps = ['seed'];
     const tags = new Set(['core']);
     const Producer = defineModule('Producer', (_: Envelope) => ({
-      metadata: new Map([
+      metadata: new Map<string, unknown>([
         ['steps', steps],
         ['tags', tags],
       ]),
     }));
 
-    let downstreamMetadata: ReadonlyMap<string, unknown> | null = null;
+    let downstreamMetadata: ReadonlyMap<string, unknown> = new Map();
     const Consumer = defineModule(
       'Consumer',
       (input: { readonly metadata: ReadonlyMap<string, unknown> }) => {
@@ -97,21 +97,22 @@ describe('Pipeline', () => {
 
     Pipeline.start<Envelope>().pipe(Producer).pipe(Consumer).run({});
 
-    expect(downstreamMetadata).not.toBeNull();
     expect(downstreamMetadata).toBeInstanceOf(Map);
     expectReadOnlyCollectionMutation(
       () => (downstreamMetadata as Map<string, unknown>).set('extra', true),
       'map is read-only',
     );
 
-    const frozenSteps = downstreamMetadata?.get('steps');
+    const metadata = downstreamMetadata;
+
+    const frozenSteps = metadata.get('steps');
     expect(frozenSteps).toBe(steps);
     expect(Object.isFrozen(frozenSteps)).toBe(true);
     expect(() => {
       (frozenSteps as string[]).push('done');
     }).toThrow();
 
-    const frozenTags = downstreamMetadata?.get('tags');
+    const frozenTags = metadata.get('tags');
     expect(frozenTags).toBe(tags);
     expect(frozenTags).toBeInstanceOf(Set);
     expectReadOnlyCollectionMutation(

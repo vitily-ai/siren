@@ -1,5 +1,4 @@
-import type { DirectedGraph } from '../../../utilities/graph';
-import { buildDependencyGraph } from '../../../utilities/milestone';
+import { ResourceGraph } from '../../resource-graph';
 import type { Resource } from '../../types';
 import { defineModule } from '../types';
 
@@ -15,7 +14,7 @@ import { defineModule } from '../types';
  */
 export const GraphModule = defineModule(
   'Graph',
-  (input: { readonly resources: readonly Resource[] }): { readonly graph: DirectedGraph } => {
-    return { graph: buildDependencyGraph(input.resources) };
+  (input: { readonly resources: readonly Resource[] }): { readonly graph: ResourceGraph } => {
+    return { graph: ResourceGraph.fromResources(input.resources) };
   },
 );

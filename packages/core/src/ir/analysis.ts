@@ -1,5 +1,4 @@
 import { getDependsOn } from '../utilities/entry';
-import type { DirectedGraph } from '../utilities/graph';
 import type {
   CircularDependencyDiagnostic,
   DanglingDependencyDiagnostic,
@@ -7,6 +6,7 @@ import type {
   Diagnostic,
   DuplicateIdDiagnostic,
 } from './diagnostics';
+import type { ResourceGraph } from './resource-graph';
 import {
   firstOccurrencePositionForResource,
   positionForResource,
@@ -20,7 +20,7 @@ export interface SemanticAnalysisInput {
   readonly rawResources: readonly Resource[];
   readonly resources: readonly Resource[];
   readonly resourcesById: ReadonlyMap<string, Resource>;
-  readonly dependencyGraph: DirectedGraph;
+  readonly dependencyGraph: ResourceGraph;
 }
 
 export interface SemanticAnalysisSnapshot {

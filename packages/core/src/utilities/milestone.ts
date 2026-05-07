@@ -1,13 +1,12 @@
+import type { ResourceGraph } from '../ir/resource-graph';
 import type { Resource } from '../ir/types';
-import { getDependsOn } from './entry';
-import { DirectedGraph } from './graph';
 
 /**
  * Extracts milestone IDs from an array of resources.
  * @param resources Array of Siren resources
  * @returns Array of milestone IDs
  */
-export function getMilestoneIds(resources: Resource[]): string[] {
+export function getMilestoneIds(resources: readonly Resource[]): string[] {
   return resources
     .filter((resource) => resource.type === 'milestone')
     .map((resource) => resource.id);
@@ -16,15 +15,12 @@ export function getMilestoneIds(resources: Resource[]): string[] {
 // TODO this needs to just be a flattening wrapper over getDependencyTree(depth=1) - it is effectively the same traversal
 /**
  * Returns a Map where keys are milestone IDs and values are arrays of incomplete tasks that the milestone depends on.
- * @param resources Array of Siren resources
- * @param graph Optional pre-built dependency graph; built from `resources` if omitted.
+ * @param graph Resource graph snapshot
  * @returns Map<string, Resource[]>
  */
 
-export function getTasksByMilestone(
-  resources: Resource[],
-  graph: DirectedGraph = buildDependencyGraph(resources),
-): Map<string, Resource[]> {
+export function getTasksByMilestone(graph: ResourceGraph): Map<string, Resource[]> {
+  const resources = graph.resources;
   const taskMap = new Map(resources.filter((r) => r.type === 'task').map((r) => [r.id, r]));
   const tasksByMilestone = new Map<string, Resource[]>();
 
@@ -39,23 +35,4 @@ export function getTasksByMilestone(
   }
 
   return tasksByMilestone;
-}
-
-/**
- * Build a directed graph of resource dependencies from depends_on attributes.
- * @param resources Array of Siren resources
- * @returns DirectedGraph where edges represent dependencies
- */
-export function buildDependencyGraph(resources: readonly Resource[]): DirectedGraph {
-  const graph = new DirectedGraph();
-
-  for (const resource of resources) {
-    graph.addNode(resource.id);
-    const dependsOn = getDependsOn(resource);
-    for (const depId of dependsOn) {
-      graph.addEdge(resource.id, depId);
-    }
-  }
-
-  return graph;
 }

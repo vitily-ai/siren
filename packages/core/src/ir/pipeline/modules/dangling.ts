@@ -1,22 +1,24 @@
 import { diagnoseDanglingDependencies } from '../../analysis';
 import type { DanglingDependencyDiagnostic } from '../../diagnostics';
-import type { Resource } from '../../types';
+import type { ResourceGraph } from '../../resource-graph';
 import { defineModule } from '../types';
 
 /**
  * Dangling module: emit W002 diagnostics for dependencies that don't resolve.
  *
- * Reads:  { resources, resourcesById }
+ * Reads:  { graph }
  * Writes: { danglingDiagnostics }
  */
 export const DanglingModule = defineModule(
   'Dangling',
   (input: {
-    readonly resources: readonly Resource[];
-    readonly resourcesById: ReadonlyMap<string, Resource>;
+    readonly graph: ResourceGraph;
   }): { readonly danglingDiagnostics: readonly DanglingDependencyDiagnostic[] } => {
     return {
-      danglingDiagnostics: diagnoseDanglingDependencies(input.resources, input.resourcesById),
+      danglingDiagnostics: diagnoseDanglingDependencies(
+        input.graph.resources,
+        input.graph.resourcesById,
+      ),
     };
   },
 );

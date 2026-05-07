@@ -1,5 +1,5 @@
-import type { DirectedGraph } from '../../utilities/graph';
 import type { Diagnostic } from '../diagnostics';
+import type { ResourceGraph } from '../resource-graph';
 import type { Resource } from '../types';
 import { ImplicitCompletionModule } from './modules/completion';
 import { CyclesModule } from './modules/cycles';
@@ -7,7 +7,6 @@ import { DanglingModule } from './modules/dangling';
 import { DedupModule } from './modules/dedup';
 import { FinalizeModule } from './modules/finalize';
 import { GraphModule } from './modules/graph';
-import { IndexModule } from './modules/index-by-id';
 import { Pipeline } from './runner';
 
 /**
@@ -23,18 +22,15 @@ import { Pipeline } from './runner';
  *
  *   seed { rawResources }
  *     → Dedup       adds   { resources, duplicateDiagnostics }
- *     → Index       adds   { resourcesById }
  *     → Graph       adds   { graph }
- *     → Completion  rewrites { resources, resourcesById }   (graph stays valid)
+ *     → Completion  rewrites { graph }
  *     → Cycles      adds   { cycles, cycleDiagnostics }
  *     → Dangling    adds   { danglingDiagnostics }
  *     → Finalize    adds   { diagnostics }
  */
 export interface IRBuildEnvelope {
   readonly rawResources: readonly Resource[];
-  readonly resources: readonly Resource[];
-  readonly resourcesById: ReadonlyMap<string, Resource>;
-  readonly graph: DirectedGraph;
+  readonly graph: ResourceGraph;
   readonly diagnostics: readonly Diagnostic[];
 }
 
@@ -45,7 +41,6 @@ export interface IRBuildEnvelope {
 export function runIRBuildPipeline(rawResources: readonly Resource[]): IRBuildEnvelope {
   const pipeline = Pipeline.start<{ readonly rawResources: readonly Resource[] }>()
     .pipe(DedupModule)
-    .pipe(IndexModule)
     .pipe(GraphModule)
     .pipe(ImplicitCompletionModule)
     .pipe(CyclesModule)
@@ -55,8 +50,6 @@ export function runIRBuildPipeline(rawResources: readonly Resource[]): IRBuildEn
   const env = pipeline.run({ rawResources });
   return {
     rawResources: env.rawResources,
-    resources: env.resources,
-    resourcesById: env.resourcesById,
     graph: env.graph,
     diagnostics: env.diagnostics,
   };
