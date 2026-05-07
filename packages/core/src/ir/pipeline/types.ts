@@ -2,7 +2,7 @@
  * IR pipeline primitives.
  *
  * The IR pipeline is a strict, strongly-typed forward-pass composition of
- * pure modules used internally by IRAssembly to build an IRContext.
+ * pure modules used internally by SirenBuilder to build a SirenProject.
  *
  * Module rules:
  * - A module is a pure function `(input) => additions`.

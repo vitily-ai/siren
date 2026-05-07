@@ -12,8 +12,8 @@ import { Pipeline } from './runner';
 /**
  * Final shape of the IR build pipeline envelope after running every module.
  *
- * This is the internal projection consumed by `IRContext`. It is not part of
- * the public core surface — `IRContext` exposes only what callers need
+ * This is the internal projection consumed by `SirenProject`. It is not part of
+ * the public core surface — `SirenProject` exposes only what callers need
  * (`resources`, `diagnostics`, `graph`, query helpers).
  *
  * Pipeline topology (single direct upstream is the immediately preceding
@@ -36,7 +36,7 @@ export interface IRBuildEnvelope {
 
 /**
  * Build the IR pipeline envelope for a frozen raw resource snapshot. This is
- * the only path used to construct an `IRContext`.
+ * the only path used to construct a `SirenProject`.
  */
 export function runIRBuildPipeline(rawResources: readonly Resource[]): IRBuildEnvelope {
   const pipeline = Pipeline.start<{ readonly rawResources: readonly Resource[] }>()

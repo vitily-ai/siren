@@ -2,8 +2,8 @@
  * IR module exports
  */
 
-export { IRAssembly } from './assembly';
-export { IRContext } from './context';
+export { SirenBuilder } from './assembly';
+export { SirenProject } from './context';
 export type {
   CircularDependencyDiagnostic,
   DanglingDependencyDiagnostic,

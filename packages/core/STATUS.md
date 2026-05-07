@@ -5,11 +5,11 @@
 ## Public surface
 
 - **IR types** (`src/ir/types.ts`): `Resource`, `Attribute`, `AttributeValue`, `Origin`, plus type guards.
-- **`IRAssembly`** (`src/ir/assembly.ts`): **canonical and only public construction path**. Preserves caller order, including duplicates, exposes recursively frozen raw inputs on `assembly.resources`, and builds an immutable `IRContext` through `assembly.build()`.
-- **`IRContext`** (`src/ir/context.ts`): **immutable built semantic snapshot**. Contains resolved resources (deduplication + implicit milestone completion), query helpers, and aggregate diagnostics. `IRContext.diagnostics` provides the **full semantic diagnostic snapshot** for that context (W001/W002/W003), not a delta. `IRContext` is non-publicly constructible and is created internally via a symbol-keyed factory used by `IRAssembly`.
+- **`SirenBuilder`** (`src/ir/assembly.ts`): **canonical and only public construction path**. Preserves caller order, including duplicates, exposes recursively frozen raw inputs on `builder.resources`, and builds an immutable `SirenProject` through `builder.build()`.
+- **`SirenProject`** (`src/ir/context.ts`): **immutable built semantic snapshot**. Contains resolved resources (deduplication + implicit milestone completion), query helpers, and aggregate diagnostics. `SirenProject.diagnostics` provides the **full semantic diagnostic snapshot** for that project (W001/W002/W003), not a delta. `SirenProject` is non-publicly constructible and is created internally via a symbol-keyed factory used by `SirenBuilder`.
 - **Semantic diagnostics** (`src/ir/diagnostics.ts`, `src/ir/analysis.ts`): `CircularDependencyDiagnostic` (W001), `DanglingDependencyDiagnostic` (W002), `DuplicateIdDiagnostic` (W003). All extend `DiagnosticBase`; analysis preserves ordering as cycles, dangling dependencies, then duplicates.
 - **`DiagnosticBase`** (`src/ir/diagnostics.ts`): structural shape `{ code, severity, file?, line?, column? }` with no `message`. Frontends assemble display text from structured fields.
-- **`IRExporter`** (`src/ir/exporter.ts`): `interface IRExporter { export(ctx: IRContext): string }`. Implemented in `@sirenpm/language` (e.g. `SirenExporter`).
+- **`IRExporter`** (`src/ir/exporter.ts`): `interface IRExporter { export(ctx: SirenProject): string }`. Implemented in `@sirenpm/language` (e.g. `SirenExporter`).
 - **Utilities** (`src/utilities/`): `DependencyTree`, milestone helpers, entry/graph helpers — usable across all frontends.
 
 ## Constraints
@@ -26,7 +26,7 @@
 
 ## Testing
 
-Vitest, Node environment. Tests cover IR types, `IRContext` behavior, semantic diagnostics, and utilities. There are no parse/decode tests in this package — those live in `@sirenpm/language`.
+Vitest, Node environment. Tests cover IR types, `SirenProject` behavior, semantic diagnostics, and utilities. There are no parse/decode tests in this package — those live in `@sirenpm/language`.
 
 ```
 yarn workspace @sirenpm/core test

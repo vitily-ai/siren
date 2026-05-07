@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { IRAssembly } from './assembly';
-import { IRContext } from './context';
+import { SirenBuilder } from './assembly';
+import { SirenProject } from './context';
 import { isArray, isReference, type Origin, type Resource } from './types';
 
 function origin(document: string, startRow: number): Origin {
@@ -13,7 +13,7 @@ function origin(document: string, startRow: number): Origin {
   };
 }
 
-describe('IRAssembly', () => {
+describe('SirenBuilder', () => {
   it('preserves caller resource order in assembly resources and first-occurrence order in the built context', () => {
     const resources: Resource[] = [
       { type: 'task', id: 'second', complete: false, attributes: [] },
@@ -21,7 +21,7 @@ describe('IRAssembly', () => {
       { type: 'task', id: 'second', complete: true, attributes: [] },
     ];
 
-    const assembly = IRAssembly.fromResources(resources);
+    const assembly = SirenBuilder.fromResources(resources);
     const context = assembly.build();
 
     expect(assembly.resources.map((resource) => resource.id)).toEqual([
@@ -61,7 +61,7 @@ describe('IRAssembly', () => {
         document: 'project.siren',
       },
     };
-    const assembly = IRAssembly.fromResources([sourceResource]);
+    const assembly = SirenBuilder.fromResources([sourceResource]);
     const rawResource = assembly.resources[0];
 
     expect(rawResource).toBeDefined();
@@ -104,8 +104,8 @@ describe('IRAssembly', () => {
     expect(rawElement.id).toBe('task-b');
   });
 
-  it('builds repeatable non-consuming IRContext instances', () => {
-    const assembly = IRAssembly.fromResources([
+  it('builds repeatable non-consuming SirenProject instances', () => {
+    const assembly = SirenBuilder.fromResources([
       { type: 'task', id: 'task-a', complete: false, attributes: [] },
       { type: 'task', id: 'task-b', complete: false, attributes: [] },
     ]);
@@ -113,8 +113,8 @@ describe('IRAssembly', () => {
     const firstContext = assembly.build();
     const secondContext = assembly.build();
 
-    expect(firstContext).toBeInstanceOf(IRContext);
-    expect(secondContext).toBeInstanceOf(IRContext);
+    expect(firstContext).toBeInstanceOf(SirenProject);
+    expect(secondContext).toBeInstanceOf(SirenProject);
     expect(firstContext).not.toBe(secondContext);
     expect(firstContext.resources.map((resource) => resource.id)).toEqual(['task-a', 'task-b']);
     expect(secondContext.resources.map((resource) => resource.id)).toEqual(['task-a', 'task-b']);
@@ -127,7 +127,7 @@ describe('IRAssembly', () => {
       { type: 'task', id: 'duplicate', complete: true, attributes: [] },
     ];
 
-    const assembly = IRAssembly.fromResources(resources);
+    const assembly = SirenBuilder.fromResources(resources);
     const context = assembly.build();
 
     expect(assembly.resources.map((resource) => resource.complete)).toEqual([false, true]);
@@ -137,7 +137,7 @@ describe('IRAssembly', () => {
   });
 
   it('builds the expected immutable context output with ordered diagnostics and source attribution', () => {
-    const assembly = IRAssembly.fromResources([
+    const assembly = SirenBuilder.fromResources([
       {
         type: 'task',
         id: 'cycle-a',
@@ -226,8 +226,8 @@ describe('IRAssembly', () => {
     expect(Object.isFrozen(context.resources)).toBe(false);
     expect(Object.isFrozen(context.diagnostics)).toBe(true);
     expect(Object.isFrozen(context.diagnostics[0])).toBe(true);
-    expect('cycles' in (context as Record<string, unknown>)).toBe(false);
-    expect('danglingDiagnostics' in (context as Record<string, unknown>)).toBe(false);
-    expect('duplicateDiagnostics' in (context as Record<string, unknown>)).toBe(false);
+    expect('cycles' in (context as unknown as Record<string, unknown>)).toBe(false);
+    expect('danglingDiagnostics' in (context as unknown as Record<string, unknown>)).toBe(false);
+    expect('duplicateDiagnostics' in (context as unknown as Record<string, unknown>)).toBe(false);
   });
 });

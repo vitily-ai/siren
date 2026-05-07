@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { IRAssembly } from './assembly';
+import { SirenBuilder } from './assembly';
 import type { Resource } from './types';
 
 function buildContext(resources: readonly Resource[]) {
-  return IRAssembly.fromResources(resources).build();
+  return SirenBuilder.fromResources(resources).build();
 }
 
-describe('IRContext (assembly-built semantic snapshot)', () => {
+describe('SirenProject (builder-built semantic snapshot)', () => {
   describe('diagnostics without source attribution', () => {
     it('generates W002 diagnostics without file info when origins are missing', () => {
       const context = buildContext([
@@ -221,10 +221,10 @@ describe('IRContext (assembly-built semantic snapshot)', () => {
     it('does not expose removed legacy snapshot surfaces', () => {
       const context = buildContext([]);
 
-      expect('source' in (context as Record<string, unknown>)).toBe(false);
-      expect('cycles' in (context as Record<string, unknown>)).toBe(false);
-      expect('danglingDiagnostics' in (context as Record<string, unknown>)).toBe(false);
-      expect('duplicateDiagnostics' in (context as Record<string, unknown>)).toBe(false);
+      expect('source' in (context as unknown as Record<string, unknown>)).toBe(false);
+      expect('cycles' in (context as unknown as Record<string, unknown>)).toBe(false);
+      expect('danglingDiagnostics' in (context as unknown as Record<string, unknown>)).toBe(false);
+      expect('duplicateDiagnostics' in (context as unknown as Record<string, unknown>)).toBe(false);
     });
 
     it('freezes context snapshot data', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { IRAssembly } from '../assembly';
+import { SirenBuilder } from '../assembly';
 import { ResourceGraph } from '../resource-graph';
 import type { Resource } from '../types';
 import { runIRBuildPipeline } from './index';
@@ -64,11 +64,11 @@ describe('runIRBuildPipeline', () => {
 });
 
 describe('IR pipeline redundancy regression', () => {
-  it('builds ResourceGraph exactly twice per IRAssembly.build()', () => {
+  it('builds ResourceGraph exactly twice per SirenBuilder.build()', () => {
     const buildSpy = vi.spyOn(ResourceGraph, 'fromResources');
 
     try {
-      const assembly = IRAssembly.fromResources([
+      const assembly = SirenBuilder.fromResources([
         { type: 'task', id: 'task-a', complete: true, attributes: [] },
         { type: 'task', id: 'task-b', complete: true, attributes: [] },
         {

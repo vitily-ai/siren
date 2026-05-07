@@ -16,10 +16,10 @@ export type {
 /**
  * Immutable IR context that exposes semantic snapshot data and query helpers.
  *
- * Instances are built internally from IRAssembly and cannot be publicly
+ * Instances are built internally from SirenBuilder and cannot be publicly
  * constructed.
  */
-export class IRContext {
+export class SirenProject {
   private readonly envelope: IRBuildEnvelope;
 
   private constructor(resources: readonly Resource[]) {
@@ -28,10 +28,10 @@ export class IRContext {
   }
 
   /**
-   * Internal construction path used by IRAssembly.
+   * Internal construction path used by SirenBuilder.
    */
-  static [IR_CONTEXT_FACTORY](resources: readonly Resource[]): IRContext {
-    return new IRContext(resources);
+  static [IR_CONTEXT_FACTORY](resources: readonly Resource[]): SirenProject {
+    return new SirenProject(resources);
   }
 
   /**

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { IRAssembly, IRContext, type Resource, version } from './index';
+import { type Resource, SirenBuilder, SirenProject, version } from './index';
 
 function buildContext(resources: readonly Resource[]) {
-  return IRAssembly.fromResources(resources).build();
+  return SirenBuilder.fromResources(resources).build();
 }
 
 describe('@sirenpm/core', () => {
@@ -10,13 +10,13 @@ describe('@sirenpm/core', () => {
     expect(version).toMatch(/^\d+\.\d+\.\d+/);
   });
 
-  it('exports IRAssembly', () => {
-    expect(IRAssembly.fromResources([]).resources).toEqual([]);
+  it('exports SirenBuilder', () => {
+    expect(SirenBuilder.fromResources([]).resources).toEqual([]);
   });
 
-  it('exports IRContext and builds it through IRAssembly', () => {
+  it('exports SirenProject and builds it through SirenBuilder', () => {
     const context = buildContext([]);
-    expect(context).toBeInstanceOf(IRContext);
+    expect(context).toBeInstanceOf(SirenProject);
   });
 
   describe('getMilestoneIds', () => {

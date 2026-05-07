@@ -20,7 +20,7 @@ function orderSemanticDiagnostics(input: {
 
 /**
  * Finalize module: collapse the per-rule diagnostic arrays into the single
- * ordered `diagnostics` snapshot exposed by IRContext (W001 → W002 → W003).
+ * ordered `diagnostics` snapshot exposed by SirenProject (W001 → W002 → W003).
  *
  * Reads:  { cycleDiagnostics, danglingDiagnostics, duplicateDiagnostics }
  * Writes: { diagnostics }

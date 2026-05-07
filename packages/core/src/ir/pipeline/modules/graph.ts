@@ -10,7 +10,7 @@ import { defineModule } from '../types';
  *
  * The graph stores ids and edges, both of which are unaffected by implicit
  * completion (which only flips `complete: true`). Downstream modules and
- * `IRContext` therefore reuse this single graph instance.
+ * `SirenProject` therefore reuse this single graph instance.
  */
 export const GraphModule = defineModule(
   'Graph',
