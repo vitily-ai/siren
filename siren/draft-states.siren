@@ -1,6 +1,5 @@
 milestone draft-states {
   description = "introduce a tri-state 'draft' / 'active' / 'complete' status for resources, replacing Resource.complete: boolean"
-
   // Decisions
   // - Tri-state `status: 'draft' | 'active' | 'complete'` replaces `complete: boolean`
   //   outright. Single source of truth via `status`; isComplete/isDraft/isActive
@@ -23,7 +22,6 @@ milestone draft-states {
   //   stub is obsolete: orphan milestones already return false from
   //   isImplicitlyComplete. This milestone is a deliberate semantic upgrade,
   //   not a bugfix.
-
   // Verification
   // - `yarn workspace @sirenpm/core test` passes with new resolveStatus cases.
   // - `yarn workspace @sirenpm/language test` passes with new snippet, project,
@@ -32,27 +30,14 @@ milestone draft-states {
   // - `yarn workspaces foreach -pv run test` clean from repo root.
   // - Manual roundtrip: a fixture mixing `complete` and `draft` resources
   //   exports byte-identical to its source.
-
-  depends_on = [
-    ds-ir,
-    ds-parse,
-    ds-export,
-    ds-downstream,
-  ]
+  depends_on = [ds-ir, ds-parse, ds-export, ds-downstream]
 }
 
 // Phase 1 — IR & resolution
 
 milestone ds-ir {
   description = "introduce Resource.status tri-state in core IR and route promotion through it"
-  depends_on = [
-    ds-status-type,
-    ds-resolve-status,
-    ds-context-promotion,
-    ds-helpers,
-    ds-core-callsite-migration,
-    ds-core-tests,
-  ]
+  depends_on = [ds-status-type, ds-resolve-status, ds-context-promotion, ds-helpers, ds-core-callsite-migration, ds-core-tests]
 }
 
 task ds-status-type complete {
@@ -88,12 +73,7 @@ task ds-core-tests {
 
 milestone ds-parse {
   description = "add the `draft` keyword to the grammar, decode it into status, and emit conflict diagnostics"
-  depends_on = [
-    ds-grammar-draft-keyword,
-    ds-decoder-status,
-    ds-parse-diagnostics,
-    ds-snippet-fixtures,
-  ]
+  depends_on = [ds-grammar-draft-keyword, ds-decoder-status, ds-parse-diagnostics, ds-snippet-fixtures]
 }
 
 task ds-grammar-draft-keyword {
@@ -120,10 +100,7 @@ task ds-snippet-fixtures {
 
 milestone ds-export {
   description = "emit `draft` and `complete` keywords from the exporter and lock roundtrip behavior"
-  depends_on = [
-    ds-exporter-status,
-    ds-export-tests,
-  ]
+  depends_on = [ds-exporter-status, ds-export-tests]
 }
 
 task ds-exporter-status {
@@ -140,12 +117,7 @@ task ds-export-tests {
 
 milestone ds-downstream {
   description = "migrate apps/cli and apps/web off .complete and lock the milestone-files synthetic-as-draft contract"
-  depends_on = [
-    ds-cli-callsite-migration,
-    ds-web-callsite-migration,
-    ds-cli-goldens,
-    ds-milestone-files-fixture,
-  ]
+  depends_on = [ds-cli-callsite-migration, ds-web-callsite-migration, ds-cli-goldens, ds-milestone-files-fixture]
 }
 
 task ds-cli-callsite-migration {
