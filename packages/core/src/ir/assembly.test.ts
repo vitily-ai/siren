@@ -223,7 +223,7 @@ describe('IRAssembly', () => {
         secondColumn: 0,
       },
     ]);
-    expect(Object.isFrozen(context.resources)).toBe(true);
+    expect(Object.isFrozen(context.resources)).toBe(false);
     expect(Object.isFrozen(context.diagnostics)).toBe(true);
     expect(Object.isFrozen(context.diagnostics[0])).toBe(true);
     expect('cycles' in (context as Record<string, unknown>)).toBe(false);

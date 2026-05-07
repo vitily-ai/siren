@@ -1,5 +1,4 @@
 import { getDependsOn } from '../utilities/entry';
-import type { DirectedGraph } from '../utilities/graph';
 import type {
   CircularDependencyDiagnostic,
   DanglingDependencyDiagnostic,
@@ -7,6 +6,7 @@ import type {
   Diagnostic,
   DuplicateIdDiagnostic,
 } from './diagnostics';
+import type { ResourceGraph } from './resource-graph';
 import {
   firstOccurrencePositionForResource,
   positionForResource,
@@ -18,9 +18,7 @@ import type { Resource } from './types';
 
 export interface SemanticAnalysisInput {
   readonly rawResources: readonly Resource[];
-  readonly resources: readonly Resource[];
-  readonly resourcesById: ReadonlyMap<string, Resource>;
-  readonly dependencyGraph: DirectedGraph;
+  readonly graph: ResourceGraph;
 }
 
 export interface SemanticAnalysisSnapshot {
@@ -30,48 +28,22 @@ export interface SemanticAnalysisSnapshot {
   readonly duplicateDiagnostics: readonly DuplicateIdDiagnostic[];
 }
 
-export function analyzeResources(input: SemanticAnalysisInput): SemanticAnalysisSnapshot {
-  const cycles = detectDependencyCycles(input.dependencyGraph);
-  const cycleDiagnostics = diagnoseCycles(cycles, input.resourcesById);
-  const danglingDiagnostics = diagnoseDanglingDependencies(input.resources, input.resourcesById);
-  const duplicateDiagnostics = diagnoseDuplicateResources(input.rawResources);
-
-  return Object.freeze({
-    cycles,
-    diagnostics: orderSemanticDiagnostics({
-      cycleDiagnostics,
-      danglingDiagnostics,
-      duplicateDiagnostics,
-    }),
-    danglingDiagnostics,
-    duplicateDiagnostics,
-  });
-}
-
-export function detectDependencyCycles(graph: DirectedGraph): readonly DependencyCycle[] {
-  return Object.freeze(
-    graph
-      .getCycles()
-      .map((cycle): DependencyCycle => Object.freeze({ nodes: Object.freeze(cycle.slice()) })),
-  );
-}
-
 export function diagnoseCycles(
   cycles: readonly DependencyCycle[],
-  resourcesById: ReadonlyMap<string, Resource>,
+  graph: ResourceGraph,
 ): readonly CircularDependencyDiagnostic[] {
   const diagnostics: CircularDependencyDiagnostic[] = [];
 
   for (const cycle of cycles) {
     const firstNodeId = cycle.nodes[0];
-    const firstResource = firstNodeId === undefined ? undefined : resourcesById.get(firstNodeId);
+    const firstResource = firstNodeId === undefined ? undefined : graph.getResource(firstNodeId);
 
     diagnostics.push(
       freezeDiagnostic({
         code: 'W001',
         severity: 'warning',
         nodes: cycle.nodes,
-        ...sourceFilesForResourceIds(cycle.nodes, resourcesById),
+        ...sourceFilesForResourceIds(cycle.nodes, graph),
         ...positionForResource(firstResource),
       }),
     );
@@ -81,15 +53,15 @@ export function diagnoseCycles(
 }
 
 export function diagnoseDanglingDependencies(
-  resources: readonly Resource[],
-  resourcesById: ReadonlyMap<string, Resource>,
+  graph: ResourceGraph,
 ): readonly DanglingDependencyDiagnostic[] {
   const diagnostics: DanglingDependencyDiagnostic[] = [];
+  const resources = graph.resources;
 
   for (const resource of resources) {
     const dependsOn = getDependsOn(resource);
     for (const dependencyId of dependsOn) {
-      if (!resourcesById.has(dependencyId)) {
+      if (!graph.hasResource(dependencyId)) {
         diagnostics.push(
           freezeDiagnostic({
             code: 'W002',
@@ -97,7 +69,7 @@ export function diagnoseDanglingDependencies(
             resourceId: resource.id,
             resourceType: resource.type,
             dependencyId,
-            ...sourceFilesForResourceIds([resource.id], resourcesById),
+            ...sourceFilesForResourceIds([resource.id], graph),
             ...positionForResource(resource),
           }),
         );
@@ -135,18 +107,6 @@ export function diagnoseDuplicateResources(
   }
 
   return Object.freeze(diagnostics);
-}
-
-export function orderSemanticDiagnostics(input: {
-  readonly cycleDiagnostics: readonly CircularDependencyDiagnostic[];
-  readonly danglingDiagnostics: readonly DanglingDependencyDiagnostic[];
-  readonly duplicateDiagnostics: readonly DuplicateIdDiagnostic[];
-}): readonly Diagnostic[] {
-  return Object.freeze([
-    ...input.cycleDiagnostics,
-    ...input.danglingDiagnostics,
-    ...input.duplicateDiagnostics,
-  ]);
 }
 
 function freezeDiagnostic<TDiagnostic extends Diagnostic>(diagnostic: TDiagnostic): TDiagnostic {

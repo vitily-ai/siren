@@ -1,12 +1,9 @@
-import {
-  getDependencyTree as buildDependencyTree,
-  type DependencyTree,
-} from '../utilities/dependency-tree';
-import { findResourceById } from '../utilities/entry';
+import type { DependencyTree } from '../utilities/dependency-tree';
 import { getMilestoneIds, getTasksByMilestone } from '../utilities/milestone';
-import { buildIRContextSnapshot, type IRContextSnapshot } from './builder';
 import { IR_CONTEXT_FACTORY } from './context-internal';
 import type { Diagnostic } from './diagnostics';
+import { type IRBuildEnvelope, runIRBuildPipeline } from './pipeline';
+import type { ResourceGraph } from './resource-graph';
 import type { Resource } from './types';
 
 export type {
@@ -23,10 +20,10 @@ export type {
  * constructed.
  */
 export class IRContext {
-  private readonly snapshot: IRContextSnapshot;
+  private readonly envelope: IRBuildEnvelope;
 
   private constructor(resources: readonly Resource[]) {
-    this.snapshot = buildIRContextSnapshot(resources);
+    this.envelope = runIRBuildPipeline(resources);
     Object.freeze(this);
   }
 
@@ -43,19 +40,32 @@ export class IRContext {
    * First occurrence of each ID is kept, duplicates are dropped.
    */
   get resources(): readonly Resource[] {
-    return this.snapshot.resources;
+    return this.envelope.graph.resources;
+  }
+
+  /**
+   * Cached dependency graph built once during pipeline construction. Exposed
+   * so consumers (LSP, exporters, advanced queries) can reuse the same graph
+   * instance instead of rebuilding it.
+   */
+  get graph(): ResourceGraph {
+    return this.envelope.graph;
   }
 
   findResourceById(id: string): Resource {
-    return findResourceById([...this.resources], id);
+    const resource = this.envelope.graph.getResource(id);
+    if (!resource) {
+      throw new Error(`Resource with ID '${id}' not found`);
+    }
+    return resource;
   }
 
   getMilestoneIds(): string[] {
-    return getMilestoneIds([...this.resources]);
+    return getMilestoneIds(this.resources);
   }
 
   getTasksByMilestone(): Map<string, Resource[]> {
-    return getTasksByMilestone([...this.resources]);
+    return getTasksByMilestone(this.envelope.graph);
   }
 
   // TODO currently implemented with a sensible default traverse
@@ -77,11 +87,11 @@ export class IRContext {
       // Include and expand everything else
       return true;
     };
-    return buildDependencyTree(rootId, [...this.resources], traversePredicate);
+    return this.envelope.graph.getDependencyTree(rootId, traversePredicate);
   }
 
   /** Get semantic diagnostics computed from IR analysis */
   get diagnostics(): readonly Diagnostic[] {
-    return this.snapshot.diagnostics;
+    return this.envelope.diagnostics;
   }
 }
