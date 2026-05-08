@@ -15,7 +15,7 @@ function cloneAndFreezeResource(resource: Resource): Resource {
   const clone: Resource = {
     type: resource.type,
     id: resource.id,
-    complete: resource.complete,
+    ...(resource.status !== undefined ? { status: resource.status } : {}),
     attributes: Object.freeze(resource.attributes.map(cloneAndFreezeAttribute)),
     ...(resource.origin ? { origin: cloneAndFreezeOrigin(resource.origin) } : {}),
   };

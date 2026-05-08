@@ -1,4 +1,5 @@
 import type { DependencyTree } from '../utilities/dependency-tree';
+import { isComplete } from '../utilities/entry';
 import { getMilestoneIds, getTasksByMilestone } from '../utilities/milestone';
 import { IR_CONTEXT_FACTORY } from './context-internal';
 import type { Diagnostic } from './diagnostics';
@@ -36,7 +37,7 @@ export class SirenProject {
 
   /**
    * Get deduplicated resources with implicit milestone completeness resolved.
-   * Milestones whose every dependency is complete are promoted to `complete: true`.
+   * Milestones whose every dependency is complete are promoted to `status: 'complete'`.
    * First occurrence of each ID is kept, duplicates are dropped.
    */
   get resources(): readonly Resource[] {
@@ -75,11 +76,9 @@ export class SirenProject {
     // expanding from a root resource. This mirrors CLI/listing behavior
     // where milestones act as grouping nodes and are not expanded further
     // in dependency trees unless explicitly requested. Also filter out
-    // complete resources (explicit or implicitly-resolved) from the tree.
+    // resources whose status is complete.
     const traversePredicate = (r: Resource) => {
-      // Exclude complete resources (includes implicitly-complete milestones
-      // since .complete is resolved before resources are exposed)
-      if (r.complete) return false;
+      if (isComplete(r)) return false;
       // Include non-root milestones as leaves (include but don't expand)
       if (r.type === 'milestone' && r.id !== rootId) {
         return { include: true, expand: false };

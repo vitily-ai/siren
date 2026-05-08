@@ -27,8 +27,8 @@ describe('@sirenpm/core', () => {
 
     it('returns empty array for only tasks', () => {
       const resources: Resource[] = [
-        { type: 'task', id: 'task1', complete: false, attributes: [] },
-        { type: 'task', id: 'task2', complete: true, attributes: [] },
+        { type: 'task', id: 'task1', attributes: [] },
+        { type: 'task', id: 'task2', status: 'complete', attributes: [] },
       ];
       const ir = buildContext(resources);
       expect(ir.getMilestoneIds()).toEqual([]);
@@ -36,10 +36,10 @@ describe('@sirenpm/core', () => {
 
     it('returns milestone IDs', () => {
       const resources: Resource[] = [
-        { type: 'task', id: 'task1', complete: false, attributes: [] },
-        { type: 'milestone', id: 'milestone1', complete: false, attributes: [] },
-        { type: 'task', id: 'task2', complete: true, attributes: [] },
-        { type: 'milestone', id: 'milestone2', complete: true, attributes: [] },
+        { type: 'task', id: 'task1', attributes: [] },
+        { type: 'milestone', id: 'milestone1', attributes: [] },
+        { type: 'task', id: 'task2', status: 'complete', attributes: [] },
+        { type: 'milestone', id: 'milestone2', status: 'complete', attributes: [] },
       ];
       const ir = buildContext(resources);
       expect(ir.getMilestoneIds()).toEqual(['milestone1', 'milestone2']);
@@ -51,9 +51,7 @@ describe('@sirenpm/core', () => {
   });
 
   it('returns empty arrays for milestones with no tasks', () => {
-    const resources: Resource[] = [
-      { type: 'milestone', id: 'milestone1', complete: false, attributes: [] },
-    ];
+    const resources: Resource[] = [{ type: 'milestone', id: 'milestone1', attributes: [] }];
     const ir = buildContext(resources);
     const result = ir.getTasksByMilestone();
     expect(result.get('milestone1')).toEqual([]);
@@ -64,13 +62,12 @@ describe('@sirenpm/core', () => {
       {
         type: 'milestone',
         id: 'milestone1',
-        complete: false,
         attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'task1' } }],
       },
       {
         type: 'task',
         id: 'task1',
-        complete: true,
+        status: 'complete',
         attributes: [],
       },
     ];
@@ -83,14 +80,12 @@ describe('@sirenpm/core', () => {
     const task: Resource = {
       type: 'task',
       id: 'task1',
-      complete: false,
       attributes: [],
     };
     const resources: Resource[] = [
       {
         type: 'milestone',
         id: 'milestone1',
-        complete: false,
         attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'task1' } }],
       },
       task,
@@ -104,14 +99,12 @@ describe('@sirenpm/core', () => {
     const task: Resource = {
       type: 'task',
       id: 'task1',
-      complete: false,
       attributes: [],
     };
     const resources: Resource[] = [
       {
         type: 'milestone',
         id: 'milestone1',
-        complete: false,
         attributes: [
           {
             key: 'depends_on',
@@ -137,13 +130,11 @@ describe('@sirenpm/core', () => {
       {
         type: 'milestone',
         id: 'milestone1',
-        complete: false,
         attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'other_milestone' } }],
       },
       {
         type: 'task',
         id: 'task1',
-        complete: false,
         attributes: [],
       },
     ];

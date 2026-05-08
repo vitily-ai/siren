@@ -13,7 +13,6 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           type: 'milestone',
           id: 'has-dangling',
-          complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'missing-dep' } }],
         },
       ]);
@@ -34,13 +33,11 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           type: 'task',
           id: 'a',
-          complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'b' } }],
         },
         {
           type: 'task',
           id: 'b',
-          complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'a' } }],
         },
       ]);
@@ -61,7 +58,6 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           type: 'task',
           id: 'has-dangling',
-          complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'missing' } }],
           origin: {
             startByte: 0,
@@ -92,7 +88,6 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           type: 'task',
           id: 'a',
-          complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'b' } }],
           origin: {
             startByte: 0,
@@ -105,7 +100,6 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           type: 'task',
           id: 'b',
-          complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'a' } }],
           origin: {
             startByte: 0,
@@ -136,7 +130,6 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           type: 'task',
           id: 'shared-task',
-          complete: false,
           attributes: [],
           origin: {
             startByte: 0,
@@ -149,7 +142,7 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           type: 'task',
           id: 'shared-task',
-          complete: true,
+          status: 'complete',
           attributes: [],
           origin: {
             startByte: 21,
@@ -162,14 +155,13 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           type: 'milestone',
           id: 'release',
-          complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'shared-task' } }],
         },
       ]);
 
-      expect(context.resources.map((resource) => [resource.id, resource.complete])).toEqual([
-        ['shared-task', false],
-        ['release', false],
+      expect(context.resources.map((resource) => [resource.id, resource.status])).toEqual([
+        ['shared-task', undefined],
+        ['release', undefined],
       ]);
       expect(context.diagnostics).toEqual([
         {
@@ -192,23 +184,20 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           type: 'task',
           id: 'cycle-a',
-          complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'cycle-b' } }],
         },
         {
           type: 'task',
           id: 'cycle-b',
-          complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'cycle-a' } }],
         },
         {
           type: 'task',
           id: 'has-dangling',
-          complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'missing' } }],
         },
-        { type: 'task', id: 'duplicate', complete: false, attributes: [] },
-        { type: 'task', id: 'duplicate', complete: false, attributes: [] },
+        { type: 'task', id: 'duplicate', attributes: [] },
+        { type: 'task', id: 'duplicate', attributes: [] },
       ]);
 
       expect(context.diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
@@ -232,13 +221,11 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           type: 'task',
           id: 'a',
-          complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'b' } }],
         },
         {
           type: 'task',
           id: 'b',
-          complete: false,
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'a' } }],
         },
       ]);
@@ -257,6 +244,66 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
       expect(Object.isFrozen(resource.attributes[0])).toBe(true);
       expect(Object.isFrozen(context.diagnostics)).toBe(true);
       expect(Object.isFrozen(diagnostic)).toBe(true);
+    });
+  });
+
+  describe('dependency tree default traversal', () => {
+    it('filters complete status and keeps draft/undefined status visible', () => {
+      const context = buildContext([
+        {
+          type: 'task',
+          id: 'root',
+          attributes: [
+            {
+              key: 'depends_on',
+              value: {
+                kind: 'array',
+                elements: [
+                  { kind: 'reference', id: 'done-task' },
+                  { kind: 'reference', id: 'draft-task' },
+                  { kind: 'reference', id: 'draft-milestone' },
+                  { kind: 'reference', id: 'todo-task' },
+                ],
+              },
+            },
+          ],
+        },
+        { type: 'task', id: 'done-task', status: 'complete', attributes: [] },
+        {
+          type: 'task',
+          id: 'draft-task',
+          status: 'draft',
+          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'draft-child' } }],
+        },
+        {
+          type: 'milestone',
+          id: 'draft-milestone',
+          status: 'draft',
+          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'milestone-child' } }],
+        },
+        { type: 'task', id: 'todo-task', attributes: [] },
+        { type: 'task', id: 'draft-child', attributes: [] },
+        { type: 'task', id: 'milestone-child', attributes: [] },
+      ]);
+
+      const tree = context.getDependencyTree('root');
+      expect(tree.dependencies.map((dependency) => dependency.resource.id).sort()).toEqual([
+        'draft-milestone',
+        'draft-task',
+        'todo-task',
+      ]);
+
+      const draftTask = tree.dependencies.find(
+        (dependency) => dependency.resource.id === 'draft-task',
+      );
+      expect(draftTask?.dependencies.map((dependency) => dependency.resource.id)).toEqual([
+        'draft-child',
+      ]);
+
+      const draftMilestone = tree.dependencies.find(
+        (dependency) => dependency.resource.id === 'draft-milestone',
+      );
+      expect(draftMilestone?.dependencies).toHaveLength(0);
     });
   });
 });

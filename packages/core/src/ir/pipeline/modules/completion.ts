@@ -1,3 +1,4 @@
+import { isComplete, isDraft } from '../../../utilities/entry';
 import { ResourceGraph } from '../../resource-graph';
 import type { Resource } from '../../types';
 import { defineModule } from '../types';
@@ -7,7 +8,8 @@ import { defineModule } from '../types';
  *
  * A milestone is implicitly complete when it has at least one dependency
  * (`depends_on`) and every dependency is itself complete — either explicitly
- * via the `complete` keyword, or implicitly through this same rule (recursive).
+ * via `status: 'complete'`, or implicitly through this same rule (recursive).
+ * Explicit drafts (`status: 'draft'`) are never promoted implicitly.
  * Orphan milestones (no `depends_on`) are never implicitly complete.
  * Only milestones can be implicitly complete; tasks cannot.
  *
@@ -20,6 +22,7 @@ import { defineModule } from '../types';
  */
 function isImplicitlyComplete(resource: Resource, graph: ResourceGraph): boolean {
   if (resource.type !== 'milestone') return false;
+  if (isDraft(resource)) return false; // explicit draft must not be auto-promoted
 
   const deps = graph.getSuccessors(resource.id);
   if (deps.length === 0) return false; // orphan — never implicitly complete
@@ -36,7 +39,11 @@ function isImplicitlyComplete(resource: Resource, graph: ResourceGraph): boolean
         allComplete = false;
         return false; // dangling ref — not complete
       }
-      if (dep.complete) return false; // explicitly complete — satisfied
+      if (isComplete(dep)) return false; // explicit complete status — satisfied
+      if (isDraft(dep)) {
+        allComplete = false;
+        return false; // explicit draft is terminal — never implicitly complete
+      }
 
       // Incomplete milestone with deps: expand to check transitively
       if (dep.type === 'milestone' && graph.getSuccessors(node).length > 0) {
@@ -67,8 +74,8 @@ function applyImplicitMilestoneCompletion(graph: ResourceGraph): ResourceGraph {
 
   const resolvedResources = resources.map(
     (resource): Resource =>
-      !resource.complete && isImplicitlyComplete(resource, graph)
-        ? { ...resource, complete: true }
+      !isComplete(resource) && isImplicitlyComplete(resource, graph)
+        ? { ...resource, status: 'complete' }
         : resource,
   );
 
@@ -81,7 +88,7 @@ function applyImplicitMilestoneCompletion(graph: ResourceGraph): ResourceGraph {
  * Reads:  { graph }
  * Writes: { graph }    // logical replacement
  *
- * Implicit completion only flips `complete: true` on milestones whose
+ * Implicit completion only writes `status: 'complete'` on milestones whose
  * dependencies are all complete. The stable baseline reconstructs a fresh
  * ResourceGraph from the resolved resource snapshot.
  */

@@ -75,15 +75,32 @@ export interface Attribute {
 export type ResourceType = 'task' | 'milestone';
 
 /**
+ * Explicit resource status values captured in the IR.
+ *
+ * Status is optional on resources for this milestone:
+ * - `undefined` means no explicit status was declared.
+ * - `draft` preserves an explicit draft declaration.
+ * - `complete` preserves an explicit completion declaration.
+ *
+ * Later pipeline modules may derive completion from dependencies and
+ * materialize that state in `status`.
+ */
+export type ResourceStatus = 'draft' | 'complete';
+
+/**
  * A Siren resource (task or milestone)
  */
 export interface Resource {
   readonly type: ResourceType;
   readonly id: string;
   /**
-   * True if the resource is marked complete via the 'complete' keyword (not attribute)
+   * Optional explicit status declared on the resource.
+   *
+   * This may be absent when no status keyword is present. Explicit `draft`
+   * must remain representable; completion may also be derived by later
+   * pipeline modules.
    */
-  readonly complete: boolean;
+  readonly status?: ResourceStatus;
   readonly attributes: readonly Attribute[];
   /**
    * Optional source origin information for comment preservation

@@ -6,7 +6,6 @@ function resource(id: string, dependsOn?: readonly string[]): Resource {
   return {
     type: 'task',
     id,
-    complete: false,
     attributes:
       dependsOn && dependsOn.length > 0
         ? [

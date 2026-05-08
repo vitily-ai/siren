@@ -34,4 +34,18 @@ export function getDependsOn(resource: Resource): string[] {
   return [];
 }
 
+/**
+ * Helper to check for resource completion status. This does not guarantee explicit completion.
+ */
+export function isComplete(resource: Resource): resource is Resource & { status: 'complete' } {
+  return resource.status === 'complete';
+}
+
+/**
+ * Helper to check for resource draft status. This does not guarantee explicit draft status.
+ */
+export function isDraft(resource: Resource): resource is Resource & { status: 'draft' } {
+  return resource.status === 'draft';
+}
+
 // TODO expose this as a method on an object oriented IR context
