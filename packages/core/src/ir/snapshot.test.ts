@@ -14,7 +14,7 @@ describe('cloneAndFreezeResources', () => {
       {
         type: 'task',
         id: 'a',
-        complete: false,
+        status: 'draft',
         attributes: [
           { key: 'description', value: 'hello', raw: '"hello"' },
           { key: 'effort', value: 3 },
@@ -33,19 +33,29 @@ describe('cloneAndFreezeResources', () => {
     ]);
     expect(cloneAttributes[0]?.raw).toBe('"hello"');
     expect(cloneAttributes[1]?.raw).toBeUndefined();
+    expect(cloned[0]?.status).toBe('draft');
     cloneAttributes.forEach((attribute) => {
       expect(Object.isFrozen(attribute)).toBe(true);
     });
   });
 
   it('omits the origin property entirely when input has no origin', () => {
-    const cloned = cloneAndFreezeResources([
-      { type: 'task', id: 'a', complete: false, attributes: [] },
-    ]);
+    const cloned = cloneAndFreezeResources([{ type: 'task', id: 'a', attributes: [] }]);
     const resource = cloned[0];
 
     expect(resource).toBeDefined();
     expect(resource && 'origin' in resource).toBe(false);
+    expect(resource && 'status' in resource).toBe(false);
+  });
+
+  it('preserves explicit complete status when present', () => {
+    const cloned = cloneAndFreezeResources([
+      { type: 'task', id: 'a', status: 'complete', attributes: [] },
+    ]);
+    const resource = cloned[0];
+
+    expect(resource?.status).toBe('complete');
+    expect(resource && 'status' in resource).toBe(true);
   });
 
   it('clones nested arrays and references so inputs cannot mutate snapshot data', () => {
@@ -61,7 +71,6 @@ describe('cloneAndFreezeResources', () => {
     const sourceResource = {
       type: 'task' as const,
       id: 'task-a',
-      complete: false,
       attributes: [{ key: 'depends_on', value: outerArray }],
     };
 
@@ -111,7 +120,6 @@ describe('cloneAndFreezeResources', () => {
     const sourceResource: Resource = {
       type: 'task',
       id: 'a',
-      complete: false,
       attributes: [],
       origin: sourceOrigin,
     };
@@ -138,7 +146,6 @@ describe('cloneAndFreezeResources', () => {
       {
         type: 'task',
         id: 'a',
-        complete: false,
         attributes: [{ key: 'description', value: 'x', origin: attributeOrigin }],
       },
     ]);

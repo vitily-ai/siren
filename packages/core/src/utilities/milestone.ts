@@ -1,5 +1,6 @@
 import type { ResourceGraph } from '../ir/resource-graph';
 import type { Resource } from '../ir/types';
+import { isComplete } from './entry';
 
 /**
  * Extracts milestone IDs from an array of resources.
@@ -14,7 +15,8 @@ export function getMilestoneIds(resources: readonly Resource[]): string[] {
 
 // TODO this needs to just be a flattening wrapper over getDependencyTree(depth=1) - it is effectively the same traversal
 /**
- * Returns a Map where keys are milestone IDs and values are arrays of incomplete tasks that the milestone depends on.
+ * Returns a Map where keys are milestone IDs and values are arrays of tasks
+ * that are not explicitly complete. Draft and no-status tasks remain visible.
  * @param graph Resource graph snapshot
  * @returns Map<string, Resource[]>
  */
@@ -30,7 +32,7 @@ export function getTasksByMilestone(graph: ResourceGraph): Map<string, Resource[
     const dependsOnIds = graph.getSuccessors(milestone.id);
     const tasks = dependsOnIds
       .map((id) => taskMap.get(id))
-      .filter((task): task is Resource => task !== undefined && !task.complete);
+      .filter((task): task is Resource => task !== undefined && !isComplete(task));
     tasksByMilestone.set(milestone.id, tasks);
   }
 

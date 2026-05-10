@@ -12,7 +12,6 @@ const attr = (key: string, value: ReturnType<typeof ref> | ReturnType<typeof arr
 const res = (id: string, dependsOn?: string[] | string): Resource => ({
   type: 'task',
   id,
-  complete: false,
   attributes: dependsOn
     ? [
         attr(

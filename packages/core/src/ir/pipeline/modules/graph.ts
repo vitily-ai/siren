@@ -9,7 +9,7 @@ import { defineModule } from '../types';
  * Writes: { graph }
  *
  * The graph stores ids and edges, both of which are unaffected by implicit
- * completion (which only flips `complete: true`). Downstream modules and
+ * completion (which only writes `status: 'complete'`). Downstream modules and
  * `SirenProject` therefore reuse this single graph instance.
  */
 export const GraphModule = defineModule(

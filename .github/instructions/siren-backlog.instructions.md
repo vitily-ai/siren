@@ -32,3 +32,17 @@ task feature-area-tests complete {
   description = "Land focused regression coverage"
 }
 ```
+
+## Siren Issue Field Requirements
+
+Every issue in the siren backlog must have the following fields:
+- `description`: a clear, concise summary of the issue or work item.
+- `affected_packages`: the packages impacted by the issue or work item.
+  - For tasks, outside of exceptional cases, this should be a single package.
+  - For milestones, this can affect multiple packages, but when this is the case the milestone must contain a task for publishing new package versions before downstream consumer work can begin.
+
+### Optional/second pass fields
+- `link`: a URL to relevant documentation, discussions, or related issues.
+- `pr`: a URL to the pull request that addresses this issue, if applicable, added upon completion.
+  - this will mostly only apply to milestones
+- `files`: a non-durable suggestive list of files that are affected by the issue, identified during planning. Can be updated upon completion.

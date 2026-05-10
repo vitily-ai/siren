@@ -16,9 +16,9 @@ function origin(document: string, startRow: number): Origin {
 describe('SirenBuilder', () => {
   it('preserves caller resource order in assembly resources and first-occurrence order in the built context', () => {
     const resources: Resource[] = [
-      { type: 'task', id: 'second', complete: false, attributes: [] },
-      { type: 'task', id: 'first', complete: false, attributes: [] },
-      { type: 'task', id: 'second', complete: true, attributes: [] },
+      { type: 'task', id: 'second', attributes: [] },
+      { type: 'task', id: 'first', attributes: [] },
+      { type: 'task', id: 'second', status: 'complete', attributes: [] },
     ];
 
     const assembly = SirenBuilder.fromResources(resources);
@@ -36,7 +36,6 @@ describe('SirenBuilder', () => {
     const sourceResource = {
       type: 'task' as const,
       id: 'task-a',
-      complete: false,
       attributes: [
         {
           key: 'depends_on',
@@ -106,8 +105,8 @@ describe('SirenBuilder', () => {
 
   it('builds repeatable non-consuming SirenProject instances', () => {
     const assembly = SirenBuilder.fromResources([
-      { type: 'task', id: 'task-a', complete: false, attributes: [] },
-      { type: 'task', id: 'task-b', complete: false, attributes: [] },
+      { type: 'task', id: 'task-a', attributes: [] },
+      { type: 'task', id: 'task-b', attributes: [] },
     ]);
 
     const firstContext = assembly.build();
@@ -123,16 +122,16 @@ describe('SirenBuilder', () => {
 
   it('keeps raw duplicates available while the built context uses first occurrence wins', () => {
     const resources: Resource[] = [
-      { type: 'task', id: 'duplicate', complete: false, attributes: [] },
-      { type: 'task', id: 'duplicate', complete: true, attributes: [] },
+      { type: 'task', id: 'duplicate', attributes: [] },
+      { type: 'task', id: 'duplicate', status: 'complete', attributes: [] },
     ];
 
     const assembly = SirenBuilder.fromResources(resources);
     const context = assembly.build();
 
-    expect(assembly.resources.map((resource) => resource.complete)).toEqual([false, true]);
+    expect(assembly.resources.map((resource) => resource.status)).toEqual([undefined, 'complete']);
     expect(context.resources).toHaveLength(1);
-    expect(context.resources[0]?.complete).toBe(false);
+    expect(context.resources[0]?.status).toBeUndefined();
     expect(context.diagnostics.filter((diagnostic) => diagnostic.code === 'W003')).toHaveLength(1);
   });
 
@@ -141,42 +140,37 @@ describe('SirenBuilder', () => {
       {
         type: 'task',
         id: 'cycle-a',
-        complete: false,
         attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'cycle-b' } }],
         origin: origin('cycle-a.siren', 0),
       },
       {
         type: 'task',
         id: 'cycle-b',
-        complete: false,
         attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'cycle-a' } }],
         origin: origin('cycle-b.siren', 1),
       },
       {
         type: 'task',
         id: 'has-dangling',
-        complete: false,
         attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'missing' } }],
         origin: origin('dangling.siren', 4),
       },
       {
         type: 'task',
         id: 'finished-task',
-        complete: true,
+        status: 'complete',
         attributes: [],
         origin: origin('complete-first.siren', 6),
       },
       {
         type: 'task',
         id: 'finished-task',
-        complete: false,
         attributes: [],
         origin: origin('complete-second.siren', 8),
       },
       {
         type: 'milestone',
         id: 'release',
-        complete: false,
         attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'finished-task' } }],
         origin: origin('release.siren', 10),
       },
@@ -184,12 +178,12 @@ describe('SirenBuilder', () => {
 
     const context = assembly.build();
 
-    expect(context.resources.map((resource) => [resource.id, resource.complete])).toEqual([
-      ['cycle-a', false],
-      ['cycle-b', false],
-      ['has-dangling', false],
-      ['finished-task', true],
-      ['release', true],
+    expect(context.resources.map((resource) => [resource.id, resource.status])).toEqual([
+      ['cycle-a', undefined],
+      ['cycle-b', undefined],
+      ['has-dangling', undefined],
+      ['finished-task', 'complete'],
+      ['release', 'complete'],
     ]);
     expect(context.diagnostics).toEqual([
       {

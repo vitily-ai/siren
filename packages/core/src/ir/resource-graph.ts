@@ -20,7 +20,6 @@ function makeMissingResource(id: string): Resource {
   return {
     type: 'task',
     id,
-    complete: false,
     attributes: [],
   };
 }

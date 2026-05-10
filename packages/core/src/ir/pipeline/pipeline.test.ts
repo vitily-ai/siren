@@ -8,47 +8,43 @@ describe('runIRBuildPipeline', () => {
   it('produces graph and ordered diagnostics for a representative project', () => {
     const resources: readonly Resource[] = [
       // duplicate ids → W003
-      { type: 'task', id: 'dup', complete: false, attributes: [] },
-      { type: 'task', id: 'dup', complete: true, attributes: [] },
+      { type: 'task', id: 'dup', attributes: [] },
+      { type: 'task', id: 'dup', status: 'complete', attributes: [] },
       // dangling dep → W002
       {
         type: 'task',
         id: 'has-dangling',
-        complete: false,
         attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'missing' } }],
       },
       // cycle → W001
       {
         type: 'task',
         id: 'cycle-a',
-        complete: false,
         attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'cycle-b' } }],
       },
       {
         type: 'task',
         id: 'cycle-b',
-        complete: false,
         attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'cycle-a' } }],
       },
       // implicit completion candidate
-      { type: 'task', id: 'finished', complete: true, attributes: [] },
+      { type: 'task', id: 'finished', status: 'complete', attributes: [] },
       {
         type: 'milestone',
         id: 'release',
-        complete: false,
         attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'finished' } }],
       },
     ];
 
     const env = runIRBuildPipeline(resources);
 
-    expect(env.graph.resources.map((r) => [r.id, r.complete])).toEqual([
-      ['dup', false],
-      ['has-dangling', false],
-      ['cycle-a', false],
-      ['cycle-b', false],
-      ['finished', true],
-      ['release', true],
+    expect(env.graph.resources.map((r) => [r.id, r.status])).toEqual([
+      ['dup', undefined],
+      ['has-dangling', undefined],
+      ['cycle-a', undefined],
+      ['cycle-b', undefined],
+      ['finished', 'complete'],
+      ['release', 'complete'],
     ]);
 
     const codes = env.diagnostics.map((d) => d.code);
@@ -59,7 +55,7 @@ describe('runIRBuildPipeline', () => {
       expect.arrayContaining(['dup', 'has-dangling', 'cycle-a', 'cycle-b', 'finished', 'release']),
     );
 
-    expect(env.graph.getResource('release')?.complete).toBe(true);
+    expect(env.graph.getResource('release')?.status).toBe('complete');
   });
 });
 
@@ -69,12 +65,11 @@ describe('IR pipeline redundancy regression', () => {
 
     try {
       const assembly = SirenBuilder.fromResources([
-        { type: 'task', id: 'task-a', complete: true, attributes: [] },
-        { type: 'task', id: 'task-b', complete: true, attributes: [] },
+        { type: 'task', id: 'task-a', status: 'complete', attributes: [] },
+        { type: 'task', id: 'task-b', status: 'complete', attributes: [] },
         {
           type: 'milestone',
           id: 'release',
-          complete: false,
           attributes: [
             {
               key: 'depends_on',

@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { ImplicitCompletionModule } from '../src/ir/pipeline/modules/completion';
 import { ResourceGraph } from '../src/ir/resource-graph';
-import type { Resource, ResourceType } from '../src/ir/types';
+import type { Resource, ResourceStatus, ResourceType } from '../src/ir/types';
+import { getTasksByMilestone } from '../src/utilities/milestone';
 
 /** Build a minimal Resource for testing */
 function resource(
   type: ResourceType,
   id: string,
-  opts?: { complete?: boolean; dependsOn?: string[] },
+  opts?: { status?: ResourceStatus; dependsOn?: string[] },
 ): Resource {
   const attributes = opts?.dependsOn
     ? [
@@ -23,7 +24,12 @@ function resource(
         },
       ]
     : [];
-  return { type, id, complete: opts?.complete ?? false, attributes };
+  return {
+    type,
+    id,
+    ...(opts?.status !== undefined ? { status: opts.status } : {}),
+    attributes,
+  };
 }
 
 type ImplicitCompletionInput = Parameters<typeof ImplicitCompletionModule.run>[0];
@@ -37,91 +43,133 @@ function resolveCompletion(...resources: Resource[]): ImplicitCompletionResult {
   return ImplicitCompletionModule.run(seed);
 }
 
-function completionOf(result: ImplicitCompletionResult, id: string): boolean | undefined {
-  return result.graph.getResource(id)?.complete;
+function statusOf(result: ImplicitCompletionResult, id: string): ResourceStatus | undefined {
+  return result.graph.getResource(id)?.status;
 }
 
 describe('ImplicitCompletionModule', () => {
-  it('returns false for a task even if all deps are complete', () => {
-    const t1 = resource('task', 't1', { complete: true });
+  it('does not mark a task complete even if all deps are complete', () => {
+    const t1 = resource('task', 't1', { status: 'complete' });
     const t2 = resource('task', 't2', { dependsOn: ['t1'] });
     const result = resolveCompletion(t1, t2);
-    expect(completionOf(result, 't2')).toBe(false);
+    expect(statusOf(result, 't2')).toBeUndefined();
   });
 
-  it('returns false for an orphan milestone (no depends_on)', () => {
+  it('does not mark an orphan milestone complete (no depends_on)', () => {
     const m = resource('milestone', 'm');
     const result = resolveCompletion(m);
-    expect(completionOf(result, 'm')).toBe(false);
+    expect(statusOf(result, 'm')).toBeUndefined();
   });
 
-  it('returns false when a dependency is incomplete', () => {
+  it('does not mark complete when a dependency is incomplete', () => {
     const a = resource('task', 'a');
     const m = resource('milestone', 'm', { dependsOn: ['a'] });
     const result = resolveCompletion(a, m);
-    expect(completionOf(result, 'm')).toBe(false);
+    expect(statusOf(result, 'm')).toBeUndefined();
   });
 
-  it('returns false when only some deps are complete', () => {
-    const a = resource('task', 'a', { complete: true });
+  it('does not mark complete when only some deps are complete', () => {
+    const a = resource('task', 'a', { status: 'complete' });
     const b = resource('task', 'b');
     const m = resource('milestone', 'm', { dependsOn: ['a', 'b'] });
     const result = resolveCompletion(a, b, m);
-    expect(completionOf(result, 'm')).toBe(false);
+    expect(statusOf(result, 'm')).toBeUndefined();
   });
 
-  it('returns true when the single dep is complete', () => {
-    const a = resource('task', 'a', { complete: true });
+  it('writes status complete when the single dep is complete', () => {
+    const a = resource('task', 'a', { status: 'complete' });
     const m = resource('milestone', 'm', { dependsOn: ['a'] });
     const result = resolveCompletion(a, m);
-    expect(completionOf(result, 'm')).toBe(true);
+    expect(statusOf(result, 'm')).toBe('complete');
   });
 
-  it('returns true when all multiple deps are complete', () => {
-    const a = resource('task', 'a', { complete: true });
-    const b = resource('task', 'b', { complete: true });
+  it('writes status complete when all multiple deps are complete', () => {
+    const a = resource('task', 'a', { status: 'complete' });
+    const b = resource('task', 'b', { status: 'complete' });
     const m = resource('milestone', 'm', { dependsOn: ['a', 'b'] });
     const result = resolveCompletion(a, b, m);
-    expect(completionOf(result, 'm')).toBe(true);
+    expect(statusOf(result, 'm')).toBe('complete');
   });
 
-  it('returns true transitively through milestone chains', () => {
-    const a = resource('task', 'a', { complete: true });
+  it('resolves completion transitively through milestone chains', () => {
+    const a = resource('task', 'a', { status: 'complete' });
     const m1 = resource('milestone', 'm1', { dependsOn: ['a'] });
     const m2 = resource('milestone', 'm2', { dependsOn: ['m1'] });
     const result = resolveCompletion(a, m1, m2);
-    expect(completionOf(result, 'm1')).toBe(true);
-    expect(completionOf(result, 'm2')).toBe(true);
+    expect(statusOf(result, 'm1')).toBe('complete');
+    expect(statusOf(result, 'm2')).toBe('complete');
   });
 
   it('stops propagation when a dep in the chain is incomplete', () => {
-    const a = resource('task', 'a', { complete: true });
+    const a = resource('task', 'a', { status: 'complete' });
     const b = resource('task', 'b');
     const m1 = resource('milestone', 'm1', { dependsOn: ['a'] });
     const m2 = resource('milestone', 'm2', { dependsOn: ['m1', 'b'] });
     const result = resolveCompletion(a, b, m1, m2);
-    expect(completionOf(result, 'm1')).toBe(true);
-    expect(completionOf(result, 'm2')).toBe(false);
+    expect(statusOf(result, 'm1')).toBe('complete');
+    expect(statusOf(result, 'm2')).toBeUndefined();
   });
 
   it('keeps an explicitly complete milestone complete', () => {
-    const a = resource('task', 'a', { complete: true });
-    const m = resource('milestone', 'm', { complete: true, dependsOn: ['a'] });
+    const a = resource('task', 'a', { status: 'complete' });
+    const m = resource('milestone', 'm', { status: 'complete', dependsOn: ['a'] });
     const result = resolveCompletion(a, m);
-    expect(completionOf(result, 'm')).toBe(true);
+    expect(statusOf(result, 'm')).toBe('complete');
   });
 
-  it('returns false when a dep is dangling (not in resource map)', () => {
+  it('does not mark complete when a dep is dangling (not in resource map)', () => {
     const m = resource('milestone', 'm', { dependsOn: ['missing'] });
     const result = resolveCompletion(m);
-    expect(completionOf(result, 'm')).toBe(false);
+    expect(statusOf(result, 'm')).toBeUndefined();
   });
 
-  it('returns false for a cycle (prevents infinite recursion)', () => {
+  it('does not mark complete for a cycle (prevents infinite recursion)', () => {
     const m1 = resource('milestone', 'm1', { dependsOn: ['m2'] });
     const m2 = resource('milestone', 'm2', { dependsOn: ['m1'] });
     const result = resolveCompletion(m1, m2);
-    expect(completionOf(result, 'm1')).toBe(false);
-    expect(completionOf(result, 'm2')).toBe(false);
+    expect(statusOf(result, 'm1')).toBeUndefined();
+    expect(statusOf(result, 'm2')).toBeUndefined();
+  });
+});
+
+describe('getTasksByMilestone status semantics', () => {
+  it('excludes tasks with explicit complete status', () => {
+    const milestone = resource('milestone', 'release', {
+      dependsOn: ['done-task'],
+    });
+    const completeTask = resource('task', 'done-task', {
+      status: 'complete',
+    });
+
+    const graph = ResourceGraph.fromResources([milestone, completeTask]);
+    const tasksByMilestone = getTasksByMilestone(graph);
+
+    expect(tasksByMilestone.get('release')).toEqual([]);
+  });
+
+  it('includes tasks with explicit draft status', () => {
+    const milestone = resource('milestone', 'release', {
+      dependsOn: ['draft-task'],
+    });
+    const draftTask = resource('task', 'draft-task', {
+      status: 'draft',
+    });
+
+    const graph = ResourceGraph.fromResources([milestone, draftTask]);
+    const tasksByMilestone = getTasksByMilestone(graph);
+
+    expect(tasksByMilestone.get('release')).toEqual([draftTask]);
+  });
+
+  it('includes tasks with no explicit status', () => {
+    const milestone = resource('milestone', 'release', {
+      dependsOn: ['todo-task'],
+    });
+    const todoTask = resource('task', 'todo-task');
+
+    const graph = ResourceGraph.fromResources([milestone, todoTask]);
+    const tasksByMilestone = getTasksByMilestone(graph);
+
+    expect(tasksByMilestone.get('release')).toEqual([todoTask]);
   });
 });

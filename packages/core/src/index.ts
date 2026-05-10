@@ -21,4 +21,5 @@ export type { Origin } from './ir/types';
 export { isArray, isPrimitive, isReference } from './ir/types';
 // Dependency tree utilities
 export type { DependencyTree } from './utilities/dependency-tree';
+export { isComplete, isDraft } from './utilities/entry';
 export { version } from './version';

@@ -23,7 +23,6 @@ function task(id: string, originValue?: Origin): Resource {
   return {
     type: 'task',
     id,
-    complete: false,
     attributes: [],
     ...(originValue ? { origin: originValue } : {}),
   };
