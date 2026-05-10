@@ -122,6 +122,34 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         },
       ]);
     });
+
+    it('includes normalized W001 cycle paths for synthetic file milestones', () => {
+      const context = buildContext([
+        {
+          type: 'task',
+          id: 'task-in-foo',
+          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'foo' } }],
+          origin: {
+            startByte: 0,
+            endByte: 10,
+            startRow: 3,
+            endRow: 3,
+            document: 'foo.siren',
+          },
+        },
+      ]);
+
+      expect(context.diagnostics).toEqual([
+        {
+          code: 'W001',
+          severity: 'warning',
+          nodes: ['foo', 'task-in-foo', 'foo'],
+          file: 'foo.siren',
+          line: 1,
+          column: 0,
+        },
+      ]);
+    });
   });
 
   describe('normalization and semantic snapshot', () => {
@@ -162,6 +190,8 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
       expect(context.resources.map((resource) => [resource.id, resource.status])).toEqual([
         ['shared-task', undefined],
         ['release', undefined],
+        ['first', 'draft'],
+        ['second', 'draft'],
       ]);
       expect(context.diagnostics).toEqual([
         {

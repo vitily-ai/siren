@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { getDependsOn } from '../../utilities/entry';
 import { SirenBuilder } from '../assembly';
 import { ResourceGraph } from '../resource-graph';
 import type { Resource } from '../types';
@@ -56,6 +57,78 @@ describe('runIRBuildPipeline', () => {
     );
 
     expect(env.graph.getResource('release')?.status).toBe('complete');
+  });
+
+  it('synthesizes per-document draft milestones after parsed resources', () => {
+    const env = runIRBuildPipeline([
+      {
+        type: 'task',
+        id: 'task-a',
+        attributes: [],
+        origin: { startByte: 1, endByte: 2, startRow: 1, endRow: 1, document: 'dir/alpha.siren' },
+      },
+      {
+        type: 'task',
+        id: 'task-b',
+        attributes: [],
+        // Intentional backslash path to verify Windows separators derive `beta`.
+        origin: { startByte: 1, endByte: 2, startRow: 2, endRow: 2, document: 'dir\\beta.siren' },
+      },
+      {
+        type: 'milestone',
+        id: 'task-c',
+        attributes: [],
+        origin: { startByte: 1, endByte: 2, startRow: 3, endRow: 3, document: 'dir/alpha.siren' },
+      },
+      { type: 'task', id: 'no-origin', attributes: [] },
+    ]);
+
+    expect(env.graph.resources.map((resource) => resource.id)).toEqual([
+      'task-a',
+      'task-b',
+      'task-c',
+      'no-origin',
+      'alpha',
+      'beta',
+    ]);
+
+    const alphaSynthetic = env.graph.getResource('alpha');
+    const betaSynthetic = env.graph.getResource('beta');
+    expect(alphaSynthetic).toBeDefined();
+    expect(betaSynthetic).toBeDefined();
+    expect(alphaSynthetic?.synthetic).toBe(true);
+    expect(alphaSynthetic?.status).toBe('draft');
+    expect(alphaSynthetic?.origin).toEqual({
+      startByte: 0,
+      endByte: 0,
+      startRow: 0,
+      endRow: 0,
+      document: 'dir/alpha.siren',
+    });
+    expect(getDependsOn(alphaSynthetic!)).toEqual(['task-a', 'task-c']);
+    expect(betaSynthetic?.synthetic).toBe(true);
+    expect(betaSynthetic?.status).toBe('draft');
+    expect(getDependsOn(betaSynthetic!)).toEqual(['task-b']);
+  });
+
+  it('skips synthetic milestone when the same document has an explicit milestone collision', () => {
+    const env = runIRBuildPipeline([
+      {
+        type: 'task',
+        id: 'task-a',
+        attributes: [],
+        origin: { startByte: 0, endByte: 1, startRow: 0, endRow: 0, document: 'project/release.siren' },
+      },
+      {
+        type: 'milestone',
+        id: 'release',
+        attributes: [],
+        origin: { startByte: 2, endByte: 3, startRow: 1, endRow: 1, document: 'project/release.siren' },
+      },
+    ]);
+
+    expect(env.graph.resources.map((resource) => resource.id)).toEqual(['task-a', 'release']);
+    expect(env.graph.resources.find((resource) => resource.id === 'release')?.synthetic).toBeUndefined();
   });
 });
 

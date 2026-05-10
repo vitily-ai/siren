@@ -7,6 +7,7 @@ import { DanglingModule } from './modules/dangling';
 import { DedupModule } from './modules/dedup';
 import { FinalizeModule } from './modules/finalize';
 import { GraphModule } from './modules/graph';
+import { SyntheticMilestonesModule } from './modules/synthetic';
 import { Pipeline } from './runner';
 
 /**
@@ -21,6 +22,7 @@ import { Pipeline } from './runner';
  * the envelope):
  *
  *   seed { rawResources }
+ *     → SyntheticMilestones rewrites { rawResources }
  *     → Dedup       adds   { resources, duplicateDiagnostics }
  *     → Graph       adds   { graph }
  *     → Completion  rewrites { graph }
@@ -40,6 +42,7 @@ export interface IRBuildEnvelope {
  */
 export function runIRBuildPipeline(rawResources: readonly Resource[]): IRBuildEnvelope {
   const pipeline = Pipeline.start<{ readonly rawResources: readonly Resource[] }>()
+    .pipe(SyntheticMilestonesModule)
     .pipe(DedupModule)
     .pipe(GraphModule)
     .pipe(ImplicitCompletionModule)
