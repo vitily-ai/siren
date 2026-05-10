@@ -46,3 +46,9 @@ Every issue in the siren backlog must have the following fields:
 - `pr`: a URL to the pull request that addresses this issue, if applicable, added upon completion.
   - this will mostly only apply to milestones
 - `files`: a non-durable suggestive list of files that are affected by the issue, identified during planning. Can be updated upon completion.
+
+## Milestone task ordering
+
+Prefer TDD with explicit red/green semantic feedback loops.
+Leaf tasks that are first addressable/dependency free should be TDD red tasks - setting up tests and seeing it fail.
+This is a complete subagent loop, and a proper point to pause and ask for feedback before implementation. The TDD-red task should be marked complete, unblocking the TDD green task in the dependency order, and can then be addressed or delegated.
