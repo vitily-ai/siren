@@ -46,3 +46,41 @@ task draft-states-tests-draft complete {
 	description = "Add draft-specific core coverage for explicit-draft precedence and helper behavior"
 	depends_on = draft-states-tests-port
 }
+
+milestone implicit-draft-milestones { // draft
+  description = "a milestone with no dependencies and no explicit status is implied to be in `draft` status"
+  affected_packages = "core"
+  depends_on = [draft-states]
+}
+
+milestone implicit-draft-tasks { // draft
+  description = "a task with no attributes other than dependencies and no explicit status is implied to be in `draft` status"
+  affected_packages = "core"
+  depends_on = [draft-states]
+}
+
+milestone contradictory-completion-diagnostic { // draft
+  description = "a resource that is `complete` while also having a direct dependency that is `draft` results in a warning diagnostic"
+  affected_packages = "core"
+  depends_on = [draft-states]
+}
+
+milestone draft-symbol-support { // draft
+  description = "the `complete` symbol in the grammar needs to be promoted to a more generic `status` symbol, to support declaring `draft` and future statuses"
+  affected_packages = "language"
+  depends_on = [draft-states]
+}
+
+milestone multiple-statuses-diagnostic { // draft
+  description = "multiple statuses declared on a resource must resolve to one status (last-wins) and raise a warning diagnostic"
+  affected_packages = "language"
+  depends_on = draft-symbol-support
+  example = "
+  task some-task draft complete {}
+  ...
+  WL004 - multiple statuses declared for resource some-task. resource will be considered `complete`.
+  ...
+  task some-task-2 draft draft {}
+  WL004 - multiple statuses declared for resource some-task-2. resource will be considered `draft`.
+  "
+}
