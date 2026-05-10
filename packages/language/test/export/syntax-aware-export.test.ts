@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   type AttributeValue,
   isArray,
   isReference,
   type Resource,
+  type SirenProject,
   SirenBuilder,
 } from '@sirenpm/core';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -25,6 +26,64 @@ function readProjectFixture(projectName: string): string {
   return readFileSync(join(fixturesDir, projectName, 'siren', 'main.siren'), 'utf-8');
 }
 
+function deriveSyntheticId(documentName: string): string {
+  return basename(documentName).replace(/\.siren$/u, '');
+}
+
+function withSyntheticMilestones(
+  resources: readonly Resource[],
+  documents: readonly SourceDocument[],
+): readonly Resource[] {
+  const synthetic = documents.flatMap((document) => {
+    const documentResources = resources.filter((resource) => resource.origin?.document === document.name);
+    if (documentResources.length === 0) {
+      return [];
+    }
+
+    const derivedId = deriveSyntheticId(document.name);
+    const alreadyHasSynthetic = resources.some(
+      (resource) =>
+        resource.synthetic === true &&
+        resource.id === derivedId &&
+        resource.origin?.document === document.name,
+    );
+    if (alreadyHasSynthetic) {
+      return [];
+    }
+
+    return {
+      type: 'milestone' as const,
+      id: derivedId,
+      synthetic: true,
+      status: 'draft' as const,
+      attributes: [
+        {
+          key: 'depends_on',
+          value: {
+            kind: 'array' as const,
+            elements: documentResources.map((resource) => ({
+              kind: 'reference' as const,
+              id: resource.id,
+            })),
+          },
+        },
+      ],
+      origin: {
+        startByte: 0,
+        endByte: 0,
+        startRow: 0,
+        endRow: 0,
+        document: document.name,
+      },
+    };
+  });
+  return [...resources, ...synthetic];
+}
+
+function asProject(resources: readonly Resource[]): SirenProject {
+  return { resources } as unknown as SirenProject;
+}
+
 function normalizeValue(value: AttributeValue): unknown {
   if (isReference(value)) {
     return { kind: 'reference', id: value.id };
@@ -42,7 +101,8 @@ function normalizeResources(resources: readonly Resource[]): unknown {
   return resources.map((resource) => ({
     type: resource.type,
     id: resource.id,
-    complete: resource.complete,
+    synthetic: resource.synthetic,
+    status: resource.status,
     attributes: resource.attributes.map((attribute) => ({
       key: attribute.key,
       value: normalizeValue(attribute.value),
@@ -72,9 +132,9 @@ describe('syntax-aware export', () => {
 
   it('quotes unsafe semantic IDs when syntax context is unavailable', () => {
     const context = SirenBuilder.fromResources([
-      { type: 'task', id: 'needs quote', complete: false, attributes: [] },
-      { type: 'milestone', id: 'safe_id', complete: false, attributes: [] },
-      { type: 'task', id: 'quote"inside', complete: false, attributes: [] },
+      { type: 'task', id: 'needs quote', attributes: [] },
+      { type: 'milestone', id: 'safe_id', attributes: [] },
+      { type: 'task', id: 'quote"inside', attributes: [] },
     ]).build();
 
     const exported = exportToSiren(context);
@@ -109,5 +169,43 @@ describe('syntax-aware export', () => {
     const { context: context2 } = createSirenProjectFromParseResult(parseResult2);
 
     expect(normalizeResources(context2.resources)).toEqual(normalizeResources(context1.resources));
+  });
+
+  it('omits synthetic milestones from source export and re-derives them on reparse', async () => {
+    const sourceDocs: SourceDocument[] = [
+      { name: 'alpha.siren', content: 'task alpha_task {}\n' },
+      { name: 'beta.siren', content: 'task beta_task {}\n' },
+    ];
+
+    const parseResult1 = await adapter.parse(sourceDocs);
+    const { context: context1 } = createSirenProjectFromParseResult(parseResult1);
+    const contextWithSynthetic1 = asProject(withSyntheticMilestones(context1.resources, sourceDocs));
+
+    const syntheticIds1 = new Set(['alpha', 'beta']);
+
+    const exportedDocs = sourceDocs.map((sourceDoc) => {
+      const perDocumentResources = contextWithSynthetic1.resources.filter(
+        (resource) => resource.synthetic !== true && resource.origin?.document === sourceDoc.name,
+      );
+      const perDocumentContext = asProject(perDocumentResources);
+      const exported = exportToSiren(perDocumentContext);
+
+      expect(exported).not.toContain(`milestone ${sourceDoc.name.replace(/\.siren$/u, '')}`);
+      return { name: sourceDoc.name, content: exported };
+    });
+
+    const parseResult2 = await adapter.parse(exportedDocs);
+    const { context: context2 } = createSirenProjectFromParseResult(parseResult2);
+    const contextWithSynthetic2 = asProject(withSyntheticMilestones(context2.resources, sourceDocs));
+
+    const syntheticIds2 = new Set(
+      contextWithSynthetic2.resources
+        .filter((resource) => resource.synthetic === true)
+        .map((resource) => resource.id),
+    );
+    expect(syntheticIds2).toEqual(syntheticIds1);
+    expect(normalizeResources(contextWithSynthetic2.resources)).toEqual(
+      normalizeResources(contextWithSynthetic1.resources),
+    );
   });
 });

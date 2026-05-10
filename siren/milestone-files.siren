@@ -56,7 +56,7 @@ milestone milestone-files {
 
 // Implementation tasks for milestone-files
 
-task mf-synthetic-flag {
+task mf-synthetic-flag complete {
   description = "Add an optional `synthetic: true` marker to the Resource IR type"
   details = "
     In packages/core/src/ir/types.ts add an optional readonly `synthetic?: boolean`
@@ -67,7 +67,7 @@ task mf-synthetic-flag {
   "
 }
 
-task mf-group-resources {
+task mf-group-resources complete {
   description = "Group resources by origin.document inside IRContext"
   depends_on = mf-synthetic-flag
   details = "
@@ -79,7 +79,7 @@ task mf-group-resources {
   "
 }
 
-task mf-derive-id {
+task mf-derive-id complete {
   description = "Add a private helper to derive a milestone ID from a document path"
   details = "
     Add `private static fileToMilestoneId(documentPath: string): string` on
@@ -95,7 +95,7 @@ task mf-derive-id {
   "
 }
 
-task mf-check-collision {
+task mf-check-collision complete {
   description = "Skip synthesis when the file's explicit milestone already represents it"
   depends_on = [mf-group-resources, mf-derive-id]
   details = "
@@ -107,7 +107,7 @@ task mf-check-collision {
   "
 }
 
-task mf-generate-synthetic {
+task mf-generate-synthetic complete {
   description = "Generate synthetic milestone resources for surviving document buckets"
   depends_on = mf-check-collision
   details = "
@@ -126,7 +126,7 @@ task mf-generate-synthetic {
   "
 }
 
-task mf-append-resources {
+task mf-append-resources complete {
   description = "Append synthetic milestones to _allResources before lazy computation"
   depends_on = mf-generate-synthetic
   details = "
@@ -140,7 +140,7 @@ task mf-append-resources {
   "
 }
 
-task mf-exporter-filter {
+task mf-exporter-filter complete {
   description = "Skip synthetic resources when emitting Siren source"
   depends_on = mf-synthetic-flag
   details = "
@@ -155,7 +155,7 @@ task mf-exporter-filter {
   "
 }
 
-task mf-cycle-tdd-prework {
+task mf-cycle-tdd-prework complete {
   description = "Pre-feature TDD: add a failing test for cycles involving synthetic milestones"
   details = "
     Before any synthesis code lands, add a red test (skipped or .todo if necessary,
@@ -168,7 +168,7 @@ task mf-cycle-tdd-prework {
   "
 }
 
-task mf-unit-tests {
+task mf-unit-tests complete {
   description = "Add IRContext unit tests for synthetic milestone behaviour"
   depends_on = mf-append-resources
   details = "
@@ -202,7 +202,7 @@ task mf-unit-tests {
   "
 }
 
-task mf-roundtrip-test {
+task mf-roundtrip-test complete {
   description = "Round-trip determinism: synthetics never reach exporter output"
   depends_on = [mf-exporter-filter, mf-append-resources]
   details = "

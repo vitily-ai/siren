@@ -1,4 +1,4 @@
-import type { IRExporter, SirenProject } from '@sirenpm/core';
+import type { IRExporter, Resource, SirenProject } from '@sirenpm/core';
 import type { CommentToken } from '../parser/adapter';
 import { SourceIndex } from '../parser/source-index';
 import type { SyntaxDocument, SyntaxIdentifier } from '../syntax/types';
@@ -7,6 +7,18 @@ import { formatAttributeLine, formatResourceIdentifier, wrapResourceBlock } from
 
 export interface ExportToSirenOptions {
   readonly syntaxDocuments?: readonly SyntaxDocument[];
+}
+
+function hasCompleteStatus(resource: Resource): boolean {
+  if ('status' in resource) {
+    return (resource as Resource & { status?: unknown }).status === 'complete';
+  }
+  return (resource as Resource & { complete?: boolean }).complete === true;
+}
+
+function isSyntheticResource(resource: Resource): boolean {
+  if (!('synthetic' in resource)) return false;
+  return (resource as Resource & { synthetic?: boolean }).synthetic === true;
 }
 
 function makeResourceKey(document: string, startByte: number, endByte: number): string {
@@ -88,6 +100,7 @@ export function exportToSiren(ctx: SirenProject, options: ExportToSirenOptions =
   const lines: string[] = [];
 
   for (const res of ctx.resources) {
+    if (isSyntheticResource(res)) continue;
     const body: string[] = [];
     for (const attr of res.attributes) {
       body.push(formatAttributeLine(attr.key, attr.value, attr.raw));
@@ -97,7 +110,7 @@ export function exportToSiren(ctx: SirenProject, options: ExportToSirenOptions =
       wrapResourceBlock(
         res.type,
         formatResourceIdentifier(res.id, syntaxIdentifier),
-        res.complete,
+        hasCompleteStatus(res),
         body,
       ),
     );

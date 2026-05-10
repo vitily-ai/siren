@@ -1,9 +1,21 @@
-import type { AttributeValue, SirenProject } from '@sirenpm/core';
+import type { AttributeValue, Resource, SirenProject } from '@sirenpm/core';
 import type { SourceIndex } from '../parser/source-index';
 import type { SyntaxDocument, SyntaxIdentifier } from '../syntax/types';
 import { formatAttributeLine, formatResourceIdentifier, wrapResourceBlock } from './formatters';
 
 const BODY_INDENT = '  ';
+
+function hasCompleteStatus(resource: Resource): boolean {
+  if ('status' in resource) {
+    return (resource as Resource & { status?: unknown }).status === 'complete';
+  }
+  return (resource as Resource & { complete?: boolean }).complete === true;
+}
+
+function isSyntheticResource(resource: Resource): boolean {
+  if (!('synthetic' in resource)) return false;
+  return (resource as Resource & { synthetic?: boolean }).synthetic === true;
+}
 
 function formatBodyCommentLines(text: string): string[] {
   const trimmed = text.replace(/\r?\n$/, '');
@@ -67,7 +79,7 @@ export function exportWithComments(
 
   const allComments = sourceIndex.getAllComments();
 
-  const resources = ctx.resources.slice();
+  const resources = ctx.resources.filter((resource) => !isSyntheticResource(resource));
   // If origin exists, prefer stable byte order (matches the file for per-file IR)
   resources.sort((a, b) => {
     const ao = a.origin?.startByte ?? Number.POSITIVE_INFINITY;
@@ -234,7 +246,7 @@ export function exportWithComments(
     const block = wrapResourceBlock(
       res.type,
       formatResourceIdentifier(res.id, syntaxIdentifier),
-      res.complete,
+      hasCompleteStatus(res),
       body,
       headerTrailingComment,
     );
