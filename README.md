@@ -42,7 +42,7 @@ node apps/cli/dist/index.js
 
 - `packages/core` — environment-agnostic core library with `SirenBuilder`, `SirenProject`, IR types, semantic validation, `DiagnosticBase`, `IRExporter`, and shared utilities
 - `packages/language` — tree-sitter grammar, parser factory (`createParser()`), CST → IR decoder, exporters/formatters; depends on `@sirenpm/core`
-- `apps/web` — Vite-based browser app shell (currently a minimal placeholder backed by `@sirenpm/core`)
+- `apps/web` — Vite-based browser app **STUB - NOT STARTED**
 - `apps/cli` — Node CLI built with `tsup`/`esbuild`; depends on `@sirenpm/core` + `@sirenpm/language` via npm pins
 
 CLI and language consume `@sirenpm/core` from the npm registry (not `workspace:*`); each package ships independently. The web app uses `workspace:*` because it is not published.
