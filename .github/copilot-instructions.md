@@ -23,10 +23,10 @@ milestone release-1 {
 **Error-tolerant**: Parser recovers from incomplete input (e.g., missing `}`).
 
 ## Architecture
-- **Core library** (`packages/core`, `@sirenpm/core`): Environment-agnostic TypeScript — IR types, `IRContext`, semantic validation, `DiagnosticBase`, `IRExporter` interface, and shared utilities. No parser/decoder/export code, no DOM, no Node APIs. Bundled with tsup into a single ESM module + `.d.ts`.
+- **Core library** (`packages/core`, `@sirenpm/core`): Environment-agnostic TypeScript — `SirenBuilder`, `SirenProject`, IR types, semantic validation, `DiagnosticBase`, `IRExporter` interface, and shared utilities. No parser/decoder/export code, no DOM, no Node APIs. Bundled with tsup into a single ESM module + `.d.ts`.
 - **Language package** (`packages/language`, `@sirenpm/language`): Owns the tree-sitter grammar (WASM), parser factory (`createParser()`), CST types, decoder (CST → IR), comment classification, exporters (`SirenExporter`, `exportToSiren`, `exportWithComments`), and formatters. `web-tree-sitter` is a direct runtime dep; WASM resolution is package-relative. Depends on `@sirenpm/core` (peer).
 - **CLI** (`apps/cli`, `@sirenpm/cli`): Node CLI built with tsup/esbuild. Consumes `@sirenpm/core` + `@sirenpm/language` via npm pins. No `web-tree-sitter` dep — transitive via language.
-- **Web app** (`apps/web`): Vite-based browser app. Currently consumes `@sirenpm/core` via workspace linkage; will add `@sirenpm/language` when in-browser parsing lands.
+- **Web app** (`apps/web`): Vite-based browser app shell. Currently consumes `@sirenpm/core` via workspace linkage; `@sirenpm/language` will be added when in-browser parsing lands.
 - **IR Layer**: Resources decode into a shared intermediate representation that supports multiple backends.
 
 ## Monorepo Structure
@@ -34,7 +34,7 @@ milestone release-1 {
 packages/
   core/         # IR, semantic validation, DiagnosticBase, IRExporter, utilities (env-agnostic)
     src/
-      ir/        # types, IRContext, semantic diagnostics, DiagnosticBase, IRExporter
+      ir/        # types, SirenBuilder, SirenProject, semantic diagnostics, DiagnosticBase, IRExporter
       utilities/ # graph, dependency-tree, milestone, entry helpers
   language/     # grammar, parser factory, decoder, exporters, formatters
     grammar/    # tree-sitter grammar + committed tree-sitter-siren.wasm
@@ -60,7 +60,7 @@ apps/
 4. **Registry resolution by default**: Published packages depend on each other via the npm registry (not `workspace:*`). `@sirenpm/cli` pins `@sirenpm/core` and `@sirenpm/language`; `@sirenpm/language` pins `@sirenpm/core`. `enableTransparentWorkspaces: false` in `.yarnrc.yml` enforces this. To iterate locally, link manually (`yarn link`) or temporarily swap to `workspace:*`. The web app (`apps/web`) uses `workspace:*` because it is not published.
 5. **Diagnostic codes**: Core owns semantic codes `W001` (circular), `W002` (dangling), `W003` (duplicate id). Language owns parse-phase codes `WL001`–`WL003` and `EL001`. `DiagnosticBase` carries no `message` — frontends assemble display text from structured fields.
 6. **Zero-config parser**: `createParser()` in `@sirenpm/language` owns `web-tree-sitter` initialization and resolves the grammar WASM via `new URL(...)` package-relative — consumers do not configure paths.
-7. **Maximum core**: Core contains high-level utility logic (e.g. listing milestones) in addition to IR types and validation. A utility useful for one frontend is likely useful for others.
+7. **Maximum core**: Core contains high-level utility logic (e.g. listing milestones) in addition to `SirenBuilder`, `SirenProject`, IR types, and validation. A utility useful for one frontend is likely useful for others.
 
 ## Testing
 - **Vitest** repo-wide for unit tests

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Siren is a "Project Management as Code" (PMaC) framework for defining projects and milestones using a concise HCL-inspired grammar. This repository is a TypeScript monorepo containing the core library, the language package (parser/decoder/exporters), a CLI, and a small web app.
+Siren is a "Project Management as Code" (PMaC) framework for defining projects and milestones using a concise HCL-inspired grammar. This repository is a TypeScript monorepo containing the core library (`SirenBuilder` / `SirenProject` plus IR types and validation), the language package (parser/decoder/exporters), a CLI, and a small web app.
 
 Key technologies
 - TypeScript (tsconfig.json)
@@ -12,10 +12,11 @@ Key technologies
 - Tree-sitter grammar for parsing (`packages/language/grammar`)
 
 Repository layout (high level)
-- `packages/core/` — IR types, semantic validation, `DiagnosticBase`, `IRExporter` interface, utilities (env-agnostic)
+- `packages/core/` — IR types, semantic validation, `SirenBuilder`, `SirenProject`, `DiagnosticBase`, `IRExporter`, utilities (env-agnostic)
 - `packages/language/` — tree-sitter grammar, parser factory, CST → IR decoder, exporters/formatters
+- `packages/language/grammar/` — tree-sitter grammar sources and committed WASM binary
 - `apps/cli/` — Node CLI and commands
-- `apps/web/` — small Vite-based web front-end
+- `apps/web/` — small Vite-based web front-end shell
 - `siren/` — example `.siren` files and templates
 
 ## Project Status
@@ -43,8 +44,9 @@ Notes
 ## Common Commands
 
 - Install dependencies: `yarn install`
-- Run all tests from the repo root (recommended per package):
-  - `yarn workspaces foreach -pv run test` OR run tests per workspace:
+- Run all tests from the repo root: `yarn test`
+- Run tests across workspaces directly when you need package output instead of the root build step:
+  - `yarn workspaces foreach -pv run test`
   - `yarn workspace <package-name> test`
 - Run the CLI tests (example):
   - `yarn workspace @sirenpm/cli test` (replace with actual package name from `apps/cli/package.json`)
@@ -64,7 +66,9 @@ yarn workspace <package-name> tsc --noEmit
 ## Development Workflow
 
 - Make changes in the appropriate package under `packages/` or `apps/`.
-- Add/update unit tests in the same package. Core changes that affect parsing/decoding must include fixtures under `packages/core/test/fixtures` per project conventions.
+- Add/update unit tests in the same package.
+- Grammar/parser changes must include a matching `snippets` fixture under `packages/language/test/fixtures/snippets/`.
+- Decoder/IR changes must include a matching `projects` fixture under `packages/language/test/fixtures/projects/` (and purely semantic core changes should use core unit tests).
 - Run `yarn install` when changing workspace dependencies.
 - Use `yarn workspace <name> <script>` to run package-local scripts.
 

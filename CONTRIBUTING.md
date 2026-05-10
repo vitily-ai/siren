@@ -6,9 +6,10 @@ This document explains the repository layout, developer standards, and common co
 Repository layout
 -----------------
 
-- `packages/core` — Core parsing, decoding, IR types, utilities. Must remain environment-agnostic (no DOM/Node APIs).
-- `packages/core/grammar` — Tree-sitter grammar and committed WASM binary used by tests and apps.
-- `apps/web` — Vite web frontend (WASM + Mermaid rendering).
+- `packages/core` — Core IR types, semantic validation, `SirenBuilder`, `SirenProject`, and shared utilities. Must remain environment-agnostic (no DOM/Node APIs).
+- `packages/language` — Tree-sitter grammar, parser factory, CST → IR decoder, exporters, and formatters.
+- `packages/language/grammar` — Tree-sitter grammar sources plus the committed WASM binary used by tests and apps.
+- `apps/web` — Vite web frontend shell (currently a minimal placeholder backed by `@sirenpm/core`).
 - `apps/cli` — Node CLI (bundled with `tsup`/`esbuild`).
 - `siren/` — bootstrapped siren project tracking development progress and goals.
 
@@ -38,11 +39,11 @@ yarn test
 Why we run a root build before tests
 -----------------------------------
 
-The repository defines a root-level `pretest` that runs `yarn build` before `yarn test`.
-This ensures workspace packages' compiled `dist` artifacts are up-to-date when tests
+The root `test` script runs `yarn build:quiet` before the workspace test sweep.
+This ensures workspace packages' compiled `dist` artifacts are up to date when tests
 import package entrypoints (many packages export their runtime from `dist`). Running
 tests without building can cause suites to load stale built files and fail unpredictably
-depending on the `workspaces foreach` scheduling. The root `pretest` makes `yarn test`
+depending on the `workspaces foreach` scheduling. The root `test` script makes `yarn test`
 deterministic by building first.
 
 Run core package tests:
@@ -54,7 +55,7 @@ yarn workspace @sirenpm/core test
 Rebuild the Tree-sitter parser (only needed when editing grammar):
 
 ```bash
-cd packages/core/grammar
+cd packages/language/grammar
 npx tree-sitter-cli generate
 npx tree-sitter-cli build --wasm
 npx tree-sitter-cli test
@@ -64,12 +65,15 @@ How to add features
 --------------------
 
 1. Open an issue describing the change and the acceptance criteria.
-2. Add or update unit tests in the appropriate package (`packages/core/test`, `apps/cli/test`, or `apps/web/src` tests).
-3. Implement the change with minimal, focused edits.
-4. Run the package tests and update fixtures as needed.
+2. Add or update unit tests in the appropriate package.
+3. Grammar/parser changes should add a focused snippet fixture under `packages/language/test/fixtures/snippets/`.
+4. Decoder or IR changes should add a focused project fixture under `packages/language/test/fixtures/projects/` (or core IR unit tests when the change is purely semantic).
+5. CLI behavior changes should add a golden-file test under `apps/cli/test/expected/`.
+6. Implement the change with minimal, focused edits.
+7. Run the package tests and update fixtures as needed.
 
 Code style & reviews
----------------------
+--------------------
 
 - Keep PRs small and focused. Include test coverage for behavioral changes.
 - Preserve public API shapes unless the change is explicitly part of a major version bump.
@@ -109,14 +113,14 @@ Fixtures
 - Usage: When adding a grammar/decoder change, add a small, focused fixture that reproduces the case and a test referencing it. For golden file changes, update the expected output and ensure tests reflect the new behavior.
 - Best practices: keep fixtures minimal and well-named, include comments when needed, add a matching test, and prefer multiple small fixtures over one large file.
 
-Public API Policy (IRContext)
------------------------------
+Public API Policy (SirenBuilder / SirenProject)
+----------------------------------------------
 
-- **Goal:** expose a minimal, opaque object-oriented surface via `IRContext` plus the IR types. Consumers (CLI, web, external) should interact with the project IR only through `IRContext` methods and exported types.
-- **What to export:** only IR types and `IRContext` from `packages/core`'s public entry. Internal utilities, parser runtime helpers, and type-guard helpers (`isArray`, `isReference`, etc.) should remain internal and not re-exported.
-- **Immutability & encapsulation:** `IRContext` instances are immutable and return plain data. Methods should avoid leaking internal mutable structures and should be the documented way for clients to query the IR (e.g., `getMilestoneIds()`, `getTasksByMilestone()`, `findResourceById()`).
+- **Goal:** expose a minimal, object-oriented surface via `SirenBuilder` and `SirenProject`. Consumers (CLI, web, external) should interact with the project IR only through `SirenProject` methods and exported types.
+- **What to export:** the `packages/core` public entry currently exports `SirenBuilder`, `SirenProject`, the IR types, diagnostics, `IRExporter`, selected helpers, and type guards. Keep new helpers internal unless there is a concrete consumer need.
+- **Immutability & encapsulation:** `SirenProject` instances are immutable and return plain data. Methods should avoid leaking internal mutable structures and should be the documented way for clients to query the IR (for example `findResourceById()`, `getMilestoneIds()`, `getTasksByMilestone()`, `getDependencyTree()`, and `diagnostics`).
 - **Testing guidance:**
-	- Integration and external tests should exercise behavior via the `IRContext` API only.
-	- Internal unit tests within `packages/core` may import package-local modules (e.g., `src/ir/types.js` or `src/utilities/*`) to verify low-level behavior. Those imports must remain inside the package and should not be considered part of the public contract.
-- **CLI/Web integration:** when adding CLI commands or web features, prefer wiring the command handlers to methods on `IRContext` (CLI commands should mirror object methods). This keeps the CLI usage and programmatic API aligned.
-- **Evolving internals:** keep utilities and helpers private so the core implementation can change without breaking consumers. When a new capability is intended for consumers, add a well-documented method to `IRContext` and update callers.
+	- Integration and external tests should exercise behavior via the `SirenProject` API only.
+	- Internal unit tests within `packages/core` may import package-local modules (for example `src/ir/types.ts` or `src/utilities/*`) to verify low-level behavior. Those imports must remain inside the package and should not be considered part of the public contract.
+- **CLI/Web integration:** when adding CLI commands or web features, prefer wiring the command handlers to methods on `SirenProject` (CLI commands should mirror object methods). This keeps the CLI usage and programmatic API aligned.
+- **Evolving internals:** keep utilities and helpers private so the core implementation can change without breaking consumers. When a new capability is intended for consumers, add a well-documented method to `SirenProject` and update callers.
