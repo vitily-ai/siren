@@ -12,18 +12,19 @@
   "scripts": {
     "build": "yarn workspaces foreach --all --topological run build",
     "build:quiet": "yarn workspaces foreach --all --topological run build:quiet > /dev/null && echo 'Silent build successful!' || echo 'Silent build failed - run `yarn build` for full output'",
-    "test": "yarn build:quiet && yarn workspaces foreach --all --topological run test",
-    "lint": "biome check .",
-    "lint:fix": "biome check --write .",
-    "format": "biome format --write .",
+    "changeset": "changeset",
     "clean": "yarn workspaces foreach -Apt run clean",
-    "siren": "node apps/cli/dist/index.js",
     "cli:link": "cd apps/cli && npm link",
     "create-fixture": "bash scripts/create_project_fixture.sh",
     "create-golden": "bash scripts/create-golden.sh",
-    "changeset": "changeset",
-    "version-packages": "changeset version",
-    "prepare": "husky"
+    "format": "biome format --write .",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "prepare": "husky",
+    "siren": "node apps/cli/dist/index.js",
+    "test": "yarn build:quiet && yarn workspaces foreach --all --topological run test",
+    "typecheck": "yarn workspaces foreach --all run typecheck",
+    "version-packages": "changeset version"
   },
   "lint-staged": {
     "*.{js,ts,jsx,tsx,json}": [

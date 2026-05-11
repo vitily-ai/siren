@@ -24,6 +24,7 @@
     "prepack": "yarn run build",
     "test": "vitest run --reporter=dot --silent",
     "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "engines": {
