@@ -9,19 +9,19 @@ milestone cli-mutations {
 
 # Core surface cleanup and mutation primitives
 
-task cli-mutations-remove-core-export-surface {
+task cli-mutations-remove-core-export-surface complete {
   description = "Remove the current export surface from core so the package only owns IR and semantic validation."
   affected_packages = "core"
   details = "Delete IRExporter and any related public export types so project-to-source rendering stops being part of core's contract and moves entirely into language."
 }
 
-task cli-mutations-core-patch-api-red {
+task cli-mutations-core-patch-api-red complete {
   description = "Add failing core tests for an immutable, layered SirenBuilder patch API built from composed pure functions."
   affected_packages = "core"
   details = "Cover `.patch(documents => newDocuments)` as the primitive transform over the builder's document list, then cover `.withDocument`, `.withResource`, `.patchDocument`, and `.patchResource` as convenience wrappers that compose into that pure function layer without mutating the original builder."
 }
 
-task cli-mutations-core-patch-api {
+task cli-mutations-core-patch-api complete {
   description = "Implement an immutable, layered patch API on SirenBuilder."
   affected_packages = "core"
   depends_on = cli-mutations-core-patch-api-red
@@ -30,13 +30,13 @@ task cli-mutations-core-patch-api {
 
 # Language renderer replacement
 
-task cli-mutations-language-renderer-red {
+task cli-mutations-language-renderer-red complete {
   description = "Add failing language tests for a literal SirenDocument-to-source renderer."
   affected_packages = "language"
   details = "Cover `renderSirenDocument(document)` rendering directly from literal SirenDocument input, including tasks, milestones, references, quoted identifiers, arrays, and explicit status keywords, without relying on source-preserving trivia or comment retention."
 }
 
-task cli-mutations-language-renderer {
+task cli-mutations-language-renderer complete {
   description = "Replace language export utilities with a single literal SirenDocument renderer."
   affected_packages = "language"
   depends_on = [cli-mutations-language-renderer-red, cli-mutations-remove-core-export-surface]
@@ -45,7 +45,7 @@ task cli-mutations-language-renderer {
 
 # Package publication boundary
 
-task cli-mutations-publish-core-language {
+task cli-mutations-publish-core-language complete {
   description = "Publish refreshed core and language package versions so downstream CLI work can consume the new mutation and rendering surfaces."
   affected_packages = "core, language"
   depends_on = [cli-mutations-core-patch-api, cli-mutations-language-renderer]
