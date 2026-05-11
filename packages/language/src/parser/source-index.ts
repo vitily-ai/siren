@@ -156,6 +156,7 @@ export class SourceIndex {
    */
   private getLeadingComments(origin: Origin): readonly ClassifiedComment[] {
     const result: ClassifiedComment[] = [];
+    if (origin.kind !== 'range') return result;
 
     for (const comment of this.comments) {
       // Stop at comments that are at or after the node start
@@ -194,6 +195,7 @@ export class SourceIndex {
    */
   private getTrailingComments(origin: Origin): readonly ClassifiedComment[] {
     const result: ClassifiedComment[] = [];
+    if (origin.kind !== 'range') return result;
 
     for (const comment of this.comments) {
       // Trailing comments should be on same line as node end

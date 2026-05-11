@@ -88,11 +88,12 @@ function lineText(state: SourceState, row: number): string {
 }
 
 function spanFromOrigin(origin: Origin | undefined, fallbackDocument: string): SourceSpan {
+  const range = origin?.kind === 'range' ? origin : undefined;
   return {
-    startByte: origin?.startByte ?? 0,
-    endByte: origin?.endByte ?? 0,
-    startRow: origin?.startRow ?? 0,
-    endRow: origin?.endRow ?? 0,
+    startByte: range?.startByte ?? 0,
+    endByte: range?.endByte ?? 0,
+    startRow: range?.startRow ?? 0,
+    endRow: range?.endRow ?? 0,
     document: origin?.document ?? fallbackDocument,
   };
 }

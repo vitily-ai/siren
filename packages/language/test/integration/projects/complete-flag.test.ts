@@ -24,7 +24,7 @@ describe('project:complete-flag', () => {
     expect(milestone).toBeDefined();
 
     // task_done should be marked complete
-    expect(taskDone!.complete).toBe(true);
+    expect(taskDone!.status).toBe('complete');
 
     // The milestone depends on task_root, which depends on both a completed task
     // and an incomplete task. The dependency tree includes all dependencies but
@@ -47,7 +47,7 @@ describe('project:complete-flag', () => {
     expect(incompleteDep).toBeDefined();
 
     // Verify the incomplete task has the correct complete flag
-    expect(incompleteDep!.resource.complete).toBe(false);
+    expect(incompleteDep!.resource.status).not.toBe('complete');
 
     // Complete tasks should not appear in the tree at all
     const completeDep = taskRootNode?.dependencies.find((d) => d.resource.id === 'task_done');

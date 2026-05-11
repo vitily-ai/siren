@@ -10,6 +10,7 @@ import type {
   Resource,
   ResourceReference,
   ResourceType,
+  SirenDocument,
 } from '@sirenpm/core';
 import type {
   SourceSpan,
@@ -42,16 +43,15 @@ export interface ParseDiagnostic {
   readonly column?: number;
 }
 
-export interface DecodedDocument {
-  readonly resources: readonly Resource[];
-}
+/** @deprecated Use SirenDocument from @sirenpm/core directly */
+export type DecodedDocument = SirenDocument;
 
 /**
  * Result of decoding a CST into a Project
  */
 export interface DecodeResult {
-  /** The decoded document, or null if decoding failed with errors */
-  readonly document: DecodedDocument | null;
+  /** One SirenDocument per source syntax document, or null if decoding failed with errors */
+  readonly documents: readonly SirenDocument[] | null;
   /** Parse-level diagnostics (grammar/syntax issues only) */
   readonly diagnostics: readonly ParseDiagnostic[];
   /** True if decoding succeeded without errors (warnings allowed) */
@@ -60,6 +60,7 @@ export interface DecodeResult {
 
 function toOrigin(span: SourceSpan): Origin {
   return {
+    kind: 'range',
     startByte: span.startByte,
     endByte: span.endByte,
     startRow: span.startRow,
@@ -206,33 +207,35 @@ function decodeResource(node: SyntaxResource, diagnostics: ParseDiagnostic[]): R
   return {
     type,
     id,
-    complete,
+    status: complete ? ('complete' as const) : undefined,
     attributes,
     origin: toOrigin(node.span),
   };
 }
 
 /**
- * Decode syntax documents into an IR Document.
+ * Decode syntax documents into one SirenDocument per source document.
  */
 export function decodeSyntaxDocuments(syntaxDocuments: readonly SyntaxDocument[]): DecodeResult {
   const diagnostics: ParseDiagnostic[] = [];
-  const resources: Resource[] = [];
+  const sirenDocuments: SirenDocument[] = [];
 
   for (const syntaxDocument of syntaxDocuments) {
+    const resources: Resource[] = [];
     for (const resourceNode of syntaxDocument.resources) {
       resources.push(decodeResource(resourceNode, diagnostics));
     }
+    sirenDocuments.push({
+      id: syntaxDocument.source.name,
+      resources,
+      directive: { implicitMilestone: false },
+    });
   }
 
   const hasErrors = diagnostics.some((d) => d.severity === 'error');
 
   return {
-    document: hasErrors
-      ? null
-      : {
-          resources,
-        },
+    documents: hasErrors ? null : sirenDocuments,
     diagnostics,
     success: !hasErrors,
   };

@@ -36,7 +36,7 @@ describe('project:incomplete-leaf-rendering', () => {
     const depA = resources.find((r) => r.id === 'dep_a');
     expect(depA).toBeDefined();
     // dep_a is marked complete and has no dependencies
-    expect(depA?.complete).toBe(true);
+    expect(depA?.status).toBe('complete');
     expect(getDependsOn(depA!)).toHaveLength(0);
   });
 });

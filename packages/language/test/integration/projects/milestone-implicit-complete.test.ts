@@ -13,17 +13,17 @@ describe('project:milestone-implicit-complete', () => {
 
   it('resolves .complete to true on a milestone whose all direct deps are complete', () => {
     const mDone = irContext.findResourceById('m-done');
-    expect(mDone.complete).toBe(true);
+    expect(mDone.status).toBe('complete');
   });
 
   it('resolves .complete transitively through milestone chains', () => {
     const root = irContext.findResourceById('root');
-    expect(root.complete).toBe(true);
+    expect(root.status).toBe('complete');
   });
 
   it('preserves .complete on explicitly-complete tasks', () => {
     const taskA = irContext.findResourceById('task-a');
-    expect(taskA.complete).toBe(true);
+    expect(taskA.status).toBe('complete');
   });
 
   it('excludes implicitly-complete milestones from getDependencyTree', () => {
@@ -50,7 +50,7 @@ describe('project:milestone-orphan-not-complete', () => {
 
   it('does not resolve .complete on an orphan milestone with no depends_on', () => {
     const orphan = irContext.findResourceById('orphan');
-    expect(orphan.complete).toBe(false);
+    expect(orphan.status).not.toBe('complete');
   });
 
   it('orphan milestone still appears in the dependency tree of resources that depend on it', () => {

@@ -469,9 +469,9 @@ describe('Decode Integration: Fixtures', () => {
       const ir = createSirenProjectFromParseResult(parseResult).context;
 
       const resources = ir.resources;
-      expect(resources[0].complete).toBe(true); // task done complete
-      expect(resources[1].complete).toBe(true); // milestone shipped complete
-      expect(resources[2].complete).toBe(false); // task incomplete
+      expect(resources[0].status).toBe('complete'); // task done complete
+      expect(resources[1].status).toBe('complete'); // milestone shipped complete
+      expect(resources[2].status).not.toBe('complete'); // task incomplete
     });
   });
 });
