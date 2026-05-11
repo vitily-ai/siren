@@ -1,4 +1,4 @@
-import type { IRExporter, SirenProject } from '@sirenpm/core';
+import type { SirenProject } from '@sirenpm/core';
 import type { CommentToken } from '../parser/adapter';
 import { SourceIndex } from '../parser/source-index';
 import type { SyntaxDocument, SyntaxIdentifier } from '../syntax/types';
@@ -92,12 +92,15 @@ export function exportToSiren(ctx: SirenProject, options: ExportToSirenOptions =
     for (const attr of res.attributes) {
       body.push(formatAttributeLine(attr.key, attr.value, attr.raw));
     }
-    const syntaxIdentifier = findSyntaxIdentifierForResource(syntaxIdentifierLookup, res.origin);
+    const syntaxIdentifier = findSyntaxIdentifierForResource(
+      syntaxIdentifierLookup,
+      res.origin?.kind === 'range' ? res.origin : undefined,
+    );
     lines.push(
       wrapResourceBlock(
         res.type,
         formatResourceIdentifier(res.id, syntaxIdentifier),
-        res.complete,
+        res.status === 'complete',
         body,
       ),
     );
@@ -107,7 +110,7 @@ export function exportToSiren(ctx: SirenProject, options: ExportToSirenOptions =
   return lines.join('\n\n') + (lines.length ? '\n' : '');
 }
 
-export class SirenExporter implements IRExporter {
+export class SirenExporter {
   constructor(private readonly options: ExportToSirenOptions = {}) {}
 
   export(ctx: SirenProject): string {

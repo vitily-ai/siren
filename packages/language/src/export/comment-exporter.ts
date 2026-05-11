@@ -1,9 +1,13 @@
-import type { AttributeValue, SirenProject } from '@sirenpm/core';
+import type { AttributeValue, Origin, SirenProject } from '@sirenpm/core';
 import type { SourceIndex } from '../parser/source-index';
 import type { SyntaxDocument, SyntaxIdentifier } from '../syntax/types';
 import { formatAttributeLine, formatResourceIdentifier, wrapResourceBlock } from './formatters';
 
 const BODY_INDENT = '  ';
+
+function toRange(o: Origin | undefined) {
+  return o?.kind === 'range' ? o : undefined;
+}
 
 function formatBodyCommentLines(text: string): string[] {
   const trimmed = text.replace(/\r?\n$/, '');
@@ -70,8 +74,8 @@ export function exportWithComments(
   const resources = ctx.resources.slice();
   // If origin exists, prefer stable byte order (matches the file for per-file IR)
   resources.sort((a, b) => {
-    const ao = a.origin?.startByte ?? Number.POSITIVE_INFINITY;
-    const bo = b.origin?.startByte ?? Number.POSITIVE_INFINITY;
+    const ao = toRange(a.origin)?.startByte ?? Number.POSITIVE_INFINITY;
+    const bo = toRange(b.origin)?.startByte ?? Number.POSITIVE_INFINITY;
     return ao - bo;
   });
 
@@ -118,9 +122,10 @@ export function exportWithComments(
 
       // If this comment is inside any resource span, don't treat as top-level.
       // We'll emit it when building the owning resource body.
-      const owningRes = resources.find(
-        (r) => r.origin && c.startByte >= r.origin.startByte && c.endByte <= r.origin.endByte,
-      );
+      const owningRes = resources.find((r) => {
+        const ro = toRange(r.origin);
+        return !!ro && c.startByte >= ro.startByte && c.endByte <= ro.endByte;
+      });
       if (owningRes) {
         commentIdx++;
         continue;
@@ -142,8 +147,8 @@ export function exportWithComments(
   }
 
   for (const res of resources) {
-    const resStart = res.origin?.startByte ?? Number.POSITIVE_INFINITY;
-    const resEnd = res.origin?.endByte ?? Number.NEGATIVE_INFINITY;
+    const resStart = toRange(res.origin)?.startByte ?? Number.POSITIVE_INFINITY;
+    const resEnd = toRange(res.origin)?.endByte ?? Number.NEGATIVE_INFINITY;
 
     // Emit any top-level comment blocks that occur before this resource.
     flushTopLevelCommentsUntil(resStart);
@@ -154,7 +159,7 @@ export function exportWithComments(
 
     // Track the header line (opening brace line) for detecting trailing comments on it
     // The header is on the startRow of the resource (first line with "type id {")
-    const headerRow = res.origin?.startRow;
+    const headerRow = toRange(res.origin)?.startRow;
     let headerTrailingComment: string | undefined;
 
     // Track attributes by their end row to detect trailing comments
@@ -164,9 +169,9 @@ export function exportWithComments(
     >();
 
     for (const attr of res.attributes) {
-      const order = attr.origin?.startByte ?? Number.POSITIVE_INFINITY;
+      const order = toRange(attr.origin)?.startByte ?? Number.POSITIVE_INFINITY;
       const entryIndex = bodyEntries.length;
-      const endRow = attr.origin?.endRow;
+      const endRow = toRange(attr.origin)?.endRow;
 
       bodyEntries.push({
         order,
@@ -230,19 +235,22 @@ export function exportWithComments(
     bodyEntries.sort((a, b) => (a.order === b.order ? a.seq - b.seq : a.order - b.order));
     const body = bodyEntries.map((e) => e.text);
 
-    const syntaxIdentifier = findSyntaxIdentifierForResource(syntaxIdentifierLookup, res.origin);
+    const syntaxIdentifier = findSyntaxIdentifierForResource(
+      syntaxIdentifierLookup,
+      toRange(res.origin),
+    );
     const block = wrapResourceBlock(
       res.type,
       formatResourceIdentifier(res.id, syntaxIdentifier),
-      res.complete,
+      res.status === 'complete',
       body,
       headerTrailingComment,
     );
     segments.push({
       kind: 'resource',
       lines: block.split('\n'),
-      startRow: res.origin?.startRow ?? 0,
-      endRow: res.origin?.endRow ?? 0,
+      startRow: toRange(res.origin)?.startRow ?? 0,
+      endRow: toRange(res.origin)?.endRow ?? 0,
     });
   }
 

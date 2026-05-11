@@ -180,6 +180,7 @@ function buildAdapter(parser: Parser): ParserAdapter {
     const endPos = node.endPosition;
     if (!startPos || !endPos) return undefined;
     return {
+      kind: 'range' as const,
       startByte: (Number(node.startIndex ?? 0) as number) - boundary.startByte,
       endByte: (Number(node.endIndex ?? 0) as number) - boundary.startByte,
       startRow: (Number(startPos.row ?? 0) as number) - boundary.startRow,

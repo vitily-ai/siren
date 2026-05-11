@@ -4,7 +4,7 @@
  * SirenProject; grammar/parse-time diagnostics are returned alongside.
  */
 
-import { type Resource, SirenBuilder, type SirenProject } from '@sirenpm/core';
+import { SirenBuilder, type SirenProject } from '@sirenpm/core';
 import { decodeSyntaxDocuments, type ParseDiagnostic } from './decoder/index';
 import type { ParseError, ParseResult } from './parser/adapter';
 import type { SyntaxDocument, SyntaxResource } from './syntax/types';
@@ -22,9 +22,8 @@ export interface CreateSirenProjectResult {
 export function createSirenProjectFromSyntaxDocuments(
   syntaxDocuments: readonly SyntaxDocument[],
 ): CreateSirenProjectResult {
-  const { document, diagnostics: parseDiagnostics } = decodeSyntaxDocuments(syntaxDocuments);
-  const resources: readonly Resource[] = document?.resources ?? [];
-  const context = SirenBuilder.fromResources(resources).build();
+  const { documents, diagnostics: parseDiagnostics } = decodeSyntaxDocuments(syntaxDocuments);
+  const context = SirenBuilder.fromDocuments(documents ?? []).build();
   return { context, parseDiagnostics };
 }
 

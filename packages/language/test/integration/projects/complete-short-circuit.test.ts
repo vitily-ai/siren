@@ -26,8 +26,8 @@ describe('short circuit defect is fixed', () => {
     expect(root).toBeDefined();
 
     // Verify fixture complete flags are correct
-    expect(complete!.complete).toBe(true);
-    expect(incomplete!.complete).toBe(false);
+    expect(complete!.status).toBe('complete');
+    expect(incomplete!.status).not.toBe('complete');
 
     // Calculate dependency tree of root from a built semantic project context
     const irContext = SirenBuilder.fromResources(resources).build();

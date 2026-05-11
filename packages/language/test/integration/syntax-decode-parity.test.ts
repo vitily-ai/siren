@@ -65,7 +65,7 @@ describe('Syntax decode parity', () => {
     const parseResult = await adapter.parse([{ name: 'complete.siren', content: source }]);
     const { context, parseDiagnostics } = createSirenProjectFromParseResult(parseResult);
 
-    expect(context.resources[0]?.complete).toBe(true);
+    expect(context.resources[0]?.status).toBe('complete');
 
     const warning = parseDiagnostics.find((diagnostic) => diagnostic.code === 'WL001');
     expect(warning?.severity).toBe('warning');
@@ -80,7 +80,7 @@ describe('Syntax decode parity', () => {
     ]);
     const { context, parseDiagnostics } = createSirenProjectFromParseResult(parseResult);
 
-    expect(context.resources[0]?.complete).toBe(true);
+    expect(context.resources[0]?.status).toBe('complete');
 
     const warning = parseDiagnostics.find((diagnostic) => diagnostic.code === 'WL002');
     expect(warning).toMatchObject({

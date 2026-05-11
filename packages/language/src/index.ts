@@ -14,10 +14,8 @@ export {
 export type { ParseDiagnostic } from './decoder/index';
 // Decoder — Parsed Document Model → IR transformation, with language-phase diagnostics.
 export { decodeSyntaxDocuments } from './decoder/index';
-export type { ExportToSirenOptions } from './export/siren-exporter';
-// Exporter — render IR back to Siren source. Comments are preserved automatically
-// when syntax documents are supplied in options.
-export { exportToSiren, SirenExporter } from './export/siren-exporter';
+// Renderer — render a SirenDocument (IR) back to Siren source text.
+export { renderSirenDocument } from './export/render-document';
 // Formatter — render parsed syntax documents without semantic IR.
 export { renderSyntaxDocument } from './format/syntax-formatter';
 // Parser adapter contracts
