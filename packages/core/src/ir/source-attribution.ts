@@ -21,6 +21,12 @@ export interface SecondOccurrenceAttribution {
   readonly secondColumn?: number;
 }
 
+function rangeOriginForResource(resource: Resource | undefined) {
+  const origin = resource?.origin;
+  if (origin?.kind !== 'range') return undefined;
+  return origin;
+}
+
 export function sourceFileForResource(resource: Resource | undefined): string | undefined {
   return resource?.origin?.document;
 }
@@ -43,10 +49,11 @@ export function sourceFilesForResourceIds(
 }
 
 export function positionForResource(resource: Resource | undefined): PositionAttribution {
-  if (resource?.origin === undefined) return {};
+  const origin = rangeOriginForResource(resource);
+  if (origin === undefined) return {};
 
   return {
-    line: resource.origin.startRow + 1,
+    line: origin.startRow + 1,
     column: 0,
   };
 }
@@ -54,10 +61,11 @@ export function positionForResource(resource: Resource | undefined): PositionAtt
 export function firstOccurrencePositionForResource(
   resource: Resource | undefined,
 ): FirstOccurrencePositionAttribution {
-  if (resource?.origin === undefined) return {};
+  const origin = rangeOriginForResource(resource);
+  if (origin === undefined) return {};
 
   return {
-    firstLine: resource.origin.startRow + 1,
+    firstLine: origin.startRow + 1,
     firstColumn: 0,
   };
 }
@@ -65,13 +73,14 @@ export function firstOccurrencePositionForResource(
 export function secondOccurrenceAttributionForResource(
   resource: Resource | undefined,
 ): SecondOccurrenceAttribution {
-  if (resource?.origin === undefined) {
+  const origin = rangeOriginForResource(resource);
+  if (origin === undefined) {
     return { file: sourceFileForResource(resource) };
   }
 
   return {
     file: sourceFileForResource(resource),
-    secondLine: resource.origin.startRow + 1,
+    secondLine: origin.startRow + 1,
     secondColumn: 0,
   };
 }

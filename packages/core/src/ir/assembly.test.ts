@@ -5,6 +5,7 @@ import { isArray, isReference, type Origin, type Resource } from './types';
 
 function origin(document: string, startRow: number): Origin {
   return {
+    kind: 'range',
     startByte: startRow * 10,
     endByte: startRow * 10 + 9,
     startRow,
@@ -13,18 +14,39 @@ function origin(document: string, startRow: number): Origin {
   };
 }
 
+type BuilderDocument = {
+  id: string;
+  resources: readonly Resource[];
+  directive?: {
+    implicitMilestone?: boolean;
+  };
+};
+
+type DocumentsBuilderSurface = {
+  readonly documents: readonly BuilderDocument[];
+  build(): SirenProject;
+};
+
+type SirenBuilderDocumentsApi = {
+  fromDocuments?: (documents: readonly BuilderDocument[]) => DocumentsBuilderSurface;
+  fromResources?: (
+    resources: readonly Resource[],
+    ephemeralDocumentId: string,
+  ) => DocumentsBuilderSurface;
+};
+
 describe('SirenBuilder', () => {
-  it('preserves caller resource order in assembly resources and first-occurrence order in the built context', () => {
+  it('preserves caller resource order in assembly documents and first-occurrence order in the built context', () => {
     const resources: Resource[] = [
       { type: 'task', id: 'second', attributes: [] },
       { type: 'task', id: 'first', attributes: [] },
       { type: 'task', id: 'second', status: 'complete', attributes: [] },
     ];
 
-    const assembly = SirenBuilder.fromResources(resources);
+    const assembly = SirenBuilder.fromResources(resources, 'adhoc');
     const context = assembly.build();
 
-    expect(assembly.resources.map((resource) => resource.id)).toEqual([
+    expect(assembly.documents[0]?.resources.map((resource) => resource.id)).toEqual([
       'second',
       'first',
       'second',
@@ -44,6 +66,7 @@ describe('SirenBuilder', () => {
             elements: [{ kind: 'reference' as const, id: 'task-b' }],
           },
           origin: {
+            kind: 'range' as const,
             startByte: 0,
             endByte: 20,
             startRow: 0,
@@ -53,6 +76,7 @@ describe('SirenBuilder', () => {
         },
       ],
       origin: {
+        kind: 'range' as const,
         startByte: 0,
         endByte: 20,
         startRow: 0,
@@ -60,9 +84,12 @@ describe('SirenBuilder', () => {
         document: 'project.siren',
       },
     };
-    const assembly = SirenBuilder.fromResources([sourceResource]);
-    const rawResource = assembly.resources[0];
+    const assembly = SirenBuilder.fromResources([sourceResource], 'adhoc');
+    const rawDocument = assembly.documents[0];
+    const rawResource = rawDocument?.resources[0];
 
+    expect(rawDocument).toBeDefined();
+    if (!rawDocument) throw new Error('expected raw document');
     expect(rawResource).toBeDefined();
     if (!rawResource) throw new Error('expected raw resource');
     const rawAttribute = rawResource.attributes[0];
@@ -73,7 +100,9 @@ describe('SirenBuilder', () => {
     expect(rawResource.attributes).not.toBe(sourceResource.attributes);
     expect(rawAttribute).not.toBe(sourceResource.attributes[0]);
     expect(Object.isFrozen(assembly)).toBe(true);
-    expect(Object.isFrozen(assembly.resources)).toBe(true);
+    expect(Object.isFrozen(assembly.documents)).toBe(true);
+    expect(Object.isFrozen(rawDocument)).toBe(true);
+    expect(Object.isFrozen(rawDocument.resources)).toBe(true);
     expect(Object.isFrozen(rawResource)).toBe(true);
     expect(Object.isFrozen(rawResource.attributes)).toBe(true);
     expect(Object.isFrozen(rawAttribute)).toBe(true);
@@ -104,10 +133,13 @@ describe('SirenBuilder', () => {
   });
 
   it('builds repeatable non-consuming SirenProject instances', () => {
-    const assembly = SirenBuilder.fromResources([
-      { type: 'task', id: 'task-a', attributes: [] },
-      { type: 'task', id: 'task-b', attributes: [] },
-    ]);
+    const assembly = SirenBuilder.fromResources(
+      [
+        { type: 'task', id: 'task-a', attributes: [] },
+        { type: 'task', id: 'task-b', attributes: [] },
+      ],
+      'adhoc',
+    );
 
     const firstContext = assembly.build();
     const secondContext = assembly.build();
@@ -117,7 +149,10 @@ describe('SirenBuilder', () => {
     expect(firstContext).not.toBe(secondContext);
     expect(firstContext.resources.map((resource) => resource.id)).toEqual(['task-a', 'task-b']);
     expect(secondContext.resources.map((resource) => resource.id)).toEqual(['task-a', 'task-b']);
-    expect(assembly.resources.map((resource) => resource.id)).toEqual(['task-a', 'task-b']);
+    expect(assembly.documents[0]?.resources.map((resource) => resource.id)).toEqual([
+      'task-a',
+      'task-b',
+    ]);
   });
 
   it('keeps raw duplicates available while the built context uses first occurrence wins', () => {
@@ -126,55 +161,61 @@ describe('SirenBuilder', () => {
       { type: 'task', id: 'duplicate', status: 'complete', attributes: [] },
     ];
 
-    const assembly = SirenBuilder.fromResources(resources);
+    const assembly = SirenBuilder.fromResources(resources, 'adhoc');
     const context = assembly.build();
 
-    expect(assembly.resources.map((resource) => resource.status)).toEqual([undefined, 'complete']);
+    expect(assembly.documents[0]?.resources.map((resource) => resource.status)).toEqual([
+      undefined,
+      'complete',
+    ]);
     expect(context.resources).toHaveLength(1);
     expect(context.resources[0]?.status).toBeUndefined();
     expect(context.diagnostics.filter((diagnostic) => diagnostic.code === 'W003')).toHaveLength(1);
   });
 
   it('builds the expected immutable context output with ordered diagnostics and source attribution', () => {
-    const assembly = SirenBuilder.fromResources([
-      {
-        type: 'task',
-        id: 'cycle-a',
-        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'cycle-b' } }],
-        origin: origin('cycle-a.siren', 0),
-      },
-      {
-        type: 'task',
-        id: 'cycle-b',
-        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'cycle-a' } }],
-        origin: origin('cycle-b.siren', 1),
-      },
-      {
-        type: 'task',
-        id: 'has-dangling',
-        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'missing' } }],
-        origin: origin('dangling.siren', 4),
-      },
-      {
-        type: 'task',
-        id: 'finished-task',
-        status: 'complete',
-        attributes: [],
-        origin: origin('complete-first.siren', 6),
-      },
-      {
-        type: 'task',
-        id: 'finished-task',
-        attributes: [],
-        origin: origin('complete-second.siren', 8),
-      },
-      {
-        type: 'milestone',
-        id: 'release',
-        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'finished-task' } }],
-        origin: origin('release.siren', 10),
-      },
-    ]);
+    const assembly = SirenBuilder.fromResources(
+      [
+        {
+          type: 'task',
+          id: 'cycle-a',
+          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'cycle-b' } }],
+          origin: origin('cycle-a.siren', 0),
+        },
+        {
+          type: 'task',
+          id: 'cycle-b',
+          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'cycle-a' } }],
+          origin: origin('cycle-b.siren', 1),
+        },
+        {
+          type: 'task',
+          id: 'has-dangling',
+          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'missing' } }],
+          origin: origin('dangling.siren', 4),
+        },
+        {
+          type: 'task',
+          id: 'finished-task',
+          status: 'complete',
+          attributes: [],
+          origin: origin('complete-first.siren', 6),
+        },
+        {
+          type: 'task',
+          id: 'finished-task',
+          attributes: [],
+          origin: origin('complete-second.siren', 8),
+        },
+        {
+          type: 'milestone',
+          id: 'release',
+          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'finished-task' } }],
+          origin: origin('release.siren', 10),
+        },
+      ],
+      'adhoc',
+    );
 
     const context = assembly.build();
 
@@ -223,5 +264,56 @@ describe('SirenBuilder', () => {
     expect('cycles' in (context as unknown as Record<string, unknown>)).toBe(false);
     expect('danglingDiagnostics' in (context as unknown as Record<string, unknown>)).toBe(false);
     expect('duplicateDiagnostics' in (context as unknown as Record<string, unknown>)).toBe(false);
+  });
+
+  it('exposes fromDocuments as the primary constructor entrypoint', () => {
+    const api = SirenBuilder as unknown as SirenBuilderDocumentsApi;
+    expect(typeof api.fromDocuments).toBe('function');
+
+    const documents: BuilderDocument[] = [
+      {
+        id: 'auth',
+        resources: [{ type: 'task', id: 'login', attributes: [] }],
+      },
+    ];
+
+    const builder = api.fromDocuments?.(documents);
+    expect(builder).toBeDefined();
+    expect(builder?.documents).toEqual(documents);
+  });
+
+  it('exposes fromResources(resources, documentId) as wrapper over fromDocuments with directive opt-out', () => {
+    const api = SirenBuilder as unknown as SirenBuilderDocumentsApi;
+    expect(typeof api.fromResources).toBe('function');
+    expect(api.fromResources?.length).toBe(2);
+
+    const resources: Resource[] = [
+      { type: 'task', id: 'duplicate', attributes: [] },
+      { type: 'task', id: 'duplicate', status: 'complete', attributes: [] },
+    ];
+
+    const builder = api.fromResources?.(resources, 'adhoc');
+    expect(builder).toBeDefined();
+    expect(builder?.documents).toEqual([
+      {
+        id: 'adhoc',
+        resources,
+        directive: { implicitMilestone: false },
+      },
+    ]);
+    expect(builder?.documents[0]?.resources.map((resource) => resource.id)).toEqual([
+      'duplicate',
+      'duplicate',
+    ]);
+  });
+
+  it('exposes pre-build documents and not pre-build resources', () => {
+    const api = SirenBuilder as unknown as SirenBuilderDocumentsApi;
+    const builder = api.fromResources?.([{ type: 'task', id: 'task-a', attributes: [] }], 'adhoc');
+    expect(builder).toBeDefined();
+
+    const preBuildSurface = builder as unknown as Record<string, unknown>;
+    expect('documents' in preBuildSurface).toBe(true);
+    expect('resources' in preBuildSurface).toBe(false);
   });
 });

@@ -11,6 +11,7 @@ export type {
   DiagnosticBase,
   DuplicateIdDiagnostic,
 } from './diagnostics';
+export type { SirenDocument } from './document';
 export type {
   ArrayValue,
   Attribute,

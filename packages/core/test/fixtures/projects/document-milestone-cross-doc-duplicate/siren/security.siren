@@ -1,0 +1,3 @@
+milestone auth {
+  description = "Explicit auth milestone in a different document"
+}
