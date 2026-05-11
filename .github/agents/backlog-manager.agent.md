@@ -42,6 +42,7 @@ When given a plan or spec to decompose:
 4. **Name with a shared prefix** — for initiative files, use a short prefix on related identifiers (e.g. `streaming-parse`, `streaming-render`, `streaming-tests`) to aid grouping and grep-ability.
 5. **Prefer a single top-level milestone** in initiative files, with tasks feeding into it via `depends_on`. Add sub-milestones only for genuinely multi-phase work.
 6. **Add a `description`** to every item. Use `details`, `link`, or `feedback` custom fields only when they add lasting backlog value.
+7. **Do not presume context** of the conversation. Milestone and task descriptions must be fully self-descriptive, giving a reader with no prior knowledge a clear picture of the work and its rationale.
 
 ## Preferred Initiative Shape
 

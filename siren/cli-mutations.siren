@@ -1,0 +1,81 @@
+# CLI mutation support for Siren
+# This initiative defines the first pass at mutative CLI operations, starting with status changes.
+
+milestone cli-mutations {
+  description = "Deliver the first mutative CLI flow: an immutable SirenBuilder patch layer, a literal SirenDocument renderer in language, published package updates, and the mv status command."
+  affected_packages = "core, language, apps/cli"
+  depends_on = [cli-mutations-remove-core-export-surface, cli-mutations-core-patch-api, cli-mutations-language-renderer, cli-mutations-publish-core-language, cli-mutations-cli-plumbing, cli-mutations-mv-command]
+}
+
+# Core surface cleanup and mutation primitives
+
+task cli-mutations-remove-core-export-surface {
+  description = "Remove the current export surface from core so the package only owns IR and semantic validation."
+  affected_packages = "core"
+  details = "Delete IRExporter and any related public export types so project-to-source rendering stops being part of core's contract and moves entirely into language."
+}
+
+task cli-mutations-core-patch-api-red {
+  description = "Add failing core tests for an immutable, layered SirenBuilder patch API built from composed pure functions."
+  affected_packages = "core"
+  details = "Cover `.patch(documents => newDocuments)` as the primitive transform over the builder's document list, then cover `.withDocument`, `.withResource`, `.patchDocument`, and `.patchResource` as convenience wrappers that compose into that pure function layer without mutating the original builder."
+}
+
+task cli-mutations-core-patch-api {
+  description = "Implement an immutable, layered patch API on SirenBuilder."
+  affected_packages = "core"
+  depends_on = cli-mutations-core-patch-api-red
+  details = "Add `.patch(documents => newDocuments)` as the primitive copy-on-write transform, then implement `.withDocument`, `.withResource`, `.patchDocument`, and `.patchResource` as helper layers that compose pure document and resource transforms while preserving the existing build path."
+}
+
+# Language renderer replacement
+
+task cli-mutations-language-renderer-red {
+  description = "Add failing language tests for a literal SirenDocument-to-source renderer."
+  affected_packages = "language"
+  details = "Cover `renderSirenDocument(document)` rendering directly from literal SirenDocument input, including tasks, milestones, references, quoted identifiers, arrays, and explicit status keywords, without relying on source-preserving trivia or comment retention."
+}
+
+task cli-mutations-language-renderer {
+  description = "Replace language export utilities with a single literal SirenDocument renderer."
+  affected_packages = "language"
+  depends_on = [cli-mutations-language-renderer-red, cli-mutations-remove-core-export-surface]
+  details = "Introduce `renderSirenDocument(document)` as a one-way renderer from literal document IR to Siren source text, delete SirenExporter, exportToSiren, and exportWithComments, and keep any low-level formatting helpers internal to the package."
+}
+
+# Package publication boundary
+
+task cli-mutations-publish-core-language {
+  description = "Publish refreshed core and language package versions so downstream CLI work can consume the new mutation and rendering surfaces."
+  affected_packages = "core, language"
+  depends_on = [cli-mutations-core-patch-api, cli-mutations-language-renderer]
+  details = "Publish new `@sirenpm/core` and `@sirenpm/language` versions after the patch API and renderer land because `@sirenpm/cli` consumes pinned registry packages rather than transparent workspace links."
+}
+
+# CLI plumbing and command surface
+
+task cli-mutations-cli-plumbing-red {
+  description = "Add failing CLI tests for the internal mutation pipeline that loads documents, applies pure builder patches, rebuilds, renders, and writes changed files."
+  affected_packages = "apps/cli"
+  details = "Cover the internal flow that resolves a target entry id, derives patched documents through the new SirenBuilder patch layer, rebuilds a SirenProject for validation, materializes synthesized resources back into their origin document, and skips writes when rendering produces unchanged output."
+}
+
+task cli-mutations-cli-plumbing {
+  description = "Build the CLI mutation pipeline that turns a target entry mutation into updated Siren documents on disk."
+  affected_packages = "apps/cli"
+  depends_on = [cli-mutations-cli-plumbing-red, cli-mutations-publish-core-language]
+  details = "Implement the reusable internal flow that loads project documents, resolves a target entry id, applies the new pure patch API, rebuilds for semantic validation, renders only the affected literal SirenDocuments, and writes only files whose output changed."
+}
+
+task cli-mutations-mv-command-red {
+  description = "Add failing CLI golden tests for the bidirectional mv status command."
+  affected_packages = "apps/cli"
+  details = "Cover `siren mv <entry-id> <complete|draft>` end to end, including complete, draft, already-complete, synthesized-resource materialization, unknown-id, duplicate-id, and help output cases."
+}
+
+task cli-mutations-mv-command {
+  description = "Implement the first mutative command `siren mv <entry-id> <complete|draft>` to change an entry's explicit completion status."
+  affected_packages = "apps/cli"
+  depends_on = [cli-mutations-mv-command-red, cli-mutations-cli-plumbing]
+  details = "The command should refuse unknown or duplicate ids, materialize synthesized resources into their origin document before writing, add an explicit `complete` keyword when asked even if the entry is only implicitly complete today, and write explicit drafts that remain terminal rather than being re-promoted implicitly."
+}
