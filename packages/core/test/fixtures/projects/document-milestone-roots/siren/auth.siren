@@ -1,0 +1,11 @@
+task hash-password {
+  description = "Hash the user password"
+}
+
+task validate-token {
+  description = "Validate upstream auth token"
+}
+
+task login {
+  depends_on = [hash-password, validate-token]
+}

@@ -6,16 +6,13 @@
  */
 
 /**
- * Origin metadata for IR/CST nodes.
+ * Source origin metadata attached to IR/CST nodes.
  *
- * Tracks source code position (byte and row offsets) for a node.
- * Used by formatters to preserve comments and structure.
- * Optional on nodes—early code doesn't require origin tracking.
- *
- * Positional metadata is IR-agnostic; it lives in core so that any
- * frontend (parser, decoder, exporters) can share the same shape.
+ * `range` origins point to concrete source positions.
+ * `synthetic` origins identify generated resources anchored to a document.
  */
-export interface Origin {
+export interface RangeOrigin {
+  readonly kind: 'range';
   readonly startByte: number;
   readonly endByte: number;
   readonly startRow: number;
@@ -23,6 +20,14 @@ export interface Origin {
   /** Document identifier (e.g., relative file path from project root) */
   readonly document?: string;
 }
+
+export interface SyntheticOrigin {
+  readonly kind: 'synthetic';
+  /** Document identifier (e.g., relative file path from project root) */
+  readonly document: string;
+}
+
+export type Origin = RangeOrigin | SyntheticOrigin;
 
 /**
  * Primitive value types that can appear in attributes

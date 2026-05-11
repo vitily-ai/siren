@@ -1,4 +1,5 @@
 import type { Diagnostic } from '../diagnostics';
+import type { SirenDocument } from '../document';
 import type { ResourceGraph } from '../resource-graph';
 import type { Resource } from '../types';
 import { ImplicitCompletionModule } from './modules/completion';
@@ -7,6 +8,7 @@ import { DanglingModule } from './modules/dangling';
 import { DedupModule } from './modules/dedup';
 import { FinalizeModule } from './modules/finalize';
 import { GraphModule } from './modules/graph';
+import { SynthesisModule } from './modules/synthesis';
 import { Pipeline } from './runner';
 
 /**
@@ -20,7 +22,8 @@ import { Pipeline } from './runner';
  * module in the chain; indirect dependencies are carried opaquely through
  * the envelope):
  *
- *   seed { rawResources }
+ *   seed { documents }
+ *     → Synthesis   adds   { rawResources }
  *     → Dedup       adds   { resources, duplicateDiagnostics }
  *     → Graph       adds   { graph }
  *     → Completion  rewrites { graph }
@@ -35,11 +38,12 @@ export interface IRBuildEnvelope {
 }
 
 /**
- * Build the IR pipeline envelope for a frozen raw resource snapshot. This is
- * the only path used to construct a `SirenProject`.
+ * Build the IR pipeline envelope for frozen pre-build documents. This is the
+ * only path used to construct a `SirenProject`.
  */
-export function runIRBuildPipeline(rawResources: readonly Resource[]): IRBuildEnvelope {
-  const pipeline = Pipeline.start<{ readonly rawResources: readonly Resource[] }>()
+export function runIRBuildPipeline(documents: readonly SirenDocument[]): IRBuildEnvelope {
+  const pipeline = Pipeline.start<{ readonly documents: readonly SirenDocument[] }>()
+    .pipe(SynthesisModule)
     .pipe(DedupModule)
     .pipe(GraphModule)
     .pipe(ImplicitCompletionModule)
@@ -47,7 +51,7 @@ export function runIRBuildPipeline(rawResources: readonly Resource[]): IRBuildEn
     .pipe(DanglingModule)
     .pipe(FinalizeModule);
 
-  const env = pipeline.run({ rawResources });
+  const env = pipeline.run({ documents });
   return {
     rawResources: env.rawResources,
     graph: env.graph,

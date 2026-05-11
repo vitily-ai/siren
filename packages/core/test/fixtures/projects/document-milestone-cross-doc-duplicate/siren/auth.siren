@@ -1,0 +1,3 @@
+task login {
+  description = "Authenticate the user"
+}

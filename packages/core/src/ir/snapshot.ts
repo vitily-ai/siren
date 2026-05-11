@@ -50,7 +50,15 @@ function cloneAndFreezeAttributeValue(value: AttributeValue): AttributeValue {
 }
 
 function cloneAndFreezeOrigin(origin: Origin): Origin {
+  if (origin.kind === 'synthetic') {
+    return Object.freeze({
+      kind: 'synthetic',
+      document: origin.document,
+    });
+  }
+
   const clone: Origin = {
+    kind: 'range',
     startByte: origin.startByte,
     endByte: origin.endByte,
     startRow: origin.startRow,

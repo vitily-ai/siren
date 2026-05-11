@@ -1,61 +1,82 @@
-# Core-only clean break for document-scoped milestone synthesis.
-# Each logical slice is planned as a TDD red/green pair.
+# Document-scoped milestone synthesis in core
+# Core-only clean break: core owns synthesis from `SirenDocument` input, and downstream language / CLI adapter work is intentionally deferred.
 
-milestone doc-milestone-synthesis {
-	description = "Introduce document-scoped milestone synthesis in core"
-	details = "Core-only clean break: make SirenBuilder document-first, synthesize implicit milestones in the core pipeline before deduplication, distinguish synthetic provenance explicitly, and cover the behavior with fixture-backed core E2E scenarios. Downstream language and CLI adaptation is intentionally out of scope here."
+milestone milestone-files {
+	description = "Land document-scoped milestone synthesis in core with a documents-first builder and core E2E fixture coverage"
 	affected_packages = "core"
-	depends_on = [doc-milestone-synthesis-model-green, doc-milestone-synthesis-origin-green, doc-milestone-synthesis-pipeline-green, doc-milestone-synthesis-e2e-green]
+	details = "Lock the conversation decisions in core: `SirenDocument` is the semantic input model; `SirenBuilder.fromDocuments()` is the primary entry point; `fromResources(resources, ephemeralDocumentId)` remains compatibility sugar with synthesis disabled; synthesis runs before dedup; synthetic milestones depend only on document-local roots; empty documents still synthesize orphan milestones; a same-document explicit milestone with the same id suppresses synthesis; cross-document collisions fall through to W003; and synthetic milestones stay ordinary resources instead of adding a `Resource.synthetic` flag or a `SirenProject.documents` surface."
+	depends_on = [milestone-files-public-surface-green, milestone-files-origin-green, milestone-files-synthesis-green, milestone-files-e2e-green]
 }
 
-task doc-milestone-synthesis-model-red {
-	description = "Add failing core tests for a SirenDocument-based builder API"
+task milestone-files-public-surface-red complete {
+	description = "Add failing core tests for the documents-first builder break and the new pre-build builder surface"
 	affected_packages = "core"
-	details = "Cover the new SirenDocument type, the document-first builder input, and removal of the pre-build resources getter."
+	files = ["packages/core/src/ir/public-surface.test.ts", "packages/core/src/ir/assembly.test.ts"]
+	example = "Examples: `SirenBuilder.fromDocuments([{ id: 'auth', resources: [login] }])` is the primary entry, `SirenBuilder.fromResources([login], 'adhoc')` remains compatibility sugar, and `builder.documents` replaces `builder.resources`."
 }
 
-task doc-milestone-synthesis-model-green {
-	description = "Implement SirenDocument and switch SirenBuilder to document-first input"
+task milestone-files-public-surface-green complete {
+	description = "Implement `SirenDocument`, the documents-first builder API, and the reduced pre-build builder surface"
 	affected_packages = "core"
-	depends_on = doc-milestone-synthesis-model-red
+	details = "This task locks the naming and API decisions from the conversation: use `SirenDocument`, treat `SirenDocument.id` as the synthesis id, keep `origin` as provenance only, do not add a `milestoneId` override, and do not add `project.documents` just because the builder accepts documents."
+	depends_on = milestone-files-public-surface-red
+	files = ["packages/core/src/ir/document.ts", "packages/core/src/ir/assembly.ts", "packages/core/src/index.ts"]
+	example = "Example: `SirenBuilder.fromDocuments([{ id: 'auth', resources: [] }]).build()` is valid, while `SirenProject` still only exposes resources, graph, diagnostics, and existing milestone/task helpers."
 }
 
-task doc-milestone-synthesis-origin-red {
-	description = "Add failing core tests for discriminated origin provenance"
+task milestone-files-origin-red complete {
+	description = "Add failing core tests for the `Origin` clean break and synthetic milestone provenance"
 	affected_packages = "core"
-	depends_on = doc-milestone-synthesis-model-green
-	details = "Cover Origin.kind, synthetic document provenance, and the boundary between range provenance and synthetic provenance."
+	files = ["packages/core/src/ir/assembly.test.ts", "packages/core/src/ir/public-surface.test.ts"]
+	example = "Examples: explicit resources keep `origin.kind = 'range'`; a synthesized milestone uses `origin = { kind: 'synthetic', document: 'auth' }`; and flat `fromResources()` calls must still avoid using explicit-resource `origin.document` as synthesis input."
 }
 
-task doc-milestone-synthesis-origin-green {
-	description = "Replace Origin with a synthetic-aware discriminator and update provenance helpers"
+task milestone-files-origin-green complete {
+	description = "Implement `Origin.kind = 'range' | 'synthetic'` and update core attribution helpers for document-level synthetic provenance"
 	affected_packages = "core"
-	depends_on = doc-milestone-synthesis-origin-red
+	details = "This task makes the semantic boundary explicit: provenance remains diagnostic metadata, so explicit resource `origin.document` stays useful for file and line reporting but must never become the source of truth for milestone synthesis."
+	depends_on = [milestone-files-public-surface-green, milestone-files-origin-red]
+	files = ["packages/core/src/ir/types.ts", "packages/core/src/ir/source-attribution.ts"]
+	example = "Example: a synthetic milestone for document `auth` reports its origin as synthetic document provenance instead of pretending it came from a concrete source range."
 }
 
-task doc-milestone-synthesis-pipeline-red {
-	description = "Add failing core tests for document-local milestone synthesis in the pipeline"
+task milestone-files-synthesis-red complete {
+	description = "Add failing pipeline and assembly tests for document-scoped milestone synthesis rules before dedup and graph construction"
 	affected_packages = "core"
-	depends_on = doc-milestone-synthesis-origin-green
-	details = "Scenarios: synthesize one milestone per document from document-local roots, keep empty documents synthesizing an orphan milestone, skip synthesis when a same-id explicit milestone is present, and let cross-document id collisions fall through to existing W003 handling."
+	details = "Cover the decision points that are easy to regress: roots-only dependency selection, empty-document orphan synthesis, same-document explicit takeover, and cross-document conflicts flowing into existing W003 handling instead of inventing a new diagnostic code."
+	files = ["packages/core/src/ir/pipeline/pipeline.test.ts", "packages/core/src/ir/assembly.test.ts"]
+	example = "Examples: in document `auth`, if `login` depends_on = [hash-password, validate-token] then synthesized `auth` depends_on = [login] only; if the same document already declares `milestone auth {}`, synthesis is skipped; if another document also resolves to `auth`, the duplicate is left for W003."
 }
 
-task doc-milestone-synthesis-pipeline-green {
-	description = "Implement the synthesis module and place it before deduplication"
+task milestone-files-synthesis-green complete {
+	description = "Add the synthesis module and a documents-first pipeline seed so synthetic milestones flow through the existing core validations"
 	affected_packages = "core"
-	depends_on = doc-milestone-synthesis-pipeline-red
+	details = "Implement the ordering `Synthesis -> Dedup -> Graph -> ImplicitCompletion -> Cycles -> Dangling -> Finalize`, emit raw resources from documents, and keep synthetic milestones on the ordinary resource path rather than creating special-case graph, completion, or diagnostic logic."
+	depends_on = [milestone-files-public-surface-green, milestone-files-origin-green, milestone-files-synthesis-red]
+	files = ["packages/core/src/ir/pipeline/index.ts", "packages/core/src/ir/pipeline/modules/synthesis.ts"]
+	example = "Decision reference: there is no `Resource.synthetic` flag, no `SirenProject.documents`, and `fromResources([task-a], 'adhoc')` must continue to build exactly the flat resources passed in with no synthesized `adhoc` milestone."
 }
 
-task doc-milestone-synthesis-e2e-red {
-	description = "Add fixture-backed core E2E coverage for document-synthesized milestones"
+task milestone-files-e2e-red complete {
+	description = "Add failing core E2E scenarios with new fixtures that exercise document-driven synthesis through the public build path"
 	affected_packages = "core"
-	depends_on = doc-milestone-synthesis-pipeline-green
-	details = "New fixtures should cover: document-synthesis-basic, document-synthesis-opt-out, document-synthesis-explicit-takeover, document-synthesis-empty, document-synthesis-collision, and document-synthesis-multi-document."
+	details = "Add new fixture projects under `packages/core/test/fixtures/projects/` so the semantics are locked in end-to-end instead of only through object-literal unit tests."
+	files = ["packages/core/test/fixtures/projects", "packages/core/src/index.test.ts"]
+	example = "Fixture set: `document-milestone-roots`, `document-milestone-empty-doc`, `document-milestone-explicit-takeover`, and `document-milestone-cross-doc-duplicate`."
 }
 
-task doc-milestone-synthesis-e2e-green {
-	description = "Make the new core E2E fixtures pass against the resolved synthesis pipeline"
+task milestone-files-e2e-green complete {
+	description = "Make the new core E2E fixtures pass and keep them as the regression lock for multi-document milestone synthesis"
 	affected_packages = "core"
-	depends_on = doc-milestone-synthesis-e2e-red
+	details = "The fixture assertions should prove the conversation decisions in one place: roots-only synthesized dependencies, orphan synthesis for empty documents, same-document explicit takeover, W003 cross-document collision handling, and no synthesis on the `fromResources(resources, ephemeralDocumentId)` compatibility path."
+	depends_on = [milestone-files-synthesis-green, milestone-files-e2e-red]
+	files = ["packages/core/test/fixtures/projects", "packages/core/src/index.test.ts", "packages/core/src/ir/assembly.test.ts"]
+	example = "Examples: `fromDocuments([{ id: 'billing', resources: [] }])` still produces an orphan `billing` milestone; `fromResources([task-a], 'adhoc')` does not synthesize `adhoc`; and an explicit milestone in one document plus a synthesized milestone of the same id from another document still reports W003 rather than a new warning code."
 }
 
+milestone milestone-files-language-port { // draft
+	description = "Port language to emit `SirenDocument` inputs and later surface document directives without moving milestone synthesis out of core"
+	affected_packages = "language"
+	depends_on = [milestone-files]
+	example = "Examples: `SyntaxDocument` remains parser-shaped; language maps it to `SirenDocument { id, resources, directives }`; a future pragma such as `implicitMilestone = false` affects only the document input and never causes language to synthesize resources itself."
+}

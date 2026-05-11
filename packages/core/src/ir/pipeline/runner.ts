@@ -34,7 +34,7 @@ export class Pipeline<TSeed extends Envelope, TEnv extends Envelope> {
   }
 
   pipe<TIn extends Envelope, TAdd extends Envelope>(
-    this: TEnv extends TIn ? Pipeline<TSeed, TEnv> : never,
+    this: [TEnv] extends [TIn] ? Pipeline<TSeed, TEnv> : never,
     module: Module<TIn, TAdd>,
   ): Pipeline<TSeed, Omit<TEnv, keyof TAdd> & TAdd> {
     return new Pipeline<TSeed, Omit<TEnv, keyof TAdd> & TAdd>([

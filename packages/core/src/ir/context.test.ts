@@ -3,7 +3,7 @@ import { SirenBuilder } from './assembly';
 import type { Resource } from './types';
 
 function buildContext(resources: readonly Resource[]) {
-  return SirenBuilder.fromResources(resources).build();
+  return SirenBuilder.fromResources(resources, 'adhoc').build();
 }
 
 describe('SirenProject (builder-built semantic snapshot)', () => {
@@ -60,6 +60,7 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
           id: 'has-dangling',
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'missing' } }],
           origin: {
+            kind: 'range',
             startByte: 0,
             endByte: 10,
             startRow: 0,
@@ -90,6 +91,7 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
           id: 'a',
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'b' } }],
           origin: {
+            kind: 'range',
             startByte: 0,
             endByte: 10,
             startRow: 0,
@@ -102,6 +104,7 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
           id: 'b',
           attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'a' } }],
           origin: {
+            kind: 'range',
             startByte: 0,
             endByte: 10,
             startRow: 0,
@@ -132,6 +135,7 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
           id: 'shared-task',
           attributes: [],
           origin: {
+            kind: 'range',
             startByte: 0,
             endByte: 20,
             startRow: 4,
@@ -145,6 +149,7 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
           status: 'complete',
           attributes: [],
           origin: {
+            kind: 'range',
             startByte: 21,
             endByte: 40,
             startRow: 11,

@@ -11,11 +11,19 @@ import type { Origin, Resource } from './types';
 
 function origin(document: string | undefined, startRow: number): Origin {
   return {
+    kind: 'range',
     startByte: startRow * 10,
     endByte: startRow * 10 + 9,
     startRow,
     endRow: startRow,
     ...(document !== undefined ? { document } : {}),
+  };
+}
+
+function syntheticOrigin(document: string): Origin {
+  return {
+    kind: 'synthetic',
+    document,
   };
 }
 
@@ -31,6 +39,12 @@ function task(id: string, originValue?: Origin): Resource {
 describe('sourceFileForResource', () => {
   it('returns origin.document when present', () => {
     expect(sourceFileForResource(task('a', origin('a.siren', 0)))).toBe('a.siren');
+  });
+
+  it('returns origin.document for synthetic origins', () => {
+    expect(sourceFileForResource(task('a', syntheticOrigin('synthetic.siren')))).toBe(
+      'synthetic.siren',
+    );
   });
 
   it('returns undefined when origin is missing', () => {
@@ -92,6 +106,10 @@ describe('positionForResource', () => {
     });
   });
 
+  it('returns an empty attribution for synthetic origins', () => {
+    expect(positionForResource(task('a', syntheticOrigin('a.siren')))).toEqual({});
+  });
+
   it('returns an empty attribution when origin is missing', () => {
     expect(positionForResource(task('a'))).toEqual({});
   });
@@ -109,6 +127,10 @@ describe('firstOccurrencePositionForResource', () => {
     });
   });
 
+  it('returns an empty attribution for synthetic origins', () => {
+    expect(firstOccurrencePositionForResource(task('a', syntheticOrigin('a.siren')))).toEqual({});
+  });
+
   it('returns an empty attribution when origin is missing', () => {
     expect(firstOccurrencePositionForResource(task('a'))).toEqual({});
     expect(firstOccurrencePositionForResource(undefined)).toEqual({});
@@ -122,6 +144,14 @@ describe('secondOccurrenceAttributionForResource', () => {
       secondLine: 12,
       secondColumn: 0,
     });
+  });
+
+  it('returns only file for synthetic origins', () => {
+    expect(secondOccurrenceAttributionForResource(task('a', syntheticOrigin('dup.siren')))).toEqual(
+      {
+        file: 'dup.siren',
+      },
+    );
   });
 
   it('returns only the file (undefined) when origin is missing', () => {

@@ -111,6 +111,7 @@ describe('cloneAndFreezeResources', () => {
 
   it('freezes the origin clone independently from the input origin', () => {
     const sourceOrigin = {
+      kind: 'range' as const,
       startByte: 0,
       endByte: 10,
       startRow: 2,
@@ -136,6 +137,7 @@ describe('cloneAndFreezeResources', () => {
 
   it('clones attribute origins independently and freezes them', () => {
     const attributeOrigin = {
+      kind: 'range' as const,
       startByte: 0,
       endByte: 5,
       startRow: 1,

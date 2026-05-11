@@ -4,6 +4,32 @@ import { ResourceGraph } from '../resource-graph';
 import type { Resource } from '../types';
 import { runIRBuildPipeline } from './index';
 
+type BuilderDocument = {
+  id: string;
+  resources: readonly Resource[];
+  directive?: {
+    implicitMilestone?: boolean;
+  };
+};
+
+type BuildOutput = {
+  readonly resources: readonly Resource[];
+  readonly diagnostics: readonly { readonly code: string }[];
+};
+
+type DocumentsBuilderSurface = {
+  readonly documents: readonly BuilderDocument[];
+  build(): BuildOutput;
+};
+
+type SirenBuilderDocumentsApi = {
+  fromDocuments?: (documents: readonly BuilderDocument[]) => DocumentsBuilderSurface;
+  fromResources?: (
+    resources: readonly Resource[],
+    ephemeralDocumentId: string,
+  ) => DocumentsBuilderSurface;
+};
+
 describe('runIRBuildPipeline', () => {
   it('produces graph and ordered diagnostics for a representative project', () => {
     const resources: readonly Resource[] = [
@@ -36,7 +62,13 @@ describe('runIRBuildPipeline', () => {
       },
     ];
 
-    const env = runIRBuildPipeline(resources);
+    const env = runIRBuildPipeline([
+      {
+        id: 'adhoc',
+        resources,
+        directive: { implicitMilestone: false },
+      },
+    ]);
 
     expect(env.graph.resources.map((r) => [r.id, r.status])).toEqual([
       ['dup', undefined],
@@ -64,26 +96,29 @@ describe('IR pipeline redundancy regression', () => {
     const buildSpy = vi.spyOn(ResourceGraph, 'fromResources');
 
     try {
-      const assembly = SirenBuilder.fromResources([
-        { type: 'task', id: 'task-a', status: 'complete', attributes: [] },
-        { type: 'task', id: 'task-b', status: 'complete', attributes: [] },
-        {
-          type: 'milestone',
-          id: 'release',
-          attributes: [
-            {
-              key: 'depends_on',
-              value: {
-                kind: 'array',
-                elements: [
-                  { kind: 'reference', id: 'task-a' },
-                  { kind: 'reference', id: 'task-b' },
-                ],
+      const assembly = SirenBuilder.fromResources(
+        [
+          { type: 'task', id: 'task-a', status: 'complete', attributes: [] },
+          { type: 'task', id: 'task-b', status: 'complete', attributes: [] },
+          {
+            type: 'milestone',
+            id: 'release',
+            attributes: [
+              {
+                key: 'depends_on',
+                value: {
+                  kind: 'array',
+                  elements: [
+                    { kind: 'reference', id: 'task-a' },
+                    { kind: 'reference', id: 'task-b' },
+                  ],
+                },
               },
-            },
-          ],
-        },
-      ]);
+            ],
+          },
+        ],
+        'adhoc',
+      );
 
       buildSpy.mockClear();
       const ctx = assembly.build();
@@ -99,5 +134,33 @@ describe('IR pipeline redundancy regression', () => {
     } finally {
       buildSpy.mockRestore();
     }
+  });
+});
+
+describe('IR pipeline document milestone synthesis (red)', () => {
+  it('treats fromResources as a thin wrapper over fromDocuments with synthesis disabled directive', () => {
+    const api = SirenBuilder as unknown as SirenBuilderDocumentsApi;
+    const resources: readonly Resource[] = [{ type: 'task', id: 'task-a', attributes: [] }];
+
+    const fromDocumentsBuilder = api.fromDocuments?.([
+      {
+        id: 'adhoc',
+        resources,
+        directive: { implicitMilestone: false },
+      },
+    ]);
+    expect(fromDocumentsBuilder).toBeDefined();
+    if (!fromDocumentsBuilder) throw new Error('expected fromDocuments builder');
+
+    const compatibilityBuilder = api.fromResources?.(resources, 'adhoc');
+    expect(compatibilityBuilder).toBeDefined();
+    if (!compatibilityBuilder) throw new Error('expected fromResources wrapper builder');
+
+    expect(compatibilityBuilder.documents).toEqual(fromDocumentsBuilder.documents);
+
+    const fromDocumentsOutput = fromDocumentsBuilder.build();
+    const compatibilityOutput = compatibilityBuilder.build();
+    expect(compatibilityOutput.resources).toEqual(fromDocumentsOutput.resources);
+    expect(compatibilityOutput.diagnostics).toEqual(fromDocumentsOutput.diagnostics);
   });
 });
