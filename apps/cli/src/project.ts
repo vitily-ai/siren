@@ -1,10 +1,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { Resource, SirenProject } from '@sirenpm/core';
+import { type Resource, SirenBuilder, type SirenProject } from '@sirenpm/core';
 import {
-  createSirenProjectFromParseResult,
+  decodeSyntaxDocuments,
+  type ParseDiagnostic,
   type ParseError,
   type SourceDocument,
+  type SyntaxDocument,
 } from '@sirenpm/language';
 import { formatDiagnostic } from './format-diagnostics';
 import { formatParseError } from './format-parse-error';
@@ -25,6 +27,84 @@ export interface ProjectContext {
 }
 
 let loadedContext: ProjectContext | null = null;
+
+function toDiagnosticColumn(column: number | undefined): number | undefined {
+  if (column === undefined) return undefined;
+  return Math.max(0, column - 1);
+}
+
+function isDuplicateCompleteParseError(error: ParseError): boolean {
+  return (
+    (error.severity ?? 'error') === 'warning' &&
+    error.kind === 'unexpected_token' &&
+    error.found === 'complete' &&
+    (error.expected ?? []).includes('{') &&
+    error.message.includes("duplicate 'complete' keyword")
+  );
+}
+
+function findResourceForParseError(
+  error: ParseError,
+  syntaxDocuments: readonly SyntaxDocument[],
+): SyntaxDocument['resources'][number] | undefined {
+  const documentName = error.document;
+  const startByte = error.startByte;
+
+  for (const syntaxDocument of syntaxDocuments) {
+    if (documentName && syntaxDocument.source.name !== documentName) continue;
+
+    for (const resource of syntaxDocument.resources) {
+      if (startByte !== undefined) {
+        if (startByte >= resource.span.startByte && startByte <= resource.span.endByte) {
+          return resource;
+        }
+      } else if (
+        error.line >= resource.span.startRow + 1 &&
+        error.line <= resource.span.endRow + 1
+      ) {
+        return resource;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function parseErrorsToDiagnostics(
+  errors: readonly ParseError[],
+  syntaxDocuments: readonly SyntaxDocument[],
+): readonly ParseDiagnostic[] {
+  const diagnostics: ParseDiagnostic[] = [];
+
+  for (const error of errors) {
+    if (isDuplicateCompleteParseError(error)) {
+      const resource = findResourceForParseError(error, syntaxDocuments);
+      const resourceId = resource?.identifier.value ?? 'unknown';
+      diagnostics.push({
+        code: 'WL002',
+        message: `Resource '${resourceId}' has 'complete' keyword specified more than once. Only one is allowed; resource will be treated as complete: true.`,
+        severity: 'warning',
+        file: resource?.span.document ?? error.document,
+        line: resource ? resource.span.startRow + 1 : error.line,
+        column: resource ? 0 : toDiagnosticColumn(error.column),
+      });
+      continue;
+    }
+
+    if ((error.severity ?? 'error') === 'error') {
+      diagnostics.push({
+        code: 'EL001',
+        message: `Invalid syntax: ${error.message}`,
+        severity: 'error',
+        file: error.document,
+        line: error.line,
+        column: toDiagnosticColumn(error.column),
+      });
+    }
+  }
+
+  return diagnostics;
+}
 
 /**
  * Recursively find all .siren files in a directory.
@@ -108,14 +188,16 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
   const parser = await getParser();
 
   // Build SourceDocument array from discovered files
-  const documents: SourceDocument[] = ctx.files.map((filePath) => ({
+  const sourceDocuments: SourceDocument[] = ctx.files.map((filePath) => ({
     name: path.relative(rootDir, filePath),
     content: fs.readFileSync(filePath, 'utf-8'),
   }));
-  const contentByDocument = new Map<string, string>(documents.map((d) => [d.name, d.content]));
+  const contentByDocument = new Map<string, string>(
+    sourceDocuments.map((d) => [d.name, d.content]),
+  );
 
   // Parse all documents in a single call - origin.document is set automatically
-  const parseResult = await parser.parse(documents);
+  const parseResult = await parser.parse(sourceDocuments);
 
   if (!parseResult.tree) {
     // No valid parse tree at all
@@ -163,11 +245,13 @@ export async function loadProject(cwd: string): Promise<ProjectContext> {
     return severity === 'warning' && !skippedDocs.has(document);
   });
 
-  const { context: ir, parseDiagnostics } = createSirenProjectFromParseResult({
-    ...parseResult,
-    errors: retainedParseWarnings,
-    syntaxDocuments: filteredSyntaxDocuments,
-  });
+  const { documents: sirenDocuments, diagnostics: decodeDiagnostics } =
+    decodeSyntaxDocuments(filteredSyntaxDocuments);
+  const ir = SirenBuilder.fromDocuments(sirenDocuments ?? []).build();
+  const parseDiagnostics = [
+    ...parseErrorsToDiagnostics(retainedParseWarnings, filteredSyntaxDocuments),
+    ...decodeDiagnostics,
+  ];
 
   ctx.resources = [...ir.resources];
   ctx.ir = ir;

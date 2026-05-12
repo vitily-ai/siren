@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { version as coreVersion, type DependencyTree } from '@sirenpm/core';
+import { version as coreVersion, type DependencyTree, isComplete } from '@sirenpm/core';
 import { buildMetadata } from './build-metadata';
 import { runFormat } from './commands/format';
 import { getLoadedContext, loadProject } from './project';
@@ -126,7 +126,7 @@ function renderDependencyTree(
 
   // Filter out complete tasks from dependencies
   // TODO this is redundant - core already does it
-  const deps = tree.dependencies.filter((d) => !d.resource.complete);
+  const deps = tree.dependencies.filter((d) => !isComplete(d.resource));
 
   // If no dependencies (after filtering), return empty (leaf node)
   if (deps.length === 0) {
@@ -137,12 +137,12 @@ function renderDependencyTree(
   if (depth >= maxDepth - 1 && deps.length > 0) {
     // Check if any dependencies have their own dependencies (i.e., would we go deeper?)
     const hasGrandchildren = deps.some(
-      (d) => d.dependencies.filter((dd) => !dd.resource.complete).length > 0,
+      (d) => d.dependencies.filter((dd) => !isComplete(dd.resource)).length > 0,
     );
     if (hasGrandchildren) {
       // Count all dependencies in the subtree (excluding complete ones)
       const countAllDeps = (node: DependencyTree): number => {
-        const childDeps = node.dependencies.filter((d) => !d.resource.complete);
+        const childDeps = node.dependencies.filter((d) => !isComplete(d.resource));
         if (childDeps.length === 0) {
           return 0;
         }
@@ -197,8 +197,8 @@ function renderDependencyTree(
 
         // Find the deepest leaf to show
         let current: DependencyTree | undefined = firstDep;
-        while (current?.dependencies.some((d) => !d.resource.complete)) {
-          current = current.dependencies.find((d) => !d.resource.complete);
+        while (current?.dependencies.some((d) => !isComplete(d.resource))) {
+          current = current.dependencies.find((d) => !isComplete(d.resource));
         }
         if (current && current !== firstDep) {
           lines.push(`${childPrefix}└─ ${current.resource.id}`);
