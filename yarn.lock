@@ -1156,6 +1156,7 @@ __metadata:
     "@sirenpm/core": "npm:0.4.0"
     "@sirenpm/language": "npm:0.4.0"
     "@types/node": "npm:^25.6.0"
+    citty: "npm:^0.2.2"
     tsup: "npm:^8.3.5"
     typescript: "npm:^5.7.2"
   bin:
@@ -1512,6 +1513,13 @@ __metadata:
   version: 3.0.0
   resolution: "chownr@npm:3.0.0"
   checksum: 10c0/43925b87700f7e3893296c8e9c56cc58f926411cce3a6e5898136daaf08f08b9a8eb76d37d3267e707d0dcc17aed2e2ebdf5848c0c3ce95cf910a919935c1b10
+  languageName: node
+  linkType: hard
+
+"citty@npm:^0.2.2":
+  version: 0.2.2
+  resolution: "citty@npm:0.2.2"
+  checksum: 10c0/c896c9dcd187d2a16685706d11428dcdec9eb59aa13fe50aff7b12e1d3521f1bf434d6a5316fe75a341f8ba5ce1d2beceb84f7f261d018985a73d3f6f2a793e3
   languageName: node
   linkType: hard
 

@@ -379,6 +379,7 @@ describe('siren main', () => {
     await main(['list']);
     // Output content is covered by golden tests; here we ensure the project was loaded.
     expect(loadProjectSpy).toHaveBeenCalledTimes(1);
+    expect(project.getLoadedContext()?.phasesRun.has('presentation')).toBe(true);
   });
 
   it('list command outputs warnings to stderr', async () => {
@@ -415,6 +416,24 @@ describe('siren main', () => {
     await main(['list', '-t']);
     // Detailed output assertions covered by golden tests; ensure CLI invoked project loading and emitted output.
     expect(consoleLogSpy).toHaveBeenCalled();
+    expect(loadProjectSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('show command sets exit code when entry id is missing', async () => {
+    await main(['show']);
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('missing entry id — usage: siren show <entry-id>');
+    expect(process.exitCode).toBe(1);
+    expect(loadProjectSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('show command sets exit code on runtime error', async () => {
+    copyFixture('list-single-milestone', tempDir);
+
+    await main(['show', 'missing']);
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Resource with id missing not found');
+    expect(process.exitCode).toBe(1);
     expect(loadProjectSpy).toHaveBeenCalledTimes(1);
   });
 
