@@ -379,6 +379,7 @@ describe('siren main', () => {
     await main(['list']);
     // Output content is covered by golden tests; here we ensure the project was loaded.
     expect(loadProjectSpy).toHaveBeenCalledTimes(1);
+    expect(project.getLoadedContext()?.phasesRun.has('presentation')).toBe(true);
   });
 
   it('list command outputs warnings to stderr', async () => {

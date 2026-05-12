@@ -6,6 +6,7 @@ import {
   renderSyntaxDocument,
   type SourceDocument,
 } from '@sirenpm/language';
+import { defineCommand } from 'citty';
 import { getParser } from '../parser';
 import { loadProject } from '../project';
 
@@ -159,3 +160,27 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
     for (const p of list) console.log(`- ${p}`);
   }
 }
+
+export const formatCommand = defineCommand({
+  meta: {
+    name: 'format',
+    description: 'Format .siren files in-place or print formatted output',
+  },
+  args: {
+    dryRun: {
+      type: 'boolean',
+      description: 'Print formatted output to stdout without writing files',
+    },
+    verbose: {
+      type: 'boolean',
+      description: 'Print list of files that would be updated or were updated',
+    },
+  },
+  async run({ args }) {
+    try {
+      await runFormat({ dryRun: Boolean(args.dryRun), verbose: Boolean(args.verbose) });
+    } catch (error) {
+      console.error((error as Error).message);
+    }
+  },
+});
