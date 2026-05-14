@@ -17,11 +17,6 @@ export async function runParsing(ctx: CliContext): Promise<void> {
   }));
 
   ctx.sourceDocuments = sourceDocuments;
-  ctx.contentByDocument = new Map(
-    sourceDocuments.map((document) => [document.name, document.content]),
-  );
   ctx.parseResult = await parser.parse(sourceDocuments);
-  ctx.syntaxDocuments = ctx.parseResult.syntaxDocuments ?? [];
-  ctx.parseTreeMissing = !ctx.parseResult.tree;
   ctx.phasesRun.add('parsing');
 }

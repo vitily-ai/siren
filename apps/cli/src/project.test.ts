@@ -43,7 +43,7 @@ describe('project loading', () => {
     expect(ctx.rootDir).toBe(tempDir);
     expect(ctx.sirenDir).toBe(path.join(tempDir, 'siren'));
     expect(ctx.files).toEqual([]);
-    expect(ctx.milestones).toEqual([]);
+    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual([]);
     expect(ctx.warnings).toEqual([]);
     expect(ctx.errors).toEqual([]);
   });
@@ -56,7 +56,7 @@ describe('project loading', () => {
     setCurrentContext(ctx);
 
     expect(ctx.files).toEqual([]);
-    expect(ctx.milestones).toEqual([]);
+    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual([]);
     expect(ctx.warnings).toEqual([]);
     expect(ctx.errors).toEqual([]);
   });
@@ -77,7 +77,7 @@ task gamma {}`,
 
     expect(ctx.files).toHaveLength(1);
     expect(ctx.files[0]).toBe(path.join(sirenDir, 'main.siren'));
-    expect(ctx.milestones).toEqual(['alpha', 'beta']);
+    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['alpha', 'beta']);
     expect(ctx.warnings).toEqual([]);
     expect(ctx.errors).toEqual([]);
   });
@@ -96,7 +96,7 @@ task gamma {}`,
     expect(ctx.files).toHaveLength(2);
     expect(ctx.files).toContain(path.join(sirenDir, 'root.siren'));
     expect(ctx.files).toContain(path.join(subDir, 'nested.siren'));
-    expect(ctx.milestones).toEqual(['root', 'nested']);
+    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['root', 'nested']);
   });
 
   it('handles parse errors with errors and skips broken documents', async () => {
@@ -110,7 +110,7 @@ task gamma {}`,
     await runFinalizeLifecycle(ctx);
 
     expect(ctx.files).toHaveLength(2);
-    expect(ctx.milestones).toEqual(['valid']);
+    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['valid']);
     expect(ctx.warnings).toEqual([]);
     expect(ctx.errors).toHaveLength(2);
     expect(ctx.errors[0]).toContain('error: unexpected token');
@@ -132,7 +132,7 @@ milestone "MVP Release" {}`,
     setCurrentContext(ctx);
     await runFinalizeLifecycle(ctx);
 
-    expect(ctx.milestones).toEqual(['Q1 Launch', 'MVP Release']);
+    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['Q1 Launch', 'MVP Release']);
   });
 
   it('stores loaded context in global state', async () => {
@@ -146,7 +146,7 @@ milestone "MVP Release" {}`,
 
     const loaded = getCurrentContext();
     expect(loaded).not.toBeNull();
-    expect(loaded!.milestones).toEqual(['test']);
+    expect(loaded!.ir?.getMilestoneIds() ?? []).toEqual(['test']);
   });
 
   it('overwrites previous loaded context on new load', async () => {
@@ -158,7 +158,7 @@ milestone "MVP Release" {}`,
     setCurrentContext(ctx);
     await runFinalizeLifecycle(ctx);
 
-    expect(getCurrentContext()!.milestones).toEqual(['first']);
+    expect(getCurrentContext()!.ir?.getMilestoneIds() ?? []).toEqual(['first']);
 
     // Second load - different directory
     const tempDir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'siren-project-test2-'));
@@ -169,7 +169,7 @@ milestone "MVP Release" {}`,
     setCurrentContext(ctx);
     await runFinalizeLifecycle(ctx);
 
-    expect(getCurrentContext()!.milestones).toEqual(['second']);
+    expect(getCurrentContext()!.ir?.getMilestoneIds() ?? []).toEqual(['second']);
 
     // Cleanup
     fs.rmSync(tempDir2, { recursive: true, force: true });
@@ -214,7 +214,7 @@ milestone "MVP Release" {}`,
       );
     });
 
-    expect(ctx.milestones).toEqual(['alpha', 'patched']);
+    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['alpha', 'patched']);
 
     const phases = Array.from(ctx.phasesRun);
     expect(phases.indexOf('builder-construction')).toBeLessThan(phases.indexOf('builder-mutation'));

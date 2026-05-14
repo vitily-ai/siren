@@ -1,4 +1,9 @@
-import { decodeSyntaxDocuments, type ParseDiagnostic, type ParseError } from '@sirenpm/language';
+import {
+  decodeSyntaxDocuments,
+  type ParseDiagnostic,
+  type ParseError,
+  type SyntaxDocument,
+} from '@sirenpm/language';
 import type { CliContext } from './context';
 
 function toDiagnosticColumn(column: number | undefined): number | undefined {
@@ -18,12 +23,12 @@ function isDuplicateCompleteParseError(error: ParseError): boolean {
 
 function findResourceForParseError(
   error: ParseError,
-  ctx: CliContext,
-): CliContext['syntaxDocuments'][number]['resources'][number] | undefined {
+  decodableSyntaxDocuments: readonly SyntaxDocument[],
+): SyntaxDocument['resources'][number] | undefined {
   const documentName = error.document;
   const startByte = error.startByte;
 
-  for (const syntaxDocument of ctx.decodableSyntaxDocuments) {
+  for (const syntaxDocument of decodableSyntaxDocuments) {
     if (documentName && syntaxDocument.source.name !== documentName) continue;
 
     for (const resource of syntaxDocument.resources) {
@@ -45,13 +50,13 @@ function findResourceForParseError(
 
 function parseErrorsToDiagnostics(
   errors: readonly ParseError[],
-  ctx: CliContext,
+  decodableSyntaxDocuments: readonly SyntaxDocument[],
 ): readonly ParseDiagnostic[] {
   const diagnostics: ParseDiagnostic[] = [];
 
   for (const error of errors) {
     if (isDuplicateCompleteParseError(error)) {
-      const resource = findResourceForParseError(error, ctx);
+      const resource = findResourceForParseError(error, decodableSyntaxDocuments);
       const resourceId = resource?.identifier.value ?? 'unknown';
       diagnostics.push({
         code: 'WL002',
@@ -100,22 +105,20 @@ export function runDecoding(ctx: CliContext): void {
     }
   }
 
-  ctx.errorsByDocument = errorsByDocument;
-  ctx.skippedDocuments = skippedDocuments;
-  ctx.decodableSyntaxDocuments = ctx.syntaxDocuments.filter(
+  const syntaxDocuments = ctx.parseResult.syntaxDocuments ?? [];
+  const decodableSyntaxDocuments = syntaxDocuments.filter(
     (syntaxDocument) => !skippedDocuments.has(syntaxDocument.source.name),
   );
-  ctx.retainedParseWarnings = ctx.parseResult.errors.filter((error) => {
+  const retainedParseWarnings = ctx.parseResult.errors.filter((error) => {
     const severity = error.severity ?? 'error';
     const document = error.document ?? 'unknown';
     return severity === 'warning' && !skippedDocuments.has(document);
   });
 
-  const { documents, diagnostics } = decodeSyntaxDocuments(ctx.decodableSyntaxDocuments);
+  const { documents, diagnostics } = decodeSyntaxDocuments(decodableSyntaxDocuments);
   ctx.sirenDocuments = documents ?? [];
-  ctx.decodeDiagnostics = diagnostics;
   ctx.parseDiagnostics = [
-    ...parseErrorsToDiagnostics(ctx.retainedParseWarnings, ctx),
+    ...parseErrorsToDiagnostics(retainedParseWarnings, decodableSyntaxDocuments),
     ...diagnostics,
   ];
   ctx.phasesRun.add('decoding');

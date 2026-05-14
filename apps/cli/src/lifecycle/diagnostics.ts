@@ -1,17 +1,28 @@
+import type { ParseError } from '@sirenpm/language';
 import { formatDiagnostic } from '../format-diagnostics';
 import { formatParseError } from '../format-parse-error';
 import type { CliContext } from './context';
 
 export function runDiagnosticsAccumulation(ctx: CliContext): void {
-  if (ctx.parseTreeMissing) {
+  if (ctx.files.length > 0 && !ctx.parseResult?.tree) {
     ctx.warnings.push('Warning: no valid parse tree could be produced');
     ctx.phasesRun.add('diagnostics');
     return;
   }
 
-  for (const [document, errors] of ctx.errorsByDocument) {
+  const errorsByDocument = new Map<string, ParseError[]>();
+  if (ctx.parseResult) {
+    for (const error of ctx.parseResult.errors) {
+      const document = error.document ?? 'unknown';
+      const errors = errorsByDocument.get(document) ?? [];
+      errors.push(error);
+      errorsByDocument.set(document, errors);
+    }
+  }
+
+  for (const [document, errors] of errorsByDocument) {
     errors.sort((a, b) => a.line - b.line || a.column - b.column);
-    const source = ctx.contentByDocument.get(document) ?? '';
+    const source = ctx.sourceDocuments.find((d) => d.name === document)?.content ?? '';
 
     for (const error of errors) {
       if ((error.severity ?? 'error') === 'warning') continue;

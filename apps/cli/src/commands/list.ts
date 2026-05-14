@@ -12,7 +12,7 @@ export interface ListResult {
 export async function list(_showTasks = false): Promise<ListResult> {
   const ctx = getCurrentContext()!;
   await runFinalizeLifecycle(ctx);
-  return { milestones: ctx.milestones, warnings: ctx.warnings };
+  return { milestones: ctx.ir?.getMilestoneIds() ?? [], warnings: ctx.warnings };
 }
 
 export async function runList(showTasks = false): Promise<void> {
