@@ -4,9 +4,9 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { copyProjectFixture } from '../test/helpers/fixture-utils';
+import { getCurrentContext, setCurrentContext } from './context-store';
 import { list, main } from './index';
-import * as project from './project';
-import { loadProject } from './project';
+import * as lifecycle from './lifecycle';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(
@@ -40,7 +40,7 @@ describe('siren list', () => {
   });
 
   it('returns empty when no siren/ directory exists', async () => {
-    await loadProject(tempDir);
+    setCurrentContext(await lifecycle.runPrepareLifecycle(tempDir));
     const result = await list();
 
     expect(result.milestones).toEqual([]);
@@ -51,7 +51,7 @@ describe('siren list', () => {
     const sirenDir = path.join(tempDir, 'siren');
     fs.mkdirSync(sirenDir);
 
-    await loadProject(tempDir);
+    setCurrentContext(await lifecycle.runPrepareLifecycle(tempDir));
     const result = await list();
 
     expect(result.milestones).toEqual([]);
@@ -61,7 +61,7 @@ describe('siren list', () => {
   it('returns empty when siren/ has .siren files but no milestones', async () => {
     copyFixture('no-milestones-only-tasks', tempDir);
 
-    await loadProject(tempDir);
+    setCurrentContext(await lifecycle.runPrepareLifecycle(tempDir));
     const result = await list();
 
     expect(result.milestones).toEqual([]);
@@ -72,7 +72,7 @@ describe('siren list', () => {
     const sirenDir = await copyProjectFixture('list-milestones');
     const cwd = path.basename(sirenDir) === 'siren' ? path.dirname(sirenDir) : sirenDir;
 
-    await loadProject(cwd);
+    setCurrentContext(await lifecycle.runPrepareLifecycle(cwd));
     const result = await list();
 
     expect(result.milestones).toEqual(['alpha', 'beta']);
@@ -84,7 +84,7 @@ describe('siren list', () => {
   it('lists milestones from multiple .siren files', async () => {
     copyFixture('multiple-files', tempDir);
 
-    await loadProject(tempDir);
+    setCurrentContext(await lifecycle.runPrepareLifecycle(tempDir));
     const result = await list();
 
     expect(result.milestones).toContain('alpha');
@@ -96,7 +96,7 @@ describe('siren list', () => {
   it('recursively finds .siren files in subdirectories', async () => {
     copyFixture('recursive', tempDir);
 
-    await loadProject(tempDir);
+    setCurrentContext(await lifecycle.runPrepareLifecycle(tempDir));
     const result = await list();
 
     expect(result.milestones).toContain('root');
@@ -108,7 +108,8 @@ describe('siren list', () => {
   it('skips files with parse errors and records syntax errors', async () => {
     copyFixture('parse-errors', tempDir);
 
-    const ctx = await loadProject(tempDir);
+    const ctx = await lifecycle.runPrepareLifecycle(tempDir);
+    setCurrentContext(ctx);
     const result = await list();
 
     expect(result.milestones).toEqual(['valid']);
@@ -120,7 +121,7 @@ describe('siren list', () => {
   it('handles quoted milestone identifiers', async () => {
     copyFixture('quoted-identifiers', tempDir);
 
-    await loadProject(tempDir);
+    setCurrentContext(await lifecycle.runPrepareLifecycle(tempDir));
     const result = await list();
 
     expect(result.milestones).toEqual(['Q1 Launch', 'MVP Release']);
@@ -130,7 +131,7 @@ describe('siren list', () => {
   it('handles empty .siren files gracefully', async () => {
     copyFixture('empty-files', tempDir);
 
-    await loadProject(tempDir);
+    setCurrentContext(await lifecycle.runPrepareLifecycle(tempDir));
     const result = await list();
 
     expect(result.milestones).toEqual([]);
@@ -140,7 +141,7 @@ describe('siren list', () => {
   it('handles Unicode in milestone names', async () => {
     copyFixture('unicode', tempDir);
 
-    await loadProject(tempDir);
+    setCurrentContext(await lifecycle.runPrepareLifecycle(tempDir));
     const result = await list();
 
     expect(result.milestones).toContain('🚀 Launch');
@@ -153,7 +154,7 @@ describe('siren list', () => {
   it('handles deeply nested directories', async () => {
     copyFixture('deep-nested', tempDir);
 
-    await loadProject(tempDir);
+    setCurrentContext(await lifecycle.runPrepareLifecycle(tempDir));
     const result = await list();
 
     expect(result.milestones).toContain('root');
@@ -166,7 +167,8 @@ describe('siren list', () => {
   it('handles multiple files with parse errors', async () => {
     copyFixture('multiple-parse-errors', tempDir);
 
-    const ctx = await loadProject(tempDir);
+    const ctx = await lifecycle.runPrepareLifecycle(tempDir);
+    setCurrentContext(ctx);
     const result = await list();
 
     expect(result.milestones).toEqual(['valid']);
@@ -178,7 +180,7 @@ describe('siren list', () => {
   it('uses the loaded project context', async () => {
     copyFixture('loaded-project', tempDir);
 
-    await loadProject(tempDir);
+    setCurrentContext(await lifecycle.runPrepareLifecycle(tempDir));
     const result = await list();
 
     expect(result.milestones).toEqual(['test']);
@@ -187,7 +189,7 @@ describe('siren list', () => {
   it('lists milestones', async () => {
     copyFixture('multiple-files', tempDir);
 
-    await loadProject(tempDir);
+    setCurrentContext(await lifecycle.runPrepareLifecycle(tempDir));
     const result = await list();
 
     expect(result.milestones).toEqual(['alpha', 'beta']);
@@ -211,7 +213,7 @@ describe('siren main', () => {
     process.chdir(tempDir);
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    loadProjectSpy = vi.spyOn(project, 'loadProject');
+    loadProjectSpy = vi.spyOn(lifecycle, 'runPrepareLifecycle');
   });
 
   afterEach(() => {
@@ -255,7 +257,7 @@ describe('siren main', () => {
     await main(['list']);
     // Output content is covered by golden tests; here we ensure the project was loaded.
     expect(loadProjectSpy).toHaveBeenCalledTimes(1);
-    expect(project.getLoadedContext()?.phasesRun.has('presentation')).toBe(true);
+    expect(getCurrentContext()?.phasesRun.has('presentation')).toBe(true);
   });
 
   it('list command outputs warnings to stderr', async () => {

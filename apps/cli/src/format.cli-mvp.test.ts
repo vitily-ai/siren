@@ -3,7 +3,8 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { copyProjectFixture } from '../test/helpers/fixture-utils';
 import { runFormat } from './commands/format';
-import { loadProject } from './project';
+import { setCurrentContext } from './context-store';
+import { runPrepareLifecycle } from './lifecycle';
 
 describe('runFormat integration: cli-mvp fixture', () => {
   it('detects semantic change for cli-mvp.siren', async () => {
@@ -14,7 +15,7 @@ describe('runFormat integration: cli-mvp fixture', () => {
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
       process.chdir(cwd);
-      await loadProject(process.cwd());
+      setCurrentContext(await runPrepareLifecycle(process.cwd()));
       await runFormat({ dryRun: true });
 
       const calledWith = errSpy.mock.calls.map((c) => c.join(' ')).join('\n');
@@ -37,7 +38,7 @@ describe('cli format round-trip for cli-mvp fixture', () => {
     // change CWD to project root (parent of siren/) or to fixture root
     const cwd = path.basename(sirenDir) === 'siren' ? path.dirname(sirenDir) : sirenDir;
     process.chdir(cwd);
-    await loadProject(process.cwd());
+    setCurrentContext(await runPrepareLifecycle(process.cwd()));
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
@@ -66,7 +67,7 @@ describe('format summary and verbose listing', () => {
       // change CWD to project root (parent of siren/) or to fixture root
       const cwd = path.basename(sirenDir) === 'siren' ? path.dirname(sirenDir) : sirenDir;
       process.chdir(cwd);
-      await loadProject(process.cwd());
+      setCurrentContext(await runPrepareLifecycle(process.cwd()));
 
       // Make a.siren already match exported form (no attributes -> formatted block)
       const aPath = path.join(sirenDir, 'a.siren');

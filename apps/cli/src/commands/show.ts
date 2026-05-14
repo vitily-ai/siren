@@ -1,10 +1,12 @@
 import { defineCommand } from 'citty';
+import { getCurrentContext } from '../context-store';
+import { runFinalizeLifecycle } from '../lifecycle';
 import { surfaceDiagnostics } from '../lifecycle/presentation';
-import { finalizeProject } from '../project';
 import { renderDependencyTree } from './dependency-tree';
 
 export async function runShow(entryId: string): Promise<void> {
-  const ctx = await finalizeProject();
+  const ctx = getCurrentContext()!;
+  await runFinalizeLifecycle(ctx);
   surfaceDiagnostics(ctx);
   if (!ctx.ir) throw new Error('IR context not available');
 

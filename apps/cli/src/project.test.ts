@@ -2,7 +2,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { finalizeProject, getLoadedContext, loadProject } from './project';
+import { getCurrentContext, setCurrentContext } from './context-store';
+import { runFinalizeLifecycle, runPrepareLifecycle } from './lifecycle';
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 const fixturesDir = path.join(
@@ -35,7 +36,8 @@ describe('project loading', () => {
   });
 
   it('returns empty context when no siren directory exists', async () => {
-    const ctx = await loadProject(tempDir);
+    const ctx = await runPrepareLifecycle(tempDir);
+    setCurrentContext(ctx);
 
     expect(ctx.cwd).toBe(tempDir);
     expect(ctx.rootDir).toBe(tempDir);
@@ -50,7 +52,8 @@ describe('project loading', () => {
     const sirenDir = path.join(tempDir, 'siren');
     fs.mkdirSync(sirenDir);
 
-    const ctx = await loadProject(tempDir);
+    const ctx = await runPrepareLifecycle(tempDir);
+    setCurrentContext(ctx);
 
     expect(ctx.files).toEqual([]);
     expect(ctx.milestones).toEqual([]);
@@ -68,8 +71,9 @@ milestone beta {}
 task gamma {}`,
     );
 
-    const ctx = await loadProject(tempDir);
-    await finalizeProject();
+    const ctx = await runPrepareLifecycle(tempDir);
+    setCurrentContext(ctx);
+    await runFinalizeLifecycle(ctx);
 
     expect(ctx.files).toHaveLength(1);
     expect(ctx.files[0]).toBe(path.join(sirenDir, 'main.siren'));
@@ -85,8 +89,9 @@ task gamma {}`,
     fs.writeFileSync(path.join(sirenDir, 'root.siren'), 'milestone root {}');
     fs.writeFileSync(path.join(subDir, 'nested.siren'), 'milestone nested {}');
 
-    const ctx = await loadProject(tempDir);
-    await finalizeProject();
+    const ctx = await runPrepareLifecycle(tempDir);
+    setCurrentContext(ctx);
+    await runFinalizeLifecycle(ctx);
 
     expect(ctx.files).toHaveLength(2);
     expect(ctx.files).toContain(path.join(sirenDir, 'root.siren'));
@@ -100,8 +105,9 @@ task gamma {}`,
     fs.writeFileSync(path.join(sirenDir, 'valid.siren'), 'milestone valid {}');
     fs.writeFileSync(path.join(sirenDir, 'broken.siren'), '!!! invalid syntax');
 
-    const ctx = await loadProject(tempDir);
-    await finalizeProject();
+    const ctx = await runPrepareLifecycle(tempDir);
+    setCurrentContext(ctx);
+    await runFinalizeLifecycle(ctx);
 
     expect(ctx.files).toHaveLength(2);
     expect(ctx.milestones).toEqual(['valid']);
@@ -122,8 +128,9 @@ task gamma {}`,
 milestone "MVP Release" {}`,
     );
 
-    const ctx = await loadProject(tempDir);
-    await finalizeProject();
+    const ctx = await runPrepareLifecycle(tempDir);
+    setCurrentContext(ctx);
+    await runFinalizeLifecycle(ctx);
 
     expect(ctx.milestones).toEqual(['Q1 Launch', 'MVP Release']);
   });
@@ -133,10 +140,11 @@ milestone "MVP Release" {}`,
     fs.mkdirSync(sirenDir);
     fs.writeFileSync(path.join(sirenDir, 'test.siren'), 'milestone test {}');
 
-    await loadProject(tempDir);
-    await finalizeProject();
+    const ctx = await runPrepareLifecycle(tempDir);
+    setCurrentContext(ctx);
+    await runFinalizeLifecycle(ctx);
 
-    const loaded = getLoadedContext();
+    const loaded = getCurrentContext();
     expect(loaded).not.toBeNull();
     expect(loaded!.milestones).toEqual(['test']);
   });
@@ -146,28 +154,31 @@ milestone "MVP Release" {}`,
     const sirenDir1 = path.join(tempDir, 'siren');
     fs.mkdirSync(sirenDir1);
     fs.writeFileSync(path.join(sirenDir1, 'first.siren'), 'milestone first {}');
-    await loadProject(tempDir);
-    await finalizeProject();
+    let ctx = await runPrepareLifecycle(tempDir);
+    setCurrentContext(ctx);
+    await runFinalizeLifecycle(ctx);
 
-    expect(getLoadedContext()!.milestones).toEqual(['first']);
+    expect(getCurrentContext()!.milestones).toEqual(['first']);
 
     // Second load - different directory
     const tempDir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'siren-project-test2-'));
     const sirenDir2 = path.join(tempDir2, 'siren');
     fs.mkdirSync(sirenDir2);
     fs.writeFileSync(path.join(sirenDir2, 'second.siren'), 'milestone second {}');
-    await loadProject(tempDir2);
-    await finalizeProject();
+    ctx = await runPrepareLifecycle(tempDir2);
+    setCurrentContext(ctx);
+    await runFinalizeLifecycle(ctx);
 
-    expect(getLoadedContext()!.milestones).toEqual(['second']);
+    expect(getCurrentContext()!.milestones).toEqual(['second']);
 
     // Cleanup
     fs.rmSync(tempDir2, { recursive: true, force: true });
   });
 
   it('returns the same context object that is stored globally', async () => {
-    const ctx = await loadProject(tempDir);
-    const loaded = getLoadedContext();
+    const ctx = await runPrepareLifecycle(tempDir);
+    setCurrentContext(ctx);
+    const loaded = getCurrentContext();
 
     expect(loaded).toBe(ctx);
   });
@@ -175,8 +186,9 @@ milestone "MVP Release" {}`,
   it('collects decoding warnings from core', async () => {
     copyFixture('circular-depends', tempDir);
 
-    const ctx = await loadProject(tempDir);
-    await finalizeProject();
+    const ctx = await runPrepareLifecycle(tempDir);
+    setCurrentContext(ctx);
+    await runFinalizeLifecycle(ctx);
 
     expect(ctx.warnings).toHaveLength(1);
     expect(ctx.warnings[0]).toContain(
@@ -189,8 +201,9 @@ milestone "MVP Release" {}`,
     fs.mkdirSync(sirenDir);
     fs.writeFileSync(path.join(sirenDir, 'main.siren'), 'milestone alpha {}');
 
-    const ctx = await loadProject(tempDir);
-    await finalizeProject((finalizingCtx) => {
+    const ctx = await runPrepareLifecycle(tempDir);
+    setCurrentContext(ctx);
+    await runFinalizeLifecycle(ctx, (finalizingCtx) => {
       if (!finalizingCtx.builder) {
         throw new Error('Expected builder to exist during mutation phase');
       }

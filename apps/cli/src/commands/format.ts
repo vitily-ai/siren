@@ -7,9 +7,10 @@ import {
   type SourceDocument,
 } from '@sirenpm/language';
 import { defineCommand } from 'citty';
+import { getCurrentContext } from '../context-store';
+import { runFinalizeLifecycle } from '../lifecycle';
 import { surfaceDiagnostics } from '../lifecycle/presentation';
 import { getParser } from '../parser';
-import { finalizeProject } from '../project';
 
 export interface FormatOptions {
   dryRun?: boolean;
@@ -64,7 +65,8 @@ function debugStringifyResources(resources: readonly Resource[]): string {
 }
 
 export async function runFormat(opts: FormatOptions = {}): Promise<void> {
-  const ctx = await finalizeProject();
+  const ctx = getCurrentContext()!;
+  await runFinalizeLifecycle(ctx);
   surfaceDiagnostics(ctx);
 
   const parser = await getParser();

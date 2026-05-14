@@ -7,7 +7,8 @@ import { formatCommand } from './commands/format';
 import type { ListResult as CommandListResult } from './commands/list';
 import { listCommand, list as listMilestones, runList as runListCommand } from './commands/list';
 import { runShow as runShowCommand, showCommand } from './commands/show';
-import { loadProject } from './project';
+import { setCurrentContext } from './context-store';
+import { runPrepareLifecycle } from './lifecycle';
 import { cliVersion } from './version';
 
 const cliSuffix = buildMetadata ? `-${buildMetadata}` : '';
@@ -45,7 +46,8 @@ export const mainCommand = defineCommand({
     format: formatCommand,
   },
   async setup() {
-    await loadProject(process.cwd());
+    const ctx = await runPrepareLifecycle(process.cwd());
+    setCurrentContext(ctx);
   },
 });
 

@@ -1,6 +1,7 @@
 import { defineCommand } from 'citty';
+import { getCurrentContext } from '../context-store';
+import { runFinalizeLifecycle } from '../lifecycle';
 import { surfaceDiagnostics } from '../lifecycle/presentation';
-import { finalizeProject, getLoadedContext } from '../project';
 import { renderDependencyTree } from './dependency-tree';
 
 export interface ListResult {
@@ -9,17 +10,14 @@ export interface ListResult {
 }
 
 export async function list(_showTasks = false): Promise<ListResult> {
-  const ctx = await finalizeProject();
+  const ctx = getCurrentContext()!;
+  await runFinalizeLifecycle(ctx);
   return { milestones: ctx.milestones, warnings: ctx.warnings };
 }
 
 export async function runList(showTasks = false): Promise<void> {
   const result = await list(showTasks);
-  const ctx = getLoadedContext();
-  if (!ctx) {
-    throw new Error('Project context not loaded');
-  }
-
+  const ctx = getCurrentContext()!;
   surfaceDiagnostics(ctx);
 
   if (showTasks && ctx?.ir) {
