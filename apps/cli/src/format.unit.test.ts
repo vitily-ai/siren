@@ -2,6 +2,7 @@ import * as path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { copyProjectFixture } from '../test/helpers/fixture-utils';
 import { runFormat } from './commands/format';
+import { loadProject } from './project';
 
 describe('runFormat unit', () => {
   it('prints formatted output for multiple-files fixture', async () => {
@@ -10,6 +11,7 @@ describe('runFormat unit', () => {
     const originalCwd = process.cwd();
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     process.chdir(cwd);
+    await loadProject(process.cwd());
     await runFormat({ dryRun: true });
     expect(logSpy.mock.calls.length).toBeGreaterThan(0);
     process.chdir(originalCwd);
