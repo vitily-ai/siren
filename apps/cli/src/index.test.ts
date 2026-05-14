@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { copyProjectFixture } from '../test/helpers/fixture-utils';
-import { init, list, main } from './index';
+import { list, main } from './index';
 import * as project from './project';
 import { loadProject } from './project';
 
@@ -27,101 +27,6 @@ function copyFixture(fixtureName: string, targetDir: string) {
   const targetSirenDir = path.join(targetDir, 'siren');
   fs.cpSync(fixturePath, targetSirenDir, { recursive: true });
 }
-
-describe('siren init', () => {
-  let tempDir: string;
-
-  beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'siren-test-'));
-  });
-
-  afterEach(() => {
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  });
-
-  it('creates all files on fresh init', () => {
-    const result = init(tempDir);
-
-    expect(result.created).toEqual(['siren', 'siren/siren.config.yaml', 'siren/main.siren']);
-    expect(result.skipped).toEqual([]);
-
-    // Verify files exist with correct contents
-    const sirenDir = path.join(tempDir, 'siren');
-    expect(fs.existsSync(sirenDir)).toBe(true);
-    expect(fs.statSync(sirenDir).isDirectory()).toBe(true);
-
-    const configPath = path.join(sirenDir, 'siren.config.yaml');
-    expect(fs.existsSync(configPath)).toBe(true);
-    expect(fs.readFileSync(configPath, 'utf-8')).toBe('# project_name: Siren Project\n');
-
-    const mainPath = path.join(sirenDir, 'main.siren');
-    expect(fs.existsSync(mainPath)).toBe(true);
-    expect(fs.readFileSync(mainPath, 'utf-8')).toBe('');
-  });
-
-  it('skips existing directory but creates missing files', () => {
-    // Pre-create the siren directory
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-
-    const result = init(tempDir);
-
-    expect(result.created).toEqual(['siren/siren.config.yaml', 'siren/main.siren']);
-    expect(result.skipped).toEqual(['siren']);
-
-    // Verify files were created
-    expect(fs.existsSync(path.join(sirenDir, 'siren.config.yaml'))).toBe(true);
-    expect(fs.existsSync(path.join(sirenDir, 'main.siren'))).toBe(true);
-  });
-
-  it('skips existing config but creates missing main file', () => {
-    // Pre-create siren directory and config
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(path.join(sirenDir, 'siren.config.yaml'), '# custom config\n');
-
-    const result = init(tempDir);
-
-    expect(result.created).toEqual(['siren/main.siren']);
-    expect(result.skipped).toEqual(['siren', 'siren/siren.config.yaml']);
-
-    // Verify original config is preserved
-    expect(fs.readFileSync(path.join(sirenDir, 'siren.config.yaml'), 'utf-8')).toBe(
-      '# custom config\n',
-    );
-  });
-
-  it('skips everything when all files already exist', () => {
-    // Pre-create everything
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(path.join(sirenDir, 'siren.config.yaml'), '# existing\n');
-    fs.writeFileSync(path.join(sirenDir, 'main.siren'), 'milestone "existing" {}');
-
-    const result = init(tempDir);
-
-    expect(result.created).toEqual([]);
-    expect(result.skipped).toEqual(['siren', 'siren/siren.config.yaml', 'siren/main.siren']);
-
-    // Verify original contents are preserved
-    expect(fs.readFileSync(path.join(sirenDir, 'siren.config.yaml'), 'utf-8')).toBe('# existing\n');
-    expect(fs.readFileSync(path.join(sirenDir, 'main.siren'), 'utf-8')).toBe(
-      'milestone "existing" {}',
-    );
-  });
-
-  it('skips main.siren but creates config when only main exists', () => {
-    // Pre-create siren directory and main file only
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(path.join(sirenDir, 'main.siren'), '');
-
-    const result = init(tempDir);
-
-    expect(result.created).toEqual(['siren/siren.config.yaml']);
-    expect(result.skipped).toEqual(['siren', 'siren/main.siren']);
-  });
-});
 
 describe('siren list', () => {
   let tempDir: string;
@@ -340,35 +245,6 @@ describe('siren main', () => {
 
     expect(consoleLogSpy).toHaveBeenCalled();
     expect(consoleLogSpy.mock.calls[0][0]).toContain('Usage: siren <command>');
-    expect(loadProjectSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('runs init command', async () => {
-    await main(['init']);
-    // Creation side-effect verified below; CLI output string is covered by golden tests.
-    expect(fs.existsSync(path.join(tempDir, 'siren'))).toBe(true);
-    expect(loadProjectSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('init command outputs syntax errors to stderr before command output', async () => {
-    // Setup: create siren dir with broken file
-    copyFixture('broken', tempDir);
-
-    await main(['init']);
-
-    // Check that error is called before log
-    expect(consoleErrorSpy).toHaveBeenCalled();
-    expect(consoleErrorSpy.mock.calls[0][0]).toContain('--> siren/broken.siren:1:1');
-    expect(consoleLogSpy).toHaveBeenCalled();
-    expect(
-      consoleLogSpy.mock.calls.some((call: unknown[]) =>
-        (call[0] as string).includes('Skipped siren'),
-      ),
-    ).toBe(true);
-    // Since error is called in main before runInit, and runInit calls log
-    expect(consoleErrorSpy.mock.invocationCallOrder[0]).toBeLessThan(
-      consoleLogSpy.mock.invocationCallOrder[0],
-    );
     expect(loadProjectSpy).toHaveBeenCalledTimes(1);
   });
 
