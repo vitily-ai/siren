@@ -1,6 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { defineCommand } from 'citty';
+import { surfaceDiagnostics } from '../lifecycle/presentation';
+import { finalizeProject, getLoadedContext, loadProject } from '../project';
 
 const SIREN_DIR = 'siren';
 const CONFIG_FILE = 'siren.config.yaml';
@@ -63,7 +65,15 @@ export const initCommand = defineCommand({
     name: 'init',
     description: 'Initialize a new Siren project in the current directory',
   },
-  run() {
-    runInit(process.cwd());
+  async run() {
+    const cwd = process.cwd();
+    const loaded = getLoadedContext();
+    if (!loaded || loaded.cwd !== cwd) {
+      await loadProject(cwd);
+    }
+
+    const ctx = await finalizeProject();
+    surfaceDiagnostics(ctx);
+    runInit(cwd);
   },
 });

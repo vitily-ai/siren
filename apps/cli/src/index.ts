@@ -13,7 +13,6 @@ import {
 import type { ListResult as CommandListResult } from './commands/list';
 import { listCommand, list as listMilestones, runList as runListCommand } from './commands/list';
 import { runShow as runShowCommand, showCommand } from './commands/show';
-import { surfaceDiagnostics } from './lifecycle/presentation';
 import { loadProject } from './project';
 import { cliVersion } from './version';
 
@@ -55,8 +54,7 @@ export const mainCommand = defineCommand({
     format: formatCommand,
   },
   async setup() {
-    const ctx = await loadProject(process.cwd());
-    surfaceDiagnostics(ctx);
+    await loadProject(process.cwd());
   },
 });
 

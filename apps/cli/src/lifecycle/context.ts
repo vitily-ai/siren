@@ -13,6 +13,7 @@ export const cliPhaseNames = [
   'parsing',
   'decoding',
   'builder-construction',
+  'builder-mutation',
   'project-build',
   'diagnostics',
   'presentation',

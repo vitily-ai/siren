@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { getLoadedContext, loadProject } from './project';
+import { finalizeProject, getLoadedContext, loadProject } from './project';
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 const fixturesDir = path.join(
@@ -69,6 +69,7 @@ task gamma {}`,
     );
 
     const ctx = await loadProject(tempDir);
+    await finalizeProject();
 
     expect(ctx.files).toHaveLength(1);
     expect(ctx.files[0]).toBe(path.join(sirenDir, 'main.siren'));
@@ -85,6 +86,7 @@ task gamma {}`,
     fs.writeFileSync(path.join(subDir, 'nested.siren'), 'milestone nested {}');
 
     const ctx = await loadProject(tempDir);
+    await finalizeProject();
 
     expect(ctx.files).toHaveLength(2);
     expect(ctx.files).toContain(path.join(sirenDir, 'root.siren'));
@@ -99,6 +101,7 @@ task gamma {}`,
     fs.writeFileSync(path.join(sirenDir, 'broken.siren'), '!!! invalid syntax');
 
     const ctx = await loadProject(tempDir);
+    await finalizeProject();
 
     expect(ctx.files).toHaveLength(2);
     expect(ctx.milestones).toEqual(['valid']);
@@ -120,6 +123,7 @@ milestone "MVP Release" {}`,
     );
 
     const ctx = await loadProject(tempDir);
+    await finalizeProject();
 
     expect(ctx.milestones).toEqual(['Q1 Launch', 'MVP Release']);
   });
@@ -130,6 +134,7 @@ milestone "MVP Release" {}`,
     fs.writeFileSync(path.join(sirenDir, 'test.siren'), 'milestone test {}');
 
     await loadProject(tempDir);
+    await finalizeProject();
 
     const loaded = getLoadedContext();
     expect(loaded).not.toBeNull();
@@ -142,6 +147,7 @@ milestone "MVP Release" {}`,
     fs.mkdirSync(sirenDir1);
     fs.writeFileSync(path.join(sirenDir1, 'first.siren'), 'milestone first {}');
     await loadProject(tempDir);
+    await finalizeProject();
 
     expect(getLoadedContext()!.milestones).toEqual(['first']);
 
@@ -151,6 +157,7 @@ milestone "MVP Release" {}`,
     fs.mkdirSync(sirenDir2);
     fs.writeFileSync(path.join(sirenDir2, 'second.siren'), 'milestone second {}');
     await loadProject(tempDir2);
+    await finalizeProject();
 
     expect(getLoadedContext()!.milestones).toEqual(['second']);
 
@@ -169,10 +176,35 @@ milestone "MVP Release" {}`,
     copyFixture('circular-depends', tempDir);
 
     const ctx = await loadProject(tempDir);
+    await finalizeProject();
 
     expect(ctx.warnings).toHaveLength(1);
     expect(ctx.warnings[0]).toContain(
       'siren/main.siren:1:0: W001: Circular dependency detected: task1 -> task2 -> task3 -> task1',
     );
+  });
+
+  it('applies builder mutation before project build', async () => {
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    fs.writeFileSync(path.join(sirenDir, 'main.siren'), 'milestone alpha {}');
+
+    const ctx = await loadProject(tempDir);
+    await finalizeProject((finalizingCtx) => {
+      if (!finalizingCtx.builder) {
+        throw new Error('Expected builder to exist during mutation phase');
+      }
+
+      finalizingCtx.builder = finalizingCtx.builder.withResource(
+        { type: 'milestone', id: 'patched', attributes: [] },
+        'mutation',
+      );
+    });
+
+    expect(ctx.milestones).toEqual(['alpha', 'patched']);
+
+    const phases = Array.from(ctx.phasesRun);
+    expect(phases.indexOf('builder-construction')).toBeLessThan(phases.indexOf('builder-mutation'));
+    expect(phases.indexOf('builder-mutation')).toBeLessThan(phases.indexOf('project-build'));
   });
 });

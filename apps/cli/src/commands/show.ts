@@ -1,10 +1,11 @@
 import { defineCommand } from 'citty';
-import { getLoadedContext } from '../project';
+import { surfaceDiagnostics } from '../lifecycle/presentation';
+import { finalizeProject } from '../project';
 import { renderDependencyTree } from './dependency-tree';
 
 export async function runShow(entryId: string): Promise<void> {
-  const ctx = getLoadedContext();
-  if (!ctx) throw new Error('Project context not loaded');
+  const ctx = await finalizeProject();
+  surfaceDiagnostics(ctx);
   if (!ctx.ir) throw new Error('IR context not available');
 
   const tree = ctx.ir.getDependencyTree(entryId);

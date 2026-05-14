@@ -7,8 +7,9 @@ import {
   type SourceDocument,
 } from '@sirenpm/language';
 import { defineCommand } from 'citty';
+import { surfaceDiagnostics } from '../lifecycle/presentation';
 import { getParser } from '../parser';
-import { loadProject } from '../project';
+import { finalizeProject, getLoadedContext, loadProject } from '../project';
 
 export interface FormatOptions {
   dryRun?: boolean;
@@ -63,9 +64,15 @@ function debugStringifyResources(resources: readonly Resource[]): string {
 }
 
 export async function runFormat(opts: FormatOptions = {}): Promise<void> {
-  // Reload project context to ensure files are discovered in test envs
-  const ctx = await loadProject(process.cwd());
-  if (!ctx) throw new Error('Project context not loaded');
+  const cwd = process.cwd();
+  const loaded = getLoadedContext();
+  if (!loaded || loaded.cwd !== cwd) {
+    await loadProject(cwd);
+  }
+
+  const ctx = await finalizeProject();
+  surfaceDiagnostics(ctx);
+
   const parser = await getParser();
 
   const totalFiles = ctx.files.length;
