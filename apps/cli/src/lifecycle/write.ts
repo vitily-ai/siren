@@ -7,19 +7,23 @@ export interface WriteArtifact {
   originalFileContents: Map<string, string>;
 }
 
-export function runWrite(ctx: DeepReadonly<CliContext>): WriteArtifact {
-  if (!ctx.builder) {
+export function runWrite({
+  builder,
+  originalFileContents,
+  rootDir,
+}: DeepReadonly<CliContext>): WriteArtifact {
+  if (!builder) {
     throw new Error('Invariant: runWrite called without a builder on context');
   }
 
-  const originalFileContents = new Map<string, string>();
-  for (const [key, value] of ctx.originalFileContents.entries()) {
-    originalFileContents.set(key, value as string);
+  const originalFileContentsMap = new Map<string, string>();
+  for (const [key, value] of originalFileContents.entries()) {
+    originalFileContentsMap.set(key, value as string);
   }
 
-  for (const document of ctx.builder.documents) {
-    const absolutePath = path.join(ctx.rootDir, document.id);
-    const original = ctx.originalFileContents.get(absolutePath);
+  for (const document of builder.documents) {
+    const absolutePath = path.join(rootDir, document.id);
+    const original = originalFileContentsMap.get(absolutePath);
     if (original === undefined) {
       continue;
     }
@@ -28,8 +32,8 @@ export function runWrite(ctx: DeepReadonly<CliContext>): WriteArtifact {
     if (rendered === original) continue;
 
     fs.writeFileSync(absolutePath, rendered, 'utf-8');
-    originalFileContents.set(absolutePath, rendered);
+    originalFileContentsMap.set(absolutePath, rendered);
   }
 
-  return { originalFileContents };
+  return { originalFileContents: originalFileContentsMap };
 }

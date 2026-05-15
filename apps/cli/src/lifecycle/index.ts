@@ -90,6 +90,10 @@ export async function runLifecycle(cwd: string, hooks: LifecycleHooks = {}): Pro
     ctx.phasesRun.add('query');
   }
 
+  // Instructions state that write should only update relevant files, and that determination needs to be made post-mutate.
+  // This is currently suggesting that the write phase is responsible for calculating the touched file set.
+  // Introduce a new phase that compares before/after `SirenBuilder`
+  // NOTE: requires update to core patch API to return delta
   if (hooks.mutate && !ctx.aborted && ctx.errors.length === 0 && ctx.builder) {
     const writeArt = runWrite(ctx);
     ctx.originalFileContents = writeArt.originalFileContents;
