@@ -1,23 +1,15 @@
+import type { SirenProject } from '@sirenpm/core';
 import { defineCommand } from 'citty';
-import { getCurrentContext } from '../context-store';
-import { runFinalizeLifecycle } from '../lifecycle';
-import { surfaceDiagnostics } from '../lifecycle/presentation';
+import { type QueryArtifact, runLifecycle } from '../lifecycle';
 import { renderDependencyTree } from './dependency-tree';
 
-export async function runShow(entryId: string): Promise<void> {
-  const ctx = getCurrentContext()!;
-  await runFinalizeLifecycle(ctx);
-  surfaceDiagnostics(ctx);
-  if (!ctx.ir) throw new Error('IR context not available');
-
-  const tree = ctx.ir.getDependencyTree(entryId);
-
-  console.log(entryId);
-
-  const lines = renderDependencyTree(tree);
-  for (const line of lines) {
-    console.log(line);
-  }
+export function showQuery(entryId: string) {
+  return (project: SirenProject): QueryArtifact => {
+    const tree = project.getDependencyTree(entryId);
+    return {
+      stdout: [entryId, ...renderDependencyTree(tree)],
+    };
+  };
 }
 
 export const showCommand = defineCommand({
@@ -38,6 +30,6 @@ export const showCommand = defineCommand({
       throw new Error('missing entry id — usage: siren show <entry-id>');
     }
 
-    await runShow(entryId);
+    await runLifecycle(process.cwd(), { query: showQuery(entryId) });
   },
 });

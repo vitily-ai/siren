@@ -10,16 +10,18 @@ export const cliPhaseNames = [
   'builder-mutation',
   'project-build',
   'diagnostics',
-  'presentation',
+  'diagnostics-presented',
+  'query',
+  'write',
+  'query-presented',
 ] as const;
 
 export type CliPhaseName = (typeof cliPhaseNames)[number];
 
-export interface PresentationArtifact {
-  diagnosticsSurfaced: boolean;
-  warningCount: number;
-  errorCount: number;
-  exitCode?: number | string | null;
+export interface QueryArtifact {
+  stdout?: string | string[];
+  stderr?: string | string[];
+  exitCode?: number;
 }
 
 // CliContext must contain ONLY the absolute minimum necessary for cross-phase handoff.
@@ -37,7 +39,18 @@ export interface CliContext {
   ir?: SirenProject;
   warnings: string[];
   errors: string[];
-  presentation?: PresentationArtifact;
+  /** Snapshot of `{absoluteFilePath -> original file content}` captured during parsing. */
+  // FIXME: Remove as Unnecessary complexity - write affected files unconditionally
+  originalFileContents: Map<string, string>;
+  query?: QueryArtifact;
+  /** True once an error has caused downstream phases (query, write) to abort. */
+  aborted: boolean;
+  /** Count of `warnings` already flushed to stderr. */
+  // FIXME: Unnecessary: Either we flush warnings as they are added (no need to track count), or we flush all at the end (no need to track at all).
+  warningsFlushed: number;
+  /** Count of `errors` already flushed to stderr. */
+  // FIXME: Unnecessary: Either we flush errors as they are added (no need to track count), or we flush all at the end (no need to track at all).
+  errorsFlushed: number;
   phasesRun: Set<CliPhaseName>;
 }
 
@@ -53,6 +66,10 @@ export function createCliContext(cwd: string): CliContext {
     sirenDocuments: [],
     warnings: [],
     errors: [],
+    originalFileContents: new Map(),
+    aborted: false,
+    warningsFlushed: 0,
+    errorsFlushed: 0,
     phasesRun: new Set(),
   };
 }

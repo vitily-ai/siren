@@ -1,9 +1,8 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { getCurrentContext, setCurrentContext } from './context-store';
-import { runFinalizeLifecycle, runPrepareLifecycle } from './lifecycle';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { runLifecycle } from './lifecycle';
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 const fixturesDir = path.join(
@@ -24,20 +23,25 @@ function copyFixture(fixtureName: string, targetDir: string) {
   fs.cpSync(fixturePath, targetSirenDir, { recursive: true });
 }
 
-describe('project loading', () => {
+describe('lifecycle', () => {
   let tempDir: string;
+  let logSpy: ReturnType<typeof vi.spyOn>;
+  let errSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'siren-project-test-'));
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
     fs.rmSync(tempDir, { recursive: true, force: true });
+    logSpy.mockRestore();
+    errSpy.mockRestore();
   });
 
   it('returns empty context when no siren directory exists', async () => {
-    const ctx = await runPrepareLifecycle(tempDir);
-    setCurrentContext(ctx);
+    const ctx = await runLifecycle(tempDir);
 
     expect(ctx.cwd).toBe(tempDir);
     expect(ctx.rootDir).toBe(tempDir);
@@ -52,8 +56,7 @@ describe('project loading', () => {
     const sirenDir = path.join(tempDir, 'siren');
     fs.mkdirSync(sirenDir);
 
-    const ctx = await runPrepareLifecycle(tempDir);
-    setCurrentContext(ctx);
+    const ctx = await runLifecycle(tempDir);
 
     expect(ctx.files).toEqual([]);
     expect(ctx.ir?.getMilestoneIds() ?? []).toEqual([]);
@@ -71,9 +74,7 @@ milestone beta {}
 task gamma {}`,
     );
 
-    const ctx = await runPrepareLifecycle(tempDir);
-    setCurrentContext(ctx);
-    await runFinalizeLifecycle(ctx);
+    const ctx = await runLifecycle(tempDir);
 
     expect(ctx.files).toHaveLength(1);
     expect(ctx.files[0]).toBe(path.join(sirenDir, 'main.siren'));
@@ -89,9 +90,7 @@ task gamma {}`,
     fs.writeFileSync(path.join(sirenDir, 'root.siren'), 'milestone root {}');
     fs.writeFileSync(path.join(subDir, 'nested.siren'), 'milestone nested {}');
 
-    const ctx = await runPrepareLifecycle(tempDir);
-    setCurrentContext(ctx);
-    await runFinalizeLifecycle(ctx);
+    const ctx = await runLifecycle(tempDir);
 
     expect(ctx.files).toHaveLength(2);
     expect(ctx.files).toContain(path.join(sirenDir, 'root.siren'));
@@ -105,9 +104,7 @@ task gamma {}`,
     fs.writeFileSync(path.join(sirenDir, 'valid.siren'), 'milestone valid {}');
     fs.writeFileSync(path.join(sirenDir, 'broken.siren'), '!!! invalid syntax');
 
-    const ctx = await runPrepareLifecycle(tempDir);
-    setCurrentContext(ctx);
-    await runFinalizeLifecycle(ctx);
+    const ctx = await runLifecycle(tempDir);
 
     expect(ctx.files).toHaveLength(2);
     expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['valid']);
@@ -128,67 +125,15 @@ task gamma {}`,
 milestone "MVP Release" {}`,
     );
 
-    const ctx = await runPrepareLifecycle(tempDir);
-    setCurrentContext(ctx);
-    await runFinalizeLifecycle(ctx);
+    const ctx = await runLifecycle(tempDir);
 
     expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['Q1 Launch', 'MVP Release']);
-  });
-
-  it('stores loaded context in global state', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(path.join(sirenDir, 'test.siren'), 'milestone test {}');
-
-    const ctx = await runPrepareLifecycle(tempDir);
-    setCurrentContext(ctx);
-    await runFinalizeLifecycle(ctx);
-
-    const loaded = getCurrentContext();
-    expect(loaded).not.toBeNull();
-    expect(loaded!.ir?.getMilestoneIds() ?? []).toEqual(['test']);
-  });
-
-  it('overwrites previous loaded context on new load', async () => {
-    // First load
-    const sirenDir1 = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir1);
-    fs.writeFileSync(path.join(sirenDir1, 'first.siren'), 'milestone first {}');
-    let ctx = await runPrepareLifecycle(tempDir);
-    setCurrentContext(ctx);
-    await runFinalizeLifecycle(ctx);
-
-    expect(getCurrentContext()!.ir?.getMilestoneIds() ?? []).toEqual(['first']);
-
-    // Second load - different directory
-    const tempDir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'siren-project-test2-'));
-    const sirenDir2 = path.join(tempDir2, 'siren');
-    fs.mkdirSync(sirenDir2);
-    fs.writeFileSync(path.join(sirenDir2, 'second.siren'), 'milestone second {}');
-    ctx = await runPrepareLifecycle(tempDir2);
-    setCurrentContext(ctx);
-    await runFinalizeLifecycle(ctx);
-
-    expect(getCurrentContext()!.ir?.getMilestoneIds() ?? []).toEqual(['second']);
-
-    // Cleanup
-    fs.rmSync(tempDir2, { recursive: true, force: true });
-  });
-
-  it('returns the same context object that is stored globally', async () => {
-    const ctx = await runPrepareLifecycle(tempDir);
-    setCurrentContext(ctx);
-    const loaded = getCurrentContext();
-
-    expect(loaded).toBe(ctx);
   });
 
   it('collects decoding warnings from core', async () => {
     copyFixture('circular-depends', tempDir);
 
-    const ctx = await runPrepareLifecycle(tempDir);
-    setCurrentContext(ctx);
-    await runFinalizeLifecycle(ctx);
+    const ctx = await runLifecycle(tempDir);
 
     expect(ctx.warnings).toHaveLength(1);
     expect(ctx.warnings[0]).toContain(
@@ -201,17 +146,9 @@ milestone "MVP Release" {}`,
     fs.mkdirSync(sirenDir);
     fs.writeFileSync(path.join(sirenDir, 'main.siren'), 'milestone alpha {}');
 
-    const ctx = await runPrepareLifecycle(tempDir);
-    setCurrentContext(ctx);
-    await runFinalizeLifecycle(ctx, (finalizingCtx) => {
-      if (!finalizingCtx.builder) {
-        throw new Error('Expected builder to exist during mutation phase');
-      }
-
-      finalizingCtx.builder = finalizingCtx.builder.withResource(
-        { type: 'milestone', id: 'patched', attributes: [] },
-        'mutation',
-      );
+    const ctx = await runLifecycle(tempDir, {
+      mutate: (builder) =>
+        builder.withResource({ type: 'milestone', id: 'patched', attributes: [] }, 'mutation'),
     });
 
     expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['alpha', 'patched']);
@@ -219,5 +156,58 @@ milestone "MVP Release" {}`,
     const phases = Array.from(ctx.phasesRun);
     expect(phases.indexOf('builder-construction')).toBeLessThan(phases.indexOf('builder-mutation'));
     expect(phases.indexOf('builder-mutation')).toBeLessThan(phases.indexOf('project-build'));
+  });
+
+  it('aborts write when errors are present (query still runs)', async () => {
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    fs.writeFileSync(path.join(sirenDir, 'broken.siren'), '!!! invalid');
+
+    const queryFn = vi.fn(() => ({ stdout: 'ran' }));
+    const ctx = await runLifecycle(tempDir, {
+      mutate: (b) => b,
+      query: queryFn,
+    });
+
+    expect(ctx.errors.length).toBeGreaterThan(0);
+    expect(queryFn).toHaveBeenCalled();
+  });
+
+  it('write phase is a no-op when no mutate hook is supplied', async () => {
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    const filePath = path.join(sirenDir, 'main.siren');
+    const original = 'milestone alpha {}';
+    fs.writeFileSync(filePath, original);
+
+    await runLifecycle(tempDir);
+
+    // No mutate hook => write phase must not touch any file.
+    expect(fs.readFileSync(filePath, 'utf-8')).toBe(original);
+  });
+
+  it('write phase rewrites only files affected by mutation', async () => {
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    const aPath = path.join(sirenDir, 'a.siren');
+    const bPath = path.join(sirenDir, 'b.siren');
+    fs.writeFileSync(aPath, 'task target {}\n');
+    fs.writeFileSync(bPath, 'milestone untouched {}\n');
+
+    const beforeB = fs.readFileSync(bPath, 'utf-8');
+    const beforeBMtime = fs.statSync(bPath).mtimeMs;
+    await new Promise((r) => setTimeout(r, 10));
+
+    await runLifecycle(tempDir, {
+      mutate: (builder) =>
+        builder.patchResource('target', (r) => ({
+          ...r,
+          attributes: [...r.attributes, { key: 'description', value: 'patched' }],
+        })),
+    });
+
+    expect(fs.readFileSync(aPath, 'utf-8')).toContain('description');
+    expect(fs.readFileSync(bPath, 'utf-8')).toBe(beforeB);
+    expect(fs.statSync(bPath).mtimeMs).toBe(beforeBMtime);
   });
 });

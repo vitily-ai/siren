@@ -4,11 +4,8 @@ import { version as coreVersion } from '@sirenpm/core';
 import { defineCommand, runCommand } from 'citty';
 import { buildMetadata } from './build-metadata';
 import { formatCommand } from './commands/format';
-import type { ListResult as CommandListResult } from './commands/list';
-import { listCommand, list as listMilestones, runList as runListCommand } from './commands/list';
-import { runShow as runShowCommand, showCommand } from './commands/show';
-import { setCurrentContext } from './context-store';
-import { runPrepareLifecycle } from './lifecycle';
+import { listCommand } from './commands/list';
+import { showCommand } from './commands/show';
 import { cliVersion } from './version';
 
 const cliSuffix = buildMetadata ? `-${buildMetadata}` : '';
@@ -32,8 +29,6 @@ Options:
   --version    Show version number`);
 }
 
-export type ListResult = CommandListResult;
-
 export const mainCommand = defineCommand({
   meta: {
     name: 'siren',
@@ -44,10 +39,6 @@ export const mainCommand = defineCommand({
     list: listCommand,
     show: showCommand,
     format: formatCommand,
-  },
-  async setup() {
-    const ctx = await runPrepareLifecycle(process.cwd());
-    setCurrentContext(ctx);
   },
 });
 
@@ -84,18 +75,6 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
     console.error(getErrorMessage(error));
     process.exitCode = 1;
   }
-}
-
-export function list(showTasks = false) {
-  return listMilestones(showTasks);
-}
-
-export function runList(showTasks = false): Promise<void> {
-  return runListCommand(showTasks);
-}
-
-export function runShow(entryId: string): Promise<void> {
-  return runShowCommand(entryId);
 }
 
 const isMainModule =

@@ -11,10 +11,14 @@ export async function runParsing(ctx: CliContext): Promise<void> {
   }
 
   const parser = await getParser();
-  const sourceDocuments: SourceDocument[] = ctx.files.map((filePath) => ({
-    name: path.relative(ctx.rootDir, filePath),
-    content: fs.readFileSync(filePath, 'utf-8'),
-  }));
+  const sourceDocuments: SourceDocument[] = ctx.files.map((filePath) => {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    ctx.originalFileContents.set(filePath, content);
+    return {
+      name: path.relative(ctx.rootDir, filePath),
+      content,
+    };
+  });
 
   ctx.sourceDocuments = sourceDocuments;
   ctx.parseResult = await parser.parse(sourceDocuments);
