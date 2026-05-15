@@ -13,13 +13,6 @@ export interface ParsingArtifact {
 export async function runParsing(ctx: DeepReadonly<CliContext>): Promise<ParsingArtifact> {
   const originalFileContents = new Map<string, string>();
 
-  if (ctx.files.length === 0) {
-    return {
-      sourceDocuments: [],
-      originalFileContents,
-    };
-  }
-
   const parser = await getParser();
   const sourceDocuments: SourceDocument[] = ctx.files.map((filePath) => {
     const content = fs.readFileSync(filePath, 'utf-8');
