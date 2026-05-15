@@ -165,16 +165,31 @@ milestone "MVP Release" {}`,
   it('aborts write when errors are present (query still runs)', async () => {
     const sirenDir = path.join(tempDir, 'siren');
     fs.mkdirSync(sirenDir);
-    fs.writeFileSync(path.join(sirenDir, 'broken.siren'), '!!! invalid');
+    const validPath = path.join(sirenDir, 'valid.siren');
+    const brokenPath = path.join(sirenDir, 'broken.siren');
+    fs.writeFileSync(validPath, 'milestone valid {}');
+    fs.writeFileSync(brokenPath, '!!! invalid');
+
+    const validMtime = fs.statSync(validPath).mtimeMs;
+    await new Promise((r) => setTimeout(r, 10));
 
     const queryFn = vi.fn(() => ({ stdout: 'ran' }));
     const ctx = await runLifecycle(tempDir, {
-      mutate: (b) => b,
+      mutate: (builder) =>
+        builder.patchResource('valid', (r) => ({
+          ...r,
+          attributes: [...r.attributes, { key: 'description', value: 'patched' }],
+        })),
       query: queryFn,
     });
 
     expect(ctx.errors.length).toBeGreaterThan(0);
     expect(queryFn).toHaveBeenCalled();
+    const phases = Array.from(ctx.phasesRun);
+    expect(phases).toContain('query');
+    expect(phases).not.toContain('write');
+    expect(fs.readFileSync(validPath, 'utf-8')).not.toContain('patched');
+    expect(fs.statSync(validPath).mtimeMs).toBe(validMtime);
   });
 
   it('write phase is a no-op when no mutate hook is supplied', async () => {
