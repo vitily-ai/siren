@@ -68,14 +68,26 @@ task cli-mutations-cli-plumbing complete {
 }
 
 task cli-mutations-mv-command-red {
-  description = "Add failing CLI golden tests for the bidirectional mv status command."
+  description = "Add failing unit tests and minimal goldens for the mv status command."
   affected_packages = "apps/cli"
-  details = "Cover `siren mv <entry-id> <complete|draft>` end to end, including complete, draft, already-complete, synthesized-resource materialization, unknown-id, duplicate-id, and help output cases."
+  details = "Add unit tests for mvMutate(entryId, target) factory covering: patches status:'complete' on statusless task; patches status:'draft' on complete task; idempotent same-target returns no-op builder; throws on unknown id; throws on synthesized-only id (materialization deferred); promotes implicit-complete to explicit complete. Add one or two minimal CLI goldens for UX surface: help output, and one end-to-end happy-path filesystem-state fixture. Defer synthesized materialization and duplicate-id handling to follow-up tasks."
 }
 
 task cli-mutations-mv-command {
   description = "Implement the first mutative command `siren mv <entry-id> <complete|draft>` to change an entry's explicit completion status."
   affected_packages = "apps/cli"
-  depends_on = [cli-mutations-mv-command-red, cli-mutations-cli-plumbing]
-  details = "The command should refuse unknown or duplicate ids, materialize synthesized resources into their origin document before writing, add an explicit `complete` keyword when asked even if the entry is only implicitly complete today, and write explicit drafts that remain terminal rather than being re-promoted implicitly."
+  depends_on = [cli-mutations-mv-command-red, cli-mutations-cli-plumbing, draft-symbol-support-publish]
+  details = "Add apps/cli/src/commands/mv.ts exporting mvMutate factory and mvCommand citty command. Command defines entryId and target (literal 'complete' or 'draft') positional args, calls runLifecycle with mutate hook. mvMutate searches builder.documents for resource, throws on unknown or synthesized-only id, returns patchResource with new status. Register mv in mainCommand.subCommands and extend printUsage. Update lifecycle/mutation.ts and lifecycle/index.ts to wrap mutate(builder) in try/catch, push errors to ctx.errors, set ctx.aborted, skip downstream runProjectBuild/runQuery/runWrite, still flush diagnostics to stderr. Exit 1 on validation error, 0 on success (including idempotent no-op via lifecycle's rendered===original short-circuit)."
+}
+
+task cli-mutations-mv-materialize-synthesized {
+  description = "Allow siren mv against synthesized document milestones by materializing them into their origin document."
+  affected_packages = "apps/cli, language"
+  details = "When mv receives a docId matching only a synthesized milestone, construct and insert an explicit milestone resource into that document with the synthesized depends_on dependencies, then apply the status patch. The rendering opinion for materialized milestones belongs to @sirenpm/language (renderSirenDocument placement, formatting). This is a follow-up to the base mv implementation."
+}
+
+task cli-mutations-mv-duplicate-id {
+  description = "Define and test mv behavior when entry-id is declared in multiple documents."
+  affected_packages = "apps/cli"
+  details = "Currently patchResource writes to all matching resources across documents. Design explicit refusal vs. confirmation flow; implement validation and tests. This is a follow-up to the base mv implementation."
 }
