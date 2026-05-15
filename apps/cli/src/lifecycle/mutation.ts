@@ -1,5 +1,5 @@
 import type { SirenBuilder } from '@sirenpm/core';
-import type { CliContext } from './context';
+import type { CliContext, DeepReadonly } from './context';
 
 /**
  * Pure builder transform. Receives the current builder, returns the next builder.
@@ -10,10 +10,17 @@ import type { CliContext } from './context';
  */
 export type BuilderMutate = (builder: SirenBuilder) => SirenBuilder;
 
-export function runBuilderMutation(ctx: CliContext, mutate?: BuilderMutate): void {
+export interface MutationArtifact {
+  builder?: SirenBuilder;
+}
+
+export function runBuilderMutation(
+  ctx: DeepReadonly<CliContext>,
+  mutate?: BuilderMutate,
+): MutationArtifact {
   if (mutate && ctx.builder) {
-    ctx.builder = mutate(ctx.builder);
+    return { builder: mutate(ctx.builder as SirenBuilder) };
   }
 
-  ctx.phasesRun.add('builder-mutation');
+  return {};
 }

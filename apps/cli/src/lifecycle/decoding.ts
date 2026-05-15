@@ -1,10 +1,12 @@
+import type { SirenDocument } from '@sirenpm/core';
 import {
   decodeSyntaxDocuments,
   type ParseDiagnostic,
   type ParseError,
+  type ParseResult,
   type SyntaxDocument,
 } from '@sirenpm/language';
-import type { CliContext } from './context';
+import type { DeepReadonly } from './context';
 
 function toDiagnosticColumn(column: number | undefined): number | undefined {
   if (column === undefined) return undefined;
@@ -84,14 +86,15 @@ function parseErrorsToDiagnostics(
   return diagnostics;
 }
 
-export function runDecoding(ctx: CliContext): void {
-  if (!ctx.parseResult?.tree) {
-    ctx.phasesRun.add('decoding');
-    return;
-  }
+export interface DecodingArtifact {
+  sirenDocuments: readonly SirenDocument[];
+  parseDiagnostics: readonly ParseDiagnostic[];
+}
 
+export function runDecoding(parseResult: DeepReadonly<ParseResult>): DecodingArtifact {
   const errorsByDocument = new Map<string, ParseError[]>();
-  for (const error of ctx.parseResult.errors) {
+  // FIXME why is the null check needed here?
+  for (const error of parseResult?.errors ?? []) {
     const document = error.document ?? 'unknown';
     const errors = errorsByDocument.get(document) ?? [];
     errors.push(error);
@@ -105,21 +108,23 @@ export function runDecoding(ctx: CliContext): void {
     }
   }
 
-  const syntaxDocuments = ctx.parseResult.syntaxDocuments ?? [];
+  const syntaxDocuments = parseResult.syntaxDocuments ?? [];
   const decodableSyntaxDocuments = syntaxDocuments.filter(
     (syntaxDocument) => !skippedDocuments.has(syntaxDocument.source.name),
   );
-  const retainedParseWarnings = ctx.parseResult.errors.filter((error) => {
+  const retainedParseWarnings = parseResult.errors.filter((error) => {
     const severity = error.severity ?? 'error';
     const document = error.document ?? 'unknown';
     return severity === 'warning' && !skippedDocuments.has(document);
   });
 
   const { documents, diagnostics } = decodeSyntaxDocuments(decodableSyntaxDocuments);
-  ctx.sirenDocuments = documents ?? [];
-  ctx.parseDiagnostics = [
-    ...parseErrorsToDiagnostics(retainedParseWarnings, decodableSyntaxDocuments),
-    ...diagnostics,
-  ];
-  ctx.phasesRun.add('decoding');
+
+  return {
+    sirenDocuments: documents ?? [],
+    parseDiagnostics: [
+      ...parseErrorsToDiagnostics(retainedParseWarnings, decodableSyntaxDocuments),
+      ...diagnostics,
+    ],
+  };
 }

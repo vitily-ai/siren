@@ -1,14 +1,11 @@
-import type { CliContext } from './context';
+import type { CliContext, DeepReadonly } from './context';
 
-/**
- * Flush accumulated diagnostics to stderr. If any errors were accumulated, set
- * `process.exitCode = 1` and mark the lifecycle as aborted so downstream phases
- * (query, write) skip themselves.
- *
- * Called once, immediately after the diagnostics-accumulation phase and before
- * the query/write phases.
- */
-export function presentDiagnostics(ctx: CliContext): void {
+export interface PresentationArtifact {
+  warningsFlushed?: number;
+  errorsFlushed?: number;
+}
+
+export function presentDiagnostics(ctx: DeepReadonly<CliContext>): PresentationArtifact {
   for (const warning of ctx.warnings) {
     console.error(warning);
   }
@@ -16,26 +13,17 @@ export function presentDiagnostics(ctx: CliContext): void {
     console.error(error);
   }
 
-  ctx.warningsFlushed = ctx.warnings.length;
-  ctx.errorsFlushed = ctx.errors.length;
-
   if (ctx.errors.length > 0) {
     process.exitCode = 1;
   }
 
-  ctx.phasesRun.add('diagnostics-presented');
+  return {
+    warningsFlushed: ctx.warnings.length,
+    errorsFlushed: ctx.errors.length,
+  };
 }
 
-/**
- * Flush the captured `QueryArtifact` (if any) to stdout / stderr and apply its
- * exit code. Also flushes any diagnostics that were accumulated after
- * `presentDiagnostics` ran (e.g. errors thrown from a query callback). Called
- * once at the end of the lifecycle. Stderr text from the artifact and a
- * non-zero artifact `exitCode` add to the existing process exit code — they
- * never lower it.
- */
-export function presentQuery(ctx: CliContext): void {
-  // Drain any diagnostics that arrived after diagnostics-presented ran.
+export function presentQuery(ctx: DeepReadonly<CliContext>): PresentationArtifact {
   for (let i = ctx.warningsFlushed; i < ctx.warnings.length; i++) {
     console.error(ctx.warnings[i]);
   }
@@ -45,8 +33,6 @@ export function presentQuery(ctx: CliContext): void {
   if (ctx.errors.length > ctx.errorsFlushed) {
     process.exitCode = 1;
   }
-  ctx.warningsFlushed = ctx.warnings.length;
-  ctx.errorsFlushed = ctx.errors.length;
 
   const artifact = ctx.query;
   if (artifact) {
@@ -67,5 +53,8 @@ export function presentQuery(ctx: CliContext): void {
     }
   }
 
-  ctx.phasesRun.add('query-presented');
+  return {
+    warningsFlushed: ctx.warnings.length,
+    errorsFlushed: ctx.errors.length,
+  };
 }

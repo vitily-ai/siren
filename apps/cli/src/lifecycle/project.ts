@@ -1,10 +1,16 @@
-import type { CliContext } from './context';
+import type { SirenProject } from '@sirenpm/core';
+import type { CliContext, DeepReadonly } from './context';
 
-export function runProjectBuild(ctx: CliContext): void {
-  if (ctx.builder) {
-    const ir = ctx.builder.build();
-    ctx.ir = ir;
+export interface ProjectBuildArtifact {
+  ir: SirenProject;
+}
+
+export function runProjectBuild(ctx: DeepReadonly<CliContext>): ProjectBuildArtifact {
+  if (!ctx.builder) {
+    throw new Error('Invariant: runProjectBuild called without a builder on context');
   }
 
-  ctx.phasesRun.add('project-build');
+  return {
+    ir: ctx.builder.build(),
+  };
 }

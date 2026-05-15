@@ -1,5 +1,6 @@
+import type { ParseResult } from '@sirenpm/language';
 import { runBuilderConstruction } from './building';
-import { type CliContext, createCliContext } from './context';
+import { type CliContext, createCliContext, type DeepReadonly } from './context';
 import { runDecoding } from './decoding';
 import { runDiagnosticsAccumulation } from './diagnostics';
 import { runDiscovery } from './discovery';
@@ -32,28 +33,74 @@ export interface LifecycleHooks {
  *
  * Commands never own discovery, IO, or presentation — they pass pure hooks
  * describing the data operation they want performed.
+ *
+ * It is the responsibility of this `runLifecycle` function to make modifications to the `CliContext`.
+ * The phase functions it calls do not modify the context directly, but instead return artifacts
+ * which `runLifecycle` applies to the context.
+ * Phases use the `DeepReadonly<CliContext>` type to enforce this via the type system.
  */
 export async function runLifecycle(cwd: string, hooks: LifecycleHooks = {}): Promise<CliContext> {
   const ctx = createCliContext(cwd);
 
-  runDiscovery(ctx);
-  await runParsing(ctx);
-  runDecoding(ctx);
-  runBuilderConstruction(ctx);
-  runBuilderMutation(ctx, hooks.mutate);
-  runProjectBuild(ctx);
-  runDiagnosticsAccumulation(ctx);
-  presentDiagnostics(ctx);
+  const discoveryArt = runDiscovery(ctx);
+  ctx.files = discoveryArt.files;
+  ctx.phasesRun.add('discovery');
+
+  const parsingArt = await runParsing(ctx);
+  ctx.sourceDocuments = parsingArt.sourceDocuments;
+  ctx.originalFileContents = parsingArt.originalFileContents;
+  ctx.parseResult = parsingArt.parseResult;
+  ctx.phasesRun.add('parsing');
+
+  const decodingArt = runDecoding(ctx.parseResult as DeepReadonly<ParseResult>);
+  ctx.sirenDocuments = decodingArt.sirenDocuments;
+  ctx.parseDiagnostics = decodingArt.parseDiagnostics;
+  ctx.phasesRun.add('decoding');
+
+  const buildingArt = runBuilderConstruction(ctx);
+  ctx.builder = buildingArt.builder;
+  ctx.phasesRun.add('builder-construction');
+
+  const mutationArt = runBuilderMutation(ctx, hooks.mutate);
+  if (mutationArt.builder) {
+    ctx.builder = mutationArt.builder;
+  }
+  ctx.phasesRun.add('builder-mutation');
+
+  const projectArt = runProjectBuild(ctx);
+  ctx.ir = projectArt.ir;
+  ctx.phasesRun.add('project-build');
+
+  const diagnosticsArt = runDiagnosticsAccumulation(ctx);
+  // Add to warnings, do not replace since earlier phases might have added to them (though currently none do)
+  ctx.warnings.push(...diagnosticsArt.warnings);
+  ctx.errors.push(...diagnosticsArt.errors);
+  ctx.phasesRun.add('diagnostics');
+
+  const presDiagArt = presentDiagnostics(ctx);
+  if (presDiagArt.warningsFlushed !== undefined) ctx.warningsFlushed = presDiagArt.warningsFlushed;
+  if (presDiagArt.errorsFlushed !== undefined) ctx.errorsFlushed = presDiagArt.errorsFlushed;
+  ctx.phasesRun.add('diagnostics-presented');
 
   if (hooks.query) {
-    await runQuery(ctx, hooks.query);
+    const queryArt = await runQuery(ctx, hooks.query);
+    if (queryArt.query) ctx.query = queryArt.query;
+    ctx.errors.push(...queryArt.errors);
+    if (queryArt.aborted) ctx.aborted = queryArt.aborted;
+    ctx.phasesRun.add('query');
   }
 
   if (hooks.mutate && !ctx.aborted && ctx.errors.length === 0 && ctx.builder) {
-    runWrite(ctx);
+    const writeArt = runWrite(ctx);
+    ctx.originalFileContents = writeArt.originalFileContents;
+    ctx.phasesRun.add('write');
   }
 
-  presentQuery(ctx);
+  const presQueryArt = presentQuery(ctx);
+  if (presQueryArt.warningsFlushed !== undefined)
+    ctx.warningsFlushed = presQueryArt.warningsFlushed;
+  if (presQueryArt.errorsFlushed !== undefined) ctx.errorsFlushed = presQueryArt.errorsFlushed;
+  ctx.phasesRun.add('query-presented');
 
   return ctx;
 }

@@ -26,6 +26,21 @@ export interface QueryArtifact {
 
 // CliContext must contain ONLY the absolute minimum necessary for cross-phase handoff.
 // It must not contain trivial or easily derived values
+// biome-ignore lint/suspicious/noExplicitAny: `any` is fine here because it is not an assertion
+export type DeepReadonly<T> = T extends (...args: any[]) => any
+  ? T
+  : T extends Map<infer K, infer V>
+    ? ReadonlyMap<K, DeepReadonly<V>>
+    : T extends Set<infer U>
+      ? ReadonlySet<DeepReadonly<U>>
+      : T extends ReadonlyArray<infer U>
+        ? ReadonlyArray<DeepReadonly<U>>
+        : T extends object
+          ? {
+              readonly [K in keyof T]: DeepReadonly<T[K]>;
+            }
+          : T;
+
 export interface CliContext {
   cwd: string;
   rootDir: string;
