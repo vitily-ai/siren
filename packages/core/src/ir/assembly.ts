@@ -2,6 +2,7 @@ import { SirenProject } from './context';
 import { IR_CONTEXT_FACTORY } from './context-internal';
 import type { SirenDocument } from './document';
 import { SirenCoreError } from './errors';
+import { computeDelta, type PatchResult } from './patch-result';
 import { cloneAndFreezeResources } from './snapshot';
 import type { Resource } from './types';
 
@@ -37,21 +38,23 @@ export class SirenBuilder {
     return this.documentsSnapshot;
   }
 
-  patch(fn: (docs: readonly SirenDocument[]) => readonly SirenDocument[]): SirenBuilder {
-    return SirenBuilder.fromDocuments(fn(this.documentsSnapshot));
+  patch(fn: (docs: readonly SirenDocument[]) => readonly SirenDocument[]): PatchResult {
+    const newBuilder = SirenBuilder.fromDocuments(fn(this.documentsSnapshot));
+    const changes = computeDelta(this.documentsSnapshot, newBuilder.documents);
+    return { builder: newBuilder, changes };
   }
 
-  withDocument(doc: SirenDocument): SirenBuilder {
+  withDocument(doc: SirenDocument): PatchResult {
     return this.patch((docs) => {
       return [...docs, doc];
     });
   }
 
-  patchDocument(documentId: string, fn: (doc: SirenDocument) => SirenDocument): SirenBuilder {
+  patchDocument(documentId: string, fn: (doc: SirenDocument) => SirenDocument): PatchResult {
     return this.patch((docs) => docs.map((d) => (d.id === documentId ? fn(d) : d)));
   }
 
-  withResource(resource: Resource, documentId = 'misc'): SirenBuilder {
+  withResource(resource: Resource, documentId = 'misc'): PatchResult {
     const existingDocument = this.documentsSnapshot.find((d) => d.id === documentId);
     if (existingDocument === undefined) {
       return this.withDocument({
@@ -67,7 +70,7 @@ export class SirenBuilder {
     }));
   }
 
-  patchResource(resourceId: string, fn: (res: Resource) => Resource): SirenBuilder {
+  patchResource(resourceId: string, fn: (res: Resource) => Resource): PatchResult {
     return this.patch((docs) =>
       docs.map((doc) => {
         if (!doc.resources.some((r) => r.id === resourceId)) {
@@ -87,7 +90,7 @@ export class SirenBuilder {
   }
 }
 
-function cloneAndFreezeDocument(document: SirenDocument): SirenDocument {
+function cloneAndFreezeDocument(document: SirenDocument, seenEphIds: Set<string>): SirenDocument {
   const directive =
     document.directive === undefined
       ? undefined
@@ -99,11 +102,12 @@ function cloneAndFreezeDocument(document: SirenDocument): SirenDocument {
 
   return Object.freeze({
     id: document.id,
-    resources: cloneAndFreezeResources(document.resources),
+    resources: cloneAndFreezeResources(document.resources, seenEphIds),
     ...(directive !== undefined ? { directive } : {}),
   });
 }
 
 function cloneAndFreezeDocuments(documents: readonly SirenDocument[]): readonly SirenDocument[] {
-  return Object.freeze(documents.map((document) => cloneAndFreezeDocument(document)));
+  const seenEphIds = new Set<string>();
+  return Object.freeze(documents.map((document) => cloneAndFreezeDocument(document, seenEphIds)));
 }

@@ -1,3 +1,5 @@
+import { EPH_ID, getEphId, stampEphId } from './eph-id';
+import { SirenCoreError } from './errors';
 import {
   type Attribute,
   type AttributeValue,
@@ -7,11 +9,14 @@ import {
   type Resource,
 } from './types';
 
-export function cloneAndFreezeResources(resources: readonly Resource[]): readonly Resource[] {
-  return Object.freeze(resources.map(cloneAndFreezeResource));
+export function cloneAndFreezeResources(
+  resources: readonly Resource[],
+  seenEphIds: Set<string> = new Set(),
+): readonly Resource[] {
+  return Object.freeze(resources.map((r) => cloneAndFreezeResource(r, seenEphIds)));
 }
 
-function cloneAndFreezeResource(resource: Resource): Resource {
+function cloneAndFreezeResource(resource: Resource, seenEphIds: Set<string>): Resource {
   const clone: Resource = {
     type: resource.type,
     id: resource.id,
@@ -19,6 +24,25 @@ function cloneAndFreezeResource(resource: Resource): Resource {
     attributes: Object.freeze(resource.attributes.map(cloneAndFreezeAttribute)),
     ...(resource.origin ? { origin: cloneAndFreezeOrigin(resource.origin) } : {}),
   };
+
+  const existingId = getEphId(resource);
+  if (existingId !== undefined) {
+    if (seenEphIds.has(existingId)) {
+      throw new SirenCoreError(
+        'Duplicate eph-id detected. The same resource object reference appears in multiple document slots.',
+      );
+    }
+    seenEphIds.add(existingId);
+    Object.defineProperty(clone, EPH_ID, {
+      value: existingId,
+      enumerable: false,
+      writable: false,
+      configurable: false,
+    });
+  } else {
+    stampEphId(clone);
+    seenEphIds.add(getEphId(clone)!);
+  }
 
   return Object.freeze(clone);
 }
