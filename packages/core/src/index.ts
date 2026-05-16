@@ -12,7 +12,7 @@ export type {
   DiagnosticBase,
   DuplicateIdDiagnostic,
 } from './ir/diagnostics';
-// IR types (intermediate representation), SirenBuilder, and SirenProject
+// IR types (intermediate representation), SirenBuilder, SirenProject, and SirenCoreError
 export * from './ir/index';
 // Origin is IR-agnostic positional metadata
 export type { Origin } from './ir/types';

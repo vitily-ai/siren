@@ -4,6 +4,7 @@
 
 export { SirenBuilder } from './assembly';
 export { SirenProject } from './context';
+export { SirenCoreError } from './errors';
 export type {
   CircularDependencyDiagnostic,
   DanglingDependencyDiagnostic,

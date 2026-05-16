@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SirenBuilder } from './assembly';
 import { SirenProject } from './context';
+import { SirenCoreError } from './errors';
 import { isArray, isReference, type Origin, type Resource } from './types';
 
 function origin(document: string, startRow: number): Origin {
@@ -315,5 +316,16 @@ describe('SirenBuilder', () => {
     const preBuildSurface = builder as unknown as Record<string, unknown>;
     expect('documents' in preBuildSurface).toBe(true);
     expect('resources' in preBuildSurface).toBe(false);
+  });
+
+  it('throws SirenCoreError when fromDocuments receives duplicate document ids', () => {
+    const documents: BuilderDocument[] = [
+      { id: 'auth', resources: [] },
+      { id: 'billing', resources: [] },
+      { id: 'auth', resources: [] },
+    ];
+
+    expect(() => SirenBuilder.fromDocuments(documents)).toThrowError(SirenCoreError);
+    expect(() => SirenBuilder.fromDocuments(documents)).toThrow('Duplicate document id: "auth"');
   });
 });
