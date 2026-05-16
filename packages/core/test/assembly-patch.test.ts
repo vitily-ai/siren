@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { SirenBuilder } from '../src/ir/assembly';
 import type { SirenDocument } from '../src/ir/document';
 import { SirenCoreError } from '../src/ir/errors';
-// patch-result.ts does not exist yet — these imports are intentionally failing (TDD red)
+// Import PatchResult types from the package entrypoint so this test guards the public API.
 import type {
   ChangeMode,
   DocumentChange,
   PatchResult,
   ResourceChange,
-} from '../src/ir/patch-result';
+} from '../src';
 import type { Resource } from '../src/ir/types';
 
 // ---------------------------------------------------------------------------
