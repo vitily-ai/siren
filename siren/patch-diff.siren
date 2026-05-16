@@ -10,7 +10,7 @@ milestone patch-diff {
 
 # TDD red — tests land first and fail
 
-task patch-diff-red {
+task patch-diff-red complete {
   description = "Write failing unit tests in packages/core/test/assembly-patch.test.ts covering the full PatchResult API: all change modes (created/updated/deleted) at document and resource level; cross-document resource moves; directive-only document changes; no-op patch; eph-id preservation through unchanged passthrough; all convenience wrappers (withDocument, patchDocument, withResource, patchResource) returning correct PatchResult; construction throw on duplicate resource object reference; and JSON round-trip losing eph-id resulting in an updated classification."
   affected_packages = "core"
   context = "patch-diff.md"

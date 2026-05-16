@@ -328,4 +328,89 @@ describe('SirenBuilder', () => {
     expect(() => SirenBuilder.fromDocuments(documents)).toThrowError(SirenCoreError);
     expect(() => SirenBuilder.fromDocuments(documents)).toThrow('Duplicate document id: "auth"');
   });
+
+  // -------------------------------------------------------------------------
+  // Eph-id stamping during construction
+  // These tests document when the non-enumerable eph-id symbol IS and IS NOT
+  // applied to resources, using only observable surface (Object.getOwnPropertySymbols).
+  // -------------------------------------------------------------------------
+
+  describe('eph-id stamping during construction', () => {
+    it('fresh resource has no symbol properties before ingestion', () => {
+      const fresh: Resource = { type: 'task', id: 't1', attributes: [] };
+      expect(Object.getOwnPropertySymbols(fresh)).toHaveLength(0);
+    });
+
+    it('resource has exactly one non-enumerable symbol property after ingestion', () => {
+      const fresh: Resource = { type: 'task', id: 't1', attributes: [] };
+      const b = SirenBuilder.fromDocuments([{ id: 'doc', resources: [fresh] }]);
+      const ingested = b.documents[0]!.resources[0]!;
+
+      const syms = Object.getOwnPropertySymbols(ingested);
+      expect(syms).toHaveLength(1);
+
+      const descriptor = Object.getOwnPropertyDescriptor(ingested, syms[0]!);
+      expect(descriptor?.enumerable).toBe(false);
+    });
+
+    it('spread of an ingested resource drops the eph-id symbol', () => {
+      const b = SirenBuilder.fromDocuments([
+        { id: 'doc', resources: [{ type: 'task', id: 't1', attributes: [] }] },
+      ]);
+      const ingested = b.documents[0]!.resources[0]!;
+
+      const spread = { ...ingested };
+      expect(Object.getOwnPropertySymbols(spread)).toHaveLength(0);
+    });
+
+    it('JSON round-trip of an ingested resource drops the eph-id symbol', () => {
+      const b = SirenBuilder.fromDocuments([
+        { id: 'doc', resources: [{ type: 'task', id: 't1', attributes: [] }] },
+      ]);
+      const ingested = b.documents[0]!.resources[0]!;
+
+      const roundTripped = JSON.parse(JSON.stringify(ingested)) as Resource;
+      expect(Object.getOwnPropertySymbols(roundTripped)).toHaveLength(0);
+    });
+
+    it('re-ingesting a previously-frozen resource preserves the same eph-id value', () => {
+      const b1 = SirenBuilder.fromDocuments([
+        { id: 'doc', resources: [{ type: 'task', id: 't1', attributes: [] }] },
+      ]);
+      const frozen = b1.documents[0]!.resources[0]!;
+      const [sym] = Object.getOwnPropertySymbols(frozen);
+
+      const b2 = SirenBuilder.fromDocuments([{ id: 'doc', resources: [frozen] }]);
+      const reIngested = b2.documents[0]!.resources[0]!;
+
+      const [reIngestedSym] = Object.getOwnPropertySymbols(reIngested);
+      expect(reIngestedSym).toBe(sym); // same symbol key
+      expect((reIngested as Record<symbol, unknown>)[sym!]).toBe(
+        (frozen as Record<symbol, unknown>)[sym!],
+      );
+    });
+
+    it('two independent ingestions of the same fresh resource produce different eph-ids', () => {
+      const fresh: Resource = { type: 'task', id: 't1', attributes: [] };
+      const b1 = SirenBuilder.fromDocuments([{ id: 'doc', resources: [fresh] }]);
+      const b2 = SirenBuilder.fromDocuments([{ id: 'doc', resources: [fresh] }]);
+
+      const r1 = b1.documents[0]!.resources[0]!;
+      const r2 = b2.documents[0]!.resources[0]!;
+
+      const [sym1] = Object.getOwnPropertySymbols(r1);
+      const [sym2] = Object.getOwnPropertySymbols(r2);
+      // Both have the same symbol key (it is module-level constant), but different values
+      expect(sym1).toBe(sym2);
+      expect((r1 as Record<symbol, unknown>)[sym1!]).not.toBe(
+        (r2 as Record<symbol, unknown>)[sym2!],
+      );
+    });
+
+    it('fromResources also stamps eph-ids on ingested resources', () => {
+      const b = SirenBuilder.fromResources([{ type: 'task', id: 't1', attributes: [] }], 'adhoc');
+      const ingested = b.documents[0]!.resources[0]!;
+      expect(Object.getOwnPropertySymbols(ingested)).toHaveLength(1);
+    });
+  });
 });
