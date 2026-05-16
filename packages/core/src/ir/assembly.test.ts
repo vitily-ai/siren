@@ -378,12 +378,18 @@ describe('SirenBuilder', () => {
         { id: 'doc', resources: [{ type: 'task', id: 't1', attributes: [] }] },
       ]);
       const frozen = b1.documents[0]!.resources[0]!;
-      const [sym] = Object.getOwnPropertySymbols(frozen);
+      const frozenSymbols = Object.getOwnPropertySymbols(frozen);
+      expect(frozenSymbols).toHaveLength(1);
+      const [sym] = frozenSymbols;
+      expect(sym).toBeDefined();
 
       const b2 = SirenBuilder.fromDocuments([{ id: 'doc', resources: [frozen] }]);
       const reIngested = b2.documents[0]!.resources[0]!;
 
-      const [reIngestedSym] = Object.getOwnPropertySymbols(reIngested);
+      const reIngestedSymbols = Object.getOwnPropertySymbols(reIngested);
+      expect(reIngestedSymbols).toHaveLength(1);
+      const [reIngestedSym] = reIngestedSymbols;
+      expect(reIngestedSym).toBeDefined();
       expect(reIngestedSym).toBe(sym); // same symbol key
       expect((reIngested as Record<symbol, unknown>)[sym!]).toBe(
         (frozen as Record<symbol, unknown>)[sym!],
