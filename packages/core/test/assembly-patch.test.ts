@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SirenBuilder } from '../src/ir/assembly';
 import type { SirenDocument } from '../src/ir/document';
+import { SirenCoreError } from '../src/ir/errors';
 import type { Resource } from '../src/ir/types';
 
 // ---------------------------------------------------------------------------
@@ -66,18 +67,13 @@ describe('SirenBuilder.withDocument(doc)', () => {
     expect(updated.documents.map((d) => d.id)).toContain('b');
   });
 
-  it('adds a document even when another document has the same id', () => {
+  it('throws when adding a document with a duplicate id', () => {
     const docV1 = makeDoc('dup', [makeTask('t1')]);
     const docV2 = makeDoc('dup', [makeTask('t2')]);
     const builder = SirenBuilder.fromDocuments([docV1]);
 
-    const updated = builder.withDocument(docV2);
-
-    expect(updated.documents).toHaveLength(2);
-    expect(updated.documents[0]!.id).toBe('dup');
-    expect(updated.documents[1]!.id).toBe('dup');
-    expect(updated.documents[0]!.resources[0]!.id).toBe('t1');
-    expect(updated.documents[1]!.resources[0]!.id).toBe('t2');
+    expect(() => builder.withDocument(docV2)).toThrow(SirenCoreError);
+    expect(() => builder.withDocument(docV2)).toThrow('Duplicate document id: "dup"');
   });
 
   it('does not mutate the original builder', () => {
