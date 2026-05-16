@@ -1,6 +1,7 @@
 import { SirenProject } from './context';
 import { IR_CONTEXT_FACTORY } from './context-internal';
 import type { SirenDocument } from './document';
+import { SirenCoreError } from './errors';
 import { cloneAndFreezeResources } from './snapshot';
 import type { Resource } from './types';
 
@@ -10,6 +11,13 @@ export class SirenBuilder {
   }
 
   static fromDocuments(documents: readonly SirenDocument[]): SirenBuilder {
+    const seen = new Set<string>();
+    for (const doc of documents) {
+      if (seen.has(doc.id)) {
+        throw new SirenCoreError(`Duplicate document id: "${doc.id}"`);
+      }
+      seen.add(doc.id);
+    }
     return new SirenBuilder(cloneAndFreezeDocuments(documents));
   }
 
