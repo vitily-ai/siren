@@ -169,7 +169,12 @@ function decodeAttribute(node: SyntaxAttribute): Attribute | null {
 function decodeResource(node: SyntaxResource, diagnostics: ParseDiagnostic[]): Resource {
   const type: ResourceType = node.resourceType;
   const id = node.identifier.value;
-  const complete = node.completeKeyword !== undefined;
+  // NOTE: temporary plumbing — `statusKeyword` is the last token of
+  // `statusKeywords` set by the builder. The lint pass (`draft-symbol-lint-pass`)
+  // will replace this with collapsed/validated single-token semantics and own
+  // WL002/WL003 emission. For now we preserve the old behavior by treating
+  // treating statusKeyword.raw === 'complete' as the completion signal.
+  const complete = node.statusKeyword?.raw === 'complete';
 
   if (complete && type !== 'task' && type !== 'milestone') {
     diagnostics.push({

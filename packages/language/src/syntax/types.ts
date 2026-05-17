@@ -85,7 +85,19 @@ export interface SyntaxResource {
   readonly resourceType: 'task' | 'milestone';
   readonly resourceTypeToken: SyntaxToken;
   readonly identifier: SyntaxIdentifier;
-  readonly completeKeyword?: SyntaxToken;
+  /**
+   * All `status_modifier` tokens in source order. Empty when no status keyword
+   * is present. Consumed by the lint pass to collapse multi-token cases and
+   * emit WL002/WL003 diagnostics.
+   */
+  readonly statusKeywords: readonly SyntaxToken[];
+  /**
+   * The single status keyword surfaced to downstream consumers (decoder,
+   * formatter, exporter). Currently set to the last entry in `statusKeywords`
+   * (last-wins). The lint pass will own the final collapsing rule, including
+   * dropping unknown-status tokens to `undefined`.
+   */
+  readonly statusKeyword?: SyntaxToken;
   readonly attributes: readonly SyntaxAttribute[];
   readonly trivia: {
     readonly leading: readonly SyntaxTrivia[];

@@ -352,12 +352,15 @@ function buildAdapter(parser: Parser): ParserAdapter {
   function convertResource(node: NodeLike, boundary: DocumentBoundary): ResourceNode | null {
     const typeNode = node?.childForFieldName?.('type');
     const idNode = node?.childForFieldName?.('id');
-    const completeModifierNode = node?.childForFieldName?.('complete_modifier');
+    const statusModifierNodes = node?.childrenForFieldName?.('status_modifier') ?? [];
     if (!typeNode || !idNode) return null;
 
     const resourceType = String(typeNode.text) as 'task' | 'milestone';
     const identifier = convertIdentifier(idNode, boundary);
-    const complete = !!completeModifierNode;
+    const statusKeywords = statusModifierNodes.map((modifierNode) => ({
+      text: String(modifierNode.text ?? ''),
+      origin: extractOrigin(modifierNode, boundary),
+    }));
     const attributes: AttributeNode[] = [];
 
     const bodyChildren = node.childrenForFieldName?.('body');
@@ -372,7 +375,7 @@ function buildAdapter(parser: Parser): ParserAdapter {
       type: 'resource',
       resourceType,
       identifier,
-      complete,
+      statusKeywords,
       body: attributes,
       origin: extractOrigin(node, boundary),
     };
@@ -458,28 +461,21 @@ function buildAdapter(parser: Parser): ParserAdapter {
         while (String(nearestNonErrorParent?.type ?? '') === 'ERROR') {
           nearestNonErrorParent = nearestNonErrorParent?.parent;
         }
-        const parentType = String(n.parent?.type ?? '');
         const isTopLevel =
           !nearestNonErrorParent || String(nearestNonErrorParent.type ?? '') === 'document';
         const expected = isTopLevel ? [...topLevelExpected] : [];
 
-        const isDuplicateComplete =
-          found === 'complete' &&
-          parentType === 'resource' &&
-          n.parent?.childForFieldName?.('complete_modifier') != null;
-
-        const message = isDuplicateComplete
-          ? `duplicate 'complete' keyword; expected '{'`
-          : expected.length > 0
+        const message =
+          expected.length > 0
             ? `unexpected token '${found}'; expected ${formatExpectedList(expected)}`
             : `unexpected token '${found}'`;
 
         emit({
-          severity: isDuplicateComplete ? 'warning' : 'error',
+          severity: 'error',
           kind: 'unexpected_token',
           message,
           found,
-          expected: isDuplicateComplete ? ['{'] : expected,
+          expected,
           line: (Number(startPos?.row ?? 0) as number) - boundary.startRow + 1,
           column: (Number(startPos?.column ?? 0) as number) + 1,
           document: boundary.name,

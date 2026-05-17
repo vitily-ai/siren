@@ -230,59 +230,21 @@ function buildResourceTypeToken(
   };
 }
 
-function findCompleteKeywordToken(
+function findStatusKeywordTokens(
   node: ResourceNode,
   resourceSpan: SourceSpan,
-  identifierSpan: SourceSpan,
-  attributes: readonly SyntaxAttribute[],
   statesByDocument: ReadonlyMap<string, SourceState>,
-): SyntaxToken | undefined {
-  if (!node.complete) return undefined;
-
-  const state = statesByDocument.get(resourceSpan.document);
-  if (!state) {
-    const fallbackStart = identifierSpan.endByte;
-    return {
-      raw: 'complete',
-      span: {
-        document: resourceSpan.document,
-        startByte: fallbackStart,
-        endByte: fallbackStart + 'complete'.length,
-        startRow: resourceSpan.startRow,
-        endRow: resourceSpan.startRow,
-      },
-    };
+): SyntaxToken[] {
+  const tokens: SyntaxToken[] = [];
+  for (const statusNode of node.statusKeywords) {
+    const span = spanFromOrigin(statusNode.origin, resourceSpan.document);
+    const state = statesByDocument.get(span.document);
+    const raw = state
+      ? clampSlice(state.source.content, span.startByte, span.endByte) || statusNode.text
+      : statusNode.text;
+    tokens.push({ raw, span });
   }
-
-  const rangeStart = Math.min(
-    resourceSpan.endByte,
-    Math.max(resourceSpan.startByte, identifierSpan.endByte),
-  );
-  let rangeEnd = resourceSpan.endByte;
-  const firstAttribute = attributes[0];
-  if (firstAttribute && firstAttribute.span.startByte < rangeEnd) {
-    rangeEnd = firstAttribute.span.startByte;
-  }
-  if (rangeEnd < rangeStart) {
-    rangeEnd = rangeStart;
-  }
-
-  const searchText = clampSlice(state.source.content, rangeStart, rangeEnd);
-  const match = /\bcomplete\b/u.exec(searchText);
-  const matchStart = match ? rangeStart + match.index : rangeStart;
-  const matchEnd = Math.min(resourceSpan.endByte, matchStart + 'complete'.length);
-  const tokenSpan: SourceSpan = {
-    document: resourceSpan.document,
-    startByte: matchStart,
-    endByte: matchEnd,
-    startRow: rowForByte(state, matchStart),
-    endRow: rowForByte(state, Math.max(matchStart, matchEnd - 1)),
-  };
-
-  return {
-    raw: clampSlice(state.source.content, tokenSpan.startByte, tokenSpan.endByte) || 'complete',
-    span: tokenSpan,
-  };
+  return tokens;
 }
 
 function buildResource(
@@ -295,19 +257,16 @@ function buildResource(
     buildAttribute(attribute, statesByDocument, span.document),
   );
   const identifier = buildIdentifier(node.identifier, statesByDocument, span.document);
+  const statusKeywords = findStatusKeywordTokens(node, span, statesByDocument);
+  const statusKeyword = statusKeywords[statusKeywords.length - 1];
 
   return {
     kind: 'resource',
     resourceType: node.resourceType,
     resourceTypeToken: buildResourceTypeToken(node, span, statesByDocument),
     identifier,
-    completeKeyword: findCompleteKeywordToken(
-      node,
-      span,
-      identifier.span,
-      attributes,
-      statesByDocument,
-    ),
+    statusKeywords,
+    statusKeyword,
     attributes,
     trivia: {
       leading: [],

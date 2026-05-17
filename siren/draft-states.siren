@@ -83,7 +83,7 @@ task draft-symbol-grammar-green complete {
   depends_on = draft-symbol-grammar-red
 }
 
-task draft-symbol-cst-types {
+task draft-symbol-cst-types complete {
   description = "Rename completeKeyword to statusKeyword in syntax/types.ts; replace findCompleteKeywordToken in syntax/builder.ts with a token-list extractor; update parser/factory.ts field-name references and retire the isDuplicateComplete error-recovery glue."
   context = "siren/draft-symbol-support.md"
   depends_on = draft-symbol-grammar-green

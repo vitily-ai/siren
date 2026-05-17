@@ -80,7 +80,9 @@ function wrapResourceBlock(
   headerTrailingComment?: string,
 ): string {
   const id = renderIdentifier(resource.identifier.raw, resource.identifier.value);
-  const complete = resource.completeKeyword ? ' complete' : '';
+  // Minimal plumbing rename; full status-aware formatting lands in
+  // `draft-symbol-exporter`. Preserve old behavior: only `complete` is emitted.
+  const complete = resource.statusKeyword?.raw === 'complete' ? ' complete' : '';
   const headerBase = `${resource.resourceType} ${id}${complete}`;
 
   if (bodyLines.length === 0) {
