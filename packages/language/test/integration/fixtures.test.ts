@@ -299,4 +299,138 @@ describe('Fixture Integration Tests', () => {
       expect(late).toBeDefined();
     });
   });
+
+  // ---------------------------------------------------------------------
+  // Draft / open status-modifier grammar (TDD-red).
+  //
+  // These fixtures exercise the not-yet-built grammar behavior described
+  // in `siren/draft-symbol-support.md` (the `draft-symbol-grammar-red` /
+  // `draft-symbol-grammar-green` task pair). They are expected to FAIL
+  // against the current grammar — which only accepts the single
+  // `complete` token in the modifier slot — and to pass once the modifier
+  // slot is widened to `repeat(field('status_modifier', $.bare_identifier))`.
+  //
+  // Assertions intentionally read the `status_modifier` field name from
+  // the future grammar so the failure mode clearly points at the grammar
+  // (either `hasError === true` or missing `status_modifier` field).
+  // ---------------------------------------------------------------------
+
+  describe('05-draft.siren', () => {
+    let tree: Parser.Tree;
+
+    beforeAll(async () => {
+      tree = await parseFixture('snippets/05-draft');
+    });
+
+    it('should parse successfully without errors', () => {
+      expect(tree.rootNode.hasError).toBe(false);
+    });
+
+    it('should contain exactly 2 resources', () => {
+      const resources = tree.rootNode.children.filter((node) => node.type === 'resource');
+      expect(resources).toHaveLength(2);
+    });
+
+    it('should expose `draft` as a status_modifier on each resource', () => {
+      const resources = tree.rootNode.children.filter((node) => node.type === 'resource');
+
+      for (const resource of resources) {
+        const modifiers = resource.childrenForFieldName('status_modifier');
+        expect(modifiers).toHaveLength(1);
+        expect(modifiers[0]?.text).toBe('draft');
+      }
+    });
+  });
+
+  describe('06-status-multi.siren', () => {
+    let tree: Parser.Tree;
+
+    beforeAll(async () => {
+      tree = await parseFixture('snippets/06-status-multi');
+    });
+
+    it('should parse successfully without errors', () => {
+      expect(tree.rootNode.hasError).toBe(false);
+    });
+
+    it('should capture both `draft` and `complete` as status_modifier tokens', () => {
+      const resources = tree.rootNode.children.filter((node) => node.type === 'resource');
+      expect(resources).toHaveLength(1);
+
+      const modifiers = resources[0].childrenForFieldName('status_modifier');
+      expect(modifiers).toHaveLength(2);
+      expect(modifiers[0]?.text).toBe('draft');
+      expect(modifiers[1]?.text).toBe('complete');
+    });
+  });
+
+  describe('07-status-unknown.siren', () => {
+    let tree: Parser.Tree;
+
+    beforeAll(async () => {
+      tree = await parseFixture('snippets/07-status-unknown');
+    });
+
+    it('should parse successfully without errors', () => {
+      // Grammar must be permissive — unknown tokens are a lint-pass concern,
+      // not a parse-time error.
+      expect(tree.rootNode.hasError).toBe(false);
+    });
+
+    it('should capture the unknown identifier in the status_modifier slot', () => {
+      const resources = tree.rootNode.children.filter((node) => node.type === 'resource');
+      expect(resources).toHaveLength(1);
+
+      const modifiers = resources[0].childrenForFieldName('status_modifier');
+      expect(modifiers).toHaveLength(1);
+      expect(modifiers[0]?.text).toBe('amogus');
+    });
+  });
+
+  describe('08-status-precedence.siren', () => {
+    let tree: Parser.Tree;
+
+    beforeAll(async () => {
+      tree = await parseFixture('snippets/08-status-precedence');
+    });
+
+    it('should parse successfully without errors', () => {
+      expect(tree.rootNode.hasError).toBe(false);
+    });
+
+    it('should produce six distinct resources (task/milestone keywords not swallowed)', () => {
+      const resources = tree.rootNode.children.filter((node) => node.type === 'resource');
+      expect(resources).toHaveLength(6);
+
+      const ids = resources.map((r) => r.childForFieldName('id')?.text);
+      expect(ids).toEqual(['a', 'b', 'c', 'd', 'e', 'f']);
+
+      const types = resources.map((r) => r.childForFieldName('type')?.text);
+      expect(types).toEqual(['task', 'task', 'task', 'milestone', 'milestone', 'task']);
+    });
+
+    it('should record status_modifier tokens only on the resources that declared them', () => {
+      const resources = tree.rootNode.children.filter((node) => node.type === 'resource');
+
+      const modifierTextsById = new Map(
+        resources.map((r) => [
+          r.childForFieldName('id')?.text,
+          r.childrenForFieldName('status_modifier').map((m) => m.text),
+        ]),
+      );
+
+      // `task a draft {}` — single modifier on the leader.
+      expect(modifierTextsById.get('a')).toEqual(['draft']);
+      // `task b {}` — follower must NOT inherit `a`'s slot.
+      expect(modifierTextsById.get('b')).toEqual([]);
+      // `task c {}` — leader with no modifier.
+      expect(modifierTextsById.get('c')).toEqual([]);
+      // `milestone d complete {}` — modifier belongs to the follower.
+      expect(modifierTextsById.get('d')).toEqual(['complete']);
+      // `milestone e draft complete {}` — multi-token modifier list.
+      expect(modifierTextsById.get('e')).toEqual(['draft', 'complete']);
+      // `task f {}` — `task` keyword must not be eaten as a 3rd modifier on `e`.
+      expect(modifierTextsById.get('f')).toEqual([]);
+    });
+  });
 });

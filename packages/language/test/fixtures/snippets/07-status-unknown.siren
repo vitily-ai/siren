@@ -1,0 +1,6 @@
+# Test unknown status identifier in the modifier slot. Grammar must accept
+# any bare identifier here; the lint pass is responsible for diagnosing the
+# unknown token (downstream of the grammar layer).
+task foo amogus {
+  description = "unknown status keyword"
+}

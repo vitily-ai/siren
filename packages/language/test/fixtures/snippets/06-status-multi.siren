@@ -1,0 +1,6 @@
+# Test multi-token status modifier — both tokens must be captured by the
+# grammar. Conflict resolution (last-wins → "complete") is downstream of
+# the grammar layer.
+task foo draft complete {
+  description = "two status keywords"
+}

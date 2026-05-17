@@ -71,7 +71,7 @@ milestone draft-symbol-support {
   depends_on = [draft-symbol-cli-goldens, draft-symbol-publish]
 }
 
-task draft-symbol-grammar-red {
+task draft-symbol-grammar-red complete {
   description = "Add snippets fixtures for `task foo draft {}`, `task foo draft complete {}`, `task foo bogus {}` (unknown status), and a precedence regression ensuring task/milestone keywords are not consumed as status tokens. Fixtures fail until grammar is updated."
   context = "siren/draft-symbol-support.md"
   depends_on = draft-states
