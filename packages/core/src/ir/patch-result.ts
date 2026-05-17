@@ -101,8 +101,8 @@ export function computeDelta(
             matchedCount++;
           }
         }
-        // Remove from old map to track what's completely left over for deletion
-        oldResMap.delete(resId);
+        // Instead of deleting the bucket, process leftovers here, or simply leave them in the map
+        // so the subsequent block catches them. Leaving them is simplest.
       }
 
       for (const oldResArray of oldResMap.values()) {

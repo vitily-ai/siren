@@ -120,6 +120,20 @@ describe('computeDelta - resource change modes', () => {
     // The newly inserted duplicate is entirely fresh, so it should be reported as 'created'.
     expect(docChange.resources).toEqual<ResourceChange[]>([{ resourceId: 'dup', mode: 'created' }]);
   });
+
+  it('detects a deleted duplicate resource when remaining copies decrease', () => {
+    const changes = getDelta([makeDoc('doc-a', [makeTask('dup'), makeTask('dup')])], (docs) => [
+      {
+        ...docs[0]!,
+        resources: [docs[0]!.resources[0]!], // Keep only one duplicate
+      },
+    ]);
+
+    expect(changes).toHaveLength(1);
+    const docChange = changes[0]!;
+    expect(docChange.mode).toBe<ChangeMode>('updated');
+    expect(docChange.resources).toEqual<ResourceChange[]>([{ resourceId: 'dup', mode: 'deleted' }]);
+  });
 });
 
 // ---------------------------------------------------------------------------
