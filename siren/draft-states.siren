@@ -47,10 +47,28 @@ task draft-states-tests-draft complete {
 	depends_on = draft-states-tests-port
 }
 
-milestone implicit-draft-milestones { // draft
-  description = "a milestone with no dependencies and no explicit status is implied to be in `draft` status"
+milestone implicit-draft-milestones {
+  description = "Introduce ImplicitDraftMilestoneModule into the core IR build pipeline. A milestone resource with no successors and no explicit status is implicitly assigned status='draft'. The module runs before ImplicitCompletionModule so that completion reasoning always sees orphan milestones as explicitly drafted rather than inferring the rule itself."
+  affected_packages = ["core", "language"]
+  depends_on = [implicit-draft-milestones-fixture, implicit-draft-milestones-core-tests, implicit-draft-milestones-module]
+}
+
+task implicit-draft-milestones-fixture {
+  description = "Add a project fixture under packages/language/test/fixtures/projects/ exercising the implicit-draft-milestone pipeline rule. Must cover: orphan milestone (→ implicit draft), orphan task (untouched; rule is milestone-only), milestone with deps (untouched), explicit-complete orphan milestone (untouched), explicit-draft orphan milestone (idempotent), and a milestone depending on an orphan milestone that is not itself implicitly completed."
+  affected_packages = "language"
+  depends_on = draft-states
+}
+
+task implicit-draft-milestones-core-tests {
+  description = "Add implicit-draft-milestone.test.ts in packages/core/src/ir/pipeline/modules/ mirroring the structure of completion.test.ts. Cover the same shapes as the project fixture, plus a pipeline-integration assertion confirming the draft module runs before ImplicitCompletionModule and that completion sees orphan milestones as explicitly drafted."
   affected_packages = "core"
-  depends_on = [draft-states]
+  depends_on = draft-states
+}
+
+task implicit-draft-milestones-module {
+  description = "Implement ImplicitDraftMilestoneModule: for each resource where type='milestone', graph.getSuccessors(id).length===0, and status is unset (neither complete nor draft), spread with status='draft' and rebuild ResourceGraph.fromResources. Wire into runIRBuildPipeline between GraphModule and ImplicitCompletionModule and update the pipeline topology docblock in index.ts."
+  affected_packages = "core"
+  depends_on = [implicit-draft-milestones-fixture, implicit-draft-milestones-core-tests]
 }
 
 milestone implicit-draft-tasks { // draft
