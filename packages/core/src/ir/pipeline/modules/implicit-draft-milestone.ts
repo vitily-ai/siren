@@ -21,7 +21,21 @@ export const ImplicitDraftMilestoneModule = defineModule(
   }): {
     readonly graph: ResourceGraph;
   } => {
-    // TODO: implement — stub returns input graph unchanged
+    let changed = false;
+    const newResources = input.graph.resources.map((resource) => {
+      if (resource.type === 'milestone' && resource.status === undefined) {
+        const successors = input.graph.getSuccessors(resource.id);
+        if (successors.length === 0) {
+          changed = true;
+          return { ...resource, status: 'draft' as const };
+        }
+      }
+      return resource;
+    });
+
+    if (changed) {
+      return { graph: ResourceGraph.fromResources(newResources) };
+    }
     return { graph: input.graph };
   },
 );
