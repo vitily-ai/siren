@@ -1,3 +1,11 @@
+/**
+ * TEST BOUNDARY:
+ * This module is exclusively for testing the `SirenBuilder` initialization, compilation (`.build()`),
+ * diagnostic generation, and internal object identity/eph-id mechanics during construction.
+ *
+ * Mutation APIs and delta computations (`.patch()`, `withResource()`, change modes) belong
+ * in `assembly-patch.test.ts`.
+ */
 import { describe, expect, it } from 'vitest';
 import { SirenBuilder } from './assembly';
 import { SirenProject } from './context';
@@ -13,6 +21,18 @@ function origin(document: string, startRow: number): Origin {
     endRow: startRow,
     document,
   };
+}
+
+/**
+ * Copy every non-enumerable symbol property from `src` to `dst` in place.
+ * Used to verify the duplicate-id check is identity-based rather than
+ * object-reference-based.
+ */
+function copySymbolProperties(src: object, dst: object): void {
+  for (const sym of Object.getOwnPropertySymbols(src)) {
+    const descriptor = Object.getOwnPropertyDescriptor(src, sym)!;
+    Object.defineProperty(dst, sym, descriptor);
+  }
 }
 
 type BuilderDocument = {
@@ -327,6 +347,24 @@ describe('SirenBuilder', () => {
 
     expect(() => SirenBuilder.fromDocuments(documents)).toThrowError(SirenCoreError);
     expect(() => SirenBuilder.fromDocuments(documents)).toThrow('Duplicate document id: "auth"');
+  });
+
+  it('throws SirenCoreError when the same eph-id appears in two document slots (different object references)', () => {
+    const seed = SirenBuilder.fromDocuments([
+      { id: 'doc-a', resources: [{ type: 'task', id: 't1', attributes: [] }] },
+    ]);
+    const frozenResource = seed.documents[0]!.resources[0]!;
+
+    // Build a distinct object that carries the same eph-id symbol property
+    const imposter: Resource = { ...frozenResource };
+    copySymbolProperties(frozenResource, imposter);
+
+    expect(() => {
+      SirenBuilder.fromDocuments([
+        { id: 'doc-a', resources: [frozenResource] },
+        { id: 'doc-b', resources: [imposter] }, // different ref, same eph-id
+      ]);
+    }).toThrow(SirenCoreError);
   });
 
   // -------------------------------------------------------------------------

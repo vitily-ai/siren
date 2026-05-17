@@ -1,15 +1,21 @@
+/**
+ * TEST BOUNDARY:
+ * This module is exclusively for testing the `SirenBuilder` mutation APIs and
+ * delta computations (`.patch()`, `withResource()`, etc.).
+ *
+ * Construction, compilation (`.build()`), diagnostics generation, and initial
+ * ephemeral identity stamping concerns belong in `assembly.test.ts`.
+ */
 import { describe, expect, it } from 'vitest';
-import { SirenBuilder } from '../src/ir/assembly';
-import type { SirenDocument } from '../src/ir/document';
-import { SirenCoreError } from '../src/ir/errors';
-// Import PatchResult types from the package entrypoint so this test guards the public API.
-import type {
-  ChangeMode,
-  DocumentChange,
-  PatchResult,
-  ResourceChange,
+import {
+  type ChangeMode,
+  type DocumentChange,
+  type PatchResult,
+  type Resource,
+  type ResourceChange,
+  SirenBuilder,
+  type SirenDocument,
 } from '../src';
-import type { Resource } from '../src/ir/types';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -21,19 +27,6 @@ function makeDoc(id: string, resources: Resource[] = []): SirenDocument {
 
 function makeTask(id: string): Resource {
   return { type: 'task', id, attributes: [] };
-}
-
-/**
- * Copy every non-enumerable symbol property from `src` to `dst` in place.
- * Used to produce a distinct object reference that carries the same eph-id,
- * verifying the duplicate-id check is identity-based rather than
- * object-reference-based.
- */
-function copySymbolProperties(src: object, dst: object): void {
-  for (const sym of Object.getOwnPropertySymbols(src)) {
-    const descriptor = Object.getOwnPropertyDescriptor(src, sym)!;
-    Object.defineProperty(dst, sym, descriptor);
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -55,6 +48,7 @@ describe('SirenBuilder.patch() returns PatchResult', () => {
     const result = b.patch((docs) => docs);
     expect(result.changes).toEqual([]);
     expect(result.builder).not.toBe(b);
+    expect(result.builder.documents).toEqual(b.documents);
   });
 });
 
@@ -103,6 +97,26 @@ describe('resource change modes', () => {
     expect(t1Change).toEqual<ResourceChange>({ resourceId: 't1', mode: 'deleted' });
     // t2 is unchanged — must not appear
     expect(docChange.resources.find((r) => r.resourceId === 't2')).toBeUndefined();
+  });
+
+  it('preserves duplicate resources when computing changes', () => {
+    const b = SirenBuilder.fromDocuments([makeDoc('doc-a', [makeTask('dup'), makeTask('dup')])]);
+    const result = b.patch((docs) => [
+      {
+        ...docs[0]!,
+        resources: [
+          docs[0]!.resources[0]!,
+          { ...docs[0]!.resources[1]!, status: 'complete' as const },
+        ],
+      },
+    ]);
+
+    expect(result.changes).toHaveLength(1);
+    const docChange = result.changes[0]!;
+    expect(docChange.mode).toBe<ChangeMode>('updated');
+    // Because only one `dup` was modified, we expect exactly one 'updated' change,
+    // not a tangled mess of 'updated', 'created', etc.
+    expect(docChange.resources).toEqual<ResourceChange[]>([{ resourceId: 'dup', mode: 'updated' }]);
   });
 });
 
@@ -258,7 +272,7 @@ describe('eph-id preservation', () => {
 // Convenience wrappers
 // ---------------------------------------------------------------------------
 
-describe('convenience wrappers return PatchResult', () => {
+describe('convenience wrappers', () => {
   it('withDocument: created change for the new document', () => {
     const b = SirenBuilder.fromDocuments([]);
     const result: PatchResult = b.withDocument(makeDoc('doc-a', [makeTask('t1')]));
@@ -272,6 +286,10 @@ describe('convenience wrappers return PatchResult', () => {
     expect(result.changes[0]!.resources).toEqual<ResourceChange[]>([
       { resourceId: 't1', mode: 'created' },
     ]);
+
+    expect(result.builder.documents).toHaveLength(1);
+    expect(result.builder.documents[0]!.id).toBe('doc-a');
+    expect(result.builder.documents[0]!.resources).toHaveLength(1);
   });
 
   it('patchDocument: updated change reflecting resource additions', () => {
@@ -290,6 +308,10 @@ describe('convenience wrappers return PatchResult', () => {
       resourceId: 't2',
       mode: 'created',
     });
+
+    const updatedDoc = result.builder.documents.find((d) => d.id === 'doc-a')!;
+    expect(updatedDoc.resources).toHaveLength(2);
+    expect(updatedDoc.resources.map((r) => r.id)).toEqual(['t1', 't2']);
   });
 
   it('withResource: created change for the new resource in an existing doc', () => {
@@ -303,6 +325,10 @@ describe('convenience wrappers return PatchResult', () => {
       resourceId: 't2',
       mode: 'created',
     });
+
+    const updatedDoc = result.builder.documents.find((d) => d.id === 'doc-a')!;
+    expect(updatedDoc.resources).toHaveLength(2);
+    expect(updatedDoc.resources.map((r) => r.id)).toEqual(['t1', 't2']);
   });
 
   it('withResource: creates a new document when target does not exist', () => {
@@ -314,6 +340,49 @@ describe('convenience wrappers return PatchResult', () => {
       documentId: 'new-doc',
       mode: 'created',
     });
+
+    const newDoc = result.builder.documents.find((d) => d.id === 'new-doc')!;
+    expect(newDoc).toBeDefined();
+    expect(newDoc.resources).toHaveLength(1);
+    expect(newDoc.resources[0]!.id).toBe('t1');
+  });
+
+  it('withResource defaults to misc, creating it first and patching it on the next call', () => {
+    const b = SirenBuilder.fromDocuments([]);
+
+    const created = b.withResource(makeTask('t1'));
+
+    expect(created.changes).toHaveLength(1);
+    expect(created.changes[0]).toMatchObject<Partial<DocumentChange>>({
+      documentId: 'misc',
+      mode: 'created',
+    });
+    expect(created.changes[0]!.resources).toEqual<ResourceChange>([
+      { resourceId: 't1', mode: 'created' },
+    ]);
+
+    const createdDoc = created.builder.documents.find((doc) => doc.id === 'misc');
+    expect(createdDoc).toBeDefined();
+    expect(createdDoc?.directive).toEqual({ implicitMilestone: false });
+    expect(createdDoc!.resources).toHaveLength(1);
+    expect(createdDoc!.resources).toContainEqual(makeTask('t1'));
+
+    const patched = created.builder.withResource(makeTask('t2'));
+
+    expect(patched.changes).toHaveLength(1);
+    expect(patched.changes[0]).toMatchObject<Partial<DocumentChange>>({
+      documentId: 'misc',
+      mode: 'updated',
+    });
+    expect(patched.changes[0]!.resources).toEqual<ResourceChange>([
+      { resourceId: 't2', mode: 'created' },
+    ]);
+
+    const patchedDoc = patched.builder.documents.find((doc) => doc.id === 'misc');
+    expect(patchedDoc).toBeDefined();
+    expect(patchedDoc!.resources).toHaveLength(2);
+    expect(patchedDoc!.resources).toContainEqual(makeTask('t1'));
+    expect(patchedDoc!.resources).toContainEqual(makeTask('t2'));
   });
 
   it('patchResource: updated change for the patched resource', () => {
@@ -330,27 +399,8 @@ describe('convenience wrappers return PatchResult', () => {
       resourceId: 't1',
       mode: 'updated',
     });
-  });
-});
 
-// ---------------------------------------------------------------------------
-// Construction errors
-// ---------------------------------------------------------------------------
-
-describe('construction errors', () => {
-  it('throws SirenCoreError when the same eph-id appears in two document slots (different object references)', () => {
-    const seed = SirenBuilder.fromDocuments([makeDoc('doc-a', [makeTask('t1')])]);
-    const frozenResource = seed.documents[0]!.resources[0]!;
-
-    // Build a distinct object that carries the same eph-id symbol property
-    const imposter: Resource = { ...frozenResource };
-    copySymbolProperties(frozenResource, imposter);
-
-    expect(() => {
-      SirenBuilder.fromDocuments([
-        { id: 'doc-a', resources: [frozenResource] },
-        { id: 'doc-b', resources: [imposter] }, // different ref, same eph-id
-      ]);
-    }).toThrow(SirenCoreError);
+    const updatedResource = result.builder.documents[0]!.resources[0]!;
+    expect(updatedResource).toMatchObject({ id: 't1', status: 'complete' });
   });
 });

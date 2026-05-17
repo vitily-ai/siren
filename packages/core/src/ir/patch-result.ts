@@ -47,27 +47,40 @@ export function computeDelta(
       oldDocMap.delete(newDoc.id); // Marked as processed
 
       const resourceChanges: ResourceChange[] = [];
-      const oldResMap = new Map<string, Resource>();
+      const oldResMap = new Map<string, Resource[]>();
       for (const r of oldDoc.resources) {
-        oldResMap.set(r.id, r);
+        const arr = oldResMap.get(r.id);
+        if (arr) {
+          arr.push(r);
+        } else {
+          oldResMap.set(r.id, [r]);
+        }
       }
 
       for (const newRes of newDoc.resources) {
-        const oldRes = oldResMap.get(newRes.id);
-        if (!oldRes) {
+        const oldResArray = oldResMap.get(newRes.id);
+        if (!oldResArray || oldResArray.length === 0) {
           resourceChanges.push({ resourceId: newRes.id, mode: 'created' });
         } else {
-          oldResMap.delete(newRes.id);
-          const oldEphId = getEphId(oldRes);
           const newEphId = getEphId(newRes);
+          let matchIndex = oldResArray.findIndex((r) => getEphId(r) === newEphId);
+          if (matchIndex === -1) {
+            matchIndex = 0;
+          }
+          const oldRes = oldResArray[matchIndex]!;
+          oldResArray.splice(matchIndex, 1);
+
+          const oldEphId = getEphId(oldRes);
           if (oldEphId !== newEphId) {
             resourceChanges.push({ resourceId: newRes.id, mode: 'updated' });
           }
         }
       }
 
-      for (const oldRes of oldResMap.values()) {
-        resourceChanges.push({ resourceId: oldRes.id, mode: 'deleted' });
+      for (const oldResArray of oldResMap.values()) {
+        for (const oldRes of oldResArray) {
+          resourceChanges.push({ resourceId: oldRes.id, mode: 'deleted' });
+        }
       }
 
       let directiveChanged = false;
