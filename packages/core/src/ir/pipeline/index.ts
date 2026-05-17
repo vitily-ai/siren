@@ -8,6 +8,7 @@ import { DanglingModule } from './modules/dangling';
 import { DedupModule } from './modules/dedup';
 import { FinalizeModule } from './modules/finalize';
 import { GraphModule } from './modules/graph';
+import { ImplicitDraftMilestoneModule } from './modules/implicit-draft-milestone';
 import { SynthesisModule } from './modules/synthesis';
 import { Pipeline } from './runner';
 
@@ -23,13 +24,14 @@ import { Pipeline } from './runner';
  * the envelope):
  *
  *   seed { documents }
- *     → Synthesis   adds   { rawResources }
- *     → Dedup       adds   { resources, duplicateDiagnostics }
- *     → Graph       adds   { graph }
- *     → Completion  rewrites { graph }
- *     → Cycles      adds   { cycles, cycleDiagnostics }
- *     → Dangling    adds   { danglingDiagnostics }
- *     → Finalize    adds   { diagnostics }
+ *     → Synthesis              adds   { rawResources }
+ *     → Dedup                  adds   { resources, duplicateDiagnostics }
+ *     → Graph                  adds   { graph }
+ *     → ImplicitDraftMilestone rewrites { graph }
+ *     → Completion             rewrites { graph }
+ *     → Cycles                 adds   { cycles, cycleDiagnostics }
+ *     → Dangling               adds   { danglingDiagnostics }
+ *     → Finalize               adds   { diagnostics }
  */
 export interface IRBuildEnvelope {
   readonly rawResources: readonly Resource[];
@@ -46,6 +48,7 @@ export function runIRBuildPipeline(documents: readonly SirenDocument[]): IRBuild
     .pipe(SynthesisModule)
     .pipe(DedupModule)
     .pipe(GraphModule)
+    .pipe(ImplicitDraftMilestoneModule)
     .pipe(ImplicitCompletionModule)
     .pipe(CyclesModule)
     .pipe(DanglingModule)

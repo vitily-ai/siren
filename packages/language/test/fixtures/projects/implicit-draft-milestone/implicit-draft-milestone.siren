@@ -1,0 +1,19 @@
+# orphan milestone: no depends_on, no explicit status - should become draft
+milestone orphan-milestone {}
+
+# orphan task: no depends_on, no explicit status - should NOT become draft (tasks are out of scope)
+task orphan-task {}
+
+# milestone with deps: has a dependency so should NOT be implicitly drafted
+milestone has-deps {
+  depends_on = orphan-task
+}
+
+# explicitly complete orphan: should remain complete, not overwritten
+milestone complete-orphan complete {}
+
+# milestone whose only dependency is orphan-milestone (which will be drafted)
+# this milestone should NOT become implicitly complete because orphan-milestone is draft
+milestone parent-of-orphan {
+  depends_on = orphan-milestone
+}
