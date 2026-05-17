@@ -39,7 +39,7 @@ export class ResourceGraph {
   }
 
   static fromResources(resources: readonly Resource[]): ResourceGraph {
-    const frozenResources = cloneAndFreezeResources(resources);
+    const frozenResources = cloneAndFreezeResources(resources, new Set());
     const resourcesById = new Map<string, Resource>(
       frozenResources.map((resource) => [resource.id, resource]),
     );

@@ -4,7 +4,6 @@
 
 export { SirenBuilder } from './assembly';
 export { SirenProject } from './context';
-export { SirenCoreError } from './errors';
 export type {
   CircularDependencyDiagnostic,
   DanglingDependencyDiagnostic,
@@ -13,6 +12,13 @@ export type {
   DuplicateIdDiagnostic,
 } from './diagnostics';
 export type { SirenDocument } from './document';
+export { SirenCoreError } from './errors';
+export type {
+  ChangeMode,
+  DocumentChange,
+  PatchResult,
+  ResourceChange,
+} from './patch-result';
 export type {
   ArrayValue,
   Attribute,
