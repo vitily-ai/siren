@@ -53,13 +53,14 @@ milestone implicit-draft-milestones {
   depends_on = [implicit-draft-milestones-fixture, implicit-draft-milestones-core-tests, implicit-draft-milestones-module]
 }
 
-task implicit-draft-milestones-fixture {
-  description = "Add a project fixture under packages/language/test/fixtures/projects/ exercising the implicit-draft-milestone pipeline rule. Must cover: orphan milestone (→ implicit draft), orphan task (untouched; rule is milestone-only), milestone with deps (untouched), explicit-complete orphan milestone (untouched), explicit-draft orphan milestone (idempotent), and a milestone depending on an orphan milestone that is not itself implicitly completed."
-  affected_packages = "language"
+task implicit-draft-milestones-fixture complete {
+  description = "Add a project fixture and integration tests (red) covering the implicit-draft-milestone pipeline rule. Shapes: orphan milestone (→ draft), orphan task (untouched), milestone with deps (untouched), explicit-complete orphan (untouched), parent-of-orphan not implicitly completed. Also adds a higher-level pipeline integration block in packages/core/src/ir/pipeline/pipeline.test.ts exercising the same shapes via runIRBuildPipeline directly."
+  affected_packages = ["language", "core"]
   depends_on = draft-states
+  files = ["packages/language/test/fixtures/projects/implicit-draft-milestone/implicit-draft-milestone.siren", "packages/language/test/integration/projects/implicit-draft-milestone.test.ts", "packages/core/src/ir/pipeline/pipeline.test.ts"]
 }
 
-task implicit-draft-milestones-core-tests {
+task implicit-draft-milestones-core-tests complete {
   description = "Add implicit-draft-milestone.test.ts in packages/core/src/ir/pipeline/modules/ mirroring the structure of completion.test.ts. Cover the same shapes as the project fixture, plus a pipeline-integration assertion confirming the draft module runs before ImplicitCompletionModule and that completion sees orphan milestones as explicitly drafted."
   affected_packages = "core"
   depends_on = draft-states
