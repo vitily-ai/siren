@@ -25,8 +25,8 @@ function origin(document: string, startRow: number): Origin {
 
 /**
  * Copy every non-enumerable symbol property from `src` to `dst` in place.
- * Used to verify the duplicate-id check is identity-based rather than
- * object-reference-based.
+ * Used to verify the duplicate eph-id/identity check is symbol-identity-based
+ * rather than plain object-reference-based.
  */
 function copySymbolProperties(src: object, dst: object): void {
   for (const sym of Object.getOwnPropertySymbols(src)) {
