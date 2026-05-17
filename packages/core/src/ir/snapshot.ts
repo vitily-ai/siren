@@ -30,7 +30,7 @@ function cloneAndFreezeResource(resource: Resource, seenEphIds: Set<string>): Re
     if (seenEphIds.has(existingId)) {
       // defensive check, as eph ids are internal and used for diff calculation
       throw new SirenCoreError(
-        'Duplicate eph-id detected. The same resource object reference appears in multiple document slots. This is unlikely to be user error.',
+        'Duplicate eph-id detected. Multiple resources share the same eph-id identity across document slots. This is unlikely to be user error.',
       );
     }
     seenEphIds.add(existingId);
