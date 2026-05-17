@@ -12,6 +12,7 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Language, Parser } from 'web-tree-sitter';
 import { buildSyntaxDocuments } from '../syntax/builder';
+import { lintSyntaxDocuments } from '../syntax/lint';
 import type {
   CommentToken,
   ParseError,
@@ -578,7 +579,9 @@ function buildAdapter(parser: Parser): ParserAdapter {
       const errors = hasError ? extractErrors(root, boundaries, documents) : [];
       const documentNode = convertDocument(root, boundaries);
       const comments = extractComments(root, concatenated, boundaries);
-      const syntaxDocuments = buildSyntaxDocuments(documentNode, documents, comments);
+      const rawSyntaxDocuments = buildSyntaxDocuments(documentNode, documents, comments);
+      const { documents: syntaxDocuments, diagnostics: parseDiagnostics } =
+        lintSyntaxDocuments(rawSyntaxDocuments);
       const success = !hasError;
       const result: ParseResult = {
         tree: documentNode,
@@ -586,6 +589,7 @@ function buildAdapter(parser: Parser): ParserAdapter {
         success,
         comments,
         syntaxDocuments,
+        parseDiagnostics,
       };
       return result;
     },

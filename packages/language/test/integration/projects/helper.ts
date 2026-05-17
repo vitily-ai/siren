@@ -37,7 +37,7 @@ export async function parseAndDecodeAll(adapter: any, projectName: string) {
 
   // Parse all documents at once - multi-document API handles file attribution
   const parseResult = await adapter.parse(documents);
-  const ir = createSirenProjectFromParseResult(parseResult).context;
+  const { context, parseDiagnostics } = createSirenProjectFromParseResult(parseResult);
 
-  return { resources: ir.resources, diagnostics: ir.diagnostics };
+  return { resources: context.resources, diagnostics: context.diagnostics, parseDiagnostics };
 }

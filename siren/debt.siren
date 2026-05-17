@@ -123,3 +123,8 @@ task bad-golden {
   description = "the format-dry-run cli test is erroneously leaving space before comments after ast refactor"
 
 }
+
+task sourcespan-column-data {
+  description = "SourceSpan in packages/language/src/syntax/types.ts carries startByte/endByte/startRow/endRow but no column information. Diagnostics that derive line/column from spans (WL001 in decoder/index.ts, WL002 and WL003 in syntax/lint.ts) all currently hardcode `column: 0` and report the resource header row rather than the offending token's row. Extend SourceSpan with startColumn/endColumn, populate them in parser/factory.ts (extractOrigin) and syntax/builder.ts, then update all span-derived diagnostic emission sites to use the winning token's row+column. Touches WL001, WL002, WL003 in one consistent pass."
+  affected_packages = "language"
+}

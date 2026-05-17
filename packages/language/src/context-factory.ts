@@ -32,9 +32,7 @@ function toDiagnosticColumn(column: number | undefined): number | undefined {
   return Math.max(0, column - 1);
 }
 
-function parseErrorsToDiagnostics(
-  errors: readonly ParseError[],
-): readonly ParseDiagnostic[] {
+function parseErrorsToDiagnostics(errors: readonly ParseError[]): readonly ParseDiagnostic[] {
   const diagnostics: ParseDiagnostic[] = [];
 
   for (const error of errors) {
@@ -62,9 +60,10 @@ export function createSirenProjectFromParseResult(
   const syntaxDocuments = parseResult.syntaxDocuments ?? [];
   const result = createSirenProjectFromSyntaxDocuments(syntaxDocuments);
   const parserDiagnostics = parseErrorsToDiagnostics(parseResult.errors);
+  const lintDiagnostics = parseResult.parseDiagnostics ?? [];
 
   return {
     context: result.context,
-    parseDiagnostics: [...parserDiagnostics, ...result.parseDiagnostics],
+    parseDiagnostics: [...parserDiagnostics, ...lintDiagnostics, ...result.parseDiagnostics],
   };
 }

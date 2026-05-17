@@ -1,0 +1,9 @@
+task setup draft {
+}
+
+task design draft {
+}
+
+milestone planning draft {
+	depends_on = [setup, design]
+}

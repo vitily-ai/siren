@@ -64,7 +64,7 @@ describe('ParseResult syntaxDocuments', () => {
     expect(resource.identifier.value).toBe('Q1 Launch');
     expect(resource.identifier.raw).toBe('"Q1 Launch"');
     expect(resource.identifier.quoted).toBe(true);
-    expect(resource.completeKeyword?.raw).toBe('complete');
+    expect(resource.statusKeyword?.raw).toBe('complete');
   });
 
   it('retains raw expression slices for unicode + CRLF source', async () => {

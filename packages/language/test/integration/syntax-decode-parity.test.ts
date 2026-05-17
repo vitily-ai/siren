@@ -44,7 +44,7 @@ describe('Syntax decode parity', () => {
 
     const resource = context.resources[0];
     expect(resource).toBeDefined();
-    if (!resource || !resource.origin) throw new Error('expected resource origin');
+    if (!resource?.origin) throw new Error('expected resource origin');
 
     expect(resource.origin.document).toBe('origin.siren');
     expect(resource.origin.startRow).toBe(0);
@@ -89,8 +89,7 @@ describe('Syntax decode parity', () => {
       file: 'duplicate-complete.siren',
       line: 1,
       column: 0,
-      message:
-        "Resource 'deploy' has 'complete' keyword specified more than once. Only one is allowed; resource will be treated as complete: true.",
+      message: "resource 'deploy' has multiple status keywords; treated as 'complete'",
     });
   });
 

@@ -202,7 +202,8 @@ task third {}
     expect(result.success).toBe(true);
     expect(result.tree?.resources).toHaveLength(1);
     const task = result.tree?.resources[0];
-    expect(task?.complete).toBe(true);
+    expect(task?.statusKeywords).toHaveLength(1);
+    expect(task?.statusKeywords[0]?.text).toBe('complete');
     expect(task?.body).toHaveLength(1);
   });
 });

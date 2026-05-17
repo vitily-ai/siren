@@ -59,7 +59,7 @@ function buildLineEnds(content: string, lineStarts: readonly number[]): number[]
   return ends;
 }
 
-function rowForByte(state: SourceState, byte: number): number {
+function _rowForByte(state: SourceState, byte: number): number {
   const maxByte = Math.max(0, state.source.content.length - 1);
   const clamped = Math.max(0, Math.min(byte, maxByte));
   let lo = 0;
@@ -258,15 +258,17 @@ function buildResource(
   );
   const identifier = buildIdentifier(node.identifier, statesByDocument, span.document);
   const statusKeywords = findStatusKeywordTokens(node, span, statesByDocument);
-  const statusKeyword = statusKeywords[statusKeywords.length - 1];
 
+  // NOTE: the derived single-token `statusKeyword` is intentionally left
+  // unset here. The syntax lint pass (`lintSyntaxDocuments` in `./lint.ts`)
+  // owns the collapse rule (last-wins + unknown-token validation) and
+  // populates `statusKeyword` after diagnostics have been emitted.
   return {
     kind: 'resource',
     resourceType: node.resourceType,
     resourceTypeToken: buildResourceTypeToken(node, span, statesByDocument),
     identifier,
     statusKeywords,
-    statusKeyword,
     attributes,
     trivia: {
       leading: [],

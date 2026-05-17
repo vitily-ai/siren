@@ -89,7 +89,7 @@ task draft-symbol-cst-types complete {
   depends_on = draft-symbol-grammar-green
 }
 
-task draft-symbol-lint-pass {
+task draft-symbol-lint-pass complete {
   description = "Implement the CST-to-Syntax lint pass: last-wins collapse across multiple status tokens, generalize WL002 to name the winning status, repurpose WL003 as the unknown-status diagnostic (drops unknown tokens), expose a single normalized SyntaxResource.statusKeyword. Add projects fixtures."
   context = "siren/draft-symbol-support.md"
   depends_on = draft-symbol-cst-types
