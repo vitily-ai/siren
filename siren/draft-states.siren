@@ -77,7 +77,7 @@ task draft-symbol-grammar-red complete {
   depends_on = draft-states
 }
 
-task draft-symbol-grammar-green {
+task draft-symbol-grammar-green complete {
   description = "Update grammar.js: rename complete_modifier to status_modifier, change the slot from literal complete to $.bare_identifier, switch optional to repeat, add reserved-keyword precedence so task/milestone literals win over bare_identifier in modifier position. Rebuild and commit tree-sitter-siren.wasm. Snippets fixtures pass."
   context = "siren/draft-symbol-support.md"
   depends_on = draft-symbol-grammar-red
