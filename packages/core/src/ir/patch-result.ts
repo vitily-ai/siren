@@ -57,24 +57,52 @@ export function computeDelta(
         }
       }
 
-      for (const newRes of newDoc.resources) {
-        const oldResArray = oldResMap.get(newRes.id);
-        if (!oldResArray || oldResArray.length === 0) {
-          resourceChanges.push({ resourceId: newRes.id, mode: 'created' });
+      const newResMap = new Map<string, Resource[]>();
+      for (const r of newDoc.resources) {
+        const arr = newResMap.get(r.id);
+        if (arr) {
+          arr.push(r);
         } else {
-          const newEphId = getEphId(newRes);
-          let matchIndex = oldResArray.findIndex((r) => getEphId(r) === newEphId);
-          if (matchIndex === -1) {
-            matchIndex = 0;
-          }
-          const oldRes = oldResArray[matchIndex]!;
-          oldResArray.splice(matchIndex, 1);
+          newResMap.set(r.id, [r]);
+        }
+      }
 
-          const oldEphId = getEphId(oldRes);
-          if (oldEphId !== newEphId) {
-            resourceChanges.push({ resourceId: newRes.id, mode: 'updated' });
+      for (const [resId, newResArray] of newResMap.entries()) {
+        const oldResArray = oldResMap.get(resId);
+        if (!oldResArray || oldResArray.length === 0) {
+          for (const _ of newResArray) {
+            resourceChanges.push({ resourceId: resId, mode: 'created' });
+          }
+        } else {
+          // 1. Match exact ephIds first
+          const unmatchedNew: Resource[] = [];
+          for (const newRes of newResArray) {
+            const newEphId = getEphId(newRes);
+            const matchIndex = oldResArray.findIndex((r) => getEphId(r) === newEphId);
+            if (matchIndex !== -1) {
+              // Exact match found; remove from old queue (no 'updated' emitted here, it is unchanged)
+              oldResArray.splice(matchIndex, 1);
+            } else {
+              unmatchedNew.push(newRes);
+            }
+          }
+
+          // 2. Unmatched items are paired as 'updated'
+          let matchedCount = 0;
+          while (matchedCount < unmatchedNew.length && oldResArray.length > 0) {
+            resourceChanges.push({ resourceId: resId, mode: 'updated' });
+            oldResArray.shift(); // consume an old resource
+            matchedCount++;
+          }
+
+          // 3. Any leftover unmatched new items are 'created'
+          while (matchedCount < unmatchedNew.length) {
+            resourceChanges.push({ resourceId: resId, mode: 'created' });
+            matchedCount++;
           }
         }
+        // Remove from old map to track what's completely left over for deletion
+        oldResMap.delete(resId);
       }
 
       for (const oldResArray of oldResMap.values()) {
