@@ -101,7 +101,7 @@ task draft-symbol-decoder complete {
   depends_on = draft-symbol-lint-pass
 }
 
-task draft-symbol-exporter {
+task draft-symbol-exporter complete {
   description = "Audit siren-exporter.ts, comment-exporter.ts, formatters.ts, and format/syntax-formatter.ts for hardcoded complete-literal references and generalize via isComplete from core. Confirm render-document.ts round-trips draft correctly. Add export round-trip fixtures."
   context = "siren/draft-symbol-support.md"
   depends_on = draft-symbol-decoder

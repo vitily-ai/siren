@@ -242,7 +242,7 @@ export function exportWithComments(
     const block = wrapResourceBlock(
       res.type,
       formatResourceIdentifier(res.id, syntaxIdentifier),
-      res.status === 'complete',
+      res.status,
       body,
       headerTrailingComment,
     );

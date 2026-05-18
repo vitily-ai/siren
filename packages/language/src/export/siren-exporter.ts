@@ -100,7 +100,7 @@ export function exportToSiren(ctx: SirenProject, options: ExportToSirenOptions =
       wrapResourceBlock(
         res.type,
         formatResourceIdentifier(res.id, syntaxIdentifier),
-        res.status === 'complete',
+        res.status,
         body,
       ),
     );
