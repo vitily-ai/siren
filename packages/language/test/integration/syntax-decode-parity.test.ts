@@ -59,17 +59,21 @@ describe('Syntax decode parity', () => {
     expect(dependsOn?.origin?.startRow).toBe(2);
   });
 
-  it('keeps complete-keyword semantics and parse diagnostics behavior', async () => {
-    const source = 'task done complete {\n  complete = false\n}\n';
+  it('emits WL001 when status keyword conflicts with status attribute', async () => {
+    const source = 'task done complete {\n  status = "draft"\n}\n';
 
     const parseResult = await adapter.parse([{ name: 'complete.siren', content: source }]);
     const { context, parseDiagnostics } = createSirenProjectFromParseResult(parseResult);
 
     expect(context.resources[0]?.status).toBe('complete');
+    // The `status` attribute is dropped from the IR.
+    expect(context.resources[0]?.attributes.find((a) => a.key === 'status')).toBeUndefined();
 
     const warning = parseDiagnostics.find((diagnostic) => diagnostic.code === 'WL001');
     expect(warning?.severity).toBe('warning');
     expect(warning?.file).toBe('complete.siren');
+    expect(warning?.message).toContain("keyword 'complete'");
+    expect(warning?.message).toContain('status = "draft"');
   });
 
   it('surfaces duplicate complete parser warnings as WL002 parse diagnostics', async () => {

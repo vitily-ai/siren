@@ -6,8 +6,7 @@ test('emits WL002 for multiple status keywords; last keyword wins', async () => 
   const { resources, parseDiagnostics } = await parseAndDecodeAll(adapter, 'draft-multi-keyword');
 
   expect(resources).toHaveLength(1);
-  // Decoder currently only recognizes 'complete' literally; last token is
-  // 'complete' so status carries through.
+  // Last-wins: keyword 'complete' wins over 'draft'.
   expect(resources[0]?.id).toBe('foo');
   expect(resources[0]?.status).toBe('complete');
 

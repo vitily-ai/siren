@@ -9,6 +9,7 @@ import type {
   Origin,
   Resource,
   ResourceReference,
+  ResourceStatus,
   ResourceType,
   SirenDocument,
 } from '@sirenpm/core';
@@ -169,50 +170,52 @@ function decodeAttribute(node: SyntaxAttribute): Attribute | null {
 function decodeResource(node: SyntaxResource, diagnostics: ParseDiagnostic[]): Resource {
   const type: ResourceType = node.resourceType;
   const id = node.identifier.value;
-  // NOTE: temporary plumbing — `statusKeyword` is the last token of
-  // `statusKeywords` set by the builder. The lint pass (`draft-symbol-lint-pass`)
-  // will replace this with collapsed/validated single-token semantics and own
-  // WL002/WL003 emission. For now we preserve the old behavior by treating
-  // treating statusKeyword.raw === 'complete' as the completion signal.
-  const complete = node.statusKeyword?.raw === 'complete';
-
-  if (complete && type !== 'task' && type !== 'milestone') {
-    diagnostics.push({
-      code: 'WL003',
-      message: `Resource type '${type}' does not support the 'complete' keyword. It will be ignored.`,
-      severity: 'warning',
-      file: node.span.document,
-      line: node.span.startRow + 1,
-      column: 0,
-    });
-  }
+  // The lint pass guarantees `statusKeyword` is either a token whose `raw`
+  // is a valid `ResourceStatus` (`'complete'` or `'draft'`), or undefined.
+  const status = node.statusKeyword?.raw as ResourceStatus | undefined;
 
   const attributes: Attribute[] = [];
-  let completeAttr: Attribute | undefined;
+  let statusAttr: Attribute | undefined;
   for (const attrNode of node.attributes) {
     const attr = decodeAttribute(attrNode);
-    if (attr !== null) {
-      if (attr.key === 'complete') completeAttr = attr;
-      attributes.push(attr);
+    if (attr === null) continue;
+    if (attr.key === 'status') {
+      // `status` is a reserved concept owned by the keyword form; never carry
+      // an attribute-form value into the IR. WL001 below describes the drop.
+      statusAttr = attr;
+      continue;
     }
+    attributes.push(attr);
   }
 
-  if (complete && completeAttr && completeAttr.value !== true) {
-    diagnostics.push({
-      code: 'WL001',
-      message:
-        "Resource has both 'complete' keyword and a 'complete' attribute whose value is not true. The resource will be treated as complete.",
-      severity: 'warning',
-      file: node.span.document,
-      line: node.span.startRow + 1,
-      column: 0,
-    });
+  if (statusAttr !== undefined) {
+    const attrValue =
+      typeof statusAttr.value === 'string' ? statusAttr.value : JSON.stringify(statusAttr.value);
+    if (status === undefined) {
+      diagnostics.push({
+        code: 'WL001',
+        message: `resource '${id}' uses attribute form status = "${attrValue}"; use the keyword form instead (e.g. \`${type} ${id} ${attrValue} {}\`); attribute ignored`,
+        severity: 'warning',
+        file: node.span.document,
+        line: node.span.startRow + 1,
+        column: 0,
+      });
+    } else if (attrValue !== status) {
+      diagnostics.push({
+        code: 'WL001',
+        message: `resource '${id}' declares status keyword '${status}' but also has attribute status = "${attrValue}"; keyword wins, attribute ignored`,
+        severity: 'warning',
+        file: node.span.document,
+        line: node.span.startRow + 1,
+        column: 0,
+      });
+    }
   }
 
   return {
     type,
     id,
-    status: complete ? ('complete' as const) : undefined,
+    status,
     attributes,
     origin: toOrigin(node.span),
   };

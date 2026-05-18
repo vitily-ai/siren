@@ -15,9 +15,7 @@ test('round-trips single draft status keyword without diagnostics', async () => 
 
   expect(resources).toHaveLength(3);
   for (const resource of resources) {
-    // Decoder currently only carries 'complete' through; draft maps to undefined
-    // until draft-symbol-decoder lands.
-    expect(resource.status).toBeUndefined();
+    expect(resource.status).toBe('draft');
   }
 
   // No parse-phase diagnostics (no WL001/WL002/WL003).

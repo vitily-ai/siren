@@ -95,7 +95,7 @@ task draft-symbol-lint-pass complete {
   depends_on = draft-symbol-cst-types
 }
 
-task draft-symbol-decoder {
+task draft-symbol-decoder complete {
   description = "Read statusKeyword.text into Resource.status in decoder/index.ts; evolve WL001 to fire on keyword-plus-status-attribute mismatch and attribute-only status usage (both drop the attribute, keyword wins on mismatch); delete the old WL003 emission site. Update projects fixtures and decoder unit tests."
   context = "siren/draft-symbol-support.md"
   depends_on = draft-symbol-lint-pass
