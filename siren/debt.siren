@@ -78,6 +78,11 @@ task comment-byte-split-misalignment {
   link = ["https://github.com/vitily-ai/siren/pull/34#discussion_r3140583663", "https://github.com/vitily-ai/siren/pull/34#discussion_r3140654598", "https://github.com/vitily-ai/siren/pull/34#discussion_r3140583663"]
 }
 
+task implicit-promotion-cycles {
+  description = "Neither ImplicitDraftMilestoneModule nor ImplicitDraftTaskModule checks whether the candidate resource is part of a dependency cycle before promoting it to draft. CyclesModule runs after both implicit-draft modules, so a cyclic resource could be incorrectly drafted before the cycle is flagged. Evaluate whether implicit promotion should be skipped for resources that are later identified as cyclic, or whether the current order is acceptable."
+  affected_packages = "core"
+}
+
 task comment-export-performance {
   description = "copilot feedback. torture test scenarios needs to be set up to verify."
   link = ["https://github.com/vitily-ai/siren/pull/34#discussion_r3140583683", "https://github.com/vitily-ai/siren/pull/34#discussion_r3140583769"]
