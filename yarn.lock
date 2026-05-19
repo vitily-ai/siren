@@ -1185,6 +1185,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@sirenpm/grammar@workspace:packages/language/grammar":
+  version: 0.0.0-use.local
+  resolution: "@sirenpm/grammar@workspace:packages/language/grammar"
+  dependencies:
+    tree-sitter-cli: "npm:^0.26.8"
+  languageName: unknown
+  linkType: soft
+
 "@sirenpm/language@npm:0.4.0":
   version: 0.4.0
   resolution: "@sirenpm/language@npm:0.4.0"
@@ -3233,6 +3241,15 @@ __metadata:
   bin:
     tree-sitter: cli.js
   checksum: 10c0/26bc30b881992efd07c6da36d07de37594f16e5388ea38d3b6e59df5b3ba62620d60e5a19a9f9f3c95d0627edd52dda1a6134328e8d01235923aebed7bb389cf
+  languageName: node
+  linkType: hard
+
+"tree-sitter-cli@npm:^0.26.8":
+  version: 0.26.8
+  resolution: "tree-sitter-cli@npm:0.26.8"
+  bin:
+    tree-sitter: cli.js
+  checksum: 10c0/f1851657672fa65dc969db994a7e532fed68e512317150fac7c3d72912eafed1080b531801651bf8fe42c178e7ed9a60d4c4dd37fbc462321be22b01d33c3ed0
   languageName: node
   linkType: hard
 

@@ -36,6 +36,7 @@ task t1 {
 milestone m1 {
 }
 
+---
 
 (document
   (resource
@@ -45,15 +46,146 @@ milestone m1 {
     (identifier
       (bare_identifier))))
 
+==================
+Complete status modifier
+==================
 
-# Task with complete modifier
 task bar complete {
   description = "done"
 }
 
-# Milestone with complete modifier
 milestone release-1 complete {
   description = "shipped"
+}
+
+---
+
+(document
+  (resource
+    id: (identifier
+      (bare_identifier))
+    status_modifier: (bare_identifier)
+    body: (attribute
+      key: (bare_identifier)
+      value: (expression
+        (literal
+          (string_literal)))))
+  (resource
+    id: (identifier
+      (bare_identifier))
+    status_modifier: (bare_identifier)
+    body: (attribute
+      key: (bare_identifier)
+      value: (expression
+        (literal
+          (string_literal))))))
+
+==================
+Draft status modifier
+==================
+
+task foo draft {
+}
+
+milestone bar draft {
+}
+
+---
+
+(document
+  (resource
+    id: (identifier
+      (bare_identifier))
+    status_modifier: (bare_identifier))
+  (resource
+    id: (identifier
+      (bare_identifier))
+    status_modifier: (bare_identifier)))
+
+==================
+Multiple status modifiers
+==================
+
+task foo draft complete {
+  description = "two status keywords"
+}
+
+---
+
+(document
+  (resource
+    id: (identifier
+      (bare_identifier))
+    status_modifier: (bare_identifier)
+    status_modifier: (bare_identifier)
+    body: (attribute
+      key: (bare_identifier)
+      value: (expression
+        (literal
+          (string_literal))))))
+
+==================
+Unknown status modifier
+==================
+
+task foo bogus {
+}
+
+---
+
+(document
+  (resource
+    id: (identifier
+      (bare_identifier))
+    status_modifier: (bare_identifier)))
+
+==================
+Status modifier precedence
+==================
+
+task a draft {
+}
+
+task b {
+}
+
+task c {
+}
+
+milestone d complete {
+}
+
+milestone e draft complete {
+}
+
+task f {
+}
+
+---
+
+(document
+  (resource
+    id: (identifier
+      (bare_identifier))
+    status_modifier: (bare_identifier))
+  (resource
+    id: (identifier
+      (bare_identifier)))
+  (resource
+    id: (identifier
+      (bare_identifier)))
+  (resource
+    id: (identifier
+      (bare_identifier))
+    status_modifier: (bare_identifier))
+  (resource
+    id: (identifier
+      (bare_identifier))
+    status_modifier: (bare_identifier)
+    status_modifier: (bare_identifier))
+  (resource
+    id: (identifier
+      (bare_identifier))))
 ==================
 Quoted identifier
 ==================

@@ -1,7 +1,22 @@
 {
-  "grammars": ["grammar.js"],
-  "grammar-path": ".",
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "siren",
+      "scope": "source.siren",
+      "path": ".",
+      "file-types": ["siren"],
+      "injection-regex": "^siren$"
+    }
+  ],
   "metadata": {
-    "version": "0.1.0"
+    "version": "0.1.0",
+    "license": "GPL-3.0",
+    "description": "Tree-sitter grammar for Siren",
+    "authors": [
+      {
+        "name": "Siren contributors"
+      }
+    ]
   }
 }

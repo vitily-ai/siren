@@ -55,10 +55,9 @@ yarn workspace @sirenpm/core test
 Rebuild the Tree-sitter parser (only needed when editing grammar):
 
 ```bash
-cd packages/language/grammar
-npx tree-sitter-cli generate
-npx tree-sitter-cli build --wasm
-npx tree-sitter-cli test
+yarn workspace @sirenpm/grammar generate
+yarn workspace @sirenpm/grammar build-wasm
+yarn workspace @sirenpm/grammar test
 ```
 
 How to add features
