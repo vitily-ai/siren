@@ -1,0 +1,7 @@
+{
+	"fixture": "draft-cli-coverage",
+	"command": "siren list",
+	"expect": "stdout"
+}
+---
+release-alpha

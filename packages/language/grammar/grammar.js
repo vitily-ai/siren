@@ -19,14 +19,6 @@ module.exports = grammar({
     /\s/, // whitespace
   ],
 
-  // Treat `bare_identifier` as the "word" token so that string-literal
-  // terminals (`task`, `milestone`, `true`, `false`, `null`) are reserved
-  // keywords rather than being matched as bare identifiers. This is the
-  // mechanism that prevents `task` / `milestone` on the line after a
-  // resource header from being swallowed into the open
-  // `repeat(status_modifier)` slot.
-  word: ($) => $.bare_identifier,
-
   rules: {
     // Top-level document: zero or more resources
     document: ($) => repeat($.resource),
@@ -38,11 +30,9 @@ module.exports = grammar({
     // permissive — semantic validation of which tokens are meaningful lives in
     // the downstream lint pass, not in the grammar.
     //
-    // Reserved-keyword precedence: `task` and `milestone` are declared as
-    // string-literal terminals elsewhere in the grammar. The `word` rule below
-    // (`word: $ => $.bare_identifier`) makes tree-sitter treat those literals
-    // as reserved against `bare_identifier`, so they can never be absorbed
-    // into the `repeat(status_modifier)` slot of the preceding resource.
+    // `task` and `milestone` string literals take natural lexical priority over
+    // the bare_identifier regex in tree-sitter, so they are never absorbed into
+    // the repeat(status_modifier) slot when the next resource starts.
     resource: ($) =>
       seq(
         field('type', choice('task', 'milestone')),

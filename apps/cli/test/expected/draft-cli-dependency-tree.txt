@@ -1,0 +1,7 @@
+{
+	"fixture": "draft-cli-coverage",
+	"command": "siren show build-feature",
+	"expect": "stdout"
+}
+---
+build-feature

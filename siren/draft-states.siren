@@ -65,7 +65,7 @@ milestone contradictory-completion-diagnostic { // draft
   depends_on = [draft-states]
 }
 
-milestone draft-symbol-support {
+milestone draft-symbol-support complete {
   description = "Promote the grammar's complete keyword slot to an open status-modifier slot accepting draft and unknown tokens, using a permissive-grammar-plus-linting-pass design. Language-only; core ResourceStatus is untouched."
   context = "siren/draft-symbol-support.md"
   depends_on = [draft-symbol-cli-goldens, draft-symbol-publish]
@@ -107,13 +107,13 @@ task draft-symbol-exporter complete {
   depends_on = draft-symbol-decoder
 }
 
-task draft-symbol-cli-goldens {
+task draft-symbol-cli-goldens complete {
   description = "Add CLI golden tests under apps/cli/test/expected/ for a project containing draft resources, covering list, show, format, and dependency-tree commands."
   context = "siren/draft-symbol-support.md"
   depends_on = draft-symbol-exporter
 }
 
-task draft-symbol-publish {
+task draft-symbol-publish complete {
   description = "Add a changeset entry for @sirenpm/language: minor bump for new draft status support, with a note that WL003 is repurposed (breaking diagnostic-code semantics change)."
   context = "siren/draft-symbol-support.md"
   depends_on = draft-symbol-cli-goldens
