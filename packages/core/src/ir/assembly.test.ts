@@ -1,3 +1,11 @@
+/**
+ * TEST BOUNDARY:
+ * This module is exclusively for testing the `SirenBuilder` initialization, compilation (`.build()`),
+ * diagnostic generation, and internal object identity/eph-id mechanics during construction.
+ *
+ * Mutation APIs and delta computations (`.patch()`, `withResource()`, change modes) belong
+ * in `assembly-patch.test.ts`.
+ */
 import { describe, expect, it } from 'vitest';
 import { SirenBuilder } from './assembly';
 import { SirenProject } from './context';
@@ -13,6 +21,18 @@ function origin(document: string, startRow: number): Origin {
     endRow: startRow,
     document,
   };
+}
+
+/**
+ * Copy every non-enumerable symbol property from `src` to `dst` in place.
+ * Used to verify the duplicate eph-id/identity check is symbol-identity-based
+ * rather than plain object-reference-based.
+ */
+function copySymbolProperties(src: object, dst: object): void {
+  for (const sym of Object.getOwnPropertySymbols(src)) {
+    const descriptor = Object.getOwnPropertyDescriptor(src, sym)!;
+    Object.defineProperty(dst, sym, descriptor);
+  }
 }
 
 type BuilderDocument = {
@@ -327,5 +347,114 @@ describe('SirenBuilder', () => {
 
     expect(() => SirenBuilder.fromDocuments(documents)).toThrowError(SirenCoreError);
     expect(() => SirenBuilder.fromDocuments(documents)).toThrow('Duplicate document id: "auth"');
+  });
+
+  it('throws SirenCoreError when the same eph-id appears in two document slots (different object references)', () => {
+    const seed = SirenBuilder.fromDocuments([
+      { id: 'doc-a', resources: [{ type: 'task', id: 't1', attributes: [] }] },
+    ]);
+    const frozenResource = seed.documents[0]!.resources[0]!;
+
+    // Build a distinct object that carries the same eph-id symbol property
+    const imposter: Resource = { ...frozenResource };
+    copySymbolProperties(frozenResource, imposter);
+
+    expect(() => {
+      SirenBuilder.fromDocuments([
+        { id: 'doc-a', resources: [frozenResource] },
+        { id: 'doc-b', resources: [imposter] }, // different ref, same eph-id
+      ]);
+    }).toThrow(SirenCoreError);
+  });
+
+  // -------------------------------------------------------------------------
+  // Eph-id stamping during construction
+  // These tests document when the non-enumerable eph-id symbol IS and IS NOT
+  // applied to resources, using only observable surface (Object.getOwnPropertySymbols).
+  // -------------------------------------------------------------------------
+
+  describe('eph-id stamping during construction', () => {
+    it('fresh resource has no symbol properties before ingestion', () => {
+      const fresh: Resource = { type: 'task', id: 't1', attributes: [] };
+      expect(Object.getOwnPropertySymbols(fresh)).toHaveLength(0);
+    });
+
+    it('resource has exactly one non-enumerable symbol property after ingestion', () => {
+      const fresh: Resource = { type: 'task', id: 't1', attributes: [] };
+      const b = SirenBuilder.fromDocuments([{ id: 'doc', resources: [fresh] }]);
+      const ingested = b.documents[0]!.resources[0]!;
+
+      const syms = Object.getOwnPropertySymbols(ingested);
+      expect(syms).toHaveLength(1);
+
+      const descriptor = Object.getOwnPropertyDescriptor(ingested, syms[0]!);
+      expect(descriptor?.enumerable).toBe(false);
+    });
+
+    it('spread of an ingested resource drops the eph-id symbol', () => {
+      const b = SirenBuilder.fromDocuments([
+        { id: 'doc', resources: [{ type: 'task', id: 't1', attributes: [] }] },
+      ]);
+      const ingested = b.documents[0]!.resources[0]!;
+
+      const spread = { ...ingested };
+      expect(Object.getOwnPropertySymbols(spread)).toHaveLength(0);
+    });
+
+    it('JSON round-trip of an ingested resource drops the eph-id symbol', () => {
+      const b = SirenBuilder.fromDocuments([
+        { id: 'doc', resources: [{ type: 'task', id: 't1', attributes: [] }] },
+      ]);
+      const ingested = b.documents[0]!.resources[0]!;
+
+      const roundTripped = JSON.parse(JSON.stringify(ingested)) as Resource;
+      expect(Object.getOwnPropertySymbols(roundTripped)).toHaveLength(0);
+    });
+
+    it('re-ingesting a previously-frozen resource preserves the same eph-id value', () => {
+      const b1 = SirenBuilder.fromDocuments([
+        { id: 'doc', resources: [{ type: 'task', id: 't1', attributes: [] }] },
+      ]);
+      const frozen = b1.documents[0]!.resources[0]!;
+      const frozenSymbols = Object.getOwnPropertySymbols(frozen);
+      expect(frozenSymbols).toHaveLength(1);
+      const [sym] = frozenSymbols;
+      expect(sym).toBeDefined();
+
+      const b2 = SirenBuilder.fromDocuments([{ id: 'doc', resources: [frozen] }]);
+      const reIngested = b2.documents[0]!.resources[0]!;
+
+      const reIngestedSymbols = Object.getOwnPropertySymbols(reIngested);
+      expect(reIngestedSymbols).toHaveLength(1);
+      const [reIngestedSym] = reIngestedSymbols;
+      expect(reIngestedSym).toBeDefined();
+      expect(reIngestedSym).toBe(sym); // same symbol key
+      expect((reIngested as Record<symbol, unknown>)[sym!]).toBe(
+        (frozen as Record<symbol, unknown>)[sym!],
+      );
+    });
+
+    it('two independent ingestions of the same fresh resource produce different eph-ids', () => {
+      const fresh: Resource = { type: 'task', id: 't1', attributes: [] };
+      const b1 = SirenBuilder.fromDocuments([{ id: 'doc', resources: [fresh] }]);
+      const b2 = SirenBuilder.fromDocuments([{ id: 'doc', resources: [fresh] }]);
+
+      const r1 = b1.documents[0]!.resources[0]!;
+      const r2 = b2.documents[0]!.resources[0]!;
+
+      const [sym1] = Object.getOwnPropertySymbols(r1);
+      const [sym2] = Object.getOwnPropertySymbols(r2);
+      // Both have the same symbol key (it is module-level constant), but different values
+      expect(sym1).toBe(sym2);
+      expect((r1 as Record<symbol, unknown>)[sym1!]).not.toBe(
+        (r2 as Record<symbol, unknown>)[sym2!],
+      );
+    });
+
+    it('fromResources also stamps eph-ids on ingested resources', () => {
+      const b = SirenBuilder.fromResources([{ type: 'task', id: 't1', attributes: [] }], 'adhoc');
+      const ingested = b.documents[0]!.resources[0]!;
+      expect(Object.getOwnPropertySymbols(ingested)).toHaveLength(1);
+    });
   });
 });

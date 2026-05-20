@@ -23,8 +23,8 @@
     "lint:fix": "biome check --write .",
     "prepare": "husky",
     "siren": "node apps/cli/dist/index.js",
-    "test": "yarn build:quiet && yarn workspace @sirenpm/grammar test && yarn workspaces foreach --all --topological --exclude @sirenpm/grammar run test",
-    "typecheck": "yarn workspaces foreach --all run typecheck",
+    "test": "yarn build:quiet && yarn workspaces foreach --all --topological run test",
+    "typecheck": "yarn workspaces foreach -p --all run typecheck",
     "version-packages": "changeset version"
   },
   "lint-staged": {

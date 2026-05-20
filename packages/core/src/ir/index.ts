@@ -14,6 +14,12 @@ export type {
 export type { SirenDocument } from './document';
 export { SirenCoreError } from './errors';
 export type {
+  ChangeMode,
+  DocumentChange,
+  PatchResult,
+  ResourceChange,
+} from './patch-result';
+export type {
   ArrayValue,
   Attribute,
   AttributeValue,

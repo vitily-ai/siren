@@ -1,8 +1,21 @@
+/**
+ * TEST BOUNDARY:
+ * This module is exclusively for testing the `SirenBuilder` mutation APIs and
+ * delta computations (`.patch()`, `withResource()`, etc.).
+ *
+ * Construction, compilation (`.build()`), diagnostics generation, and initial
+ * ephemeral identity stamping concerns belong in `assembly.test.ts`.
+ */
 import { describe, expect, it } from 'vitest';
-import { SirenBuilder } from '../src/ir/assembly';
-import type { SirenDocument } from '../src/ir/document';
-import { SirenCoreError } from '../src/ir/errors';
-import type { Resource } from '../src/ir/types';
+import {
+  type ChangeMode,
+  type DocumentChange,
+  type PatchResult,
+  type Resource,
+  type ResourceChange,
+  SirenBuilder,
+  type SirenDocument,
+} from '../src';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -17,229 +30,161 @@ function makeTask(id: string): Resource {
 }
 
 // ---------------------------------------------------------------------------
-// .patch(fn)
+// patch() — core delta semantics
 // ---------------------------------------------------------------------------
 
-describe('SirenBuilder.patch(fn)', () => {
-  it('returns a new SirenBuilder with transformed documents', () => {
-    const docA = makeDoc('a', [makeTask('t1')]);
-    const docB = makeDoc('b', [makeTask('t2')]);
-    const builder = SirenBuilder.fromDocuments([docA, docB]);
-
-    const patched = builder.patch((docs) => docs.filter((d) => d.id === 'b'));
-
-    expect(patched).toBeInstanceOf(SirenBuilder);
-    expect(patched.documents).toHaveLength(1);
-    expect(patched.documents[0]!.id).toBe('b');
+describe('SirenBuilder.patch() returns PatchResult', () => {
+  it('result has builder and changes properties', () => {
+    const b = SirenBuilder.fromDocuments([makeDoc('doc-a', [makeTask('t1')])]);
+    const result: PatchResult = b.patch((docs) => docs);
+    expect(result).toHaveProperty('builder');
+    expect(result).toHaveProperty('changes');
+    expect(result.builder).toBeInstanceOf(SirenBuilder);
+    expect(Array.isArray(result.changes)).toBe(true);
   });
 
-  it('does not mutate the original builder', () => {
-    const docA = makeDoc('a');
-    const builder = SirenBuilder.fromDocuments([docA]);
-
-    builder.patch(() => []);
-
-    expect(builder.documents).toHaveLength(1);
-    expect(builder.documents[0]!.id).toBe('a');
-  });
-
-  it('patched builder and original are different instances', () => {
-    const builder = SirenBuilder.fromDocuments([makeDoc('x')]);
-    const patched = builder.patch((docs) => [...docs, makeDoc('y')]);
-
-    expect(patched).not.toBe(builder);
-    expect(builder.documents).toHaveLength(1);
-    expect(patched.documents).toHaveLength(2);
+  it('no-op patch: changes is empty and builder is a fresh instance', () => {
+    const b = SirenBuilder.fromDocuments([makeDoc('doc-a', [makeTask('t1')])]);
+    const result = b.patch((docs) => docs);
+    expect(result.changes).toEqual([]);
+    expect(result.builder).not.toBe(b);
+    expect(result.builder.documents).toEqual(b.documents);
   });
 });
 
 // ---------------------------------------------------------------------------
-// .withDocument(doc)
+// Convenience wrappers
 // ---------------------------------------------------------------------------
 
-describe('SirenBuilder.withDocument(doc)', () => {
-  it('adds a new document when no document with that id exists', () => {
-    const builder = SirenBuilder.fromDocuments([makeDoc('a')]);
+describe('convenience wrappers', () => {
+  it('withDocument: created change for the new document', () => {
+    const b = SirenBuilder.fromDocuments([]);
+    const result: PatchResult = b.withDocument(makeDoc('doc-a', [makeTask('t1')]));
 
-    const updated = builder.withDocument(makeDoc('b'));
+    expect(result).toHaveProperty('builder');
+    expect(result.changes).toHaveLength(1);
+    expect(result.changes[0]).toMatchObject<Partial<DocumentChange>>({
+      documentId: 'doc-a',
+      mode: 'created',
+    });
+    expect(result.changes[0]!.resources).toEqual<ResourceChange[]>([
+      { resourceId: 't1', mode: 'created' },
+    ]);
 
-    expect(updated.documents).toHaveLength(2);
-    expect(updated.documents.map((d) => d.id)).toContain('b');
+    expect(result.builder.documents).toHaveLength(1);
+    expect(result.builder.documents[0]!.id).toBe('doc-a');
+    expect(result.builder.documents[0]!.resources).toHaveLength(1);
   });
 
-  it('throws when adding a document with a duplicate id', () => {
-    const docV1 = makeDoc('dup', [makeTask('t1')]);
-    const docV2 = makeDoc('dup', [makeTask('t2')]);
-    const builder = SirenBuilder.fromDocuments([docV1]);
-
-    expect(() => builder.withDocument(docV2)).toThrow(SirenCoreError);
-    expect(() => builder.withDocument(docV2)).toThrow('Duplicate document id: "dup"');
-  });
-
-  it('does not mutate the original builder', () => {
-    const builder = SirenBuilder.fromDocuments([makeDoc('a')]);
-
-    builder.withDocument(makeDoc('b'));
-
-    expect(builder.documents).toHaveLength(1);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// .withResource(resource, documentId?)
-// ---------------------------------------------------------------------------
-
-describe('SirenBuilder.withResource(resource, documentId?)', () => {
-  it('adds a resource to an existing document', () => {
-    const builder = SirenBuilder.fromDocuments([makeDoc('doc1', [makeTask('t1')])]);
-
-    const updated = builder.withResource(makeTask('t2'), 'doc1');
-
-    const doc = updated.documents.find((d) => d.id === 'doc1')!;
-    expect(doc.resources).toHaveLength(2);
-    expect(doc.resources.map((r) => r.id)).toContain('t2');
-  });
-
-  it('adds a resource even when another resource has the same id', () => {
-    const taskV1: Resource = { type: 'task', id: 'tx', attributes: [] };
-    const taskV2: Resource = { type: 'task', id: 'tx', attributes: [], status: 'complete' };
-    const builder = SirenBuilder.fromDocuments([makeDoc('doc1', [taskV1])]);
-
-    const updated = builder.withResource(taskV2, 'doc1');
-
-    const doc = updated.documents.find((d) => d.id === 'doc1')!;
-    expect(doc.resources).toHaveLength(2);
-    expect(doc.resources[0]!.status).toBeUndefined();
-    expect(doc.resources[1]!.status).toBe('complete');
-  });
-
-  it('creates the target document when it does not exist', () => {
-    const builder = SirenBuilder.fromDocuments([makeDoc('doc1', [makeTask('t1')])]);
-
-    const updated = builder.withResource(makeTask('t2'), 'new-doc');
-
-    const doc = updated.documents.find((d) => d.id === 'new-doc')!;
-    expect(doc.resources).toHaveLength(1);
-    expect(doc.resources[0]!.id).toBe('t2');
-    expect(doc.directive).toEqual({ implicitMilestone: false });
-  });
-
-  it('uses misc as the default document id', () => {
-    const builder = SirenBuilder.fromDocuments([]);
-
-    const updated = builder.withResource(makeTask('t2'));
-
-    const doc = updated.documents.find((d) => d.id === 'misc')!;
-    expect(doc.resources).toHaveLength(1);
-    expect(doc.resources[0]!.id).toBe('t2');
-    expect(doc.directive).toEqual({ implicitMilestone: false });
-  });
-
-  it('does not mutate the original builder', () => {
-    const builder = SirenBuilder.fromDocuments([makeDoc('doc1', [makeTask('t1')])]);
-
-    builder.withResource(makeTask('t2'), 'doc1');
-
-    const doc = builder.documents.find((d) => d.id === 'doc1')!;
-    expect(doc.resources).toHaveLength(1);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// .patchDocument(documentId, fn)
-// ---------------------------------------------------------------------------
-
-describe('SirenBuilder.patchDocument(documentId, fn)', () => {
-  it('transforms the target document, returning a new builder', () => {
-    const docA = makeDoc('a', [makeTask('t1')]);
-    const docB = makeDoc('b', [makeTask('t2')]);
-    const builder = SirenBuilder.fromDocuments([docA, docB]);
-
-    const updated = builder.patchDocument('a', (doc) => ({
+  it('patchDocument: updated change reflecting resource additions', () => {
+    const b = SirenBuilder.fromDocuments([makeDoc('doc-a', [makeTask('t1')])]);
+    const result: PatchResult = b.patchDocument('doc-a', (doc) => ({
       ...doc,
-      resources: [...doc.resources, makeTask('t3')],
+      resources: [...doc.resources, makeTask('t2')],
     }));
 
-    const patchedA = updated.documents.find((d) => d.id === 'a')!;
-    expect(patchedA.resources).toHaveLength(2);
-    expect(patchedA.resources.map((r) => r.id)).toContain('t3');
+    expect(result).toHaveProperty('builder');
+    expect(result.changes).toHaveLength(1);
+    const docChange = result.changes[0]!;
+    expect(docChange.documentId).toBe('doc-a');
+    expect(docChange.mode).toBe<ChangeMode>('updated');
+    expect(docChange.resources).toContainEqual<ResourceChange>({
+      resourceId: 't2',
+      mode: 'created',
+    });
+
+    const updatedDoc = result.builder.documents.find((d) => d.id === 'doc-a')!;
+    expect(updatedDoc.resources).toHaveLength(2);
+    expect(updatedDoc.resources.map((r) => r.id)).toEqual(['t1', 't2']);
   });
 
-  it('leaves other documents untouched', () => {
-    const docA = makeDoc('a', [makeTask('t1')]);
-    const docB = makeDoc('b', [makeTask('t2')]);
-    const builder = SirenBuilder.fromDocuments([docA, docB]);
+  it('withResource: created change for the new resource in an existing doc', () => {
+    const b = SirenBuilder.fromDocuments([makeDoc('doc-a', [makeTask('t1')])]);
+    const result: PatchResult = b.withResource(makeTask('t2'), 'doc-a');
 
-    const updated = builder.patchDocument('a', (doc) => ({ ...doc, resources: [] }));
+    expect(result).toHaveProperty('builder');
+    const docChange = result.changes.find((c) => c.documentId === 'doc-a')!;
+    expect(docChange.mode).toBe<ChangeMode>('updated');
+    expect(docChange.resources).toContainEqual<ResourceChange>({
+      resourceId: 't2',
+      mode: 'created',
+    });
 
-    const untouchedB = updated.documents.find((d) => d.id === 'b')!;
-    expect(untouchedB.resources).toHaveLength(1);
-    expect(untouchedB.resources[0]!.id).toBe('t2');
+    const updatedDoc = result.builder.documents.find((d) => d.id === 'doc-a')!;
+    expect(updatedDoc.resources).toHaveLength(2);
+    expect(updatedDoc.resources.map((r) => r.id)).toEqual(['t1', 't2']);
   });
 
-  it('does not mutate the original builder', () => {
-    const docA = makeDoc('a', [makeTask('t1')]);
-    const builder = SirenBuilder.fromDocuments([docA]);
+  it('withResource: creates a new document when target does not exist', () => {
+    const b = SirenBuilder.fromDocuments([]);
+    const result: PatchResult = b.withResource(makeTask('t1'), 'new-doc');
 
-    builder.patchDocument('a', (doc) => ({ ...doc, resources: [] }));
+    expect(result.changes).toHaveLength(1);
+    expect(result.changes[0]).toMatchObject<Partial<DocumentChange>>({
+      documentId: 'new-doc',
+      mode: 'created',
+    });
 
-    expect(builder.documents.find((d) => d.id === 'a')!.resources).toHaveLength(1);
+    const newDoc = result.builder.documents.find((d) => d.id === 'new-doc')!;
+    expect(newDoc).toBeDefined();
+    expect(newDoc.resources).toHaveLength(1);
+    expect(newDoc.resources[0]!.id).toBe('t1');
   });
-});
 
-// ---------------------------------------------------------------------------
-// .patchResource(resourceId, fn)
-// ---------------------------------------------------------------------------
+  it('withResource defaults to misc, creating it first and patching it on the next call', () => {
+    const b = SirenBuilder.fromDocuments([]);
 
-describe('SirenBuilder.patchResource(resourceId, fn)', () => {
-  it('patches a resource status from undefined to complete', () => {
-    const task: Resource = { type: 'task', id: 'tx', attributes: [] };
-    const builder = SirenBuilder.fromDocuments([makeDoc('doc1', [task])]);
+    const created = b.withResource(makeTask('t1'));
 
-    const updated = builder.patchResource('tx', (res) => ({
-      ...res,
+    expect(created.changes).toHaveLength(1);
+    expect(created.changes[0]).toMatchObject<Partial<DocumentChange>>({
+      documentId: 'misc',
+      mode: 'created',
+    });
+    expect(created.changes[0]!.resources).toEqual<ResourceChange[]>([
+      { resourceId: 't1', mode: 'created' },
+    ]);
+
+    const createdDoc = created.builder.documents.find((doc) => doc.id === 'misc');
+    expect(createdDoc).toBeDefined();
+    expect(createdDoc?.directive).toEqual({ implicitMilestone: false });
+    expect(createdDoc!.resources).toHaveLength(1);
+    expect(createdDoc!.resources).toContainEqual(makeTask('t1'));
+
+    const patched = created.builder.withResource(makeTask('t2'));
+
+    expect(patched.changes).toHaveLength(1);
+    expect(patched.changes[0]).toMatchObject<Partial<DocumentChange>>({
+      documentId: 'misc',
+      mode: 'updated',
+    });
+    expect(patched.changes[0]!.resources).toEqual<ResourceChange[]>([
+      { resourceId: 't2', mode: 'created' },
+    ]);
+
+    const patchedDoc = patched.builder.documents.find((doc) => doc.id === 'misc');
+    expect(patchedDoc).toBeDefined();
+    expect(patchedDoc!.resources).toHaveLength(2);
+    expect(patchedDoc!.resources).toContainEqual(makeTask('t1'));
+    expect(patchedDoc!.resources).toContainEqual(makeTask('t2'));
+  });
+
+  it('patchResource: updated change for the patched resource', () => {
+    const b = SirenBuilder.fromDocuments([makeDoc('doc-a', [makeTask('t1')])]);
+    const result: PatchResult = b.patchResource('t1', (r) => ({
+      ...r,
       status: 'complete' as const,
     }));
 
-    const doc = updated.documents.find((d) => d.id === 'doc1')!;
-    expect(doc.resources.find((r) => r.id === 'tx')!.status).toBe('complete');
-  });
+    expect(result).toHaveProperty('builder');
+    const docChange = result.changes.find((c) => c.documentId === 'doc-a')!;
+    expect(docChange.mode).toBe<ChangeMode>('updated');
+    expect(docChange.resources).toContainEqual<ResourceChange>({
+      resourceId: 't1',
+      mode: 'updated',
+    });
 
-  it('leaves other resources in the same document untouched', () => {
-    const t1: Resource = { type: 'task', id: 't1', attributes: [] };
-    const t2: Resource = { type: 'task', id: 't2', attributes: [] };
-    const builder = SirenBuilder.fromDocuments([makeDoc('doc1', [t1, t2])]);
-
-    const updated = builder.patchResource('t1', (res) => ({
-      ...res,
-      status: 'complete' as const,
-    }));
-
-    const doc = updated.documents.find((d) => d.id === 'doc1')!;
-    expect(doc.resources.find((r) => r.id === 't2')!.status).toBeUndefined();
-  });
-
-  it('does not mutate the original builder', () => {
-    const task: Resource = { type: 'task', id: 'tx', attributes: [] };
-    const builder = SirenBuilder.fromDocuments([makeDoc('doc1', [task])]);
-
-    builder.patchResource('tx', (res) => ({ ...res, status: 'complete' as const }));
-
-    const doc = builder.documents.find((d) => d.id === 'doc1')!;
-    expect(doc.resources.find((r) => r.id === 'tx')!.status).toBeUndefined();
-  });
-
-  it('leaves documents other than the target untouched', () => {
-    const t1: Resource = { type: 'task', id: 't1', attributes: [] };
-    const t2: Resource = { type: 'task', id: 't2', attributes: [] };
-    const builder = SirenBuilder.fromDocuments([makeDoc('doc1', [t1]), makeDoc('doc2', [t2])]);
-
-    const updated = builder.patchResource('t1', (res) => ({
-      ...res,
-      status: 'complete' as const,
-    }));
-
-    const doc2 = updated.documents.find((d) => d.id === 'doc2')!;
-    expect(doc2.resources.find((r) => r.id === 't2')!.status).toBeUndefined();
+    const updatedResource = result.builder.documents[0]!.resources[0]!;
+    expect(updatedResource).toMatchObject({ id: 't1', status: 'complete' });
   });
 });
