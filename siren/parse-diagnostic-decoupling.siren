@@ -1,0 +1,168 @@
+# parse-diagnostic-decoupling — Rule-based diagnostic extraction with single-document parsing
+# Full design, decisions, and accepted regressions: docs/parse-diagnostic-decoupling.md
+
+# Top-level milestone
+milestone parse-diagnostic-decoupling {
+  description = "Replace the monolithic extractErrors() oracle in packages/language/src/parser/factory.ts with a small, rule-based diagnostic runtime. Prerequisite: drop multi-document concatenated parsing so each SourceDocument produces its own independent tree, eliminating the DocumentBoundary offset-arithmetic plumbing that permeates the conversion layer. After that, two named rules (missing-token and unexpected-token) replace the five hard-coded cases in extractErrors. Accepted behavioral regressions: duplicate-complete warning becomes a generic error; top-level expected-keyword hint is dropped; boundary-spill synthetic errors are impossible and removed. Breaking change to @sirenpm/language public API."
+  affected_packages = "language, cli"
+  context = "parse-diagnostic-decoupling.md"
+  depends_on = [single-doc-parsing, diagnostic-rule-system, diag-golden-updates, diag-snippets-fixtures, diag-factory-cleanup, diag-publish-language]
+}
+
+# ---------------------------------------------------------------------------
+# Phase 1 — Drop multi-document parsing
+# Prerequisite for all Phase 2 work. Eliminates DocumentBoundary plumbing,
+# makes position extraction trivially correct, and removes the boundary-spill
+# fabrication side-effect.
+# ---------------------------------------------------------------------------
+
+milestone single-doc-parsing {
+  description = "Change ParserAdapter.parse() from accepting an array of SourceDocuments to a single SourceDocument, rewrite the parse() implementation in factory.ts to parse that document independently without concatenation or boundary tracking, and update all callers. This is a breaking change to @sirenpm/language's public API. All downstream consumers that previously passed multiple documents at once must loop."
+  affected_packages = "language, cli"
+  context = "parse-diagnostic-decoupling.md"
+  depends_on = [single-doc-factory-rewrite, single-doc-cli-lifecycle, single-doc-format-command, single-doc-context-factory, single-doc-integration-tests]
+}
+
+task single-doc-adapter-signature {
+  description = "Change the parse() method signature on the ParserAdapter interface in packages/language/src/parser/adapter.ts from `parse(documents: readonly SourceDocument[]): Promise<ParseResult>` to `parse(document: SourceDocument): Promise<ParseResult>`. This is the public interface change; the factory implementation follows in single-doc-factory-rewrite."
+  affected_packages = "language"
+  context = "parse-diagnostic-decoupling.md"
+  files = "packages/language/src/parser/adapter.ts"
+}
+
+task single-doc-factory-rewrite {
+  description = "Rewrite parse() in packages/language/src/parser/factory.ts to parse a single SourceDocument: remove the concatenation loop, remove the DocumentBoundary[] array construction, remove findDocumentForByte(), and remove the boundary parameter from extractOrigin() and all convert* functions (convertDocument, convertResource, convertAttribute, convertIdentifier, convertLiteralDirect, convertReference, convertArray, convertLiteral, convertExpression, extractComments). Replace boundary offset arithmetic (startByte - boundary.startByte, startRow - boundary.startRow) with direct node position reads. Pass document.name as the documentName string wherever origin/position data is built."
+  affected_packages = "language"
+  context = "parse-diagnostic-decoupling.md"
+  files = "packages/language/src/parser/factory.ts"
+  depends_on = single-doc-adapter-signature
+}
+
+task single-doc-cli-lifecycle {
+  description = "Update apps/cli/src/lifecycle/parsing.ts to loop over sourceDocuments and call parser.parse(doc) once per document, then aggregate the resulting ParseResult[] into the shape downstream lifecycle stages (decoding.ts, diagnostics.ts) expect. The aggregation should merge errors[], comments[], and syntaxDocuments[] arrays and compute success as the logical AND of all individual results. Verify decoding.ts and diagnostics.ts consume syntaxDocuments (already an array) and do not assume a single-parse batch shape."
+  affected_packages = "cli"
+  context = "parse-diagnostic-decoupling.md"
+  files = "apps/cli/src/lifecycle/parsing.ts, apps/cli/src/lifecycle/decoding.ts, apps/cli/src/lifecycle/diagnostics.ts"
+  depends_on = single-doc-factory-rewrite
+}
+
+task single-doc-format-command {
+  description = "Update both call sites in apps/cli/src/commands/format.ts (lines ~80 and ~99) that currently wrap a single document in an array before passing it to parser.parse(). Unwrap the array: pass the SourceDocument directly. Verify the local doc() helper function and simplify or remove it if it only existed to construct single-element arrays."
+  affected_packages = "cli"
+  context = "parse-diagnostic-decoupling.md"
+  files = "apps/cli/src/commands/format.ts"
+  depends_on = single-doc-factory-rewrite
+}
+
+task single-doc-context-factory {
+  description = "Verify packages/language/src/context-factory.ts (createSirenProjectFromParseResult) does not rely on any multi-document concatenation assumption: it should consume parseResult.syntaxDocuments (already an array) and not depend on cross-document offset mapping. Make any necessary updates. Also confirm buildSyntaxDocuments in syntax/builder.ts still receives [document] (a single-element array) and that its signature does not need to change."
+  affected_packages = "language"
+  context = "parse-diagnostic-decoupling.md"
+  files = "packages/language/src/context-factory.ts, packages/language/src/syntax/builder.ts"
+  depends_on = single-doc-factory-rewrite
+}
+
+task single-doc-integration-tests {
+  description = "Rewrite packages/language/test/integration/syntax-documents.test.ts: all test cases that call adapter.parse([docA, docB, ...]) must be split into separate per-document parse calls with per-document result assertions. Any case asserting multi-document concatenation behavior (e.g., resources from two documents in one tree) must be replaced with independent per-document equivalents. Confirm node-adapter.test.ts still passes without change (it already uses single documents)."
+  affected_packages = "language"
+  context = "parse-diagnostic-decoupling.md"
+  files = "packages/language/test/integration/syntax-documents.test.ts, packages/language/test/integration/node-adapter.test.ts"
+  depends_on = single-doc-factory-rewrite
+}
+
+# ---------------------------------------------------------------------------
+# Phase 2 — Per-rule diagnostic runtime
+# Replaces extractErrors() with a small visitor-style runtime that walks
+# the tree once, classifies leaves as MISSING or leaf-ERROR, and dispatches
+# each to registered DiagnosticRule implementations.
+# ---------------------------------------------------------------------------
+
+milestone diagnostic-rule-system {
+  description = "Create packages/language/src/parser/diagnostics.ts with a DiagnosticContext type, DiagnosticRule interface, and runDiagnosticRules() walker. Implement two rules: missingTokenRule (fires on MISSING leaves, maps nodeType to expected-token label) and unexpectedTokenRule (fires on leaf ERROR nodes, scans source for the offending token). Wire these into factory.ts, replacing the extractErrors() call. Rules receive a narrowed, grammar-agnostic context; they do not receive the tree-sitter node and cannot call any tree-traversal APIs."
+  affected_packages = "language"
+  context = "parse-diagnostic-decoupling.md"
+  depends_on = [diag-wire, single-doc-parsing]
+}
+
+task diag-types {
+  description = "Define DiagnosticEventKind ('missing' | 'errorLeaf'), DiagnosticContext (kind, nodeType, sourceText, startByte, endByte, startRow, startColumn, documentSource, documentName), and DiagnosticRule (name, appliesTo, evaluate(ctx): ParseError | null) in the new file packages/language/src/parser/diagnostics.ts. Import ParseError from ./adapter. No runtime logic yet — types only."
+  affected_packages = "language"
+  context = "parse-diagnostic-decoupling.md"
+  files = "packages/language/src/parser/diagnostics.ts"
+  depends_on = single-doc-parsing
+}
+
+task diag-runtime {
+  description = "Implement runDiagnosticRules(root, source, documentName, rules) in packages/language/src/parser/diagnostics.ts. The function walks the tree once: for each node, classify as MISSING leaf (node.isMissing) or leaf-ERROR (type==='ERROR' and no ERROR children). Build a DiagnosticContext for each, dispatch to applicable rules (filter by rule.appliesTo), and collect ParseError results. Preserve the seen-Set deduplication keyed on 'document:line:column:message' to prevent duplicate emissions from the same position."
+  affected_packages = "language"
+  context = "parse-diagnostic-decoupling.md"
+  files = "packages/language/src/parser/diagnostics.ts"
+  depends_on = diag-types
+}
+
+task diag-rule-missing {
+  description = "Implement missingTokenRule in packages/language/src/parser/diagnostics.ts. appliesTo: 'missing'. The rule maps ctx.nodeType to a human-readable expected-token label: '}' -> \"expected '}'\" , ']' -> \"expected ']'\", 'bare_identifier' -> \"expected identifier\" (regression accepted: the prior subcase 'identifier after resource type' required parent traversal which is no longer available), fallback -> \"expected ${ctx.nodeType}\". Emits ParseError with severity 'error', kind 'missing_token', endByte === startByte (MISSING nodes are zero-width)."
+  affected_packages = "language"
+  context = "parse-diagnostic-decoupling.md"
+  files = "packages/language/src/parser/diagnostics.ts"
+  depends_on = diag-types
+}
+
+task diag-rule-unexpected {
+  description = "Implement unexpectedTokenRule in packages/language/src/parser/diagnostics.ts. appliesTo: 'errorLeaf'. Move the scanToken helper from the buildAdapter closure in factory.ts into diagnostics.ts as a module-level function. The rule calls scanToken(ctx.documentSource, ctx.startByte) to extract the offending token text, then emits ParseError with severity 'error', kind 'unexpected_token', message \"unexpected token '${found}'\", found set to the scanned token, expected: [] (no expected-keyword list; regression accepted)."
+  affected_packages = "language"
+  context = "parse-diagnostic-decoupling.md"
+  files = "packages/language/src/parser/diagnostics.ts"
+  depends_on = diag-types
+}
+
+task diag-wire {
+  description = "In packages/language/src/parser/factory.ts, import runDiagnosticRules, missingTokenRule, and unexpectedTokenRule from ./diagnostics. Replace the extractErrors() call in parse() with: `runDiagnosticRules(root, document.content, document.name, [missingTokenRule, unexpectedTokenRule])`. Remove the extractErrors() function definition from factory.ts. ParseError shape is unchanged."
+  affected_packages = "language"
+  context = "parse-diagnostic-decoupling.md"
+  files = "packages/language/src/parser/factory.ts, packages/language/src/parser/diagnostics.ts"
+  depends_on = [diag-runtime, diag-rule-missing, diag-rule-unexpected, single-doc-parsing]
+}
+
+# ---------------------------------------------------------------------------
+# Phase 3 — Test and golden updates
+# ---------------------------------------------------------------------------
+
+task diag-golden-updates {
+  description = "Run the CLI golden test suite (yarn workspace @sirenpm/cli test) after Phase 2 to identify failing golden files. Update goldens in apps/cli/test/expected/ for three categories of behavioral change: (1) duplicate-complete scenarios: was warning 'duplicate complete keyword; expected {', now error 'unexpected token complete'; (2) top-level unexpected token scenarios: was 'unexpected token X; expected task or milestone', now 'unexpected token X'; (3) boundary-spill scenarios: synthetic error at line 1 column 1 of the second document disappears entirely. Use scripts/create-golden.sh to regenerate and review each diff before committing."
+  affected_packages = "cli"
+  context = "parse-diagnostic-decoupling.md"
+  files = "apps/cli/test/expected/"
+  depends_on = diagnostic-rule-system
+}
+
+task diag-snippets-fixtures {
+  description = "Add two fixture files under packages/language/test/fixtures/snippets/ to lock the post-refactor diagnostic message format: (1) a snippet with a missing '}' and/or missing bare_identifier to assert ParseError kind='missing_token' with the expected message; (2) a snippet with a stray token at document top level to assert ParseError kind='unexpected_token' with no expected field. These fixtures prevent future grammar changes from silently changing message text."
+  affected_packages = "language"
+  context = "parse-diagnostic-decoupling.md"
+  files = "packages/language/test/fixtures/snippets/"
+  depends_on = diagnostic-rule-system
+}
+
+# ---------------------------------------------------------------------------
+# Phase 4 — Dead code cleanup
+# ---------------------------------------------------------------------------
+
+task diag-factory-cleanup {
+  description = "Remove dead code from packages/language/src/parser/factory.ts after Phase 2: delete DocumentBoundary interface, findDocumentForByte(), isMissingResourceId(), formatExpectedList(), extractErrors(), the topLevelExpected constant, and the scanToken function if it has been moved to diagnostics.ts. Remove all boundary/boundaries parameters from extractOrigin and all convert* function signatures. After removal, grep packages/language/src for 'boundary|Boundary|extractErrors|isMissingResourceId|formatExpectedList' and confirm zero results."
+  affected_packages = "language"
+  context = "parse-diagnostic-decoupling.md"
+  files = "packages/language/src/parser/factory.ts"
+  depends_on = diagnostic-rule-system
+}
+
+# ---------------------------------------------------------------------------
+# Publishing
+# ---------------------------------------------------------------------------
+
+task diag-publish-language {
+  description = "Publish a new version of @sirenpm/language reflecting the breaking API change (ParserAdapter.parse() signature changed from array to single SourceDocument). Bump the minor version (0.x -> 0.x+1) per semver pre-1.0 convention, or major if the package has reached 1.0. Update the pinned @sirenpm/language dependency in apps/cli/package.json and @sirenpm/core peer-dep range if needed. Announce the breaking change in CHANGELOG or release notes."
+  affected_packages = "language, cli"
+  context = "parse-diagnostic-decoupling.md"
+  depends_on = [diag-golden-updates, diag-snippets-fixtures, diag-factory-cleanup]
+}

@@ -19,30 +19,36 @@ module.exports = grammar({
     /\s/, // whitespace
   ],
 
+  word: ($) => $.bare_identifier,
+
   rules: {
     // Top-level document: zero or more resources
     document: ($) => repeat($.resource),
 
-    // Resource block: task/milestone + identifier + optional 'complete' + body
-    resource: ($) =>
+    resource_type: ($) => choice('task', 'milestone'),
+    resource_modifier: ($) => 'complete',
+
+    resource_header: ($) =>
       seq(
-        field('type', choice('task', 'milestone')),
+        field('type', $.resource_type),
         field('id', $.identifier),
-        optional(field('complete_modifier', 'complete')),
-        '{',
-        field('body', repeat($.attribute)),
-        '}',
+        optional(field('complete_modifier', $.resource_modifier)),
       ),
 
+    block_open: ($) => '{',
+    block_close: ($) => '}',
+
+    block: ($) => seq($.block_open, repeat($.attribute), $.block_close),
+
+    // Resource block: task/milestone + identifier + optional 'complete' + body
+    resource: ($) => seq($.resource_header, field('body', $.block)),
+
     // Identifier: bare or quoted
-    identifier: ($) => choice($.bare_identifier, $.quoted_identifier),
+    identifier: ($) => choice($.bare_identifier, $.string_literal),
 
     // Bare identifier: alphanumeric, underscore, hyphen
     // Must start with letter or underscore
     bare_identifier: ($) => /[a-zA-Z_][a-zA-Z0-9_-]*/,
-
-    // Quoted identifier: anything within double quotes
-    quoted_identifier: ($) => seq('"', /[^"]*/, '"'),
 
     // Attribute: key = value
     attribute: ($) => seq(field('key', $.bare_identifier), '=', field('value', $.expression)),
@@ -53,7 +59,12 @@ module.exports = grammar({
     // Literal values
     literal: ($) => choice($.string_literal, $.number_literal, $.boolean_literal, $.null_literal),
 
-    string_literal: ($) => seq('"', /[^"]*/, '"'),
+    str_open: (_) => '"',
+    str_body: (_) => /[^"\n]*/,
+    str_close: (_) => '"',
+
+    // TODO - support multi-line strings
+    string_literal: ($) => seq($.str_open, field('body', $.str_body), $.str_close),
 
     number_literal: ($) => /[0-9]+(\.[0-9]+)?/,
 

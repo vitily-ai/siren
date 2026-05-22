@@ -27,33 +27,27 @@ task example {
           (string_literal))))))
 
 ==================
-Task and milestone
+Complete modifier
 ==================
 
-task t1 {
-}
-
-milestone m1 {
-}
-
-
-(document
-  (resource
-    (identifier
-      (bare_identifier)))
-  (resource
-    (identifier
-      (bare_identifier))))
-
-
-# Task with complete modifier
 task bar complete {
   description = "done"
 }
 
-# Milestone with complete modifier
-milestone release-1 complete {
-  description = "shipped"
+---
+
+(document
+  (resource
+    type: (resource_type)
+    id: (identifier
+      (bare_identifier))
+    complete_modifier: (resource_modifier)
+    body: (attribute
+      key: (bare_identifier)
+      value: (expression
+        (literal
+          (string_literal))))))
+
 ==================
 Quoted identifier
 ==================
@@ -268,7 +262,11 @@ task "oops {
 ---
 
 (document
-  (ERROR))
+  (ERROR
+    (resource_type)
+    (str_open)
+    (str_body)
+    (block_close)))
 
 ==================
 ERROR: Missing equals sign
