@@ -53,43 +53,37 @@ module.exports = grammar({
     // Attribute: key = value
     attribute: ($) => seq(field('key', $.bare_identifier), '=', field('value', $.expression)),
 
+    // Comments: # or // style
+    comment: ($) => token(choice(seq('#', /.*/), seq('//', /.*/))),
+
+    // EXPRESSIONS and VALUES
+
+    // Every value is a tuple
+    tuple: ($) => seq(choice($._explicit_tuple, $._implicit_tuple)),
+
+    // Recursion currently not supported, so tuples are flat currently
+    _tuple_member: ($) => choice($.literal, $.bare_identifier),
+    _implicit_tuple: ($) => seq($._tuple_member, repeat(seq(',', $._tuple_member))),
+    _explicit_tuple: ($) => seq('[', optional($._implicit_tuple), ']'),
+
+    // Currently, expressions are static, so they just wrap tuples.
     // Expression: any value type
-    expression: ($) => choice($.literal, $.reference, $.array),
+    expression: ($) => choice($.tuple),
 
     // Literal values
-    literal: ($) => choice($.string_literal, $.number_literal, $.boolean_literal, $.null_literal),
+    literal: ($) => choice($.string_literal, $.number_literal, $.boolean_literal),
 
     str_open: (_) => '"',
-    str_body: (_) => /[^"\n]*/,
+    // note: excluding braces is a compromise to make unclosed identifier strings easier to diagnose
+    // however, this is not ideal long-term. the industry solution is a custom scanner.
+    str_body: (_) => /[^"\n{}]*/,
     str_close: (_) => '"',
 
     // TODO - support multi-line strings
-    string_literal: ($) => seq($.str_open, field('body', $.str_body), $.str_close),
+    string_literal: ($) => seq($.str_open, $.str_body, $.str_close),
 
     number_literal: ($) => /[0-9]+(\.[0-9]+)?/,
 
     boolean_literal: ($) => choice('true', 'false'),
-
-    null_literal: ($) => 'null',
-
-    // Reference to another resource (bare identifier only)
-    reference: ($) => $.bare_identifier,
-
-    // Array of expressions
-    array: ($) =>
-      seq(
-        '[',
-        optional(
-          seq(
-            $.expression,
-            repeat(seq(',', $.expression)),
-            optional(','), // trailing comma allowed
-          ),
-        ),
-        ']',
-      ),
-
-    // Comments: # or // style
-    comment: ($) => token(choice(seq('#', /.*/), seq('//', /.*/))),
   },
 });
