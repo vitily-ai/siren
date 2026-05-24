@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cloneAndFreezeResources } from './snapshot';
-import { isArray, isReference, type Resource } from './types';
+import { isReference, type Resource } from './types';
 
 describe('cloneAndFreezeResources', () => {
   it('returns a frozen wrapper array even for empty input', () => {
@@ -9,33 +9,35 @@ describe('cloneAndFreezeResources', () => {
     expect(Object.isFrozen(cloned)).toBe(true);
   });
 
-  it('preserves primitive attribute values verbatim and keeps the raw field', () => {
+  it('preserves primitive attribute values as single-element tuples and exposes no raw field', () => {
     const cloned = cloneAndFreezeResources([
       {
         type: 'task',
         id: 'a',
         status: 'draft',
         attributes: [
-          { key: 'description', value: 'hello', raw: '"hello"' },
-          { key: 'effort', value: 3 },
-          { key: 'enabled', value: true },
-          { key: 'placeholder', value: null },
+          { key: 'description', value: ['hello'] },
+          { key: 'effort', value: [3] },
+          { key: 'enabled', value: [true] },
+          { key: 'placeholder', value: [] },
         ],
       },
     ]);
 
     const cloneAttributes = cloned[0]?.attributes ?? [];
     expect(cloneAttributes.map((attribute) => [attribute.key, attribute.value])).toEqual([
-      ['description', 'hello'],
-      ['effort', 3],
-      ['enabled', true],
-      ['placeholder', null],
+      ['description', ['hello']],
+      ['effort', [3]],
+      ['enabled', [true]],
+      ['placeholder', []],
     ]);
-    expect(cloneAttributes[0]?.raw).toBe('"hello"');
-    expect(cloneAttributes[1]?.raw).toBeUndefined();
+    cloneAttributes.forEach((attribute) => {
+      expect(Object.hasOwn(attribute, 'raw')).toBe(false);
+    });
     expect(cloned[0]?.status).toBe('draft');
     cloneAttributes.forEach((attribute) => {
       expect(Object.isFrozen(attribute)).toBe(true);
+      expect(Object.isFrozen(attribute.value)).toBe(true);
     });
   });
 
@@ -58,20 +60,14 @@ describe('cloneAndFreezeResources', () => {
     expect(resource && 'status' in resource).toBe(true);
   });
 
-  it('clones nested arrays and references so inputs cannot mutate snapshot data', () => {
-    const referenceElement = { kind: 'reference' as const, id: 'task-b' };
-    const innerArray = {
-      kind: 'array' as const,
-      elements: [referenceElement],
-    };
-    const outerArray = {
-      kind: 'array' as const,
-      elements: [innerArray],
-    };
+  it('clones tuples and reference atoms so inputs cannot mutate snapshot data', () => {
+    const referenceA = { kind: 'reference' as const, id: 'task-b' };
+    const referenceB = { kind: 'reference' as const, id: 'task-c' };
+    const tupleValue = [referenceA, referenceB];
     const sourceResource = {
       type: 'task' as const,
       id: 'task-a',
-      attributes: [{ key: 'depends_on', value: outerArray }],
+      attributes: [{ key: 'depends_on', value: tupleValue }],
     };
 
     const cloned = cloneAndFreezeResources([sourceResource]);
@@ -79,34 +75,26 @@ describe('cloneAndFreezeResources', () => {
     expect(clonedAttribute).toBeDefined();
     if (!clonedAttribute) throw new Error('expected attribute');
 
-    const clonedOuter = clonedAttribute.value;
-    expect(isArray(clonedOuter)).toBe(true);
-    if (!isArray(clonedOuter)) throw new Error('expected outer array');
+    const clonedTuple = clonedAttribute.value;
+    expect(clonedTuple).toHaveLength(2);
 
-    const clonedInner = clonedOuter.elements[0];
-    expect(clonedInner).toBeDefined();
-    if (!clonedInner || !isArray(clonedInner)) throw new Error('expected inner array');
+    const clonedRefA = clonedTuple[0];
+    const clonedRefB = clonedTuple[1];
+    if (!clonedRefA || !isReference(clonedRefA)) throw new Error('expected reference 0');
+    if (!clonedRefB || !isReference(clonedRefB)) throw new Error('expected reference 1');
 
-    const clonedReference = clonedInner.elements[0];
-    expect(clonedReference).toBeDefined();
-    if (!clonedReference || !isReference(clonedReference)) {
-      throw new Error('expected reference');
-    }
+    expect(clonedTuple).not.toBe(tupleValue);
+    expect(clonedRefA).not.toBe(referenceA);
+    expect(clonedRefB).not.toBe(referenceB);
+    expect(Object.isFrozen(clonedTuple)).toBe(true);
+    expect(Object.isFrozen(clonedRefA)).toBe(true);
+    expect(Object.isFrozen(clonedRefB)).toBe(true);
 
-    expect(clonedOuter).not.toBe(outerArray);
-    expect(clonedInner).not.toBe(innerArray);
-    expect(clonedReference).not.toBe(referenceElement);
-    expect(Object.isFrozen(clonedOuter)).toBe(true);
-    expect(Object.isFrozen(clonedOuter.elements)).toBe(true);
-    expect(Object.isFrozen(clonedInner)).toBe(true);
-    expect(Object.isFrozen(clonedInner.elements)).toBe(true);
-    expect(Object.isFrozen(clonedReference)).toBe(true);
+    referenceA.id = 'mutated';
+    tupleValue.push({ kind: 'reference', id: 'late-add' });
 
-    referenceElement.id = 'mutated';
-    innerArray.elements.push({ kind: 'reference', id: 'late-add' });
-
-    expect(clonedReference.id).toBe('task-b');
-    expect(clonedInner.elements).toHaveLength(1);
+    expect(clonedRefA.id).toBe('task-b');
+    expect(clonedTuple).toHaveLength(2);
   });
 
   it('freezes the origin clone independently from the input origin', () => {
@@ -148,7 +136,7 @@ describe('cloneAndFreezeResources', () => {
       {
         type: 'task',
         id: 'a',
-        attributes: [{ key: 'description', value: 'x', origin: attributeOrigin }],
+        attributes: [{ key: 'description', value: ['x'], origin: attributeOrigin }],
       },
     ]);
 

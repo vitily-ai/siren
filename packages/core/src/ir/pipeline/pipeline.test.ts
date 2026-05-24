@@ -40,25 +40,25 @@ describe('runIRBuildPipeline', () => {
       {
         type: 'task',
         id: 'has-dangling',
-        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'missing' } }],
+        attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'missing' }] }],
       },
       // cycle → W001
       {
         type: 'task',
         id: 'cycle-a',
-        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'cycle-b' } }],
+        attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'cycle-b' }] }],
       },
       {
         type: 'task',
         id: 'cycle-b',
-        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'cycle-a' } }],
+        attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'cycle-a' }] }],
       },
       // implicit completion candidate
       { type: 'task', id: 'finished', status: 'complete', attributes: [] },
       {
         type: 'milestone',
         id: 'release',
-        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'finished' } }],
+        attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'finished' }] }],
       },
     ];
 
@@ -106,13 +106,10 @@ describe('IR pipeline redundancy regression', () => {
             attributes: [
               {
                 key: 'depends_on',
-                value: {
-                  kind: 'array',
-                  elements: [
-                    { kind: 'reference', id: 'task-a' },
-                    { kind: 'reference', id: 'task-b' },
-                  ],
-                },
+                value: [
+                  { kind: 'reference', id: 'task-a' },
+                  { kind: 'reference', id: 'task-b' },
+                ],
               },
             ],
           },
@@ -151,14 +148,14 @@ describe('IR pipeline implicit-draft-milestone integration (red)', () => {
           {
             type: 'milestone',
             id: 'parent-of-orphan',
-            attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'orphan' } }],
+            attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'orphan' }] }],
           },
           // normal completion path must still work alongside drafting
           { type: 'task', id: 'done', status: 'complete', attributes: [] },
           {
             type: 'milestone',
             id: 'completed-release',
-            attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'done' } }],
+            attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'done' }] }],
           },
         ],
       },

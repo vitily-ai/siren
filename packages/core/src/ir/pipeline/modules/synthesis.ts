@@ -45,17 +45,10 @@ function collectDocumentRootIds(resources: readonly Resource[]): readonly string
 function buildDependsOnAttributes(rootIds: readonly string[]): Resource['attributes'] {
   if (rootIds.length === 0) return [];
 
-  if (rootIds.length === 1) {
-    return [{ key: 'depends_on', value: { kind: 'reference', id: rootIds[0]! } }];
-  }
-
   return [
     {
       key: 'depends_on',
-      value: {
-        kind: 'array',
-        elements: rootIds.map((id) => ({ kind: 'reference', id })),
-      },
+      value: rootIds.map((id) => ({ kind: 'reference' as const, id })),
     },
   ];
 }

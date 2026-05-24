@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { SirenBuilder } from './assembly';
 import { SirenProject } from './context';
 import { SirenCoreError } from './errors';
-import { isArray, isReference, type Origin, type Resource } from './types';
+import { isReference, type Origin, type Resource } from './types';
 
 function origin(document: string, startRow: number): Origin {
   return {
@@ -82,10 +82,7 @@ describe('SirenBuilder', () => {
       attributes: [
         {
           key: 'depends_on',
-          value: {
-            kind: 'array' as const,
-            elements: [{ kind: 'reference' as const, id: 'task-b' }],
-          },
+          value: [{ kind: 'reference' as const, id: 'task-b' }],
           origin: {
             kind: 'range' as const,
             startByte: 0,
@@ -131,23 +128,19 @@ describe('SirenBuilder', () => {
     expect(Object.isFrozen(rawResource.origin)).toBe(true);
 
     const rawValue = rawAttribute.value;
-    expect(rawValue).toBeDefined();
-    if (rawValue === undefined || !isArray(rawValue)) throw new Error('expected array value');
-
+    expect(rawValue).toHaveLength(1);
     expect(rawValue).not.toBe(sourceResource.attributes[0]!.value);
     expect(Object.isFrozen(rawValue)).toBe(true);
-    expect(Object.isFrozen(rawValue.elements)).toBe(true);
 
-    const rawElement = rawValue.elements[0];
-    expect(rawElement).toBeDefined();
+    const rawElement = rawValue[0];
     if (rawElement === undefined || !isReference(rawElement)) {
       throw new Error('expected reference value');
     }
-    expect(rawElement).not.toBe(sourceResource.attributes[0]!.value.elements[0]);
+    expect(rawElement).not.toBe(sourceResource.attributes[0]!.value[0]);
     expect(Object.isFrozen(rawElement)).toBe(true);
 
     sourceResource.id = 'mutated-task';
-    sourceResource.attributes[0]!.value.elements[0]!.id = 'mutated-dependency';
+    sourceResource.attributes[0]!.value[0]!.id = 'mutated-dependency';
 
     expect(rawResource.id).toBe('task-a');
     expect(rawElement.id).toBe('task-b');
@@ -200,19 +193,19 @@ describe('SirenBuilder', () => {
         {
           type: 'task',
           id: 'cycle-a',
-          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'cycle-b' } }],
+          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'cycle-b' }] }],
           origin: origin('cycle-a.siren', 0),
         },
         {
           type: 'task',
           id: 'cycle-b',
-          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'cycle-a' } }],
+          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'cycle-a' }] }],
           origin: origin('cycle-b.siren', 1),
         },
         {
           type: 'task',
           id: 'has-dangling',
-          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'missing' } }],
+          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'missing' }] }],
           origin: origin('dangling.siren', 4),
         },
         {
@@ -231,7 +224,7 @@ describe('SirenBuilder', () => {
         {
           type: 'milestone',
           id: 'release',
-          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'finished-task' } }],
+          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'finished-task' }] }],
           origin: origin('release.siren', 10),
         },
       ],

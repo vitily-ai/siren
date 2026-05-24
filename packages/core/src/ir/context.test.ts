@@ -13,7 +13,7 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           type: 'milestone',
           id: 'has-dangling',
-          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'missing-dep' } }],
+          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'missing-dep' }] }],
         },
       ]);
 
@@ -33,12 +33,12 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           type: 'task',
           id: 'a',
-          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'b' } }],
+          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'b' }] }],
         },
         {
           type: 'task',
           id: 'b',
-          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'a' } }],
+          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'a' }] }],
         },
       ]);
 
@@ -58,7 +58,7 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           type: 'task',
           id: 'has-dangling',
-          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'missing' } }],
+          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'missing' }] }],
           origin: {
             kind: 'range',
             startByte: 0,
@@ -89,7 +89,7 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           type: 'task',
           id: 'a',
-          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'b' } }],
+          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'b' }] }],
           origin: {
             kind: 'range',
             startByte: 0,
@@ -102,7 +102,7 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           type: 'task',
           id: 'b',
-          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'a' } }],
+          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'a' }] }],
           origin: {
             kind: 'range',
             startByte: 0,
@@ -160,7 +160,7 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           type: 'milestone',
           id: 'release',
-          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'shared-task' } }],
+          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'shared-task' }] }],
         },
       ]);
 
@@ -189,17 +189,17 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           type: 'task',
           id: 'cycle-a',
-          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'cycle-b' } }],
+          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'cycle-b' }] }],
         },
         {
           type: 'task',
           id: 'cycle-b',
-          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'cycle-a' } }],
+          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'cycle-a' }] }],
         },
         {
           type: 'task',
           id: 'has-dangling',
-          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'missing' } }],
+          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'missing' }] }],
         },
         { type: 'task', id: 'duplicate', attributes: [] },
         { type: 'task', id: 'duplicate', attributes: [] },
@@ -226,12 +226,12 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           type: 'task',
           id: 'a',
-          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'b' } }],
+          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'b' }] }],
         },
         {
           type: 'task',
           id: 'b',
-          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'a' } }],
+          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'a' }] }],
         },
       ]);
 
@@ -261,15 +261,12 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
           attributes: [
             {
               key: 'depends_on',
-              value: {
-                kind: 'array',
-                elements: [
-                  { kind: 'reference', id: 'done-task' },
-                  { kind: 'reference', id: 'draft-task' },
-                  { kind: 'reference', id: 'draft-milestone' },
-                  { kind: 'reference', id: 'todo-task' },
-                ],
-              },
+              value: [
+                { kind: 'reference', id: 'done-task' },
+                { kind: 'reference', id: 'draft-task' },
+                { kind: 'reference', id: 'draft-milestone' },
+                { kind: 'reference', id: 'todo-task' },
+              ],
             },
           ],
         },
@@ -278,13 +275,15 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
           type: 'task',
           id: 'draft-task',
           status: 'draft',
-          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'draft-child' } }],
+          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'draft-child' }] }],
         },
         {
           type: 'milestone',
           id: 'draft-milestone',
           status: 'draft',
-          attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'milestone-child' } }],
+          attributes: [
+            { key: 'depends_on', value: [{ kind: 'reference', id: 'milestone-child' }] },
+          ],
         },
         { type: 'task', id: 'todo-task', attributes: [] },
         { type: 'task', id: 'draft-child', attributes: [] },
