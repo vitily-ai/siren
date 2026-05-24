@@ -1,13 +1,7 @@
 import type { SirenDocument } from '@sirenpm/core';
 import { Language, type Tree, Parser as TsParser } from 'web-tree-sitter';
-import type {
-  AstResource,
-  LanguageDiagnostic,
-  ParsedDocument,
-  Parser,
-  SirenAst,
-  SourceDocument,
-} from './types';
+import { buildAst } from '../ast/builder';
+import type { LanguageDiagnostic, ParsedDocument, Parser, SirenAst, SourceDocument } from './types';
 
 /**
  * Package-relative WASM URL. This file lives at
@@ -28,8 +22,6 @@ function ensureRuntimeInit(): Promise<void> {
   return runtimeInit;
 }
 
-const EMPTY_RESOURCES: readonly AstResource[] = Object.freeze([]);
-const EMPTY_AST: SirenAst = Object.freeze({ resources: EMPTY_RESOURCES });
 const EMPTY_DIAGNOSTICS: readonly LanguageDiagnostic[] = Object.freeze([]);
 
 function deriveDocumentId(name: string): string {
@@ -40,20 +32,23 @@ function deriveDocumentId(name: string): string {
  * Concrete ParsedDocument.
  *
  * The raw tree-sitter CST is retained on a `#tree` private field for future
- * tasks (`lang-ast-builder`, `lang-format`) to consume. It is intentionally
- * NOT exposed on the public `ParsedDocument` type — downstream services will
- * gain access through internal-only APIs once those tasks land.
+ * tasks (`lang-format`) to consume. It is intentionally NOT exposed on the
+ * public `ParsedDocument` type — downstream services gain access via internal
+ * helpers (e.g. the AST builder is invoked at construction time).
  */
 class ParsedDocumentImpl implements ParsedDocument {
-  readonly ast: SirenAst = EMPTY_AST;
-  readonly diagnostics: readonly LanguageDiagnostic[] = EMPTY_DIAGNOSTICS;
+  readonly ast: SirenAst;
+  readonly diagnostics: readonly LanguageDiagnostic[];
   readonly #source: SourceDocument;
-  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: retained for lang-ast-builder / lang-format.
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: retained for lang-format.
   readonly #tree: Tree | null;
 
   constructor(source: SourceDocument, tree: Tree | null) {
     this.#source = source;
     this.#tree = tree;
+    const built = buildAst(tree, source);
+    this.ast = built.ast;
+    this.diagnostics = built.diagnostics ?? EMPTY_DIAGNOSTICS;
   }
 
   toSirenDocument(): SirenDocument {

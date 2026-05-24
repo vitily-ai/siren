@@ -5,15 +5,23 @@ export interface SourceDocument {
   readonly content: string;
 }
 
-// Placeholder until lang-ast-builder lands the real shape.
-export type AstResource = never;
-
-export interface SirenAst {
-  readonly resources: readonly AstResource[];
-}
+export type {
+  AstAttribute,
+  AstBooleanMember,
+  AstIdentifierMember,
+  AstNumberMember,
+  AstResource,
+  AstResourceKind,
+  AstStatusModifier,
+  AstStringMember,
+  AstTuple,
+  AstTupleMember,
+  SirenAst,
+} from '../ast/types';
 
 export type { LanguageDiagnostic } from '../diagnostics/types';
 
+import type { SirenAst } from '../ast/types';
 import type { LanguageDiagnostic } from '../diagnostics/types';
 
 export interface ParsedDocument {

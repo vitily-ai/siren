@@ -64,7 +64,7 @@ task lang-diagnostics complete {
   depends_on = lang-parser
 }
 
-task lang-ast-builder {
+task lang-ast-builder complete {
   description = "Define Siren AST types (SirenAst, AstResource, AstAttribute, AstTuple, AstTupleMember, AstStatusModifier) — all identifiers are normalized strings, no spans or raw text. Implement the CST-to-AST builder: resources with parse errors are excluded from the AST and emit EL001; valid siblings remain. Status modifier resolution: last recognized wins for Resource.status; WL001 per unrecognized modifier; WL002 when multiple recognized modifiers are collapsed. Recognized set: complete, draft. Wire the builder into ParsedDocument.ast."
   context = "language-ast-pipeline.md"
   files = "packages/language/src/ast/types.ts, packages/language/src/ast/builder.ts"
@@ -105,6 +105,7 @@ task lang-tests {
 
 # Phase 6 — Publication
 
+# Note for manager: dependency order is wrong, lang-cli must depend on this
 task lang-publish {
   description = "Publish updated @sirenpm/language (new public API) and @sirenpm/cli (updated consumer). Both must compile cleanly against the published @sirenpm/core that contains the tuple-first AttributeValue contract. Update package versions. Ensure the WASM artifact is included in the @sirenpm/language npm bundle."
   context = "language-ast-pipeline.md"
