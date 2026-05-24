@@ -6,6 +6,7 @@ import {
   type LanguageDiagnostic,
 } from '../diagnostics/types';
 import type { SourceDocument } from '../parser/types';
+import type { AstOriginMap, RangeOrigin } from './origins';
 import type {
   AstAttribute,
   AstResource,
@@ -19,10 +20,27 @@ import type {
 export interface BuildAstResult {
   readonly ast: SirenAst;
   readonly diagnostics: readonly LanguageDiagnostic[];
+  /**
+   * Package-private map from AST node identity (resource or attribute) to its
+   * source `RangeOrigin`. Not part of the public AST shape — see ADR 0004,
+   * Decision 13.
+   */
+  readonly origins: AstOriginMap;
 }
 
 const EMPTY_AST: SirenAst = Object.freeze({ resources: Object.freeze([]) });
 const EMPTY_DIAGNOSTICS: readonly LanguageDiagnostic[] = Object.freeze([]);
+
+function rangeOriginFromNode(node: Node, documentName: string): RangeOrigin {
+  return {
+    kind: 'range',
+    startByte: node.startIndex,
+    endByte: node.endIndex,
+    startRow: node.startPosition.row,
+    endRow: node.endPosition.row,
+    document: documentName,
+  };
+}
 
 const RECOGNIZED_STATUSES: ReadonlySet<AstStatusModifier> = new Set(['complete', 'draft']);
 
@@ -114,7 +132,7 @@ function buildTupleMember(node: Node): AstTupleMember {
   throw unexpected(`tuple member node type=${node.type}`);
 }
 
-function buildAttribute(attrNode: Node): AstAttribute {
+function buildAttribute(attrNode: Node, documentName: string, origins: AstOriginMap): AstAttribute {
   const keyNode = attrNode.childForFieldName('key');
   const valueNode = attrNode.childForFieldName('value');
   if (!keyNode) throw unexpected('attribute missing `key` field');
@@ -139,13 +157,16 @@ function buildAttribute(attrNode: Node): AstAttribute {
     members.push(buildTupleMember(child));
   }
   const value: AstTuple = { members };
-  return { name: keyNode.text, value };
+  const attribute: AstAttribute = { name: keyNode.text, value };
+  origins.set(attribute, rangeOriginFromNode(attrNode, documentName));
+  return attribute;
 }
 
 function buildResource(
   resourceNode: Node,
   documentName: string,
   diagnostics: LanguageDiagnostic[],
+  origins: AstOriginMap,
 ): AstResource {
   const headerNode = resourceNode.namedChild(0);
   if (!headerNode || headerNode.type !== 'resource_header') {
@@ -194,12 +215,13 @@ function buildResource(
     for (let i = 0; i < bodyNode.namedChildCount; i++) {
       const child = bodyNode.namedChild(i);
       if (!child || child.type !== 'attribute') continue;
-      attributes.push(buildAttribute(child));
+      attributes.push(buildAttribute(child, documentName, origins));
     }
   }
 
   const resource: AstResource =
     status !== undefined ? { kind, id, status, attributes } : { kind, id, attributes };
+  origins.set(resource, rangeOriginFromNode(resourceNode, documentName));
   return freezeResource(resource);
 }
 
@@ -214,7 +236,8 @@ function buildResource(
  *   `nodeType: 'ERROR'`.
  */
 export function buildAst(tree: Tree | null, source: SourceDocument): BuildAstResult {
-  if (!tree) return { ast: EMPTY_AST, diagnostics: EMPTY_DIAGNOSTICS };
+  const origins: AstOriginMap = new WeakMap();
+  if (!tree) return { ast: EMPTY_AST, diagnostics: EMPTY_DIAGNOSTICS, origins };
 
   const root = tree.rootNode;
   const resources: AstResource[] = [];
@@ -241,7 +264,7 @@ export function buildAst(tree: Tree | null, source: SourceDocument): BuildAstRes
         );
         continue;
       }
-      const built = buildResource(child, source.name, diagnostics);
+      const built = buildResource(child, source.name, diagnostics, origins);
       resources.push(built);
       continue;
     }
@@ -252,5 +275,5 @@ export function buildAst(tree: Tree | null, source: SourceDocument): BuildAstRes
   }
 
   const ast: SirenAst = Object.freeze({ resources: Object.freeze(resources) });
-  return { ast, diagnostics: Object.freeze(diagnostics) };
+  return { ast, diagnostics: Object.freeze(diagnostics), origins };
 }

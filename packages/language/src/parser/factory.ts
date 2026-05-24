@@ -1,6 +1,8 @@
 import type { SirenDocument } from '@sirenpm/core';
 import { Language, type Tree, Parser as TsParser } from 'web-tree-sitter';
 import { buildAst } from '../ast/builder';
+import type { AstOriginMap } from '../ast/origins';
+import { decodeAstToSirenDocument } from '../decoder';
 import type { LanguageDiagnostic, ParsedDocument, Parser, SirenAst, SourceDocument } from './types';
 
 /**
@@ -24,10 +26,6 @@ function ensureRuntimeInit(): Promise<void> {
 
 const EMPTY_DIAGNOSTICS: readonly LanguageDiagnostic[] = Object.freeze([]);
 
-function deriveDocumentId(name: string): string {
-  return name.endsWith('.siren') ? name.slice(0, -'.siren'.length) : name;
-}
-
 /**
  * Concrete ParsedDocument.
  *
@@ -42,6 +40,7 @@ class ParsedDocumentImpl implements ParsedDocument {
   readonly #source: SourceDocument;
   // biome-ignore lint/correctness/noUnusedPrivateClassMembers: retained for lang-format.
   readonly #tree: Tree | null;
+  readonly #origins: AstOriginMap;
 
   constructor(source: SourceDocument, tree: Tree | null) {
     this.#source = source;
@@ -49,17 +48,11 @@ class ParsedDocumentImpl implements ParsedDocument {
     const built = buildAst(tree, source);
     this.ast = built.ast;
     this.diagnostics = built.diagnostics ?? EMPTY_DIAGNOSTICS;
+    this.#origins = built.origins;
   }
 
   toSirenDocument(): SirenDocument {
-    // `id` is derived from the source document name with any `.siren` suffix
-    // stripped. The contract test only requires `typeof id === 'string'`; this
-    // mirrors how the CLI already addresses documents by basename.
-    return {
-      id: deriveDocumentId(this.#source.name),
-      resources: [],
-      directive: undefined,
-    };
+    return decodeAstToSirenDocument(this.ast, this.#source, this.#origins);
   }
 
   format(): string {

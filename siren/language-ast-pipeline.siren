@@ -73,11 +73,18 @@ task lang-ast-builder complete {
 
 # Phase 4 — ParsedDocument services (decode gated on tuple-first-core; format independent)
 
-task lang-decode {
+task lang-decode complete {
   description = "Implement ParsedDocument.toSirenDocument() per decode rules in ADR 0004. Every AST tuple decodes to the tuple-first core value shape (bare readonly atom array). Bare identifier tuple members decode as unresolved ResourceReference everywhere. Quoted string tuple members decode as strings, except inside depends_on where they decode as unresolved references. Resolved status from last-recognized modifier populates Resource.status. Document directive is omitted; core absent-directive default enables synthesis. Private CST backreferences may populate origin metadata; the AST stays span-free. Assumes the tuple-first @sirenpm/core AttributeValue contract is in place; use an explicit shim if not yet published."
   context = "language-ast-pipeline.md"
   files = "packages/language/src/decoder/index.ts"
   depends_on = [lang-ast-builder, lang-diagnostics, tuple-first-core]
+}
+
+task lang-range-origin-core-import {
+  description = "Replace the local RangeOrigin shim in packages/language/src/ast/origins.ts with a type import from @sirenpm/core. Requires republishing @sirenpm/core with RangeOrigin re-exported from packages/core/src/index.ts (currently only Origin is re-exported). Non-blocking: the shim is structurally identical to core's RangeOrigin."
+  context = "language-ast-pipeline.md"
+  files = "packages/language/src/ast/origins.ts, packages/core/src/index.ts"
+  depends_on = lang-decode
 }
 
 task lang-format {
