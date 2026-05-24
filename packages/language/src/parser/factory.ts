@@ -3,6 +3,7 @@ import { Language, type Tree, Parser as TsParser } from 'web-tree-sitter';
 import { buildAst } from '../ast/builder';
 import type { AstOriginMap } from '../ast/origins';
 import { decodeAstToSirenDocument } from '../decoder';
+import { formatCst } from '../format/formatter';
 import type { LanguageDiagnostic, ParsedDocument, Parser, SirenAst, SourceDocument } from './types';
 
 /**
@@ -56,8 +57,12 @@ class ParsedDocumentImpl implements ParsedDocument {
   }
 
   format(): string {
-    // Real formatter lands in `lang-format`; until then return source verbatim.
-    return this.#source.content;
+    if (!this.#tree) {
+      throw new Error('Cannot format a document without a parse tree');
+    }
+    const hasErrors =
+      this.diagnostics.some((d) => d.severity === 'error') || this.#tree.rootNode.hasError;
+    return formatCst(this.#tree, this.#source.content, hasErrors);
   }
 }
 

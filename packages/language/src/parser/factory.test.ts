@@ -56,7 +56,7 @@ describe('parser.parse contract', () => {
     expect(sirenDoc.directive).toBeUndefined();
 
     expect(typeof parsed.format).toBe('function');
-    expect(parsed.format()).toBe('task a {}');
+    expect(parsed.format()).toBe('task a {}\n');
   });
 });
 
@@ -75,8 +75,8 @@ describe('parser.parseBatch contract', () => {
       expect(result).toBeDefined();
       expect(typeof result.format).toBe('function');
     }
-    expect(results[0].format()).toBe('task a {}');
-    expect(results[1].format()).toBe('task b {}');
+    expect(results[0].format()).toBe('task a {}\n');
+    expect(results[1].format()).toBe('task b {}\n');
     expect(results[2].format()).toBe('');
   });
 

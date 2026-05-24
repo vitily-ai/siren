@@ -87,7 +87,7 @@ task lang-range-origin-core-import {
   depends_on = lang-decode
 }
 
-task lang-format {
+task lang-format complete {
   description = "Implement ParsedDocument.format() as a canonical, deterministic CST-backed formatter. Refuse (throw or return structured error) when the document has parse errors. Walk the private CST to emit canonical Siren text. Emit all comment tokens in lexical source order as standalone lines with canonical indentation. Do not preserve blank-line counts or trailing-comment placement. Do not introduce a trivia classification system in this phase. The formatter operates on the private CST, not the public AST; no public CST types are introduced."
   context = "language-ast-pipeline.md"
   files = "packages/language/src/format/formatter.ts"
