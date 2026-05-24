@@ -20,6 +20,18 @@ _Avoid_: public build input wrapper
 Decoded task or milestone with `type`, `id`, optional `status`, `attributes`, and optional `origin`.
 _Avoid_: raw syntax node
 
+**Attribute**:
+A key-value pair within a resource. The `value` field is always a `Tuple`, even for scalar values. Optional `origin` metadata supports comment-aware formatting.
+_Avoid_: null values, Attribute.raw (removed field)
+
+**Atom**:
+A single atomic value that can appear in a `Tuple`: `string | number | boolean | ResourceReference`. The `null` value is not an atom; absence is represented by the empty tuple.
+_Avoid_: PrimitiveValue (superseded type)
+
+**Tuple**:
+An ordered, readonly sequence of atoms (`readonly Atom[]`). Scalar attributes are encoded as single-element tuples; list-valued attributes are multi-element tuples; absence is the empty tuple `[]`. The `isReference` guard discriminates atoms, not tuples. The `isArray` and `isPrimitive` guards have been removed.
+_Avoid_: AttributeValue (superseded), ArrayValue (superseded), null for absence
+
 **Origin**:
 Source attribution metadata attached to resources and attributes. Carries byte/row offsets plus optional `document`.
 _Avoid_: display formatting

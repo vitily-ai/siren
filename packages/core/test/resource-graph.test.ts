@@ -10,7 +10,7 @@ function resource(id: string, dependsOn?: string): Resource {
       ? [
           {
             key: 'depends_on',
-            value: { kind: 'reference', id: dependsOn },
+            value: [{ kind: 'reference', id: dependsOn }],
           },
         ]
       : [],

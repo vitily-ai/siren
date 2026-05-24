@@ -1,28 +1,49 @@
 import { describe, expect, it } from 'vitest';
 import { ResourceGraph } from '../ir/resource-graph';
-import type { Resource } from '../ir/types';
+import type { Attribute, Resource, ResourceReference } from '../ir/types';
 
-// helpers to build IR-compatible values
-const ref = (id: string) => ({ kind: 'reference' as const, id });
-const arr = (elements: ReturnType<typeof ref>[]) => ({ kind: 'array' as const, elements });
-const attr = (key: string, value: ReturnType<typeof ref> | ReturnType<typeof arr>) => ({
-  key,
-  value,
-});
-const res = (id: string, dependsOn?: string[] | string): Resource => ({
-  type: 'task',
-  id,
-  attributes: dependsOn
-    ? [
-        attr(
-          'depends_on',
-          Array.isArray(dependsOn) ? arr(dependsOn.map((d) => ref(d))) : ref(dependsOn),
-        ),
-      ]
-    : [],
+// Tuple-first helpers: depends_on is a Tuple (readonly Atom[]) of references.
+// A single-ref dependency is a single-element tuple containing the reference.
+// A multi-ref dependency is a multi-element tuple of references.
+const ref = (id: string): ResourceReference => ({ kind: 'reference', id });
+
+const dependsOnAttr = (deps: string[]): Attribute => ({
+  key: 'depends_on',
+  value: deps.map(ref),
 });
 
-describe('ResourceGraph.getDependencyTree', () => {
+const res = (id: string, dependsOn?: string[] | string): Resource => {
+  const deps =
+    dependsOn === undefined ? undefined : Array.isArray(dependsOn) ? dependsOn : [dependsOn];
+  return {
+    type: 'task',
+    id,
+    attributes: deps ? [dependsOnAttr(deps)] : [],
+  };
+};
+
+describe('ResourceGraph.getDependencyTree (tuple-first depends_on)', () => {
+  it('reads a single-element tuple as a single-ref depends_on', () => {
+    const resources = [res('A', 'B'), res('B')];
+    const tree = ResourceGraph.fromResources(resources).getDependencyTree('A');
+    expect(tree.resource.id).toBe('A');
+    expect(tree.dependencies.map((d) => d.resource.id)).toEqual(['B']);
+  });
+
+  it('reads a multi-element tuple as multi-ref depends_on', () => {
+    const resources = [res('A', ['B', 'C']), res('B'), res('C')];
+    const tree = ResourceGraph.fromResources(resources).getDependencyTree('A');
+    expect(tree.dependencies.map((d) => d.resource.id).sort()).toEqual(['B', 'C']);
+  });
+
+  it('treats an empty tuple depends_on as no dependencies', () => {
+    const resources: Resource[] = [
+      { type: 'task', id: 'A', attributes: [{ key: 'depends_on', value: [] }] },
+    ];
+    const tree = ResourceGraph.fromResources(resources).getDependencyTree('A');
+    expect(tree.dependencies).toHaveLength(0);
+  });
+
   it('builds a simple linear chain', () => {
     const resources = [res('A', 'B'), res('B', 'C'), res('C')];
     const tree = ResourceGraph.fromResources(resources).getDependencyTree('A');
@@ -53,7 +74,6 @@ describe('ResourceGraph.getDependencyTree', () => {
     expect(tree.dependencies).toHaveLength(1);
     const b = tree.dependencies[0]!;
     expect(b.resource.id).toBe('B');
-    // B should be a leaf because predicate returned { include: true, expand: false }
     expect(b.dependencies).toHaveLength(0);
   });
 
@@ -61,7 +81,6 @@ describe('ResourceGraph.getDependencyTree', () => {
     const resources = [res('A', 'B'), res('B', 'C'), res('C', 'A')];
     const tree = ResourceGraph.fromResources(resources).getDependencyTree('A');
 
-    // A -> B -> C -> (cycle node for A)
     expect(tree.resource.id).toBe('A');
     const b = tree.dependencies[0]!;
     expect(b.resource.id).toBe('B');
@@ -74,7 +93,7 @@ describe('ResourceGraph.getDependencyTree', () => {
   });
 
   it('marks missing referenced resources with missing=true', () => {
-    const resources = [res('A', 'X')]; // X not present
+    const resources = [res('A', 'X')];
     const tree = ResourceGraph.fromResources(resources).getDependencyTree('A');
 
     expect(tree.dependencies).toHaveLength(1);
