@@ -1164,12 +1164,21 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@sirenpm/core@npm:0.4.0, @sirenpm/core@npm:^0.4.0":
+"@sirenpm/core@npm:0.4.0":
   version: 0.4.0
   resolution: "@sirenpm/core@npm:0.4.0"
   dependencies:
     deep-freeze-es6: "npm:^5.0.0"
   checksum: 10c0/b611e4a3c29198431f6a1fd75b9ce910e11c81d9ef3e5b5f3f737406c2377add8d05998a13b01931c5071c89a20003c693879dc60103d420bc8016471773222a
+  languageName: node
+  linkType: hard
+
+"@sirenpm/core@npm:^0.5.0":
+  version: 0.5.0
+  resolution: "@sirenpm/core@npm:0.5.0"
+  dependencies:
+    deep-freeze-es6: "npm:^5.0.0"
+  checksum: 10c0/c3b5ccb68f8823cb25730789dc8f68f8c8015d6cc78996648574c5d038fe20a8d68146302ac1d62b316f3551fc39ec1fddb52a5c73e5ce470c84003d3ced9136
   languageName: node
   linkType: hard
 
@@ -1208,7 +1217,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@sirenpm/language@workspace:packages/language"
   dependencies:
-    "@sirenpm/core": "npm:^0.4.0"
+    "@sirenpm/core": "npm:^0.5.0"
     "@types/node": "npm:^25.0.6"
     tree-sitter-cli: "npm:^0.23.2"
     tsup: "npm:^8.3.5"
@@ -1216,7 +1225,7 @@ __metadata:
     vitest: "npm:^4.0.16"
     web-tree-sitter: "npm:0.26.3"
   peerDependencies:
-    "@sirenpm/core": ^0.4.0
+    "@sirenpm/core": ^0.5.0
   languageName: unknown
   linkType: soft
 

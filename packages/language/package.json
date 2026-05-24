@@ -36,13 +36,13 @@
     "node": ">=24.0.0"
   },
   "peerDependencies": {
-    "@sirenpm/core": "^0.4.0"
+    "@sirenpm/core": "^0.5.0"
   },
   "dependencies": {
     "web-tree-sitter": "0.26.3"
   },
   "devDependencies": {
-    "@sirenpm/core": "^0.4.0",
+    "@sirenpm/core": "^0.5.0",
     "@types/node": "^25.0.6",
     "tree-sitter-cli": "^0.23.2",
     "tsup": "^8.3.5",
