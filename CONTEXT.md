@@ -17,7 +17,7 @@ Top-level resource container exported from core for compatibility and source att
 _Avoid_: public build input wrapper
 
 **Resource**:
-Decoded task or milestone with `type`, `id`, `complete`, `attributes`, and optional `origin`.
+Decoded task or milestone with `type`, `id`, optional `status`, `attributes`, and optional `origin`.
 _Avoid_: raw syntax node
 
 **Origin**:
@@ -60,33 +60,39 @@ _Avoid_: undocumented deep imports
 
 ## Language Model
 
-**Parsed Document Model**:
-A source-preserving representation of one parsed Siren source document between the grammar-shaped CST and semantic IR.
-_Avoid_: AST, parsed AST, lossless syntax tree
-
 **Concrete Syntax Tree**:
-The grammar-shaped parse output that mirrors Tree-sitter nodes before Siren-specific source facts are normalized.
-_Avoid_: AST, semantic tree
+The internal Tree-sitter parse tree for Siren source. It is the source-authoritative structure for formatting, comments, raw spelling, and source locations, but it is not a public consumer API.
+_Avoid_: public syntax model, semantic tree
+
+**Siren AST**:
+The public simplified representation of Siren grammatical source for one document. It contains normalized resources, status modifiers, attributes, and tuple members, but no spans, raw text, trivia, comments, dependency resolution, validation, or inferred project semantics.
+_Avoid_: semantic IR, source-preserving tree, parsed document model
+
+**ParsedDocument**:
+The public document wrapper returned by `@sirenpm/language` parsing. It exposes a `Siren AST`, structured language diagnostics, and CST-backed services such as formatting and decoding to core `SirenDocument` input, while keeping the CST private.
+_Avoid_: AST node, project snapshot, language-level project builder
 
 **Semantic IR**:
 The meaning-focused project representation used for resources, dependencies, validation, and utilities.
-_Avoid_: syntax tree, parsed document
+_Avoid_: syntax tree, parsed document, source formatting model
 
-**Syntax Trivia**:
-Source-preserving non-semantic material attached to the Parsed Document Model, such as comments and blank-line separation.
-_Avoid_: semantic metadata, IR comments
+**Language Diagnostic**:
+Structured parse/decode warning or error produced by `@sirenpm/language`, with no embedded human-readable message. Language diagnostics use `WL` and `EL` code families; frontends assemble display text from structured fields.
+_Avoid_: semantic diagnostic, formatted error string
 
-**Source Span**:
-The source-document identity and byte/row range occupied by a parsed Siren construct.
-_Avoid_: diagnostic location, semantic origin
+**Tuple**:
+The normalized AST representation of a Siren attribute expression as an ordered member list. The AST intentionally does not distinguish implicit tuple syntax from explicit bracket syntax.
+_Avoid_: array-only value, scalar-only value
 
 ## Relationships
 
-- A Concrete Syntax Tree is decoded into one Parsed Document Model per source document.
-- One or more Parsed Document Models are semantically decoded into Semantic IR.
-- Parsed Document Models preserve source facts that Semantic IR intentionally excludes.
-- Syntax Trivia belongs to the Parsed Document Model, not to Semantic IR.
-- Each syntax node and Syntax Trivia item has a Source Span.
+- A **Concrete Syntax Tree** is raised into one **Siren AST** per source document.
+- A **ParsedDocument** owns the private **Concrete Syntax Tree** and public **Siren AST** for the same source document.
+- A **Siren AST** is grammatical source data only; dependency resolution, duplicate detection, inferred status, and semantic diagnostics belong to **Semantic IR** in `@sirenpm/core`.
+- Formatting walks the private **Concrete Syntax Tree**, not the **Siren AST**.
+- `ParsedDocument.toSirenDocument()` decodes the **Siren AST** into core `SirenDocument` input and may use private CST backreferences to populate core `origin` metadata.
+- `@sirenpm/language` does not expose a `ParsedDocument` to `SirenProject` helper; callers pass decoded `SirenDocument`s to `SirenBuilder.fromDocuments(...)`.
+- Parsed documents omit core document directives until directive syntax exists in the grammar; absent directives leave core implicit milestone synthesis enabled by default.
 
 ## Example dialogue
 
@@ -98,7 +104,8 @@ _Avoid_: diagnostic location, semantic origin
 - "context" was used to mean both a query-only view and a built snapshot — resolved: `SirenProject` is the built snapshot.
 - "builder input" was used to mean a document wrapper — resolved: `SirenBuilder.fromResources(resources)` accepts raw resources directly.
 - "source" attribution was used to mean a separate constructor argument — resolved: resource origins provide attribution.
-- "document" is overloaded between the core compatibility type and language parsing concepts — resolved: use the package-specific type names in the corresponding layer.
+- "document" is overloaded between core build input and language parsing concepts — resolved: use `SirenDocument` for core input and `ParsedDocument` for the language wrapper.
+- "parsed document model" previously named the language boundary — superseded: use **Siren AST** for the public source tree and **ParsedDocument** for the wrapper.
 
 ---
 
@@ -108,39 +115,46 @@ This context defines the project language for Siren source files, parsed documen
 
 ## Language
 
-**Parsed Document Model**:
-A source-preserving representation of one parsed Siren source document between the grammar-shaped CST and semantic IR.
-_Avoid_: Lossless syntax tree, AST, parsed AST
-
 **Concrete Syntax Tree**:
-The grammar-shaped parse output that mirrors Tree-sitter nodes before Siren-specific source facts are normalized.
-_Avoid_: AST, semantic tree
+The internal Tree-sitter parse tree for Siren source. It is source-authoritative for formatting, comments, raw spelling, and source locations, but remains private to `@sirenpm/language`.
+_Avoid_: Public syntax model, semantic tree
+
+**Siren AST**:
+The public simplified representation of Siren grammatical source for one document. It contains normalized resources, status modifiers, attributes, and tuple members, but no spans, raw text, trivia, comments, dependency resolution, validation, or inferred project semantics.
+_Avoid_: Semantic IR, source-preserving tree, parsed document model
+
+**ParsedDocument**:
+The public document wrapper returned by parsing. It exposes a **Siren AST**, structured language diagnostics, and CST-backed services such as formatting and `SirenDocument` decode, while keeping the **Concrete Syntax Tree** private.
+_Avoid_: AST node, project snapshot, language-level project builder
 
 **Semantic IR**:
 The meaning-focused project representation used for resources, dependencies, validation, and utilities.
-_Avoid_: Syntax tree, parsed document
+_Avoid_: Syntax tree, parsed document, source formatting model
 
-**Syntax Trivia**:
-Source-preserving non-semantic material attached to the Parsed Document Model, such as comments and blank-line separation.
-_Avoid_: Semantic metadata, IR comments
+**Language Diagnostic**:
+Structured parse/decode warning or error produced by `@sirenpm/language`, with no embedded human-readable message. Language diagnostics use `WL` and `EL` code families; frontends assemble display text from structured fields.
+_Avoid_: Semantic diagnostic, formatted error string
 
-**Source Span**:
-The source-document identity and byte/row range occupied by a parsed Siren construct.
-_Avoid_: Diagnostic location, semantic origin
+**Tuple**:
+The normalized AST representation of a Siren attribute expression as an ordered member list. The AST intentionally does not distinguish implicit tuple syntax from explicit bracket syntax.
+_Avoid_: Array-only value, scalar-only value
 
 ## Relationships
 
-- A **Concrete Syntax Tree** is decoded into one **Parsed Document Model** per source document in a parse result.
-- One or more **Parsed Document Models** are semantically decoded into **Semantic IR**.
-- A **Parsed Document Model** preserves source facts that **Semantic IR** intentionally excludes.
-- **Syntax Trivia** belongs to the **Parsed Document Model**, not to **Semantic IR**.
-- Each syntax node and **Syntax Trivia** item has a **Source Span**.
+- A **Concrete Syntax Tree** is raised into one **Siren AST** per source document.
+- A **ParsedDocument** owns the private **Concrete Syntax Tree** and public **Siren AST** for the same source document.
+- A **Siren AST** is grammatical source data only; dependency resolution, duplicate detection, inferred status, and semantic diagnostics belong to **Semantic IR** in `@sirenpm/core`.
+- Formatting walks the private **Concrete Syntax Tree**, not the **Siren AST**.
+- `ParsedDocument.toSirenDocument()` decodes the **Siren AST** into core `SirenDocument` input and may use private CST backreferences to populate core `origin` metadata.
+- `@sirenpm/language` does not expose a `ParsedDocument` to `SirenProject` helper; callers pass decoded `SirenDocument`s to `SirenBuilder.fromDocuments(...)`.
+- Parsed documents omit core document directives until directive syntax exists in the grammar; absent directives leave core implicit milestone synthesis enabled by default.
 
 ## Example Dialogue
 
-> **Dev:** "Should comments be stored on the Semantic IR so formatting can use them?"
-> **Domain expert:** "No — comments are source facts, so they belong to the Parsed Document Model. Semantic IR should only answer what the Siren project means."
+> **Dev:** "Should comments be stored on the Siren AST so formatting can use them?"
+> **Domain expert:** "No — comments are source facts in the Concrete Syntax Tree. The Siren AST should only represent simplified grammatical source, and Semantic IR should only answer what the project means."
 
 ## Flagged Ambiguities
 
-- "lossless syntax tree" and "parsed document model" were both used for the same new layer — resolved: use **Parsed Document Model** as the domain term, with implementation type names chosen separately.
+- "lossless syntax tree" and "parsed document model" were both used for the language boundary — superseded: use **Siren AST** for the public simplified source tree and **ParsedDocument** for the wrapper.
+- "AST" can imply semantics in some ecosystems — resolved here: **Siren AST** is grammatical source data only and does not encode project semantics.

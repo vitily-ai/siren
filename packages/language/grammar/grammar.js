@@ -26,13 +26,13 @@ module.exports = grammar({
     document: ($) => repeat($.resource),
 
     resource_type: ($) => choice('task', 'milestone'),
-    resource_modifier: ($) => 'complete',
+    resource_modifier: ($) => $.identifier,
 
     resource_header: ($) =>
       seq(
         field('type', $.resource_type),
         field('id', $.identifier),
-        optional(field('complete_modifier', $.resource_modifier)),
+        optional(field('status_modifier', repeat($.resource_modifier))),
       ),
 
     block_open: ($) => '{',

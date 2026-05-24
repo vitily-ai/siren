@@ -36,10 +36,10 @@ task example {
       (block_close))))
 
 ==================
-Complete modifier
+Status modifiers
 ==================
 
-task bar complete {
+task bar complete draft arbitrary-stuff "quoted" {
   description = "done"
 }
 
@@ -51,7 +51,21 @@ task bar complete {
       type: (resource_type)
       id: (identifier
         (bare_identifier))
-      complete_modifier: (resource_modifier))
+      status_modifier: (resource_modifier
+        (identifier
+          (bare_identifier)))
+      status_modifier: (resource_modifier
+        (identifier
+          (bare_identifier)))
+      status_modifier: (resource_modifier
+        (identifier
+          (bare_identifier)))
+      status_modifier: (resource_modifier
+        (identifier
+          (string_literal
+            (str_open)
+            (str_body)
+            (str_close)))))
     body: (block
       (block_open)
       (attribute

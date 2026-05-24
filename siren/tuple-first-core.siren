@@ -1,0 +1,7 @@
+# tuple-first-core — Modify @sirenpm/core attribute values to be tuple-first
+# Stub: internal tasks are TBD. This milestone is a prerequisite for lang-decode
+# in siren/language-ast-pipeline.siren.
+
+milestone tuple-first-core {
+  description = "Modify @sirenpm/core's AttributeValue contract so that Attribute.value is a tuple-first bare readonly array of atoms rather than the current scalar/array discriminated union. This is a breaking change to @sirenpm/core and a hard prerequisite for @sirenpm/language implementing ParsedDocument.toSirenDocument() against the new decode rules in docs/adr/0004-siren-ast-language-boundary.md. Internal tasks (type migration, builder updates, consumer updates, publication) to be specified in a follow-up pass."
+}
