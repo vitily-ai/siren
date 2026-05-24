@@ -18,11 +18,41 @@ task lang-docs complete {
 
 # Phase 2 — Parser factory and public API scaffold
 
-task lang-parser {
+task lang-parser complete {
   description = "Implement createParser() with zero-config WASM loading via package-relative new URL() resolution (no consumer-supplied paths). Define SourceDocument input shape ({ name, content }), the ParsedDocument public wrapper, and the parser object. Expose parse(document) returning ParsedDocument and parseBatch(documents) as a per-document loop convenience. ParsedDocument service methods (.ast, .diagnostics, .toSirenDocument(), .format()) may return stub values at this stage; the goal is to establish the public API contract and WASM loading."
   context = "language-ast-pipeline.md"
   files = "packages/language/src/index.ts, packages/language/src/parser/factory.ts, packages/language/src/parser/types.ts"
   depends_on = lang-docs
+}
+
+# Non-blocking follow-ups identified during lang-parser review
+
+task lang-parser-cst-leak-test {
+  description = "Add a runtime test asserting the private CST does not leak on the ParsedDocument surface (e.g. expect((parsed as any).tree).toBeUndefined() and that Object.keys does not include a tree property). Currently privacy is only enforced by #-private class fields; this test pins the contract."
+  context = "language-ast-pipeline.md"
+  files = "packages/language/src/parser/factory.test.ts"
+  depends_on = lang-parser
+}
+
+task lang-parser-language-cache {
+  description = "Cache the loaded tree-sitter Language across createParser() calls in a module-level memoized Promise so repeated parser creation (common in tests) does not re-fetch and re-compile the WASM. Currently only TsParser.init() is memoized; Language.load runs in full per call."
+  context = "language-ast-pipeline.md"
+  files = "packages/language/src/parser/factory.ts"
+  depends_on = lang-parser
+}
+
+task lang-parser-error-tolerance-test {
+  description = "Add a parse-error-tolerant smoke test feeding bogus input (e.g. 'task {') and asserting parser.parse(...) resolves rather than throws. Locks in the error-tolerance contract of the parser surface independent of lang-diagnostics or lang-ast-builder."
+  context = "language-ast-pipeline.md"
+  files = "packages/language/src/parser/factory.test.ts"
+  depends_on = lang-parser
+}
+
+task lang-parser-drop-directive-undefined {
+  description = "Drop the explicit directive: undefined assignment in the toSirenDocument stub — the SirenDocument.directive field is optional and omitting the key is consistent with the absent-directive default. Trivial cleanup."
+  context = "language-ast-pipeline.md"
+  files = "packages/language/src/parser/factory.ts"
+  depends_on = lang-parser
 }
 
 # Phase 3 — AST types, CST-to-AST builder, and diagnostic types (parallel)
