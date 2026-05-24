@@ -57,8 +57,8 @@ task lang-parser-drop-directive-undefined {
 
 # Phase 3 — AST types, CST-to-AST builder, and diagnostic types (parallel)
 
-task lang-diagnostics {
-  description = "Define the structured language diagnostic taxonomy with no embedded display message. Initial codes: EL001 (error — syntax error or malformed resource omitted from AST), WL001 (warning — unrecognized status modifier ignored), WL002 (warning — multiple recognized status modifiers collapsed, last wins). Each type carries contextual fields (resourceId, modifier, recognizedModifiers, resolvedStatus, documentName) so frontends can assemble display text. Export a LanguageDiagnostic discriminated union. Base fields (code, severity, origin) from DiagnosticBase in @sirenpm/core."
+task lang-diagnostics complete {
+  description = "Define the structured language diagnostic taxonomy with no embedded display message. Initial codes: EL001 (error — syntax error or malformed resource omitted from AST), WL001 (warning — unrecognized status modifier ignored), WL002 (warning — multiple recognized status modifiers collapsed, last wins). Each type carries contextual fields (resourcePath (fileName -> resourceId), modifier, recognizedModifiers, resolvedStatus, documentName) so frontends can assemble display text. Export a LanguageDiagnostic discriminated union. Base fields (code, severity, origin) from DiagnosticBase in @sirenpm/core."
   context = "language-ast-pipeline.md"
   files = "packages/language/src/diagnostics/types.ts"
   depends_on = lang-parser

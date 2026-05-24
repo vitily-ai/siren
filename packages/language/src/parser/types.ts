@@ -12,8 +12,9 @@ export interface SirenAst {
   readonly resources: readonly AstResource[];
 }
 
-// Placeholder until lang-diagnostics lands the real union.
-export type LanguageDiagnostic = never;
+export type { LanguageDiagnostic } from '../diagnostics/types';
+
+import type { LanguageDiagnostic } from '../diagnostics/types';
 
 export interface ParsedDocument {
   readonly ast: SirenAst;
