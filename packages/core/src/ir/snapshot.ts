@@ -1,12 +1,12 @@
 import { EPH_ID, getEphId, stampEphId } from './eph-id';
 import { SirenCoreError } from './errors';
 import {
+  type Atom,
   type Attribute,
-  type AttributeValue,
-  isArray,
   isReference,
   type Origin,
   type Resource,
+  type Tuple,
 } from './types';
 
 export function cloneAndFreezeResources(
@@ -51,27 +51,22 @@ function cloneAndFreezeResource(resource: Resource, seenEphIds: Set<string>): Re
 function cloneAndFreezeAttribute(attribute: Attribute): Attribute {
   const clone: Attribute = {
     key: attribute.key,
-    value: cloneAndFreezeAttributeValue(attribute.value),
-    ...(attribute.raw !== undefined ? { raw: attribute.raw } : {}),
+    value: cloneAndFreezeTuple(attribute.value),
     ...(attribute.origin ? { origin: cloneAndFreezeOrigin(attribute.origin) } : {}),
   };
 
   return Object.freeze(clone);
 }
 
-function cloneAndFreezeAttributeValue(value: AttributeValue): AttributeValue {
-  if (isArray(value)) {
-    return Object.freeze({
-      kind: 'array',
-      elements: Object.freeze(value.elements.map(cloneAndFreezeAttributeValue)),
-    });
-  }
+function cloneAndFreezeTuple(tuple: Tuple): Tuple {
+  return Object.freeze(tuple.map(cloneAndFreezeAtom));
+}
 
-  if (isReference(value)) {
-    return Object.freeze({ kind: 'reference', id: value.id });
+function cloneAndFreezeAtom(atom: Atom): Atom {
+  if (isReference(atom)) {
+    return Object.freeze({ kind: 'reference', id: atom.id });
   }
-
-  return value;
+  return atom;
 }
 
 function cloneAndFreezeOrigin(origin: Origin): Origin {

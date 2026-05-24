@@ -11,13 +11,7 @@ function resource(id: string, dependsOn?: readonly string[]): Resource {
         ? [
             {
               key: 'depends_on',
-              value:
-                dependsOn.length === 1
-                  ? { kind: 'reference', id: dependsOn[0] }
-                  : {
-                      kind: 'array',
-                      elements: dependsOn.map((depId) => ({ kind: 'reference', id: depId })),
-                    },
+              value: dependsOn.map((depId) => ({ kind: 'reference' as const, id: depId })),
             },
           ]
         : [],

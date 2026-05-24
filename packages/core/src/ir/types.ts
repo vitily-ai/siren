@@ -30,11 +30,6 @@ export interface SyntheticOrigin {
 export type Origin = RangeOrigin | SyntheticOrigin;
 
 /**
- * Primitive value types that can appear in attributes
- */
-export type PrimitiveValue = string | number | boolean | null;
-
-/**
  * Reference to another resource by ID
  */
 export interface ResourceReference {
@@ -43,29 +38,27 @@ export interface ResourceReference {
 }
 
 /**
- * Array of values (primitives or references)
+ * A single atomic value that can appear inside an attribute Tuple.
+ *
+ * Scalars are encoded directly; references are objects with `kind: 'reference'`.
+ * `null` is intentionally NOT an atom — absence is encoded as the empty Tuple.
  */
-export interface ArrayValue {
-  readonly kind: 'array';
-  readonly elements: readonly AttributeValue[];
-}
+export type Atom = string | number | boolean | ResourceReference;
 
 /**
- * All possible attribute value types
+ * A Tuple is an ordered, readonly sequence of atoms.
+ *
+ * Scalar attribute values are single-element tuples; list-valued attributes
+ * are multi-element tuples; absence is the empty tuple.
  */
-export type AttributeValue = PrimitiveValue | ResourceReference | ArrayValue;
+export type Tuple = readonly Atom[];
 
 /**
- * A single attribute (key-value pair)
+ * A single attribute (key-value pair). The value is always a Tuple.
  */
 export interface Attribute {
   readonly key: string;
-  readonly value: AttributeValue;
-  /**
-   * Optional raw text from the source CST for this attribute's value
-   * (includes quotes for string literals when available).
-   */
-  readonly raw?: string;
+  readonly value: Tuple;
   /**
    * Optional source origin information for comment-aware formatting.
    * This is not semantic and may differ across equivalent parses.
@@ -140,18 +133,8 @@ export interface Document {
 }
 
 /**
- * Type guards for AttributeValue discrimination
+ * Type guard: narrows an Atom to a ResourceReference.
  */
-export function isReference(value: AttributeValue): value is ResourceReference {
-  return (
-    typeof value === 'object' && value !== null && 'kind' in value && value.kind === 'reference'
-  );
-}
-
-export function isArray(value: AttributeValue): value is ArrayValue {
-  return typeof value === 'object' && value !== null && 'kind' in value && value.kind === 'array';
-}
-
-export function isPrimitive(value: AttributeValue): value is PrimitiveValue {
-  return !isReference(value) && !isArray(value);
+export function isReference(atom: Atom): atom is ResourceReference {
+  return typeof atom === 'object' && atom !== null && 'kind' in atom && atom.kind === 'reference';
 }

@@ -1,5 +1,4 @@
-import type { Resource } from '../ir/types';
-import { isArray, isReference } from '../ir/types';
+import { isReference, type Resource } from '../ir/types';
 
 /**
  * Finds a resource by its ID from the given array of resources.
@@ -18,20 +17,19 @@ export function findResourceById(resources: Resource[], id: string): Resource {
 
 /**
  * Extracts dependency IDs from a resource's depends_on attribute.
- * Non-reference values are ignored.
+ *
+ * Reads the tuple-first shape: depends_on is a Tuple (readonly Atom[]) of
+ * atoms. Only reference atoms contribute dependency ids; scalar atoms are
+ * ignored. An absent attribute or an empty tuple both yield no dependencies.
  */
 export function getDependsOn(resource: Resource): string[] {
   const attr = resource.attributes.find((a) => a.key === 'depends_on');
   if (!attr) return [];
-
-  const value = attr.value;
-  if (isReference(value)) {
-    return [value.id];
+  const ids: string[] = [];
+  for (const atom of attr.value) {
+    if (isReference(atom)) ids.push(atom.id);
   }
-  if (isArray(value)) {
-    return value.elements.filter(isReference).map((ref) => ref.id);
-  }
-  return [];
+  return ids;
 }
 
 /**

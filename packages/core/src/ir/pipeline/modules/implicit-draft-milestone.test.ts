@@ -14,13 +14,7 @@ function resource(
     ? [
         {
           key: 'depends_on',
-          value:
-            opts.dependsOn.length === 1
-              ? { kind: 'reference' as const, id: opts.dependsOn[0]! }
-              : {
-                  kind: 'array' as const,
-                  elements: opts.dependsOn.map((d) => ({ kind: 'reference' as const, id: d })),
-                },
+          value: opts.dependsOn.map((d) => ({ kind: 'reference' as const, id: d })),
         },
       ]
     : [];

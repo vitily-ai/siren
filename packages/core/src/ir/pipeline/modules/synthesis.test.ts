@@ -42,13 +42,10 @@ describe('SynthesisModule (red)', () => {
             attributes: [
               {
                 key: 'depends_on',
-                value: {
-                  kind: 'array',
-                  elements: [
-                    { kind: 'reference', id: 'hash-password' },
-                    { kind: 'reference', id: 'validate-token' },
-                  ],
-                },
+                value: [
+                  { kind: 'reference', id: 'hash-password' },
+                  { kind: 'reference', id: 'validate-token' },
+                ],
               },
             ],
           },
@@ -85,7 +82,7 @@ describe('SynthesisModule (red)', () => {
           {
             type: 'milestone',
             id: 'auth',
-            attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'login' } }],
+            attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'login' }] }],
           },
           { type: 'task', id: 'login', attributes: [] },
         ],

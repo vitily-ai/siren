@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { isArray, isReference, type Resource, SirenBuilder, SirenProject, version } from './index';
+import { isReference, type Resource, SirenBuilder, SirenProject, version } from './index';
 
 function buildContext(resources: readonly Resource[]) {
   return SirenBuilder.fromResources(resources, 'adhoc').build();
@@ -86,15 +86,13 @@ function parseFixtureResources(source: string): Resource[] {
     const dependsOnIds = parseFixtureDependsOn(body);
     const attributes: Resource['attributes'] = [];
 
-    if (dependsOnIds.length === 1) {
-      attributes.push({ key: 'depends_on', value: { kind: 'reference', id: dependsOnIds[0]! } });
-    } else if (dependsOnIds.length > 1) {
+    if (dependsOnIds.length > 0) {
       attributes.push({
         key: 'depends_on',
-        value: {
-          kind: 'array',
-          elements: dependsOnIds.map((dependencyId) => ({ kind: 'reference', id: dependencyId })),
-        },
+        value: dependsOnIds.map((dependencyId) => ({
+          kind: 'reference' as const,
+          id: dependencyId,
+        })),
       });
     }
 
@@ -134,9 +132,7 @@ function buildContextFromFixtureDocuments(fixtureSlug: string): SirenProject {
 function dependsOnIds(resource: Resource): string[] {
   const dependsOn = resource.attributes.find((attribute) => attribute.key === 'depends_on');
   if (!dependsOn) return [];
-  if (isReference(dependsOn.value)) return [dependsOn.value.id];
-  if (!isArray(dependsOn.value)) return [];
-  return dependsOn.value.elements.flatMap((element) => (isReference(element) ? [element.id] : []));
+  return dependsOn.value.flatMap((atom) => (isReference(atom) ? [atom.id] : []));
 }
 
 function duplicateIdDiagnosticsFor(context: SirenProject, resourceId: string) {
@@ -205,7 +201,7 @@ describe('@sirenpm/core', () => {
       {
         type: 'milestone',
         id: 'milestone1',
-        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'task1' } }],
+        attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'task1' }] }],
       },
       {
         type: 'task',
@@ -229,7 +225,7 @@ describe('@sirenpm/core', () => {
       {
         type: 'milestone',
         id: 'milestone1',
-        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'task1' } }],
+        attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'task1' }] }],
       },
       task,
     ];
@@ -251,13 +247,10 @@ describe('@sirenpm/core', () => {
         attributes: [
           {
             key: 'depends_on',
-            value: {
-              kind: 'array',
-              elements: [
-                { kind: 'reference', id: 'task1' },
-                { kind: 'reference', id: 'other' },
-              ],
-            },
+            value: [
+              { kind: 'reference', id: 'task1' },
+              { kind: 'reference', id: 'other' },
+            ],
           },
         ],
       },
@@ -273,7 +266,7 @@ describe('@sirenpm/core', () => {
       {
         type: 'milestone',
         id: 'milestone1',
-        attributes: [{ key: 'depends_on', value: { kind: 'reference', id: 'other_milestone' } }],
+        attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'other_milestone' }] }],
       },
       {
         type: 'task',

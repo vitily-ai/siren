@@ -20,12 +20,11 @@ export type {
   ResourceChange,
 } from './patch-result';
 export type {
-  ArrayValue,
+  Atom,
   Attribute,
-  AttributeValue,
-  PrimitiveValue,
   Resource,
   ResourceReference,
   ResourceStatus,
   ResourceType,
+  Tuple,
 } from './types';
