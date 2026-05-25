@@ -6,6 +6,7 @@ import type {
   EL001Diagnostic,
   LanguageDiagnostic,
   ParsedDocument,
+  RangeOrigin,
   WL001Diagnostic,
   WL002Diagnostic,
 } from '../index';
@@ -300,7 +301,7 @@ describe('buildAst — top-level ERROR nodes', () => {
 });
 
 describe('buildAst — origins & diagnostic spans', () => {
-  it('assigns origin spans to EL001 diagnostics', async () => {
+  it('assigns accurate origin spans to EL001 diagnostics', async () => {
     const content = 'task broken { x = }';
     const parsed = await parse(content);
 
@@ -309,19 +310,65 @@ describe('buildAst — origins & diagnostic spans', () => {
     const d = el001[0];
     expect(d.origin).toBeDefined();
     expect(d.origin?.kind).toBe('range');
+
+    const origin = d.origin as RangeOrigin;
+    // EL001 should cover the whole resource node including the parse error
+    expect(content.slice(origin.startByte, origin.endByte)).toBe(content);
+    expect(origin.startRow).toBe(0);
+    expect(origin.endRow).toBe(0);
   });
 
-  it('assigns origin spans to WL001 (unrecognized) and WL002 (multiple modifiers)', async () => {
+  it('assigns accurate origin spans to WL001 (unrecognized) and WL002 (multiple modifiers)', async () => {
     const content = 'task foo blocked complete draft {}';
     const parsed = await parse(content);
 
     const wl001 = byCode(parsed.diagnostics, 'WL001');
     expect(wl001).toHaveLength(1);
-    expect(wl001[0].origin).toBeDefined();
+    const d1 = wl001[0];
+    expect(d1.origin).toBeDefined();
+    expect(d1.origin?.kind).toBe('range');
+    const o1 = d1.origin as RangeOrigin;
+    // WL001 (unrecognized) should cover just the 'blocked' modifier
+    expect(content.slice(o1.startByte, o1.endByte)).toBe('blocked');
 
     const wl002 = byCode(parsed.diagnostics, 'WL002');
     expect(wl002).toHaveLength(1);
-    expect(wl002[0].origin).toBeDefined();
+    const d2 = wl002[0];
+    expect(d2.origin).toBeDefined();
+    expect(d2.origin?.kind).toBe('range');
+    const o2 = d2.origin as RangeOrigin;
+    // WL002 (multiple recognized) should cover the whole header
+    expect(content.slice(o2.startByte, o2.endByte)).toBe('task foo blocked complete draft');
+  });
+
+  it('handles multi-line provenance correctly', async () => {
+    const content = `task broken {
+  x = 
+}
+task ok {}`;
+    const parsed = await parse(content);
+
+    const el001 = byCode(parsed.diagnostics, 'EL001');
+    expect(el001).toHaveLength(1);
+    const origin = el001[0].origin as RangeOrigin;
+
+    expect(origin.startRow).toBe(0);
+    expect(origin.endRow).toBe(2);
+    expect(content.slice(origin.startByte, origin.endByte)).toBe('task broken {\n  x = \n}');
+  });
+
+  it('assigns accurate origin spans to top-level ERROR nodes', async () => {
+    // A top-level error like a stray brace
+    const content = '} task t {}';
+    const parsed = await parse(content);
+
+    const el001 = byCode(parsed.diagnostics, 'EL001');
+    expect(el001).toHaveLength(1);
+    const origin = el001[0].origin as RangeOrigin;
+
+    expect(content.slice(origin.startByte, origin.endByte)).toBe('}');
+    expect(origin.startRow).toBe(0);
+    expect(origin.endRow).toBe(0);
   });
 
   it('populates the internal origin map for valid AST nodes', async () => {
