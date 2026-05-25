@@ -100,7 +100,7 @@ task lang-cli {
   description = "Update the CLI lifecycle to consume the rebuilt @sirenpm/language API. Replace any batch parser.parse(docs[]) calls with per-document loops using parse() or parseBatch(). Replace syntaxDocuments/decodeSyntaxDocuments usage with parsedDoc.toSirenDocument() per document followed by SirenBuilder.fromDocuments(). Replace old formatter calls with parsedDoc.format(). Thread LanguageDiagnostic results into the CLI diagnostic display alongside core semantic diagnostics. The CLI must not call tree-sitter APIs directly."
   context = "language-ast-pipeline.md"
   files = "apps/cli/src/lifecycle/parsing.ts, apps/cli/src/lifecycle/decoding.ts, apps/cli/src/lifecycle/diagnostics.ts, apps/cli/src/commands/format.ts"
-  depends_on = [lang-decode, lang-format]
+  depends_on = [lang-decode, lang-format, lang-publish]
 }
 
 task lang-tests {
@@ -112,9 +112,8 @@ task lang-tests {
 
 # Phase 6 — Publication
 
-# Note for manager: dependency order is wrong, lang-cli must depend on this
 task lang-publish {
   description = "Publish updated @sirenpm/language (new public API) and @sirenpm/cli (updated consumer). Both must compile cleanly against the published @sirenpm/core that contains the tuple-first AttributeValue contract. Update package versions. Ensure the WASM artifact is included in the @sirenpm/language npm bundle."
   context = "language-ast-pipeline.md"
-  depends_on = [lang-cli, lang-tests]
+  depends_on = lang-tests
 }
