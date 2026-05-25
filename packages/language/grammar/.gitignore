@@ -1,8 +1,3 @@
-# Generated C sources (don't commit these)
-src/parser.c
-src/grammar.json
-src/node-types.json
-
 # Build artifacts (keep WASM, ignore native libs)
 *.so
 *.dylib
