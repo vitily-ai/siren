@@ -74,7 +74,7 @@ export async function createParser(): Promise<Parser> {
   // which natively accept `URL`. Passing the `URL` lets web-tree-sitter own
   // the Node-vs-browser branch so we don't have to.
   // TODO convert the URL to a string instead of casting
-  const language = await Language.load(WASM_URL as unknown as string);
+  const language = await Language.load(WASM_URL.pathname);
   // One Parser instance per `createParser()` call; the loaded `Language` is
   // cached on the instance and reused across every `parse` / `parseBatch`.
   const tsParser = new TsParser();
