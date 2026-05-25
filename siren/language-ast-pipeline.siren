@@ -34,7 +34,7 @@ task lang-parser-cst-leak-test complete {
   depends_on = lang-parser
 }
 
-task lang-parser-language-cache {
+task lang-parser-language-cache complete {
   description = "Cache the loaded tree-sitter Language across createParser() calls in a module-level memoized Promise so repeated parser creation (common in tests) does not re-fetch and re-compile the WASM. Currently only TsParser.init() is memoized; Language.load runs in full per call."
   context = "language-ast-pipeline.md"
   files = "packages/language/src/parser/factory.ts"
@@ -48,7 +48,7 @@ task lang-parser-error-tolerance-test complete {
   depends_on = lang-parser
 }
 
-task lang-parser-drop-directive-undefined {
+task lang-parser-drop-directive-undefined complete {
   description = "Drop the explicit directive: undefined assignment in the toSirenDocument stub — the SirenDocument.directive field is optional and omitting the key is consistent with the absent-directive default. Trivial cleanup."
   context = "language-ast-pipeline.md"
   files = "packages/language/src/parser/factory.ts"

@@ -25,6 +25,25 @@ function ensureRuntimeInit(): Promise<void> {
   return runtimeInit;
 }
 
+let languagePromise: Promise<Language> | undefined;
+/**
+ * Loads the tree-sitter Language WASM. This is memoized to avoid repeated
+ * fetch and compilation across `createParser()` calls.
+ */
+function getLanguage(): Promise<Language> {
+  if (!languagePromise) {
+    languagePromise = (async () => {
+      await ensureRuntimeInit();
+      // `Language.load` is typed as `string | Uint8Array`, but its runtime
+      // implementation accepts a `URL` directly: in Node it forwards to
+      // `fs/promises.readFile(input)` and in browsers to `fetch(input)`, both of
+      // which natively accept `URL`.
+      return Language.load(WASM_URL.pathname);
+    })();
+  }
+  return languagePromise;
+}
+
 const EMPTY_DIAGNOSTICS: readonly LanguageDiagnostic[] = Object.freeze([]);
 
 /**
@@ -67,14 +86,7 @@ class ParsedDocumentImpl implements ParsedDocument {
 }
 
 export async function createParser(): Promise<Parser> {
-  await ensureRuntimeInit();
-  // `Language.load` is typed as `string | Uint8Array`, but its runtime
-  // implementation accepts a `URL` directly: in Node it forwards to
-  // `fs/promises.readFile(input)` and in browsers to `fetch(input)`, both of
-  // which natively accept `URL`. Passing the `URL` lets web-tree-sitter own
-  // the Node-vs-browser branch so we don't have to.
-  // TODO convert the URL to a string instead of casting
-  const language = await Language.load(WASM_URL.pathname);
+  const language = await getLanguage();
   // One Parser instance per `createParser()` call; the loaded `Language` is
   // cached on the instance and reused across every `parse` / `parseBatch`.
   const tsParser = new TsParser();
