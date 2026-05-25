@@ -180,23 +180,29 @@ function buildResource(
 
   // Walk header's `resource_modifier` children (in source order) and classify.
   const recognized: AstStatusModifier[] = [];
-  const unrecognized: string[] = [];
   for (let i = 0; i < headerNode.namedChildCount; i++) {
     const child = headerNode.namedChild(i);
     if (!child || child.type !== 'resource_modifier') continue;
     const inner = child.namedChild(0);
     if (!inner) throw unexpected('resource_modifier has no named child');
     const text = identifierText(inner);
-    if (isRecognizedStatus(text)) recognized.push(text);
-    else unrecognized.push(text);
+    if (isRecognizedStatus(text)) {
+      recognized.push(text);
+    } else {
+      diagnostics.push(
+        createWL001({
+          documentName,
+          resourceId: id,
+          modifier: text,
+          origin: rangeOriginFromNode(child, documentName),
+        }),
+      );
+    }
   }
 
   const status: AstStatusModifier | undefined =
     recognized.length > 0 ? recognized[recognized.length - 1] : undefined;
 
-  for (const modifier of unrecognized) {
-    diagnostics.push(createWL001({ documentName, resourceId: id, modifier }));
-  }
   if (recognized.length > 1 && status !== undefined) {
     diagnostics.push(
       createWL002({
@@ -204,6 +210,7 @@ function buildResource(
         resourceId: id,
         recognizedModifiers: recognized,
         resolvedStatus: status,
+        origin: rangeOriginFromNode(headerNode, documentName),
       }),
     );
   }
@@ -260,6 +267,7 @@ export function buildAst(tree: Tree | null, source: SourceDocument): BuildAstRes
             documentName: source.name,
             nodeType: child.type,
             resourceId: salvagedId,
+            origin: rangeOriginFromNode(child, source.name),
           }),
         );
         continue;
@@ -270,7 +278,13 @@ export function buildAst(tree: Tree | null, source: SourceDocument): BuildAstRes
     }
 
     if (child.isError || child.type === 'ERROR') {
-      diagnostics.push(createEL001({ documentName: source.name, nodeType: child.type }));
+      diagnostics.push(
+        createEL001({
+          documentName: source.name,
+          nodeType: child.type,
+          origin: rangeOriginFromNode(child, source.name),
+        }),
+      );
     }
   }
 

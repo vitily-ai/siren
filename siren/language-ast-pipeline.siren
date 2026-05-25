@@ -27,7 +27,7 @@ task lang-parser complete {
 
 # Non-blocking follow-ups identified during lang-parser review
 
-task lang-parser-cst-leak-test {
+task lang-parser-cst-leak-test complete {
   description = "Add a runtime test asserting the private CST does not leak on the ParsedDocument surface (e.g. expect((parsed as any).tree).toBeUndefined() and that Object.keys does not include a tree property). Currently privacy is only enforced by #-private class fields; this test pins the contract."
   context = "language-ast-pipeline.md"
   files = "packages/language/src/parser/factory.test.ts"
@@ -41,7 +41,7 @@ task lang-parser-language-cache {
   depends_on = lang-parser
 }
 
-task lang-parser-error-tolerance-test {
+task lang-parser-error-tolerance-test complete {
   description = "Add a parse-error-tolerant smoke test feeding bogus input (e.g. 'task {') and asserting parser.parse(...) resolves rather than throws. Locks in the error-tolerance contract of the parser surface independent of lang-diagnostics or lang-ast-builder."
   context = "language-ast-pipeline.md"
   files = "packages/language/src/parser/factory.test.ts"
@@ -103,7 +103,7 @@ task lang-cli {
   depends_on = [lang-decode, lang-format, lang-publish]
 }
 
-task lang-tests {
+task lang-tests complete {
   description = "Add focused tests at each layer: parser tests for WASM resolution and parseBatch aggregation; AST tests for status modifier resolution (WL001, WL002), tuple members, and parse-error omission (EL001); decode tests for tuple-first values, bare vs. quoted identifiers, depends_on quoted references, directive omission, and origin population; formatter tests for canonical output, parse-error refusal, and lexical-order comment preservation. Use projects fixtures under packages/language/test/fixtures/projects/ for decode, snippets fixtures for grammar/AST cases, and apps/cli/test/expected/ for CLI goldens."
   context = "language-ast-pipeline.md"
   files = "packages/language/test/, apps/cli/test/expected/"

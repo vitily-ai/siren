@@ -58,6 +58,26 @@ describe('parser.parse contract', () => {
     expect(typeof parsed.format).toBe('function');
     expect(parsed.format()).toBe('task a {}\n');
   });
+
+  it('is error-tolerant: does not throw when parsing a document with errors', async () => {
+    const parser = await createParserFromFactory();
+    // 'task {' is a syntax error (missing id and body)
+    const parsed = await parser.parse({ name: 'error.siren', content: 'task {' });
+    expect(parsed).toBeDefined();
+    expect(parsed.ast.resources).toHaveLength(0);
+    expect(parsed.diagnostics.length).toBeGreaterThan(0);
+    expect(parsed.diagnostics.some((d) => d.code === 'EL001')).toBe(true);
+  });
+
+  it('does not leak the private tree-sitter Tree on the public ParsedDocument surface', async () => {
+    const parser = await createParserFromFactory();
+    const parsed = await parser.parse({ name: 'leak.siren', content: 'task a {}' });
+
+    // Enforced by #-private field in ParsedDocumentImpl
+    expect((parsed as any).tree).toBeUndefined();
+    expect((parsed as any)._tree).toBeUndefined();
+    expect(Object.keys(parsed)).not.toContain('tree');
+  });
 });
 
 describe('parser.parseBatch contract', () => {
