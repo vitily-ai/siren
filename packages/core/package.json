@@ -25,7 +25,7 @@
     "test": "vitest run --reporter=dot --silent",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist *.tsbuildinfo"
+    "clean": "rm -rf dist .tsbuildinfo"
   },
   "engines": {
     "node": ">=24.0.0"

@@ -1194,9 +1194,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@sirenpm/grammar@workspace:packages/language/grammar":
+"@sirenpm/grammar@workspace:packages/language/src/grammar":
   version: 0.0.0-use.local
-  resolution: "@sirenpm/grammar@workspace:packages/language/grammar"
+  resolution: "@sirenpm/grammar@workspace:packages/language/src/grammar"
   dependencies:
     tree-sitter-cli: "npm:^0.26.8"
   languageName: unknown
@@ -1213,7 +1213,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sirenpm/language@workspace:packages/language":
+"@sirenpm/language@workspace:*, @sirenpm/language@workspace:packages/language":
   version: 0.0.0-use.local
   resolution: "@sirenpm/language@workspace:packages/language"
   dependencies:
@@ -1225,6 +1225,16 @@ __metadata:
     web-tree-sitter: "npm:0.26.3"
   peerDependencies:
     "@sirenpm/core": ^0.5.0
+  languageName: unknown
+  linkType: soft
+
+"@sirenpm/smoke-test@workspace:packages/smoke-test":
+  version: 0.0.0-use.local
+  resolution: "@sirenpm/smoke-test@workspace:packages/smoke-test"
+  dependencies:
+    "@sirenpm/core": "workspace:*"
+    "@sirenpm/language": "workspace:*"
+    vitest: "npm:^4.0.16"
   languageName: unknown
   linkType: soft
 

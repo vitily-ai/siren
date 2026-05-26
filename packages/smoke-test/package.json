@@ -1,0 +1,14 @@
+{
+  "name": "@sirenpm/smoke-test",
+  "private": true,
+  "description": "This package serves exclusively to ensure that @sirenpm/language bundles and imports properly. It should not contain any tests that are important to the correctness of the library, and its test should be allowed to fail without breaking the CI build. A bad bundle/import will mean that vitest fails to even start, which is the only failure mode we care about catching.",
+  "type": "module",
+  "scripts": {
+    "test": "yarn workspace @sirenpm/language build && vitest run"
+  },
+  "devDependencies": {
+    "@sirenpm/core": "workspace:*",
+    "@sirenpm/language": "workspace:*",
+    "vitest": "^4.0.16"
+  }
+}

@@ -93,8 +93,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          GRAMMAR=packages/language/grammar/grammar.js
-          WASM=packages/language/grammar/tree-sitter-siren.wasm
+          GRAMMAR=packages/language/src/grammar/grammar.js
+          WASM=packages/language/src/grammar/tree-sitter-siren.wasm
 
           if [ ! -f "$GRAMMAR" ]; then
             echo "::error file=$GRAMMAR::Grammar source missing"; exit 1

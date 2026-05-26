@@ -43,7 +43,7 @@ describe('Language Package Projects Integration', async () => {
     const sirenFiles = collectSirenFiles(sourceDir);
 
     it('collects and parses the project files successfully', async () => {
-      expect(sirenFiles.length).toBeGreaterThanOrEqual(0);
+      expect(sirenFiles.length).toBeGreaterThan(0);
 
       for (const filePath of sirenFiles) {
         const content = fs.readFileSync(filePath, 'utf8');

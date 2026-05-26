@@ -4,18 +4,8 @@ import { buildAst } from '../ast/builder';
 import type { AstOriginMap } from '../ast/origins';
 import { decodeAstToSirenDocument } from '../decoder';
 import { formatCst } from '../format/formatter';
+import { getWasmUrl } from '../grammar/loadHandle';
 import type { LanguageDiagnostic, ParsedDocument, Parser, SirenAst, SourceDocument } from './types';
-
-/**
- * Package-relative WASM URL. This file lives at
- *   packages/language/src/parser/factory.ts
- * and the committed grammar artifact lives at
- *   packages/language/grammar/tree-sitter-siren.wasm
- * so `../../grammar/...` resolves correctly both from source (vitest, ts-node)
- * and from the built `dist/` bundle, since tsup preserves `import.meta.url`
- * and `grammar/tree-sitter-siren.wasm` is shipped via the package `files` array.
- */
-const WASM_URL = new URL('../../grammar/tree-sitter-siren.wasm', import.meta.url);
 
 let runtimeInit: Promise<void> | undefined;
 function ensureRuntimeInit(): Promise<void> {
@@ -34,11 +24,7 @@ function getLanguage(): Promise<Language> {
   if (!languagePromise) {
     languagePromise = (async () => {
       await ensureRuntimeInit();
-      // `Language.load` is typed as `string | Uint8Array`, but its runtime
-      // implementation accepts a `URL` directly: in Node it forwards to
-      // `fs/promises.readFile(input)` and in browsers to `fetch(input)`, both of
-      // which natively accept `URL`.
-      return Language.load(WASM_URL.pathname);
+      return Language.load(getWasmUrl().pathname);
     })();
   }
   return languagePromise;
