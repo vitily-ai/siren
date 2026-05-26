@@ -1,0 +1,64 @@
+# Diagnostic Address & Coordinate Hydration — core-only breakdown.
+#
+# Reshapes @sirenpm/core's DiagnosticBase into a generic, address-bearing
+# envelope and restructures the W001/W002/W003 semantic diagnostics around
+# the new `<documentId>[:<resourceId>[:<attributeKey>]]` address format.
+# Adds a new core error E001 for identifiers containing the reserved `:`.
+#
+# Scope is strictly @sirenpm/core. Language-side work (RangeOrigin relocation,
+# hydrator implementation, ParseDiagnostic reshape) lands with the ADR 0004
+# language rewrite; CLI formatter rewrite + golden refresh follow once the
+# hydrator is available. Both are tracked elsewhere.
+#
+# See docs/adr/0005-diagnostic-address-and-coordinate-hydration.md.
+# Supersedes the prior `diagnostic-base-trivia-slot` debt task — the generic
+# trivia slot is delivered here as `DiagnosticBase<TContext>`.
+
+milestone diag-address {
+  description = "Reshape @sirenpm/core's DiagnosticBase around a required address and typed context, restructure W001/W002/W003 accordingly, introduce E001 for reserved-character identifiers, and delete the obsolete source-attribution module. Per ADR 0005."
+  affected_packages = ["@sirenpm/core"]
+  depends_on = [
+    diag-address-base-shape-red,
+    diag-address-base-shape-green,
+    diag-address-semantic-red,
+    diag-address-semantic-green,
+    diag-address-e001-red,
+    diag-address-e001-green
+  ]
+}
+
+task diag-address-base-shape-red {
+  description = "Add failing core tests asserting the new DiagnosticBase<TContext> shape: required { code, severity, address: string, context: TContext }, no file/line/column/message on the base, and that Origin's base type is { kind: string; address: string } with SyntheticOrigin no longer carrying a `document` field. Covers the trivia-slot motivation previously tracked as diagnostic-base-trivia-slot."
+  affected_packages = ["@sirenpm/core"]
+}
+
+task diag-address-base-shape-green {
+  description = "Implement the DiagnosticBase<TContext> reshape in @sirenpm/core: introduce the generic context slot, make `address` required on the base, and open up Origin into a discriminated base ({ kind: string; address: string }) keeping SyntheticOrigin in core minus its document field. Make the red tests from diag-address-base-shape-red pass without yet touching W001/W002/W003 payloads."
+  details = "RangeOrigin's relocation to @sirenpm/language is an external dependency tracked alongside the ADR 0004 language rewrite; this task only adjusts the core-side base type so RangeOrigin can be defined externally."
+  affected_packages = ["@sirenpm/core"]
+  depends_on = diag-address-base-shape-red
+}
+
+task diag-address-semantic-red {
+  description = "Add failing tests asserting the canonical addresses and typed contexts for W001/W002/W003: W001 circular emits address `<doc>:<firstCycleNode>` with context `{ nodes }`; W002 dangling emits address `<doc>:<res>:depends_on` with context `{ resourceId, resourceType, dependencyId }`; W003 duplicate emits address `<doc>:<dupRes>` with context `{ resourceId, resourceType, precedentAddress }`."
+  affected_packages = ["@sirenpm/core"]
+  depends_on = diag-address-base-shape-green
+}
+
+task diag-address-semantic-green {
+  description = "Rewrite packages/core/src/ir/analysis.ts so W001/W002/W003 emit the address + typed context shapes specified by ADR 0005, and delete packages/core/src/ir/source-attribution.ts (dead code once analysis stops hydrating file/line/column). Make the diag-address-semantic-red tests pass."
+  affected_packages = ["@sirenpm/core"]
+  depends_on = diag-address-semantic-red
+}
+
+task diag-address-e001-red {
+  description = "Add failing tests for the new E001 error: a resource whose identifier contains the reserved `:` character must produce an E001 diagnostic, be dropped from SirenProject.resources, and surface via SirenProject.diagnostics (mirroring the W003 drop-and-surface behavior)."
+  affected_packages = ["@sirenpm/core"]
+  depends_on = diag-address-base-shape-green
+}
+
+task diag-address-e001-green {
+  description = "Implement E001 validation at the SirenBuilder boundary: reject resource ids containing `:`, drop the offending resource from the assembled project, and emit an E001 diagnostic with the appropriate address and context. Make diag-address-e001-red pass."
+  affected_packages = ["@sirenpm/core"]
+  depends_on = diag-address-e001-red
+}

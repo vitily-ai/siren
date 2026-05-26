@@ -33,20 +33,44 @@ An ordered, readonly sequence of atoms (`readonly Atom[]`). Scalar attributes ar
 _Avoid_: AttributeValue (superseded), ArrayValue (superseded), null for absence
 
 **Origin**:
-Source attribution metadata attached to resources and attributes. Carries byte/row offsets plus optional `document`.
-_Avoid_: display formatting
+Base provenance marker attached to resources and attributes. Shape `{ kind: string; address: string }`. `kind` is an open discriminator; `address` is the canonical logical address of the host. Concrete origin kinds extend this base.
+_Avoid_: display formatting, source coordinates on the base
+
+**SyntheticOrigin**:
+Core-owned `Origin` with `kind: 'synthetic'`, marking resources produced by milestone synthesis. Carries no source coordinates.
+_Avoid_: range origin, hand-authored resources
+
+**RangeOrigin**:
+Language-owned `Origin` with `kind: 'range'`, adding `startByte`, `endByte`, `startRow`, `endRow`. Attached by the language decoder to resources/attributes that come from parsed source. Core never narrows to this type.
+_Avoid_: core-side coordinate type
+
+**Diagnostic Address**:
+Required string field on every diagnostic, canonical format `<documentId>[:<resourceId>[:<attributeKey>]]`. Logical, stable, layer-agnostic. The diagnostic's *primary target*; related locations live in the diagnostic's `context`. The colon `:` is reserved and must not appear in document or resource ids — violations emit `E001` at the core boundary.
+_Avoid_: file path, line/column, structured object on the base
+
+**Diagnostic Context (trivia slot)**:
+Generic `TContext` on `DiagnosticBase<TContext>`. Each concrete diagnostic binds it to a typed shape carrying variant-specific data (cycle nodes, dangling target id, precedent address, etc.). Replaces the previous pattern of bolting ad-hoc top-level fields onto the base.
+_Avoid_: untyped bag, top-level variant fields on the base
 
 **DiagnosticBase**:
-Shared diagnostic shape `{ code, severity, file?, line?, column? }` with no `message`.
-_Avoid_: formatted text message
+Shared shape `{ code, severity, address, context: TContext }` for every diagnostic, semantic or parse. No `message`, no `file`, no `line`, no `column`. Generic in `TContext`.
+_Avoid_: formatted text message, source coordinates on the base
 
 **Semantic Diagnostic**:
-Structured warning or error produced by IR analysis of a built `SirenProject`.
+Structured warning or error produced by IR analysis of a built `SirenProject`. Address depth varies (`<doc>:<resource>` for W001/W003, `<doc>:<resource>:<attribute>` for W002).
 _Avoid_: parse diagnostic, incremental delta
 
+**ParseDiagnostic**:
+Language-owned diagnostic produced during parse/decode. Extends `DiagnosticBase<TContext>` with `message: string` and an inline `origin: RangeOrigin` carrying coordinates directly, because no resource exists yet to hydrate from. Address is at least `<documentId>` and may include resource scope when known.
+_Avoid_: semantic diagnostic, address-only diagnostic
+
 **CircularDependencyDiagnostic / DanglingDependencyDiagnostic / DuplicateIdDiagnostic**:
-Core W001/W002/W003 diagnostics exposed from `SirenProject.diagnostics`.
-_Avoid_: ad hoc error strings
+Core W001/W002/W003 diagnostics exposed from `SirenProject.diagnostics`. W001 addresses the first cycle node and carries `{ nodes }` in context. W002 addresses the holding attribute (`<doc>:<res>:depends_on`) and carries `{ resourceId, resourceType, dependencyId }`. W003 addresses the duplicate (second) declaration and carries `{ resourceId, resourceType, precedentAddress }`.
+_Avoid_: ad hoc error strings, top-level position fields
+
+**Diagnostic Hydrator**:
+Language-package utility that maps a logical `address` to `{ file, line?, column? }` by looking up the host resource/attribute on a `SirenProject` and reading its `RangeOrigin`. Owned by `@sirenpm/language` because coordinate concerns belong to the parsing layer. Returns coordinates only when the host has a `RangeOrigin`; `SyntheticOrigin` hosts hydrate to a file/document with no row.
+_Avoid_: core-side hydration, line-without-file output
 
 **IRExporter**:
 Interface for turning a built `SirenProject` back into Siren text.
@@ -65,7 +89,8 @@ _Avoid_: undocumented deep imports
 - `SirenProject.graph` is cached so query helpers reuse the same dependency graph instance.
 - `SirenProject.diagnostics` is the complete semantic snapshot and preserves the current ordering: cycles, dangling dependencies, then duplicates.
 - W001 diagnostics expose dependency cycles; there is no separate public cycles API.
-- Resource and diagnostic file attribution come from `origin.document`; missing attribution leaves `file` undefined.
+- Resource file attribution comes from the document segment of the resource's `origin.address`; missing origin leaves attribution undefined.
+- Diagnostic file/line/column attribution is **derived** by hydrating `diagnostic.address` through the language-owned hydrator; core diagnostics carry no coordinates.
 - `SirenProject` is frozen and is only constructed internally by `SirenBuilder.build()`.
 - The package-root export surface intentionally keeps the public snapshot and helper types together so consumers do not need deep imports.
 - `SirenProject` provides `findResourceById()`, `getMilestoneIds()`, `getTasksByMilestone()`, `getDependencyTree()`, and `diagnostics` for consumers.
@@ -111,6 +136,8 @@ _Avoid_: diagnostic location, semantic origin
 - "builder input" was used to mean a document wrapper — resolved: `SirenBuilder.fromResources(resources)` accepts raw resources directly.
 - "source" attribution was used to mean a separate constructor argument — resolved: resource origins provide attribution.
 - "document" is overloaded between the core compatibility type and language parsing concepts — resolved: use the package-specific type names in the corresponding layer.
+- "diagnostic position" was used to mean both source coordinates (file/line/column) and logical targets — resolved: diagnostics carry a logical **Diagnostic Address**; coordinates are derived by the **Diagnostic Hydrator** in the language package.
+- "origin document" was used as a field on `Origin` and as a separator-free identifier — resolved: the document is the first segment of `Origin.address`; the standalone field is removed.
 
 ---
 
