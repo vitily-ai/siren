@@ -73,14 +73,13 @@ module.exports = grammar({
     // Literal values
     literal: ($) => choice($.string_literal, $.number_literal, $.boolean_literal),
 
-    str_open: (_) => '"',
-    // note: excluding braces is a compromise to make unclosed identifier strings easier to diagnose
-    // however, this is not ideal long-term. the industry solution is a custom scanner.
-    str_body: (_) => /[^"\n{}]*/,
-    str_close: (_) => '"',
-
     // TODO - support multi-line strings
-    string_literal: ($) => seq($.str_open, $.str_body, $.str_close),
+    string_literal: ($) =>
+      seq(
+        alias('"', $.str_open),
+        alias(token.immediate(/[^"\n]*/), $.str_body),
+        alias(token.immediate('"'), $.str_close),
+      ),
 
     number_literal: ($) => /[0-9]+(\.[0-9]+)?/,
 

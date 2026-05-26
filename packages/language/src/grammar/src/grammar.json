@@ -291,28 +291,41 @@
       "type": "STRING",
       "value": "\""
     },
-    "str_body": {
-      "type": "PATTERN",
-      "value": "[^\"\\n{}]*"
-    },
-    "str_close": {
-      "type": "STRING",
-      "value": "\""
-    },
     "string_literal": {
       "type": "SEQ",
       "members": [
         {
-          "type": "SYMBOL",
-          "name": "str_open"
+          "type": "ALIAS",
+          "content": {
+            "type": "STRING",
+            "value": "\""
+          },
+          "named": true,
+          "value": "str_open"
         },
         {
-          "type": "SYMBOL",
-          "name": "str_body"
+          "type": "ALIAS",
+          "content": {
+            "type": "IMMEDIATE_TOKEN",
+            "content": {
+              "type": "PATTERN",
+              "value": "[^\"\\n]*"
+            }
+          },
+          "named": true,
+          "value": "str_body"
         },
         {
-          "type": "SYMBOL",
-          "name": "str_close"
+          "type": "ALIAS",
+          "content": {
+            "type": "IMMEDIATE_TOKEN",
+            "content": {
+              "type": "STRING",
+              "value": "\""
+            }
+          },
+          "named": true,
+          "value": "str_close"
         }
       ]
     },

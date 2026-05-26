@@ -52,8 +52,7 @@ task bad {
                   (string_literal
                     (str_open)
                     (str_body)
-                    (str_close
-                      (MISSING """)))))))
+                    (MISSING str_close))))))
       (block_close))))
 
 ==================
@@ -101,7 +100,9 @@ task no_key {
     body: (block
       (block_open)
       (ERROR
-        (bare_identifier))
+        (str_open)
+            (bare_identifier)
+            (str_open))
       (block_close))))
 
 ==================
@@ -111,21 +112,27 @@ ERROR: Mismatched quotes in identifier
 task "oops {
 }
 
+task "ok" {}
+
 ---
 
 (document
-  (resource
-    (resource_header
-      type: (resource_type)
-      id: (identifier
-        (string_literal
-          (str_open)
-          (str_body)
-          (str_close
-            (MISSING """)))))
-    body: (block
-      (block_open)
-      (block_close))))
+  (ERROR
+        (resource_type)
+        (str_open)
+        (str_body)
+        (block_close))
+      (resource
+        (resource_header
+          type: (resource_type)
+          id: (identifier
+            (string_literal
+              (str_open)
+              (str_body)
+              (str_close))))
+        body: (block
+          (block_open)
+          (block_close))))
 
 ==================
 ERROR: Missing equals sign
@@ -147,7 +154,9 @@ task missing_eq {
         (block_open)
         (ERROR
           (bare_identifier)
-          (bare_identifier))
+          (str_open)
+          (bare_identifier)
+          (str_open))
         (block_close))))
 
 ==================
