@@ -24,6 +24,9 @@ function getLanguage(): Promise<Language> {
   if (!languagePromise) {
     languagePromise = (async () => {
       await ensureRuntimeInit();
+      // only pathname here because tree-sitter breaks if scheme is included
+      // side-note, raw tree-sitter supports URL directly, but the typescript doesn't allow it.
+      // Open issue against tree-sitter?
       return Language.load(getWasmUrl().pathname);
     })();
   }

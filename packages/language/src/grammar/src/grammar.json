@@ -47,23 +47,15 @@
           }
         },
         {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "FIELD",
-              "name": "status_modifier",
-              "content": {
-                "type": "REPEAT",
-                "content": {
-                  "type": "SYMBOL",
-                  "name": "resource_modifier"
-                }
-              }
-            },
-            {
-              "type": "BLANK"
+          "type": "FIELD",
+          "name": "status_modifier",
+          "content": {
+            "type": "REPEAT",
+            "content": {
+              "type": "SYMBOL",
+              "name": "resource_modifier"
             }
-          ]
+          }
         }
       ]
     },

@@ -23,7 +23,7 @@
     "build": "tsup",
     "build:quiet": "tsup --silent",
     "prepack": "yarn run build",
-    "test": "vitest run --reporter=dot --passWithNoTests --silent",
+    "test": "vitest run --reporter=dot --passWithNoTests --silent=true",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist .tsbuildinfo"

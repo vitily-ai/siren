@@ -32,7 +32,7 @@ module.exports = grammar({
       seq(
         field('type', $.resource_type),
         field('id', $.identifier),
-        optional(field('status_modifier', repeat($.resource_modifier))),
+        field('status_modifier', repeat($.resource_modifier)),
       ),
 
     block_open: ($) => '{',
