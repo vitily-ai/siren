@@ -14,8 +14,5 @@ task templates {
 }
 
 task cli-doc-ids {
-  description = "
-    ensure that the doc-id's used to construct documents by CLI are full relative file paths from project root,
-    not just bare document names. this is because core presumes unique document id's, unlike resource id's.
-  "
+  description = "ensure that the doc-id's used to construct documents by CLI are full relative file paths from project root, not just bare document names. this is because core presumes unique document id's, unlike resource id's."
 }
