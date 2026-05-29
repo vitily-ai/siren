@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Siren is a "Project Management as Code" (PMaC) framework for defining projects and milestones using a concise HCL-inspired grammar. This repository is a TypeScript monorepo containing the core library (`SirenBuilder` / `SirenProject` plus IR types and validation), the language package (parser/decoder/exporters), a CLI, and a small web app.
+Siren is a "Project Management as Code" (PMaC) framework for defining projects and milestones using a concise HCL-inspired grammar. This repository is a TypeScript monorepo containing the core library (`SirenBuilder` / `SirenProject` plus IR types and validation), the language package (parser/decoder/exporters), and a CLI as the sole current frontend.
 
 Key technologies
 - TypeScript (tsconfig.json)
@@ -16,7 +16,6 @@ Repository layout (high level)
 - `packages/language/` — tree-sitter grammar, parser factory, CST → IR decoder, exporters/formatters
 - `packages/language/grammar/` — tree-sitter grammar sources and committed WASM binary
 - `apps/cli/` — Node CLI and commands
-- `apps/web/` — small Vite-based web front-end shell
 - `siren/` — example `.siren` files and templates
 
 ## Project Status
@@ -105,7 +104,6 @@ Note that, when iterating across packages, downstream consumers must be rebuilt 
 - The language package (`packages/language`, `@sirenpm/language`) owns the tree-sitter grammar (with the committed `tree-sitter-siren.wasm`), parser factory (`createParser()`), decoder, and exporters. `web-tree-sitter` is a direct runtime dep. Depends on `@sirenpm/core` as a peer dep.
 - The CLI (`apps/cli`, `@sirenpm/cli`) depends on `@sirenpm/core` and `@sirenpm/language` from the npm registry, not via workspace links. Normal builds consume the published packages. `enableTransparentWorkspaces: false` in `.yarnrc.yml` enforces this: only deps declared with the `workspace:` protocol resolve locally.
 - Developers iterating across packages must link manually (e.g. `yarn link` or temporarily swap a dep to `workspace:*`).
-- The web app (`apps/web`) uses `workspace:*` because it is not published.
 - CLI builds live under `apps/cli/` and use tsup (`apps/cli/tsup.config.ts`).
 
 ## Security & Secrets

@@ -9,7 +9,6 @@ Repository layout
 - `packages/core` — Core IR types, semantic validation, `SirenBuilder`, `SirenProject`, and shared utilities. Must remain environment-agnostic (no DOM/Node APIs).
 - `packages/language` — Tree-sitter grammar, parser factory, CST → IR decoder, exporters, and formatters.
 - `packages/language/grammar` — Tree-sitter grammar sources plus the committed WASM binary used by tests and apps.
-- `apps/web` — Vite web frontend shell (currently a minimal placeholder backed by `@sirenpm/core`).
 - `apps/cli` — Node CLI (bundled with `tsup`/`esbuild`).
 - `siren/` — bootstrapped siren project tracking development progress and goals.
 
