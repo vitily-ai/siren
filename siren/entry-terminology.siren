@@ -4,7 +4,12 @@
 milestone entry-terminology {
   description = "Adopt Entry / SirenEntry as the code-facing term across core, language, and CLI while keeping Resource as documentation-only terminology."
   affected_packages = ["@sirenpm/core", "@sirenpm/language", "@sirenpm/cli"]
-  depends_on = [entry-terminology-core, entry-terminology-language, entry-terminology-cli]
+  depends_on = [
+    entry-terminology-core,
+    entry-terminology-language,
+    entry-terminology-cli,
+    entry-terminology-backlog,
+  ]
 }
 
 task entry-terminology-core {
@@ -22,4 +27,8 @@ task entry-terminology-cli {
   description = "Update CLI code and user-facing terminology to consume the renamed package surfaces and use Entry consistently where the CLI refers to semantic project data."
   affected_packages = ["@sirenpm/cli"]
   depends_on = [entry-terminology-core, entry-terminology-language]
+}
+
+task entry-terminology-backlog {
+    description = "Update siren backlog to reflect new terminology"
 }
