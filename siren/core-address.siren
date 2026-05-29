@@ -1,0 +1,52 @@
+milestone core-address {
+    description = "introduce address scheme to core of format `<documentid>[/<resourceid>[/<attributeid]]`"
+}
+
+# Rationale
+- attribution assumes an accurate and reliable client to properly define an Origin
+- RangeOrigin leaks language concerns into core
+- resource-id as THE primary id conflicts with the document-first build model
+- core needs a way to talk about some indexed value without referring to raw sources or the in-memory model
+
+## Goals:
+Serializible route to a value in a valid siren project.
+A value is defined as:
+* A document
+* A resource
+* An attribute
+* Any future representation of value or structure within core
+
+Addresses are not owned by any representation of a Siren project. They are portable.
+Addresses can be assembled by clients, consumers, and end users, with no guarantee that it locates anything.
+Core uniquely can mint addresses via TypeScript. An address minted by core carries a particular guarantee:
+    An address produced by core to consumers is guaranteed to resolve to exactly one value in the compiled representation that minted it.
+    An address therefore is guaranteed to resolve to _at least one_ value in the representation from which the minting IR was built.
+
+### Implementation and Implications
+* The compiled project now retains `SirenDocument` as an internal representation
+* The graph no longer tracks a 'resource by id' map. The graph now tracks a 'document by id' map.
+  * The `findResourceById` method, and ones like it, now deeply scan the document map for a matching resource
+  * Resources in the graph can still reference each other by resource id
+    * The graph still internally deep-scans the document map to find the dependency
+* Resource id's now carry an implied prefix, which is the document id that introduced them
+  * This is NOT persisted in the resource id. It is a derived fact.
+  * Core W003 diagnostic no longer applies to a "same resource id in different documents" scenario
+    * This diagnostic now only applies to the same resource id in the same document
+* Core introduces two new methods:
+  * `addressOf(SirenDocument | Resource | Attribute) -> Address` - method constructs and mints an `Address` indexed to the given value
+    * internally, this simply composes existing get-by-id primitives
+  * `isValidAddress(addressLike: string): addressLike is Address` - returns true if the address is valid for the built project
+* `Resource.origin` is superceded by `Resource.metadata`
+
+
+## Address Examples
+
+arbitrarydocid/my milestone id/depends_on
+adifferentdocid
+anotherdocid/my-task
+
+## In practice
+
+### Diagnostic
+
+# step 1: 
