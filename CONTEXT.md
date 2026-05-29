@@ -2,7 +2,7 @@
 
 Siren defines project plans as version-controlled resources and builds them into an immutable semantic snapshot for querying, validation, and tooling.
 
-## Core Model
+## Core Model and Terminology
 
 **SirenBuilder**:
 Public construction class for `@sirenpm/core`. `SirenBuilder.fromResources(resources)` clones and freezes raw resources, preserves caller order, and `build()` returns a `SirenProject`.
@@ -16,9 +16,13 @@ _Avoid_: query-only view, incremental result
 Top-level resource container exported from core for compatibility and source attribution metadata.
 _Avoid_: public build input wrapper
 
-**Resource**:
+**Entry - `SirenEntry` - Formerly "Resource"**:
 Decoded task or milestone with `type`, `id`, optional `status`, `attributes`, and optional `origin`.
 _Avoid_: raw syntax node
+
+**Resource**:
+Catch-all conventional term referring to any value or structure represented in a project, including Documents, Entries, Attributes, etc.
+_Avoid_: Introducing this term into code
 
 **Attribute**:
 A key-value pair within a resource. The `value` field is always a `Tuple`, even for scalar values. Optional `origin` metadata supports comment-aware formatting.
