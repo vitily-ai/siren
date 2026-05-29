@@ -3,14 +3,14 @@
  * This module is exclusively for testing the `SirenBuilder` initialization, compilation (`.build()`),
  * diagnostic generation, and internal object identity/eph-id mechanics during construction.
  *
- * Mutation APIs and delta computations (`.patch()`, `withResource()`, change modes) belong
+ * Mutation APIs and delta computations (`.patch()`, `withEntry()`, change modes) belong
  * in `assembly-patch.test.ts`.
  */
 import { describe, expect, it } from 'vitest';
 import { SirenBuilder } from './assembly';
 import { SirenProject } from './context';
 import { SirenCoreError } from './errors';
-import { isReference, type Origin, type Resource } from './types';
+import { isReference, type Origin, type SirenEntry } from './types';
 
 function origin(document: string, startRow: number): Origin {
   return {
@@ -37,7 +37,7 @@ function copySymbolProperties(src: object, dst: object): void {
 
 type BuilderDocument = {
   id: string;
-  resources: readonly Resource[];
+  entries: readonly SirenEntry[];
   directive?: {
     implicitMilestone?: boolean;
   };
@@ -50,33 +50,33 @@ type DocumentsBuilderSurface = {
 
 type SirenBuilderDocumentsApi = {
   fromDocuments?: (documents: readonly BuilderDocument[]) => DocumentsBuilderSurface;
-  fromResources?: (
-    resources: readonly Resource[],
+  fromEntries?: (
+    entries: readonly SirenEntry[],
     ephemeralDocumentId: string,
   ) => DocumentsBuilderSurface;
 };
 
 describe('SirenBuilder', () => {
-  it('preserves caller resource order in assembly documents and first-occurrence order in the built context', () => {
-    const resources: Resource[] = [
+  it('preserves caller entry order in assembly documents and first-occurrence order in the built context', () => {
+    const entries: SirenEntry[] = [
       { type: 'task', id: 'second', attributes: [] },
       { type: 'task', id: 'first', attributes: [] },
       { type: 'task', id: 'second', status: 'complete', attributes: [] },
     ];
 
-    const assembly = SirenBuilder.fromResources(resources, 'adhoc');
+    const assembly = SirenBuilder.fromEntries(entries, 'adhoc');
     const context = assembly.build();
 
-    expect(assembly.documents[0]?.resources.map((resource) => resource.id)).toEqual([
+    expect(assembly.documents[0]?.entries.map((entry) => entry.id)).toEqual([
       'second',
       'first',
       'second',
     ]);
-    expect(context.resources.map((resource) => resource.id)).toEqual(['second', 'first']);
+    expect(context.entries.map((entry) => entry.id)).toEqual(['second', 'first']);
   });
 
-  it('clones and recursively freezes assembly resources', () => {
-    const sourceResource = {
+  it('clones and recursively freezes assembly entries', () => {
+    const sourceEntry = {
       type: 'task' as const,
       id: 'task-a',
       attributes: [
@@ -102,52 +102,52 @@ describe('SirenBuilder', () => {
         document: 'project.siren',
       },
     };
-    const assembly = SirenBuilder.fromResources([sourceResource], 'adhoc');
+    const assembly = SirenBuilder.fromEntries([sourceEntry], 'adhoc');
     const rawDocument = assembly.documents[0];
-    const rawResource = rawDocument?.resources[0];
+    const rawEntry = rawDocument?.entries[0];
 
     expect(rawDocument).toBeDefined();
     if (!rawDocument) throw new Error('expected raw document');
-    expect(rawResource).toBeDefined();
-    if (!rawResource) throw new Error('expected raw resource');
-    const rawAttribute = rawResource.attributes[0];
+    expect(rawEntry).toBeDefined();
+    if (!rawEntry) throw new Error('expected raw entry');
+    const rawAttribute = rawEntry.attributes[0];
     expect(rawAttribute).toBeDefined();
     if (!rawAttribute) throw new Error('expected raw attribute');
 
-    expect(rawResource).not.toBe(sourceResource);
-    expect(rawResource.attributes).not.toBe(sourceResource.attributes);
-    expect(rawAttribute).not.toBe(sourceResource.attributes[0]);
+    expect(rawEntry).not.toBe(sourceEntry);
+    expect(rawEntry.attributes).not.toBe(sourceEntry.attributes);
+    expect(rawAttribute).not.toBe(sourceEntry.attributes[0]);
     expect(Object.isFrozen(assembly)).toBe(true);
     expect(Object.isFrozen(assembly.documents)).toBe(true);
     expect(Object.isFrozen(rawDocument)).toBe(true);
-    expect(Object.isFrozen(rawDocument.resources)).toBe(true);
-    expect(Object.isFrozen(rawResource)).toBe(true);
-    expect(Object.isFrozen(rawResource.attributes)).toBe(true);
+    expect(Object.isFrozen(rawDocument.entries)).toBe(true);
+    expect(Object.isFrozen(rawEntry)).toBe(true);
+    expect(Object.isFrozen(rawEntry.attributes)).toBe(true);
     expect(Object.isFrozen(rawAttribute)).toBe(true);
     expect(Object.isFrozen(rawAttribute.origin)).toBe(true);
-    expect(Object.isFrozen(rawResource.origin)).toBe(true);
+    expect(Object.isFrozen(rawEntry.origin)).toBe(true);
 
     const rawValue = rawAttribute.value;
     expect(rawValue).toHaveLength(1);
-    expect(rawValue).not.toBe(sourceResource.attributes[0]!.value);
+    expect(rawValue).not.toBe(sourceEntry.attributes[0]!.value);
     expect(Object.isFrozen(rawValue)).toBe(true);
 
     const rawElement = rawValue[0];
     if (rawElement === undefined || !isReference(rawElement)) {
       throw new Error('expected reference value');
     }
-    expect(rawElement).not.toBe(sourceResource.attributes[0]!.value[0]);
+    expect(rawElement).not.toBe(sourceEntry.attributes[0]!.value[0]);
     expect(Object.isFrozen(rawElement)).toBe(true);
 
-    sourceResource.id = 'mutated-task';
-    sourceResource.attributes[0]!.value[0]!.id = 'mutated-dependency';
+    sourceEntry.id = 'mutated-task';
+    sourceEntry.attributes[0]!.value[0]!.id = 'mutated-dependency';
 
-    expect(rawResource.id).toBe('task-a');
+    expect(rawEntry.id).toBe('task-a');
     expect(rawElement.id).toBe('task-b');
   });
 
   it('builds repeatable non-consuming SirenProject instances', () => {
-    const assembly = SirenBuilder.fromResources(
+    const assembly = SirenBuilder.fromEntries(
       [
         { type: 'task', id: 'task-a', attributes: [] },
         { type: 'task', id: 'task-b', attributes: [] },
@@ -161,34 +161,31 @@ describe('SirenBuilder', () => {
     expect(firstContext).toBeInstanceOf(SirenProject);
     expect(secondContext).toBeInstanceOf(SirenProject);
     expect(firstContext).not.toBe(secondContext);
-    expect(firstContext.resources.map((resource) => resource.id)).toEqual(['task-a', 'task-b']);
-    expect(secondContext.resources.map((resource) => resource.id)).toEqual(['task-a', 'task-b']);
-    expect(assembly.documents[0]?.resources.map((resource) => resource.id)).toEqual([
-      'task-a',
-      'task-b',
-    ]);
+    expect(firstContext.entries.map((entry) => entry.id)).toEqual(['task-a', 'task-b']);
+    expect(secondContext.entries.map((entry) => entry.id)).toEqual(['task-a', 'task-b']);
+    expect(assembly.documents[0]?.entries.map((entry) => entry.id)).toEqual(['task-a', 'task-b']);
   });
 
   it('keeps raw duplicates available while the built context uses first occurrence wins', () => {
-    const resources: Resource[] = [
+    const entries: SirenEntry[] = [
       { type: 'task', id: 'duplicate', attributes: [] },
       { type: 'task', id: 'duplicate', status: 'complete', attributes: [] },
     ];
 
-    const assembly = SirenBuilder.fromResources(resources, 'adhoc');
+    const assembly = SirenBuilder.fromEntries(entries, 'adhoc');
     const context = assembly.build();
 
-    expect(assembly.documents[0]?.resources.map((resource) => resource.status)).toEqual([
+    expect(assembly.documents[0]?.entries.map((entry) => entry.status)).toEqual([
       undefined,
       'complete',
     ]);
-    expect(context.resources).toHaveLength(1);
-    expect(context.resources[0]?.status).toBeUndefined();
+    expect(context.entries).toHaveLength(1);
+    expect(context.entries[0]?.status).toBeUndefined();
     expect(context.diagnostics.filter((diagnostic) => diagnostic.code === 'W003')).toHaveLength(1);
   });
 
   it('builds the expected immutable context output with ordered diagnostics and source attribution', () => {
-    const assembly = SirenBuilder.fromResources(
+    const assembly = SirenBuilder.fromEntries(
       [
         {
           type: 'task',
@@ -233,7 +230,7 @@ describe('SirenBuilder', () => {
 
     const context = assembly.build();
 
-    expect(context.resources.map((resource) => [resource.id, resource.status])).toEqual([
+    expect(context.entries.map((entry) => [entry.id, entry.status])).toEqual([
       ['cycle-a', undefined],
       ['cycle-b', undefined],
       ['has-dangling', undefined],
@@ -252,8 +249,8 @@ describe('SirenBuilder', () => {
       {
         code: 'W002',
         severity: 'warning',
-        resourceId: 'has-dangling',
-        resourceType: 'task',
+        entryId: 'has-dangling',
+        entryType: 'task',
         dependencyId: 'missing',
         file: 'dangling.siren',
         line: 5,
@@ -262,8 +259,8 @@ describe('SirenBuilder', () => {
       {
         code: 'W003',
         severity: 'warning',
-        resourceId: 'finished-task',
-        resourceType: 'task',
+        entryId: 'finished-task',
+        entryType: 'task',
         file: 'complete-second.siren',
         firstFile: 'complete-first.siren',
         firstLine: 7,
@@ -272,7 +269,7 @@ describe('SirenBuilder', () => {
         secondColumn: 0,
       },
     ]);
-    expect(Object.isFrozen(context.resources)).toBe(false);
+    expect(Object.isFrozen(context.entries)).toBe(false);
     expect(Object.isFrozen(context.diagnostics)).toBe(true);
     expect(Object.isFrozen(context.diagnostics[0])).toBe(true);
     expect('cycles' in (context as unknown as Record<string, unknown>)).toBe(false);
@@ -287,7 +284,7 @@ describe('SirenBuilder', () => {
     const documents: BuilderDocument[] = [
       {
         id: 'auth',
-        resources: [{ type: 'task', id: 'login', attributes: [] }],
+        entries: [{ type: 'task', id: 'login', attributes: [] }],
       },
     ];
 
@@ -296,46 +293,46 @@ describe('SirenBuilder', () => {
     expect(builder?.documents).toEqual(documents);
   });
 
-  it('exposes fromResources(resources, documentId) as wrapper over fromDocuments with directive opt-out', () => {
+  it('exposes fromEntries(entries, documentId) as wrapper over fromDocuments with directive opt-out', () => {
     const api = SirenBuilder as unknown as SirenBuilderDocumentsApi;
-    expect(typeof api.fromResources).toBe('function');
-    expect(api.fromResources?.length).toBe(2);
+    expect(typeof api.fromEntries).toBe('function');
+    expect(api.fromEntries?.length).toBe(2);
 
-    const resources: Resource[] = [
+    const entries: SirenEntry[] = [
       { type: 'task', id: 'duplicate', attributes: [] },
       { type: 'task', id: 'duplicate', status: 'complete', attributes: [] },
     ];
 
-    const builder = api.fromResources?.(resources, 'adhoc');
+    const builder = api.fromEntries?.(entries, 'adhoc');
     expect(builder).toBeDefined();
     expect(builder?.documents).toEqual([
       {
         id: 'adhoc',
-        resources,
+        entries,
         directive: { implicitMilestone: false },
       },
     ]);
-    expect(builder?.documents[0]?.resources.map((resource) => resource.id)).toEqual([
+    expect(builder?.documents[0]?.entries.map((entry) => entry.id)).toEqual([
       'duplicate',
       'duplicate',
     ]);
   });
 
-  it('exposes pre-build documents and not pre-build resources', () => {
+  it('exposes pre-build documents and not pre-build entries', () => {
     const api = SirenBuilder as unknown as SirenBuilderDocumentsApi;
-    const builder = api.fromResources?.([{ type: 'task', id: 'task-a', attributes: [] }], 'adhoc');
+    const builder = api.fromEntries?.([{ type: 'task', id: 'task-a', attributes: [] }], 'adhoc');
     expect(builder).toBeDefined();
 
     const preBuildSurface = builder as unknown as Record<string, unknown>;
     expect('documents' in preBuildSurface).toBe(true);
-    expect('resources' in preBuildSurface).toBe(false);
+    expect('entries' in preBuildSurface).toBe(false);
   });
 
   it('throws SirenCoreError when fromDocuments receives duplicate document ids', () => {
     const documents: BuilderDocument[] = [
-      { id: 'auth', resources: [] },
-      { id: 'billing', resources: [] },
-      { id: 'auth', resources: [] },
+      { id: 'auth', entries: [] },
+      { id: 'billing', entries: [] },
+      { id: 'auth', entries: [] },
     ];
 
     expect(() => SirenBuilder.fromDocuments(documents)).toThrowError(SirenCoreError);
@@ -344,18 +341,18 @@ describe('SirenBuilder', () => {
 
   it('throws SirenCoreError when the same eph-id appears in two document slots (different object references)', () => {
     const seed = SirenBuilder.fromDocuments([
-      { id: 'doc-a', resources: [{ type: 'task', id: 't1', attributes: [] }] },
+      { id: 'doc-a', entries: [{ type: 'task', id: 't1', attributes: [] }] },
     ]);
-    const frozenResource = seed.documents[0]!.resources[0]!;
+    const frozenEntry = seed.documents[0]!.entries[0]!;
 
     // Build a distinct object that carries the same eph-id symbol property
-    const imposter: Resource = { ...frozenResource };
-    copySymbolProperties(frozenResource, imposter);
+    const imposter: SirenEntry = { ...frozenEntry };
+    copySymbolProperties(frozenEntry, imposter);
 
     expect(() => {
       SirenBuilder.fromDocuments([
-        { id: 'doc-a', resources: [frozenResource] },
-        { id: 'doc-b', resources: [imposter] }, // different ref, same eph-id
+        { id: 'doc-a', entries: [frozenEntry] },
+        { id: 'doc-b', entries: [imposter] }, // different ref, same eph-id
       ]);
     }).toThrow(SirenCoreError);
   });
@@ -363,19 +360,19 @@ describe('SirenBuilder', () => {
   // -------------------------------------------------------------------------
   // Eph-id stamping during construction
   // These tests document when the non-enumerable eph-id symbol IS and IS NOT
-  // applied to resources, using only observable surface (Object.getOwnPropertySymbols).
+  // applied to entries, using only observable surface (Object.getOwnPropertySymbols).
   // -------------------------------------------------------------------------
 
   describe('eph-id stamping during construction', () => {
-    it('fresh resource has no symbol properties before ingestion', () => {
-      const fresh: Resource = { type: 'task', id: 't1', attributes: [] };
+    it('fresh entry has no symbol properties before ingestion', () => {
+      const fresh: SirenEntry = { type: 'task', id: 't1', attributes: [] };
       expect(Object.getOwnPropertySymbols(fresh)).toHaveLength(0);
     });
 
-    it('resource has exactly one non-enumerable symbol property after ingestion', () => {
-      const fresh: Resource = { type: 'task', id: 't1', attributes: [] };
-      const b = SirenBuilder.fromDocuments([{ id: 'doc', resources: [fresh] }]);
-      const ingested = b.documents[0]!.resources[0]!;
+    it('entry has exactly one non-enumerable symbol property after ingestion', () => {
+      const fresh: SirenEntry = { type: 'task', id: 't1', attributes: [] };
+      const b = SirenBuilder.fromDocuments([{ id: 'doc', entries: [fresh] }]);
+      const ingested = b.documents[0]!.entries[0]!;
 
       const syms = Object.getOwnPropertySymbols(ingested);
       expect(syms).toHaveLength(1);
@@ -384,38 +381,38 @@ describe('SirenBuilder', () => {
       expect(descriptor?.enumerable).toBe(false);
     });
 
-    it('spread of an ingested resource drops the eph-id symbol', () => {
+    it('spread of an ingested entry drops the eph-id symbol', () => {
       const b = SirenBuilder.fromDocuments([
-        { id: 'doc', resources: [{ type: 'task', id: 't1', attributes: [] }] },
+        { id: 'doc', entries: [{ type: 'task', id: 't1', attributes: [] }] },
       ]);
-      const ingested = b.documents[0]!.resources[0]!;
+      const ingested = b.documents[0]!.entries[0]!;
 
       const spread = { ...ingested };
       expect(Object.getOwnPropertySymbols(spread)).toHaveLength(0);
     });
 
-    it('JSON round-trip of an ingested resource drops the eph-id symbol', () => {
+    it('JSON round-trip of an ingested entry drops the eph-id symbol', () => {
       const b = SirenBuilder.fromDocuments([
-        { id: 'doc', resources: [{ type: 'task', id: 't1', attributes: [] }] },
+        { id: 'doc', entries: [{ type: 'task', id: 't1', attributes: [] }] },
       ]);
-      const ingested = b.documents[0]!.resources[0]!;
+      const ingested = b.documents[0]!.entries[0]!;
 
-      const roundTripped = JSON.parse(JSON.stringify(ingested)) as Resource;
+      const roundTripped = JSON.parse(JSON.stringify(ingested)) as SirenEntry;
       expect(Object.getOwnPropertySymbols(roundTripped)).toHaveLength(0);
     });
 
-    it('re-ingesting a previously-frozen resource preserves the same eph-id value', () => {
+    it('re-ingesting a previously-frozen entry preserves the same eph-id value', () => {
       const b1 = SirenBuilder.fromDocuments([
-        { id: 'doc', resources: [{ type: 'task', id: 't1', attributes: [] }] },
+        { id: 'doc', entries: [{ type: 'task', id: 't1', attributes: [] }] },
       ]);
-      const frozen = b1.documents[0]!.resources[0]!;
+      const frozen = b1.documents[0]!.entries[0]!;
       const frozenSymbols = Object.getOwnPropertySymbols(frozen);
       expect(frozenSymbols).toHaveLength(1);
       const [sym] = frozenSymbols;
       expect(sym).toBeDefined();
 
-      const b2 = SirenBuilder.fromDocuments([{ id: 'doc', resources: [frozen] }]);
-      const reIngested = b2.documents[0]!.resources[0]!;
+      const b2 = SirenBuilder.fromDocuments([{ id: 'doc', entries: [frozen] }]);
+      const reIngested = b2.documents[0]!.entries[0]!;
 
       const reIngestedSymbols = Object.getOwnPropertySymbols(reIngested);
       expect(reIngestedSymbols).toHaveLength(1);
@@ -427,13 +424,13 @@ describe('SirenBuilder', () => {
       );
     });
 
-    it('two independent ingestions of the same fresh resource produce different eph-ids', () => {
-      const fresh: Resource = { type: 'task', id: 't1', attributes: [] };
-      const b1 = SirenBuilder.fromDocuments([{ id: 'doc', resources: [fresh] }]);
-      const b2 = SirenBuilder.fromDocuments([{ id: 'doc', resources: [fresh] }]);
+    it('two independent ingestions of the same fresh entry produce different eph-ids', () => {
+      const fresh: SirenEntry = { type: 'task', id: 't1', attributes: [] };
+      const b1 = SirenBuilder.fromDocuments([{ id: 'doc', entries: [fresh] }]);
+      const b2 = SirenBuilder.fromDocuments([{ id: 'doc', entries: [fresh] }]);
 
-      const r1 = b1.documents[0]!.resources[0]!;
-      const r2 = b2.documents[0]!.resources[0]!;
+      const r1 = b1.documents[0]!.entries[0]!;
+      const r2 = b2.documents[0]!.entries[0]!;
 
       const [sym1] = Object.getOwnPropertySymbols(r1);
       const [sym2] = Object.getOwnPropertySymbols(r2);
@@ -444,9 +441,9 @@ describe('SirenBuilder', () => {
       );
     });
 
-    it('fromResources also stamps eph-ids on ingested resources', () => {
-      const b = SirenBuilder.fromResources([{ type: 'task', id: 't1', attributes: [] }], 'adhoc');
-      const ingested = b.documents[0]!.resources[0]!;
+    it('fromEntries also stamps eph-ids on ingested entries', () => {
+      const b = SirenBuilder.fromEntries([{ type: 'task', id: 't1', attributes: [] }], 'adhoc');
+      const ingested = b.documents[0]!.entries[0]!;
       expect(Object.getOwnPropertySymbols(ingested)).toHaveLength(1);
     });
   });

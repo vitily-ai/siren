@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { ResourceGraph } from '../src/ir/resource-graph';
-import type { Resource } from '../src/ir/types';
+import { EntryGraph } from '../src/ir/entry-graph';
+import type { SirenEntry } from '../src/ir/types';
 
-function resource(id: string, dependsOn?: string): Resource {
+function entry(id: string, dependsOn?: string): SirenEntry {
   return {
     type: 'task',
     id,
@@ -17,14 +17,14 @@ function resource(id: string, dependsOn?: string): Resource {
   };
 }
 
-describe('ResourceGraph.dfs', () => {
+describe('EntryGraph.dfs', () => {
   it('handles deep chains without overflowing the stack', () => {
     const chainLength = 25_000;
-    const resources = Array.from({ length: chainLength + 1 }, (_, index) =>
-      resource(`n${index}`, index < chainLength ? `n${index + 1}` : undefined),
+    const entries = Array.from({ length: chainLength + 1 }, (_, index) =>
+      entry(`n${index}`, index < chainLength ? `n${index + 1}` : undefined),
     );
 
-    const graph = ResourceGraph.fromResources(resources);
+    const graph = EntryGraph.fromEntries(entries);
     let visitedCount = 0;
     let lastNode = '';
 
@@ -44,9 +44,9 @@ describe('ResourceGraph.dfs', () => {
       getSuccessors(id: string): string[] {
         return id === 'root' ? ['child', undefined as unknown as string] : [];
       },
-    } as unknown as ResourceGraph;
+    } as unknown as EntryGraph;
 
-    ResourceGraph.prototype.dfs.call(fakeGraph, 'root', (node) => {
+    EntryGraph.prototype.dfs.call(fakeGraph, 'root', (node) => {
       visited.push(node);
       return true;
     });
@@ -55,10 +55,10 @@ describe('ResourceGraph.dfs', () => {
   });
 
   it('stops expanding once maxDepth is reached', () => {
-    const resources = [resource('A', 'B'), resource('B', 'C'), resource('C')];
+    const entries = [entry('A', 'B'), entry('B', 'C'), entry('C')];
     const visited: Array<{ node: string; depth: number; path: string[] }> = [];
 
-    ResourceGraph.fromResources(resources).dfs(
+    EntryGraph.fromEntries(entries).dfs(
       'A',
       (node, path, depth) => {
         visited.push({ node, depth, path });

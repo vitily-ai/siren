@@ -1,4 +1,4 @@
-import type { Resource } from './types';
+import type { SirenEntry } from './types';
 
 export interface SirenDocumentDirective {
   readonly implicitMilestone?: boolean;
@@ -9,6 +9,6 @@ export interface SirenDocumentDirective {
  */
 export interface SirenDocument {
   readonly id: string;
-  readonly resources: readonly Resource[];
+  readonly entries: readonly SirenEntry[];
   readonly directive?: SirenDocumentDirective;
 }

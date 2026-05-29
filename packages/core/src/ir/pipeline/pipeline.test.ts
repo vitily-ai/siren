@@ -1,19 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
 import { SirenBuilder } from '../assembly';
-import { ResourceGraph } from '../resource-graph';
-import type { Resource } from '../types';
+import { EntryGraph } from '../entry-graph';
+import type { SirenEntry } from '../types';
 import { runIRBuildPipeline } from './index';
 
 type BuilderDocument = {
   id: string;
-  resources: readonly Resource[];
+  entries: readonly SirenEntry[];
   directive?: {
     implicitMilestone?: boolean;
   };
 };
 
 type BuildOutput = {
-  readonly resources: readonly Resource[];
+  readonly entries: readonly SirenEntry[];
   readonly diagnostics: readonly { readonly code: string }[];
 };
 
@@ -24,15 +24,15 @@ type DocumentsBuilderSurface = {
 
 type SirenBuilderDocumentsApi = {
   fromDocuments?: (documents: readonly BuilderDocument[]) => DocumentsBuilderSurface;
-  fromResources?: (
-    resources: readonly Resource[],
+  fromEntries?: (
+    entries: readonly SirenEntry[],
     ephemeralDocumentId: string,
   ) => DocumentsBuilderSurface;
 };
 
 describe('runIRBuildPipeline', () => {
   it('produces graph and ordered diagnostics for a representative project', () => {
-    const resources: readonly Resource[] = [
+    const entries: readonly SirenEntry[] = [
       // duplicate ids → W003
       { type: 'task', id: 'dup', attributes: [] },
       { type: 'task', id: 'dup', status: 'complete', attributes: [] },
@@ -65,12 +65,12 @@ describe('runIRBuildPipeline', () => {
     const env = runIRBuildPipeline([
       {
         id: 'adhoc',
-        resources,
+        entries,
         directive: { implicitMilestone: false },
       },
     ]);
 
-    expect(env.graph.resources.map((r) => [r.id, r.status])).toEqual([
+    expect(env.graph.entries.map((r) => [r.id, r.status])).toEqual([
       ['dup', undefined],
       ['has-dangling', undefined],
       ['cycle-a', undefined],
@@ -87,16 +87,16 @@ describe('runIRBuildPipeline', () => {
       expect.arrayContaining(['dup', 'has-dangling', 'cycle-a', 'cycle-b', 'finished', 'release']),
     );
 
-    expect(env.graph.getResource('release')?.status).toBe('complete');
+    expect(env.graph.getEntry('release')?.status).toBe('complete');
   });
 });
 
 describe('IR pipeline redundancy regression', () => {
-  it('builds ResourceGraph exactly twice per SirenBuilder.build()', () => {
-    const buildSpy = vi.spyOn(ResourceGraph, 'fromResources');
+  it('builds EntryGraph exactly twice per SirenBuilder.build()', () => {
+    const buildSpy = vi.spyOn(EntryGraph, 'fromEntries');
 
     try {
-      const assembly = SirenBuilder.fromResources(
+      const assembly = SirenBuilder.fromEntries(
         [
           { type: 'task', id: 'task-a', status: 'complete', attributes: [] },
           { type: 'task', id: 'task-b', status: 'complete', attributes: [] },
@@ -142,7 +142,7 @@ describe('IR pipeline implicit-draft-milestone integration (red)', () => {
       {
         id: 'adhoc',
         directive: { implicitMilestone: false },
-        resources: [
+        entries: [
           // orphan milestone → drafted; parent depending on it → NOT completed
           { type: 'milestone', id: 'orphan', attributes: [] },
           {
@@ -161,7 +161,7 @@ describe('IR pipeline implicit-draft-milestone integration (red)', () => {
       },
     ]);
 
-    expect(env.graph.resources.map((r) => [r.id, r.status])).toEqual([
+    expect(env.graph.entries.map((r) => [r.id, r.status])).toEqual([
       ['orphan', 'draft'],
       ['parent-of-orphan', undefined],
       ['done', 'complete'],
@@ -171,29 +171,29 @@ describe('IR pipeline implicit-draft-milestone integration (red)', () => {
 });
 
 describe('IR pipeline document milestone synthesis (red)', () => {
-  it('treats fromResources as a thin wrapper over fromDocuments with synthesis disabled directive', () => {
+  it('treats fromEntries as a thin wrapper over fromDocuments with synthesis disabled directive', () => {
     const api = SirenBuilder as unknown as SirenBuilderDocumentsApi;
-    const resources: readonly Resource[] = [{ type: 'task', id: 'task-a', attributes: [] }];
+    const entries: readonly SirenEntry[] = [{ type: 'task', id: 'task-a', attributes: [] }];
 
     const fromDocumentsBuilder = api.fromDocuments?.([
       {
         id: 'adhoc',
-        resources,
+        entries,
         directive: { implicitMilestone: false },
       },
     ]);
     expect(fromDocumentsBuilder).toBeDefined();
     if (!fromDocumentsBuilder) throw new Error('expected fromDocuments builder');
 
-    const compatibilityBuilder = api.fromResources?.(resources, 'adhoc');
+    const compatibilityBuilder = api.fromEntries?.(entries, 'adhoc');
     expect(compatibilityBuilder).toBeDefined();
-    if (!compatibilityBuilder) throw new Error('expected fromResources wrapper builder');
+    if (!compatibilityBuilder) throw new Error('expected fromEntries wrapper builder');
 
     expect(compatibilityBuilder.documents).toEqual(fromDocumentsBuilder.documents);
 
     const fromDocumentsOutput = fromDocumentsBuilder.build();
     const compatibilityOutput = compatibilityBuilder.build();
-    expect(compatibilityOutput.resources).toEqual(fromDocumentsOutput.resources);
+    expect(compatibilityOutput.entries).toEqual(fromDocumentsOutput.entries);
     expect(compatibilityOutput.diagnostics).toEqual(fromDocumentsOutput.diagnostics);
   });
 });

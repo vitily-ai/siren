@@ -1,29 +1,29 @@
-import { isReference, type Resource } from '../ir/types';
+import { isReference, type SirenEntry } from '../ir/types';
 
 /**
- * Finds a resource by its ID from the given array of resources.
- * @param resources Array of Siren resources
- * @param id The ID of the resource to find
- * @returns The resource with the matching ID
- * @throws Error if no resource with the given ID is found
+ * Finds a entry by its ID from the given array of entries.
+ * @param entries Array of Siren entries
+ * @param id The ID of the entry to find
+ * @returns The entry with the matching ID
+ * @throws Error if no entry with the given ID is found
  */
-export function findResourceById(resources: Resource[], id: string): Resource {
-  const resource = resources.find((r) => r.id === id);
-  if (!resource) {
-    throw new Error(`Resource with ID '${id}' not found`);
+export function findEntryById(entries: SirenEntry[], id: string): SirenEntry {
+  const entry = entries.find((r) => r.id === id);
+  if (!entry) {
+    throw new Error(`Entry with ID '${id}' not found`);
   }
-  return resource;
+  return entry;
 }
 
 /**
- * Extracts dependency IDs from a resource's depends_on attribute.
+ * Extracts dependency IDs from a entry's depends_on attribute.
  *
  * Reads the tuple-first shape: depends_on is a Tuple (readonly Atom[]) of
  * atoms. Only reference atoms contribute dependency ids; scalar atoms are
  * ignored. An absent attribute or an empty tuple both yield no dependencies.
  */
-export function getDependsOn(resource: Resource): string[] {
-  const attr = resource.attributes.find((a) => a.key === 'depends_on');
+export function getDependsOn(entry: SirenEntry): string[] {
+  const attr = entry.attributes.find((a) => a.key === 'depends_on');
   if (!attr) return [];
   const ids: string[] = [];
   for (const atom of attr.value) {
@@ -33,17 +33,17 @@ export function getDependsOn(resource: Resource): string[] {
 }
 
 /**
- * Helper to check for resource completion status. This does not guarantee explicit completion.
+ * Helper to check for entry completion status. This does not guarantee explicit completion.
  */
-export function isComplete(resource: Resource): resource is Resource & { status: 'complete' } {
-  return resource.status === 'complete';
+export function isComplete(entry: SirenEntry): entry is SirenEntry & { status: 'complete' } {
+  return entry.status === 'complete';
 }
 
 /**
- * Helper to check for resource draft status. This does not guarantee explicit draft status.
+ * Helper to check for entry draft status. This does not guarantee explicit draft status.
  */
-export function isDraft(resource: Resource): resource is Resource & { status: 'draft' } {
-  return resource.status === 'draft';
+export function isDraft(entry: SirenEntry): entry is SirenEntry & { status: 'draft' } {
+  return entry.status === 'draft';
 }
 
 // TODO expose this as a method on an object oriented IR context

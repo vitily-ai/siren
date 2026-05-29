@@ -1,7 +1,7 @@
 import type { Diagnostic } from '../diagnostics';
 import type { SirenDocument } from '../document';
-import type { ResourceGraph } from '../resource-graph';
-import type { Resource } from '../types';
+import type { EntryGraph } from '../entry-graph';
+import type { SirenEntry } from '../types';
 import { ImplicitCompletionModule } from './modules/completion';
 import { CyclesModule } from './modules/cycles';
 import { DanglingModule } from './modules/dangling';
@@ -17,15 +17,15 @@ import { Pipeline } from './runner';
  *
  * This is the internal projection consumed by `SirenProject`. It is not part of
  * the public core surface — `SirenProject` exposes only what callers need
- * (`resources`, `diagnostics`, `graph`, query helpers).
+ * (`entries`, `diagnostics`, `graph`, query helpers).
  *
  * Pipeline topology (single direct upstream is the immediately preceding
  * module in the chain; indirect dependencies are carried opaquely through
  * the envelope):
  *
  *   seed { documents }
- *     → Synthesis              adds   { rawResources }
- *     → Dedup                  adds   { resources, duplicateDiagnostics }
+ *     → Synthesis              adds   { rawEntries }
+ *     → Dedup                  adds   { entries, duplicateDiagnostics }
  *     → Graph                  adds   { graph }
  *     → ImplicitDraftMilestone rewrites { graph }
  *     → Completion             rewrites { graph }
@@ -34,8 +34,8 @@ import { Pipeline } from './runner';
  *     → Finalize               adds   { diagnostics }
  */
 export interface IRBuildEnvelope {
-  readonly rawResources: readonly Resource[];
-  readonly graph: ResourceGraph;
+  readonly rawEntries: readonly SirenEntry[];
+  readonly graph: EntryGraph;
   readonly diagnostics: readonly Diagnostic[];
 }
 
@@ -56,7 +56,7 @@ export function runIRBuildPipeline(documents: readonly SirenDocument[]): IRBuild
 
   const env = pipeline.run({ documents });
   return {
-    rawResources: env.rawResources,
+    rawEntries: env.rawEntries,
     graph: env.graph,
     diagnostics: env.diagnostics,
   };

@@ -4,8 +4,8 @@ type Stamped = object & { [EPH_ID]?: string };
 
 let next = 0;
 
-export function stampEphId<T extends object>(resource: T): asserts resource is T & Stamped {
-  Object.defineProperty(resource, EPH_ID, {
+export function stampEphId<T extends object>(entry: T): asserts entry is T & Stamped {
+  Object.defineProperty(entry, EPH_ID, {
     value: `r${String(++next)}`,
     enumerable: false,
     writable: false,
@@ -13,6 +13,6 @@ export function stampEphId<T extends object>(resource: T): asserts resource is T
   });
 }
 
-export function getEphId(resource: object): string | undefined {
-  return (resource as Stamped)[EPH_ID];
+export function getEphId(entry: object): string | undefined {
+  return (entry as Stamped)[EPH_ID];
 }

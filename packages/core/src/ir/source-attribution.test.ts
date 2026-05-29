@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { ResourceGraph } from './resource-graph';
+import { EntryGraph } from './entry-graph';
 import {
-  firstOccurrencePositionForResource,
-  positionForResource,
-  secondOccurrenceAttributionForResource,
-  sourceFileForResource,
-  sourceFilesForResourceIds,
+  firstOccurrencePositionForEntry,
+  positionForEntry,
+  secondOccurrenceAttributionForEntry,
+  sourceFileForEntry,
+  sourceFilesForEntryIds,
 } from './source-attribution';
-import type { Origin, Resource } from './types';
+import type { Origin, SirenEntry } from './types';
 
 function origin(document: string | undefined, startRow: number): Origin {
   return {
@@ -27,7 +27,7 @@ function syntheticOrigin(document: string): Origin {
   };
 }
 
-function task(id: string, originValue?: Origin): Resource {
+function task(id: string, originValue?: Origin): SirenEntry {
   return {
     type: 'task',
     id,
@@ -36,110 +36,110 @@ function task(id: string, originValue?: Origin): Resource {
   };
 }
 
-describe('sourceFileForResource', () => {
+describe('sourceFileForEntry', () => {
   it('returns origin.document when present', () => {
-    expect(sourceFileForResource(task('a', origin('a.siren', 0)))).toBe('a.siren');
+    expect(sourceFileForEntry(task('a', origin('a.siren', 0)))).toBe('a.siren');
   });
 
   it('returns origin.document for synthetic origins', () => {
-    expect(sourceFileForResource(task('a', syntheticOrigin('synthetic.siren')))).toBe(
+    expect(sourceFileForEntry(task('a', syntheticOrigin('synthetic.siren')))).toBe(
       'synthetic.siren',
     );
   });
 
   it('returns undefined when origin is missing', () => {
-    expect(sourceFileForResource(task('a'))).toBeUndefined();
+    expect(sourceFileForEntry(task('a'))).toBeUndefined();
   });
 
   it('returns undefined when origin.document is missing', () => {
-    expect(sourceFileForResource(task('a', origin(undefined, 0)))).toBeUndefined();
+    expect(sourceFileForEntry(task('a', origin(undefined, 0)))).toBeUndefined();
   });
 
-  it('returns undefined when the resource itself is undefined', () => {
-    expect(sourceFileForResource(undefined)).toBeUndefined();
+  it('returns undefined when the entry itself is undefined', () => {
+    expect(sourceFileForEntry(undefined)).toBeUndefined();
   });
 });
 
-describe('sourceFilesForResourceIds', () => {
+describe('sourceFilesForEntryIds', () => {
   it('returns an empty attribution for an empty id list', () => {
-    expect(sourceFilesForResourceIds([], ResourceGraph.fromResources([]))).toEqual({});
+    expect(sourceFilesForEntryIds([], EntryGraph.fromEntries([]))).toEqual({});
   });
 
   it('joins distinct files in iteration order', () => {
-    const graph = ResourceGraph.fromResources([
+    const graph = EntryGraph.fromEntries([
       task('a', origin('one.siren', 0)),
       task('b', origin('two.siren', 0)),
     ]);
-    expect(sourceFilesForResourceIds(['a', 'b'], graph)).toEqual({
+    expect(sourceFilesForEntryIds(['a', 'b'], graph)).toEqual({
       file: 'one.siren, two.siren',
     });
   });
 
   it('deduplicates files that appear multiple times across the id list', () => {
-    const graph = ResourceGraph.fromResources([
+    const graph = EntryGraph.fromEntries([
       task('a', origin('shared.siren', 0)),
       task('b', origin('shared.siren', 1)),
     ]);
-    expect(sourceFilesForResourceIds(['a', 'b', 'a'], graph)).toEqual({
+    expect(sourceFilesForEntryIds(['a', 'b', 'a'], graph)).toEqual({
       file: 'shared.siren',
     });
   });
 
-  it('skips ids missing from the resource map', () => {
-    const graph = ResourceGraph.fromResources([task('a', origin('a.siren', 0))]);
-    expect(sourceFilesForResourceIds(['a', 'missing'], graph)).toEqual({
+  it('skips ids missing from the entry map', () => {
+    const graph = EntryGraph.fromEntries([task('a', origin('a.siren', 0))]);
+    expect(sourceFilesForEntryIds(['a', 'missing'], graph)).toEqual({
       file: 'a.siren',
     });
   });
 
   it('omits the file field when no id has an attributable file', () => {
-    const graph = ResourceGraph.fromResources([task('a')]);
-    expect(sourceFilesForResourceIds(['a', 'missing'], graph)).toEqual({});
+    const graph = EntryGraph.fromEntries([task('a')]);
+    expect(sourceFilesForEntryIds(['a', 'missing'], graph)).toEqual({});
   });
 });
 
-describe('positionForResource', () => {
+describe('positionForEntry', () => {
   it('returns 1-based line and column 0 when origin is present', () => {
-    expect(positionForResource(task('a', origin('a.siren', 4)))).toEqual({
+    expect(positionForEntry(task('a', origin('a.siren', 4)))).toEqual({
       line: 5,
       column: 0,
     });
   });
 
   it('returns an empty attribution for synthetic origins', () => {
-    expect(positionForResource(task('a', syntheticOrigin('a.siren')))).toEqual({});
+    expect(positionForEntry(task('a', syntheticOrigin('a.siren')))).toEqual({});
   });
 
   it('returns an empty attribution when origin is missing', () => {
-    expect(positionForResource(task('a'))).toEqual({});
+    expect(positionForEntry(task('a'))).toEqual({});
   });
 
-  it('returns an empty attribution when the resource is undefined', () => {
-    expect(positionForResource(undefined)).toEqual({});
+  it('returns an empty attribution when the entry is undefined', () => {
+    expect(positionForEntry(undefined)).toEqual({});
   });
 });
 
-describe('firstOccurrencePositionForResource', () => {
+describe('firstOccurrencePositionForEntry', () => {
   it('returns 1-based firstLine and firstColumn 0 when origin is present', () => {
-    expect(firstOccurrencePositionForResource(task('a', origin('a.siren', 7)))).toEqual({
+    expect(firstOccurrencePositionForEntry(task('a', origin('a.siren', 7)))).toEqual({
       firstLine: 8,
       firstColumn: 0,
     });
   });
 
   it('returns an empty attribution for synthetic origins', () => {
-    expect(firstOccurrencePositionForResource(task('a', syntheticOrigin('a.siren')))).toEqual({});
+    expect(firstOccurrencePositionForEntry(task('a', syntheticOrigin('a.siren')))).toEqual({});
   });
 
   it('returns an empty attribution when origin is missing', () => {
-    expect(firstOccurrencePositionForResource(task('a'))).toEqual({});
-    expect(firstOccurrencePositionForResource(undefined)).toEqual({});
+    expect(firstOccurrencePositionForEntry(task('a'))).toEqual({});
+    expect(firstOccurrencePositionForEntry(undefined)).toEqual({});
   });
 });
 
-describe('secondOccurrenceAttributionForResource', () => {
+describe('secondOccurrenceAttributionForEntry', () => {
   it('returns file plus 1-based secondLine and secondColumn 0 when origin is present', () => {
-    expect(secondOccurrenceAttributionForResource(task('a', origin('dup.siren', 11)))).toEqual({
+    expect(secondOccurrenceAttributionForEntry(task('a', origin('dup.siren', 11)))).toEqual({
       file: 'dup.siren',
       secondLine: 12,
       secondColumn: 0,
@@ -147,21 +147,19 @@ describe('secondOccurrenceAttributionForResource', () => {
   });
 
   it('returns only file for synthetic origins', () => {
-    expect(secondOccurrenceAttributionForResource(task('a', syntheticOrigin('dup.siren')))).toEqual(
-      {
-        file: 'dup.siren',
-      },
-    );
+    expect(secondOccurrenceAttributionForEntry(task('a', syntheticOrigin('dup.siren')))).toEqual({
+      file: 'dup.siren',
+    });
   });
 
   it('returns only the file (undefined) when origin is missing', () => {
-    expect(secondOccurrenceAttributionForResource(task('a'))).toEqual({
+    expect(secondOccurrenceAttributionForEntry(task('a'))).toEqual({
       file: undefined,
     });
   });
 
-  it('returns file undefined for an undefined resource', () => {
-    expect(secondOccurrenceAttributionForResource(undefined)).toEqual({
+  it('returns file undefined for an undefined entry', () => {
+    expect(secondOccurrenceAttributionForEntry(undefined)).toEqual({
       file: undefined,
     });
   });

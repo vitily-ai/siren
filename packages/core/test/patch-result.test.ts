@@ -5,19 +5,19 @@ import {
   type ChangeMode,
   computeDelta,
   type DocumentChange,
-  type ResourceChange,
+  type EntryChange,
 } from '../src/ir/patch-result';
-import type { Resource } from '../src/ir/types';
+import type { SirenEntry } from '../src/ir/types';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeDoc(id: string, resources: Resource[] = []): SirenDocument {
-  return { id, resources };
+function makeDoc(id: string, entries: SirenEntry[] = []): SirenDocument {
+  return { id, entries };
 }
 
-function makeTask(id: string): Resource {
+function makeTask(id: string): SirenEntry {
   return { type: 'task', id, attributes: [] };
 }
 
@@ -40,57 +40,54 @@ function getDelta(
 }
 
 // ---------------------------------------------------------------------------
-// Resource-level change modes
+// SirenEntry-level change modes
 // ---------------------------------------------------------------------------
 
-describe('computeDelta - resource change modes', () => {
-  it('created: new resourceId in an existing doc appears as created', () => {
+describe('computeDelta - entry change modes', () => {
+  it('created: new entryId in an existing doc appears as created', () => {
     const changes = getDelta([makeDoc('doc-a', [makeTask('t1')])], (docs) => [
-      { ...docs[0]!, resources: [...docs[0]!.resources, makeTask('t2')] },
+      { ...docs[0]!, entries: [...docs[0]!.entries, makeTask('t2')] },
     ]);
 
     expect(changes).toHaveLength(1);
     const docChange = changes[0]!;
     expect(docChange.documentId).toBe('doc-a');
     expect(docChange.mode).toBe<ChangeMode>('updated');
-    const t2Change = docChange.resources.find((r) => r.resourceId === 't2');
-    expect(t2Change).toEqual<ResourceChange>({ resourceId: 't2', mode: 'created' });
+    const t2Change = docChange.entries.find((r) => r.entryId === 't2');
+    expect(t2Change).toEqual<EntryChange>({ entryId: 't2', mode: 'created' });
   });
 
-  it('updated: spreading an existing resource with the same id loses eph-id and registers as updated', () => {
+  it('updated: spreading an existing entry with the same id loses eph-id and registers as updated', () => {
     // Spread creates a new object — non-enumerable eph-id is NOT carried over
     const changes = getDelta([makeDoc('doc-a', [makeTask('t1')])], (docs) => [
-      { ...docs[0]!, resources: docs[0]!.resources.map((r) => ({ ...r })) },
+      { ...docs[0]!, entries: docs[0]!.entries.map((r) => ({ ...r })) },
     ]);
 
     expect(changes).toHaveLength(1);
     const docChange = changes[0]!;
     expect(docChange.mode).toBe<ChangeMode>('updated');
-    expect(docChange.resources).toEqual<ResourceChange[]>([{ resourceId: 't1', mode: 'updated' }]);
+    expect(docChange.entries).toEqual<EntryChange[]>([{ entryId: 't1', mode: 'updated' }]);
   });
 
-  it('deleted: resource removed from doc appears as deleted', () => {
+  it('deleted: entry removed from doc appears as deleted', () => {
     const changes = getDelta([makeDoc('doc-a', [makeTask('t1'), makeTask('t2')])], (docs) => [
-      { ...docs[0]!, resources: docs[0]!.resources.filter((r) => r.id !== 't1') },
+      { ...docs[0]!, entries: docs[0]!.entries.filter((r) => r.id !== 't1') },
     ]);
 
     expect(changes).toHaveLength(1);
     const docChange = changes[0]!;
     expect(docChange.mode).toBe<ChangeMode>('updated');
-    const t1Change = docChange.resources.find((r) => r.resourceId === 't1');
-    expect(t1Change).toEqual<ResourceChange>({ resourceId: 't1', mode: 'deleted' });
+    const t1Change = docChange.entries.find((r) => r.entryId === 't1');
+    expect(t1Change).toEqual<EntryChange>({ entryId: 't1', mode: 'deleted' });
     // t2 is unchanged — must not appear
-    expect(docChange.resources.find((r) => r.resourceId === 't2')).toBeUndefined();
+    expect(docChange.entries.find((r) => r.entryId === 't2')).toBeUndefined();
   });
 
-  it('preserves duplicate resources when computing changes', () => {
+  it('preserves duplicate entries when computing changes', () => {
     const changes = getDelta([makeDoc('doc-a', [makeTask('dup'), makeTask('dup')])], (docs) => [
       {
         ...docs[0]!,
-        resources: [
-          docs[0]!.resources[0]!,
-          { ...docs[0]!.resources[1]!, status: 'complete' as const },
-        ],
+        entries: [docs[0]!.entries[0]!, { ...docs[0]!.entries[1]!, status: 'complete' as const }],
       },
     ]);
 
@@ -99,16 +96,16 @@ describe('computeDelta - resource change modes', () => {
     expect(docChange.mode).toBe<ChangeMode>('updated');
     // Because only one `dup` was modified, we expect exactly one 'updated' change,
     // not a tangled mess of 'updated', 'created', etc.
-    expect(docChange.resources).toEqual<ResourceChange[]>([{ resourceId: 'dup', mode: 'updated' }]);
+    expect(docChange.entries).toEqual<EntryChange[]>([{ entryId: 'dup', mode: 'updated' }]);
   });
 
   it('correctly matches fresh duplicates inserted before existing ones by eph-id', () => {
     const changes = getDelta([makeDoc('doc-a', [makeTask('dup')])], (docs) => [
       {
         ...docs[0]!,
-        resources: [
+        entries: [
           makeTask('dup'), // fresh duplicate inserted before
-          docs[0]!.resources[0]!, // perfectly preserved existing duplicate
+          docs[0]!.entries[0]!, // perfectly preserved existing duplicate
         ],
       },
     ]);
@@ -118,21 +115,21 @@ describe('computeDelta - resource change modes', () => {
     expect(docChange.mode).toBe<ChangeMode>('updated');
     // The existing duplicate is perfectly preserved, so no change should be emitted for it.
     // The newly inserted duplicate is entirely fresh, so it should be reported as 'created'.
-    expect(docChange.resources).toEqual<ResourceChange[]>([{ resourceId: 'dup', mode: 'created' }]);
+    expect(docChange.entries).toEqual<EntryChange[]>([{ entryId: 'dup', mode: 'created' }]);
   });
 
-  it('detects a deleted duplicate resource when remaining copies decrease', () => {
+  it('detects a deleted duplicate entry when remaining copies decrease', () => {
     const changes = getDelta([makeDoc('doc-a', [makeTask('dup'), makeTask('dup')])], (docs) => [
       {
         ...docs[0]!,
-        resources: [docs[0]!.resources[0]!], // Keep only one duplicate
+        entries: [docs[0]!.entries[0]!], // Keep only one duplicate
       },
     ]);
 
     expect(changes).toHaveLength(1);
     const docChange = changes[0]!;
     expect(docChange.mode).toBe<ChangeMode>('updated');
-    expect(docChange.resources).toEqual<ResourceChange[]>([{ resourceId: 'dup', mode: 'deleted' }]);
+    expect(docChange.entries).toEqual<EntryChange[]>([{ entryId: 'dup', mode: 'deleted' }]);
   });
 });
 
@@ -151,12 +148,12 @@ describe('computeDelta - document change modes', () => {
     const docChange = changes[0]!;
     expect(docChange.documentId).toBe('doc-b');
     expect(docChange.mode).toBe<ChangeMode>('created');
-    expect(docChange.resources).toEqual<ResourceChange[]>([{ resourceId: 't2', mode: 'created' }]);
+    expect(docChange.entries).toEqual<EntryChange[]>([{ entryId: 't2', mode: 'created' }]);
   });
 
-  it('updated: document with resource changes appears as updated', () => {
+  it('updated: document with entry changes appears as updated', () => {
     const changes = getDelta([makeDoc('doc-a', [makeTask('t1')])], (docs) => [
-      { ...docs[0]!, resources: [...docs[0]!.resources, makeTask('t2')] },
+      { ...docs[0]!, entries: [...docs[0]!.entries, makeTask('t2')] },
     ]);
 
     const docChange = changes.find((c) => c.documentId === 'doc-a');
@@ -174,11 +171,11 @@ describe('computeDelta - document change modes', () => {
     const docChange = changes[0]!;
     expect(docChange.documentId).toBe('doc-a');
     expect(docChange.mode).toBe<ChangeMode>('deleted');
-    // resources is always present on DocumentChange
-    expect(Array.isArray(docChange.resources)).toBe(true);
+    // entries is always present on DocumentChange
+    expect(Array.isArray(docChange.entries)).toBe(true);
   });
 
-  it('directive-only change: undefined → defined counts as updated with empty resources array', () => {
+  it('directive-only change: undefined → defined counts as updated with empty entries array', () => {
     // Before: no directive. After: directive set.
     const changes = getDelta([makeDoc('doc-a', [makeTask('t1')])], (docs) => [
       { ...docs[0]!, directive: { implicitMilestone: false } },
@@ -188,16 +185,16 @@ describe('computeDelta - document change modes', () => {
     const docChange = changes[0]!;
     expect(docChange.documentId).toBe('doc-a');
     expect(docChange.mode).toBe<ChangeMode>('updated');
-    expect(docChange.resources).toEqual([]);
+    expect(docChange.entries).toEqual([]);
   });
 
   it('unchanged documents are omitted from changes entirely', () => {
-    // Only doc-b gains a resource
+    // Only doc-b gains a entry
     const changes = getDelta(
       [makeDoc('doc-a', [makeTask('t1')]), makeDoc('doc-b', [makeTask('t2')])],
       (docs) => [
         docs[0]!, // unchanged
-        { ...docs[1]!, resources: [...docs[1]!.resources, makeTask('t3')] },
+        { ...docs[1]!, entries: [...docs[1]!.entries, makeTask('t3')] },
       ],
     );
 
@@ -208,18 +205,18 @@ describe('computeDelta - document change modes', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Cross-document resource move
+// Cross-document entry move
 // ---------------------------------------------------------------------------
 
-describe('computeDelta - cross-document resource move', () => {
-  it('resource deleted in source document, created in destination document', () => {
+describe('computeDelta - cross-document entry move', () => {
+  it('entry deleted in source document, created in destination document', () => {
     // Remove t1 from doc-a; add a fresh t1 object to doc-b
-    // (same resourceId, new object → new eph-id → created in dest)
+    // (same entryId, new object → new eph-id → created in dest)
     const changes = getDelta([makeDoc('doc-a', [makeTask('t1')]), makeDoc('doc-b', [])], (docs) => {
       const [docA, docB] = docs;
       return [
-        { ...docA!, resources: [] },
-        { ...docB!, resources: [makeTask('t1')] },
+        { ...docA!, entries: [] },
+        { ...docB!, entries: [makeTask('t1')] },
       ];
     });
 
@@ -228,10 +225,10 @@ describe('computeDelta - cross-document resource move', () => {
     const dstChange = changes.find((c) => c.documentId === 'doc-b')!;
 
     expect(srcChange.mode).toBe<ChangeMode>('updated');
-    expect(srcChange.resources).toEqual<ResourceChange[]>([{ resourceId: 't1', mode: 'deleted' }]);
+    expect(srcChange.entries).toEqual<EntryChange[]>([{ entryId: 't1', mode: 'deleted' }]);
 
     expect(dstChange.mode).toBe<ChangeMode>('updated');
-    expect(dstChange.resources).toEqual<ResourceChange[]>([{ resourceId: 't1', mode: 'created' }]);
+    expect(dstChange.entries).toEqual<EntryChange[]>([{ entryId: 't1', mode: 'created' }]);
   });
 });
 
@@ -240,16 +237,16 @@ describe('computeDelta - cross-document resource move', () => {
 // ---------------------------------------------------------------------------
 
 describe('computeDelta - eph-id preservation', () => {
-  it('same frozen resource reference passed back is not classified as updated', () => {
+  it('same frozen entry reference passed back is not classified as updated', () => {
     const changes = getDelta([makeDoc('doc-a', [makeTask('t1'), makeTask('t2')])], (docs) => [
-      { id: 'doc-a', resources: [docs[0]!.resources[0]!, docs[0]!.resources[1]!] },
+      { id: 'doc-a', entries: [docs[0]!.entries[0]!, docs[0]!.entries[1]!] },
     ]);
     expect(changes).toEqual([]);
   });
 
-  it('reordering resources within a document produces no change', () => {
+  it('reordering entries within a document produces no change', () => {
     const changes = getDelta([makeDoc('doc-a', [makeTask('t1'), makeTask('t2')])], (docs) => [
-      { ...docs[0]!, resources: [...docs[0]!.resources].reverse() },
+      { ...docs[0]!, entries: [...docs[0]!.entries].reverse() },
     ]);
     expect(changes).toEqual([]);
   });
@@ -262,14 +259,14 @@ describe('computeDelta - eph-id preservation', () => {
     expect(changes).toEqual([]);
   });
 
-  it('JSON round-trip: serialised resource loses eph-id and registers as updated', () => {
+  it('JSON round-trip: serialised entry loses eph-id and registers as updated', () => {
     const changes = getDelta([makeDoc('doc-a', [makeTask('t1')])], (docs) => {
-      const parsed = JSON.parse(JSON.stringify(docs[0]!.resources[0]!)) as Resource;
-      return [{ ...docs[0]!, resources: [parsed] }];
+      const parsed = JSON.parse(JSON.stringify(docs[0]!.entries[0]!)) as SirenEntry;
+      return [{ ...docs[0]!, entries: [parsed] }];
     });
 
     expect(changes).toHaveLength(1);
     const docChange = changes[0]!;
-    expect(docChange.resources).toEqual<ResourceChange[]>([{ resourceId: 't1', mode: 'updated' }]);
+    expect(docChange.entries).toEqual<EntryChange[]>([{ entryId: 't1', mode: 'updated' }]);
   });
 });

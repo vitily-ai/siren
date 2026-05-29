@@ -1,6 +1,6 @@
 import { getDependsOn } from '../../../utilities/entry';
 import type { SirenDocument } from '../../document';
-import type { Resource } from '../../types';
+import type { SirenEntry } from '../../types';
 import { defineModule } from '../types';
 
 type SynthesisInput = {
@@ -8,22 +8,20 @@ type SynthesisInput = {
 };
 
 type SynthesisOutput = {
-  readonly rawResources: readonly Resource[];
+  readonly rawEntries: readonly SirenEntry[];
 };
 
 function hasExplicitDocumentMilestone(document: SirenDocument): boolean {
-  return document.resources.some(
-    (resource) => resource.type === 'milestone' && resource.id === document.id,
-  );
+  return document.entries.some((entry) => entry.type === 'milestone' && entry.id === document.id);
 }
 
-function collectDocumentRootIds(resources: readonly Resource[]): readonly string[] {
-  const localResourceIds = new Set(resources.map((resource) => resource.id));
+function collectDocumentRootIds(entries: readonly SirenEntry[]): readonly string[] {
+  const localEntryIds = new Set(entries.map((entry) => entry.id));
   const dependedOnLocalIds = new Set<string>();
 
-  for (const resource of resources) {
-    for (const dependencyId of getDependsOn(resource)) {
-      if (localResourceIds.has(dependencyId)) {
+  for (const entry of entries) {
+    for (const dependencyId of getDependsOn(entry)) {
+      if (localEntryIds.has(dependencyId)) {
         dependedOnLocalIds.add(dependencyId);
       }
     }
@@ -32,17 +30,17 @@ function collectDocumentRootIds(resources: readonly Resource[]): readonly string
   const rootIds: string[] = [];
   const seen = new Set<string>();
 
-  for (const resource of resources) {
-    if (!dependedOnLocalIds.has(resource.id) && !seen.has(resource.id)) {
-      rootIds.push(resource.id);
-      seen.add(resource.id);
+  for (const entry of entries) {
+    if (!dependedOnLocalIds.has(entry.id) && !seen.has(entry.id)) {
+      rootIds.push(entry.id);
+      seen.add(entry.id);
     }
   }
 
   return rootIds;
 }
 
-function buildDependsOnAttributes(rootIds: readonly string[]): Resource['attributes'] {
+function buildDependsOnAttributes(rootIds: readonly string[]): SirenEntry['attributes'] {
   if (rootIds.length === 0) return [];
 
   return [
@@ -62,15 +60,15 @@ function shouldSynthesizeMilestone(document: SirenDocument): boolean {
  * milestones for downstream dedup/graph/analysis modules.
  *
  * Reads:  { documents }
- * Writes: { rawResources }
+ * Writes: { rawEntries }
  */
 export const SynthesisModule = defineModule(
   'Synthesis',
   (input: SynthesisInput): SynthesisOutput => {
-    const rawResources: Resource[] = [];
+    const rawEntries: SirenEntry[] = [];
 
     for (const document of input.documents) {
-      rawResources.push(...document.resources);
+      rawEntries.push(...document.entries);
       if (!shouldSynthesizeMilestone(document)) {
         continue;
       }
@@ -78,8 +76,8 @@ export const SynthesisModule = defineModule(
         continue;
       }
 
-      const rootIds = collectDocumentRootIds(document.resources);
-      rawResources.push({
+      const rootIds = collectDocumentRootIds(document.entries);
+      rawEntries.push({
         type: 'milestone',
         id: document.id,
         attributes: buildDependsOnAttributes(rootIds),
@@ -87,6 +85,6 @@ export const SynthesisModule = defineModule(
       });
     }
 
-    return { rawResources };
+    return { rawEntries };
   },
 );

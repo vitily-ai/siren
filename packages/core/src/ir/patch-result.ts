@@ -1,19 +1,19 @@
 import type { SirenBuilder } from './assembly';
 import type { SirenDocument } from './document';
 import { getEphId } from './eph-id';
-import type { Resource } from './types';
+import type { SirenEntry } from './types';
 
 export type ChangeMode = 'created' | 'updated' | 'deleted';
 
-export interface ResourceChange {
-  resourceId: string;
+export interface EntryChange {
+  entryId: string;
   mode: ChangeMode;
 }
 
 export interface DocumentChange {
   documentId: string;
   mode: ChangeMode;
-  resources: readonly ResourceChange[];
+  entries: readonly EntryChange[];
 }
 
 export interface PatchResult {
@@ -40,15 +40,15 @@ export function computeDelta(
       changes.push({
         documentId: newDoc.id,
         mode: 'created',
-        resources: newDoc.resources.map((r) => ({ resourceId: r.id, mode: 'created' })),
+        entries: newDoc.entries.map((r) => ({ entryId: r.id, mode: 'created' })),
       });
     } else {
       // Document exists in both, check for changes
       oldDocMap.delete(newDoc.id); // Marked as processed
 
-      const resourceChanges: ResourceChange[] = [];
-      const oldResMap = new Map<string, Resource[]>();
-      for (const r of oldDoc.resources) {
+      const entryChanges: EntryChange[] = [];
+      const oldResMap = new Map<string, SirenEntry[]>();
+      for (const r of oldDoc.entries) {
         const arr = oldResMap.get(r.id);
         if (arr) {
           arr.push(r);
@@ -57,8 +57,8 @@ export function computeDelta(
         }
       }
 
-      const newResMap = new Map<string, Resource[]>();
-      for (const r of newDoc.resources) {
+      const newResMap = new Map<string, SirenEntry[]>();
+      for (const r of newDoc.entries) {
         const arr = newResMap.get(r.id);
         if (arr) {
           arr.push(r);
@@ -71,11 +71,11 @@ export function computeDelta(
         const oldResArray = oldResMap.get(resId);
         if (!oldResArray || oldResArray.length === 0) {
           for (const _ of newResArray) {
-            resourceChanges.push({ resourceId: resId, mode: 'created' });
+            entryChanges.push({ entryId: resId, mode: 'created' });
           }
         } else {
           // 1. Match exact ephIds first
-          const unmatchedNew: Resource[] = [];
+          const unmatchedNew: SirenEntry[] = [];
           for (const newRes of newResArray) {
             const newEphId = getEphId(newRes);
             const matchIndex = oldResArray.findIndex((r) => getEphId(r) === newEphId);
@@ -90,14 +90,14 @@ export function computeDelta(
           // 2. Unmatched items are paired as 'updated'
           let matchedCount = 0;
           while (matchedCount < unmatchedNew.length && oldResArray.length > 0) {
-            resourceChanges.push({ resourceId: resId, mode: 'updated' });
-            oldResArray.shift(); // consume an old resource
+            entryChanges.push({ entryId: resId, mode: 'updated' });
+            oldResArray.shift(); // consume an old entry
             matchedCount++;
           }
 
           // 3. Any leftover unmatched new items are 'created'
           while (matchedCount < unmatchedNew.length) {
-            resourceChanges.push({ resourceId: resId, mode: 'created' });
+            entryChanges.push({ entryId: resId, mode: 'created' });
             matchedCount++;
           }
         }
@@ -107,7 +107,7 @@ export function computeDelta(
 
       for (const oldResArray of oldResMap.values()) {
         for (const oldRes of oldResArray) {
-          resourceChanges.push({ resourceId: oldRes.id, mode: 'deleted' });
+          entryChanges.push({ entryId: oldRes.id, mode: 'deleted' });
         }
       }
 
@@ -118,11 +118,11 @@ export function computeDelta(
         directiveChanged = true;
       }
 
-      if (resourceChanges.length > 0 || directiveChanged) {
+      if (entryChanges.length > 0 || directiveChanged) {
         changes.push({
           documentId: newDoc.id,
           mode: 'updated',
-          resources: resourceChanges,
+          entries: entryChanges,
         });
       }
     }
@@ -133,7 +133,7 @@ export function computeDelta(
     changes.push({
       documentId: docId,
       mode: 'deleted',
-      resources: oldDoc.resources.map((r) => ({ resourceId: r.id, mode: 'deleted' })),
+      entries: oldDoc.entries.map((r) => ({ entryId: r.id, mode: 'deleted' })),
     });
   }
 

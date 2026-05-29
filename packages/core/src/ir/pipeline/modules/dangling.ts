@@ -1,6 +1,6 @@
 import { diagnoseDanglingDependencies } from '../../analysis';
 import type { DanglingDependencyDiagnostic } from '../../diagnostics';
-import type { ResourceGraph } from '../../resource-graph';
+import type { EntryGraph } from '../../entry-graph';
 import { defineModule } from '../types';
 
 /**
@@ -12,7 +12,7 @@ import { defineModule } from '../types';
 export const DanglingModule = defineModule(
   'Dangling',
   (input: {
-    readonly graph: ResourceGraph;
+    readonly graph: EntryGraph;
   }): { readonly danglingDiagnostics: readonly DanglingDependencyDiagnostic[] } => {
     return {
       danglingDiagnostics: diagnoseDanglingDependencies(input.graph),
