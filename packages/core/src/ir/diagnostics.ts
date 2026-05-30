@@ -31,15 +31,15 @@ export interface DependencyCycle {
 }
 
 /**
- * W002: Dangling dependency (resource depends on non-existent resource)
+ * W002: Dangling dependency (entry depends on non-existent entry)
  */
 export interface DanglingDependencyDiagnostic extends DiagnosticBase {
   readonly code: 'W002';
   readonly severity: 'warning';
-  /** ID of the resource that has the dangling dependency */
-  readonly resourceId: string;
-  /** Type of the resource (task or milestone) */
-  readonly resourceType: 'task' | 'milestone';
+  /** ID of the entry that has the dangling dependency */
+  readonly entryId: string;
+  /** Type of the entry (task or milestone) */
+  readonly entryType: 'task' | 'milestone';
   /** ID of the missing dependency */
   readonly dependencyId: string;
 }
@@ -55,19 +55,19 @@ export interface CircularDependencyDiagnostic extends DiagnosticBase {
 }
 
 /**
- * W003: Duplicate resource ID detected
+ * W003: Duplicate entry ID detected
  *
- * Emitted when multiple resources share the same ID. The first occurrence is kept,
+ * Emitted when multiple entries share the same ID. The first occurrence is kept,
  * and all subsequent occurrences are dropped with a warning. File attribution
- * is derived from each resource's origin.document field.
+ * is derived from each entry's origin.document field.
  */
 export interface DuplicateIdDiagnostic extends DiagnosticBase {
   readonly code: 'W003';
   readonly severity: 'warning';
-  /** ID of the duplicate resource */
-  readonly resourceId: string;
-  /** Type of the resource (task or milestone) */
-  readonly resourceType: 'task' | 'milestone';
+  /** ID of the duplicate entry */
+  readonly entryId: string;
+  /** Type of the entry (task or milestone) */
+  readonly entryType: 'task' | 'milestone';
   /** 1-based line number of the first (precedent) occurrence */
   readonly firstLine?: number;
   /** 0-based column number of the first (precedent) occurrence */

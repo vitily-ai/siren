@@ -6,19 +6,19 @@ import type {
   Diagnostic,
   DuplicateIdDiagnostic,
 } from './diagnostics';
-import type { ResourceGraph } from './resource-graph';
+import type { EntryGraph } from './entry-graph';
 import {
-  firstOccurrencePositionForResource,
-  positionForResource,
-  secondOccurrenceAttributionForResource,
-  sourceFileForResource,
-  sourceFilesForResourceIds,
+  firstOccurrencePositionForEntry,
+  positionForEntry,
+  secondOccurrenceAttributionForEntry,
+  sourceFileForEntry,
+  sourceFilesForEntryIds,
 } from './source-attribution';
-import type { Resource } from './types';
+import type { SirenEntry } from './types';
 
 export interface SemanticAnalysisInput {
-  readonly rawResources: readonly Resource[];
-  readonly graph: ResourceGraph;
+  readonly rawEntries: readonly SirenEntry[];
+  readonly graph: EntryGraph;
 }
 
 export interface SemanticAnalysisSnapshot {
@@ -30,21 +30,21 @@ export interface SemanticAnalysisSnapshot {
 
 export function diagnoseCycles(
   cycles: readonly DependencyCycle[],
-  graph: ResourceGraph,
+  graph: EntryGraph,
 ): readonly CircularDependencyDiagnostic[] {
   const diagnostics: CircularDependencyDiagnostic[] = [];
 
   for (const cycle of cycles) {
     const firstNodeId = cycle.nodes[0];
-    const firstResource = firstNodeId === undefined ? undefined : graph.getResource(firstNodeId);
+    const firstEntry = firstNodeId === undefined ? undefined : graph.getEntry(firstNodeId);
 
     diagnostics.push(
       freezeDiagnostic({
         code: 'W001',
         severity: 'warning',
         nodes: cycle.nodes,
-        ...sourceFilesForResourceIds(cycle.nodes, graph),
-        ...positionForResource(firstResource),
+        ...sourceFilesForEntryIds(cycle.nodes, graph),
+        ...positionForEntry(firstEntry),
       }),
     );
   }
@@ -53,24 +53,24 @@ export function diagnoseCycles(
 }
 
 export function diagnoseDanglingDependencies(
-  graph: ResourceGraph,
+  graph: EntryGraph,
 ): readonly DanglingDependencyDiagnostic[] {
   const diagnostics: DanglingDependencyDiagnostic[] = [];
-  const resources = graph.resources;
+  const entries = graph.entries;
 
-  for (const resource of resources) {
-    const dependsOn = getDependsOn(resource);
+  for (const entry of entries) {
+    const dependsOn = getDependsOn(entry);
     for (const dependencyId of dependsOn) {
-      if (!graph.hasResource(dependencyId)) {
+      if (!graph.hasEntry(dependencyId)) {
         diagnostics.push(
           freezeDiagnostic({
             code: 'W002',
             severity: 'warning',
-            resourceId: resource.id,
-            resourceType: resource.type,
+            entryId: entry.id,
+            entryType: entry.type,
             dependencyId,
-            ...sourceFilesForResourceIds([resource.id], graph),
-            ...positionForResource(resource),
+            ...sourceFilesForEntryIds([entry.id], graph),
+            ...positionForEntry(entry),
           }),
         );
       }
@@ -80,29 +80,29 @@ export function diagnoseDanglingDependencies(
   return Object.freeze(diagnostics);
 }
 
-export function diagnoseDuplicateResources(
-  rawResources: readonly Resource[],
+export function diagnoseDuplicateEntries(
+  rawEntries: readonly SirenEntry[],
 ): readonly DuplicateIdDiagnostic[] {
   const diagnostics: DuplicateIdDiagnostic[] = [];
-  const firstResourcesById = new Map<string, Resource>();
+  const firstEntriesById = new Map<string, SirenEntry>();
 
-  for (const resource of rawResources) {
-    const firstResource = firstResourcesById.get(resource.id);
-    if (firstResource !== undefined) {
+  for (const entry of rawEntries) {
+    const firstEntry = firstEntriesById.get(entry.id);
+    if (firstEntry !== undefined) {
       diagnostics.push(
         freezeDiagnostic({
           code: 'W003',
           severity: 'warning',
-          resourceId: resource.id,
-          resourceType: resource.type,
-          file: sourceFileForResource(resource),
-          firstFile: sourceFileForResource(firstResource),
-          ...firstOccurrencePositionForResource(firstResource),
-          ...secondOccurrenceAttributionForResource(resource),
+          entryId: entry.id,
+          entryType: entry.type,
+          file: sourceFileForEntry(entry),
+          firstFile: sourceFileForEntry(firstEntry),
+          ...firstOccurrencePositionForEntry(firstEntry),
+          ...secondOccurrenceAttributionForEntry(entry),
         }),
       );
     } else {
-      firstResourcesById.set(resource.id, resource);
+      firstEntriesById.set(entry.id, entry);
     }
   }
 

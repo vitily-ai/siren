@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { cloneAndFreezeResources } from './snapshot';
-import { isReference, type Resource } from './types';
+import { cloneAndFreezeEntries } from './snapshot';
+import { isReference, type SirenEntry } from './types';
 
-describe('cloneAndFreezeResources', () => {
+describe('cloneAndFreezeEntries', () => {
   it('returns a frozen wrapper array even for empty input', () => {
-    const cloned = cloneAndFreezeResources([]);
+    const cloned = cloneAndFreezeEntries([]);
     expect(cloned).toEqual([]);
     expect(Object.isFrozen(cloned)).toBe(true);
   });
 
   it('preserves primitive attribute values as single-element tuples and exposes no raw field', () => {
-    const cloned = cloneAndFreezeResources([
+    const cloned = cloneAndFreezeEntries([
       {
         type: 'task',
         id: 'a',
@@ -42,35 +42,35 @@ describe('cloneAndFreezeResources', () => {
   });
 
   it('omits the origin property entirely when input has no origin', () => {
-    const cloned = cloneAndFreezeResources([{ type: 'task', id: 'a', attributes: [] }]);
-    const resource = cloned[0];
+    const cloned = cloneAndFreezeEntries([{ type: 'task', id: 'a', attributes: [] }]);
+    const entry = cloned[0];
 
-    expect(resource).toBeDefined();
-    expect(resource && 'origin' in resource).toBe(false);
-    expect(resource && 'status' in resource).toBe(false);
+    expect(entry).toBeDefined();
+    expect(entry && 'origin' in entry).toBe(false);
+    expect(entry && 'status' in entry).toBe(false);
   });
 
   it('preserves explicit complete status when present', () => {
-    const cloned = cloneAndFreezeResources([
+    const cloned = cloneAndFreezeEntries([
       { type: 'task', id: 'a', status: 'complete', attributes: [] },
     ]);
-    const resource = cloned[0];
+    const entry = cloned[0];
 
-    expect(resource?.status).toBe('complete');
-    expect(resource && 'status' in resource).toBe(true);
+    expect(entry?.status).toBe('complete');
+    expect(entry && 'status' in entry).toBe(true);
   });
 
   it('clones tuples and reference atoms so inputs cannot mutate snapshot data', () => {
     const referenceA = { kind: 'reference' as const, id: 'task-b' };
     const referenceB = { kind: 'reference' as const, id: 'task-c' };
     const tupleValue = [referenceA, referenceB];
-    const sourceResource = {
+    const sourceEntry = {
       type: 'task' as const,
       id: 'task-a',
       attributes: [{ key: 'depends_on', value: tupleValue }],
     };
 
-    const cloned = cloneAndFreezeResources([sourceResource]);
+    const cloned = cloneAndFreezeEntries([sourceEntry]);
     const clonedAttribute = cloned[0]?.attributes[0];
     expect(clonedAttribute).toBeDefined();
     if (!clonedAttribute) throw new Error('expected attribute');
@@ -106,14 +106,14 @@ describe('cloneAndFreezeResources', () => {
       endRow: 2,
       document: 'a.siren',
     };
-    const sourceResource: Resource = {
+    const sourceEntry: SirenEntry = {
       type: 'task',
       id: 'a',
       attributes: [],
       origin: sourceOrigin,
     };
 
-    const cloned = cloneAndFreezeResources([sourceResource]);
+    const cloned = cloneAndFreezeEntries([sourceEntry]);
     const clonedOrigin = cloned[0]?.origin;
     expect(clonedOrigin).toBeDefined();
     if (!clonedOrigin) throw new Error('expected origin');
@@ -132,7 +132,7 @@ describe('cloneAndFreezeResources', () => {
       endRow: 1,
       document: 'a.siren',
     };
-    const cloned = cloneAndFreezeResources([
+    const cloned = cloneAndFreezeEntries([
       {
         type: 'task',
         id: 'a',

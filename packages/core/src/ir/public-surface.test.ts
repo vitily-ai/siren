@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import * as coreEntry from './index';
-import { type Resource, SirenBuilder, SirenProject } from './index';
+import { SirenBuilder, type SirenEntry, SirenProject } from './index';
 
-function rangeOriginResource(id: string, document: string): Resource {
+function rangeOriginEntry(id: string, document: string): SirenEntry {
   return {
     type: 'task',
     id,
@@ -18,7 +18,7 @@ function rangeOriginResource(id: string, document: string): Resource {
   };
 }
 
-function syntheticOriginMilestone(id: string, document: string): Resource {
+function syntheticOriginMilestone(id: string, document: string): SirenEntry {
   return {
     type: 'milestone',
     id,
@@ -27,13 +27,13 @@ function syntheticOriginMilestone(id: string, document: string): Resource {
   };
 }
 
-function originView(resource: Resource): Record<string, unknown> | undefined {
-  return resource.origin as unknown as Record<string, unknown> | undefined;
+function originView(entry: SirenEntry): Record<string, unknown> | undefined {
+  return entry.origin as unknown as Record<string, unknown> | undefined;
 }
 
 describe('@sirenpm/core public surface (post-SirenBuilder refactor)', () => {
-  it('does not expose the legacy SirenProject.fromResources construction path', () => {
-    expect((SirenProject as unknown as { fromResources?: unknown }).fromResources).toBeUndefined();
+  it('does not expose the legacy SirenProject.fromEntries construction path', () => {
+    expect((SirenProject as unknown as { fromEntries?: unknown }).fromEntries).toBeUndefined();
   });
 
   it('does not re-export the internal IR_CONTEXT_FACTORY symbol from the package entry', () => {
@@ -43,7 +43,7 @@ describe('@sirenpm/core public surface (post-SirenBuilder refactor)', () => {
   });
 
   it('exposes SirenBuilder as the only documented SirenProject construction path', () => {
-    const assembly = SirenBuilder.fromResources([], 'adhoc');
+    const assembly = SirenBuilder.fromEntries([], 'adhoc');
     expect(assembly.build()).toBeInstanceOf(SirenProject);
   });
 
@@ -61,7 +61,7 @@ describe('@sirenpm/core public surface (post-SirenBuilder refactor)', () => {
   });
 
   it('does not expose mutable construction surface on SirenProject instances', () => {
-    const context = SirenBuilder.fromResources([], 'adhoc').build();
+    const context = SirenBuilder.fromEntries([], 'adhoc').build();
     expect(Object.isFrozen(context)).toBe(true);
     expect('source' in (context as Record<string, unknown>)).toBe(false);
     expect('cycles' in (context as Record<string, unknown>)).toBe(false);
@@ -69,12 +69,9 @@ describe('@sirenpm/core public surface (post-SirenBuilder refactor)', () => {
     expect('duplicateDiagnostics' in (context as Record<string, unknown>)).toBe(false);
   });
 
-  it('uses origin.kind = range for explicit resources', () => {
-    const context = SirenBuilder.fromResources(
-      [rangeOriginResource('login', 'auth')],
-      'adhoc',
-    ).build();
-    const login = context.findResourceById('login');
+  it('uses origin.kind = range for explicit entries', () => {
+    const context = SirenBuilder.fromEntries([rangeOriginEntry('login', 'auth')], 'adhoc').build();
+    const login = context.findEntryById('login');
     const origin = originView(login);
 
     expect(origin).toBeDefined();
@@ -84,11 +81,11 @@ describe('@sirenpm/core public surface (post-SirenBuilder refactor)', () => {
   });
 
   it('uses origin.kind = synthetic with document id for synthetic milestones', () => {
-    const context = SirenBuilder.fromResources(
+    const context = SirenBuilder.fromEntries(
       [syntheticOriginMilestone('auth', 'auth')],
       'adhoc',
     ).build();
-    const milestone = context.findResourceById('auth');
+    const milestone = context.findEntryById('auth');
     const origin = originView(milestone);
 
     expect(origin).toBeDefined();
@@ -97,17 +94,14 @@ describe('@sirenpm/core public surface (post-SirenBuilder refactor)', () => {
     expect(origin.document).toBe('auth');
   });
 
-  it('fromResources path does not synthesize milestones from explicit-resource origin.document', () => {
-    const context = SirenBuilder.fromResources(
-      [rangeOriginResource('login', 'auth')],
-      'adhoc',
-    ).build();
+  it('fromEntries path does not synthesize milestones from explicit-entry origin.document', () => {
+    const context = SirenBuilder.fromEntries([rangeOriginEntry('login', 'auth')], 'adhoc').build();
 
-    expect(
-      context.resources.some((resource) => resource.type === 'milestone' && resource.id === 'auth'),
-    ).toBe(false);
+    expect(context.entries.some((entry) => entry.type === 'milestone' && entry.id === 'auth')).toBe(
+      false,
+    );
 
-    const login = context.findResourceById('login');
+    const login = context.findEntryById('login');
     const origin = originView(login);
     expect(origin).toBeDefined();
     if (!origin) throw new Error('expected origin');

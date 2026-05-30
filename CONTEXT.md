@@ -1,31 +1,35 @@
 # Siren
 
-Siren defines project plans as version-controlled resources and builds them into an immutable semantic snapshot for querying, validation, and tooling.
+Siren defines project plans as version-controlled entries and builds them into an immutable semantic snapshot for querying, validation, and tooling.
 
-## Core Model
+## Core Model and Terminology
 
 **SirenBuilder**:
-Public construction class for `@sirenpm/core`. `SirenBuilder.fromResources(resources)` clones and freezes raw resources, preserves caller order, and `build()` returns a `SirenProject`.
+Public construction class for `@sirenpm/core`. `SirenBuilder.fromEntries(entries)` clones and freezes raw entries, preserves caller order, and `build()` returns a `SirenProject`.
 _Avoid_: direct `SirenProject` construction, mutable assembly
 
 **SirenProject**:
-Immutable built semantic snapshot with resolved resources, cached graph/query helpers, and semantic diagnostics.
+Immutable built semantic snapshot with resolved entries, cached graph/query helpers, and semantic diagnostics.
 _Avoid_: query-only view, incremental result
 
 **Document**:
 Top-level resource container exported from core for compatibility and source attribution metadata.
 _Avoid_: public build input wrapper
 
-**Resource**:
+**Entry - `SirenEntry` - Formerly "Resource"**:
 Decoded task or milestone with `type`, `id`, optional `status`, `attributes`, and optional `origin`.
 _Avoid_: raw syntax node
 
+**Resource**:
+Catch-all conventional term referring to any value or structure represented in a project, including Documents, Entries, Attributes, etc.
+_Avoid_: Introducing this term into code
+
 **Attribute**:
-A key-value pair within a resource. The `value` field is always a `Tuple`, even for scalar values. Optional `origin` metadata supports comment-aware formatting.
+A key-value pair within an entry. The `value` field is always a `Tuple`, even for scalar values. Optional `origin` metadata supports comment-aware formatting.
 _Avoid_: null values, Attribute.raw (removed field)
 
 **Atom**:
-A single atomic value that can appear in a `Tuple`: `string | number | boolean | ResourceReference`. The `null` value is not an atom; absence is represented by the empty tuple.
+A single atomic value that can appear in a `Tuple`: `string | number | boolean | EntryReference`. The `null` value is not an atom; absence is represented by the empty tuple.
 _Avoid_: PrimitiveValue (superseded type)
 
 **Tuple**:
@@ -33,7 +37,7 @@ An ordered, readonly sequence of atoms (`readonly Atom[]`). Scalar attributes ar
 _Avoid_: AttributeValue (superseded), ArrayValue (superseded), null for absence
 
 **Origin**:
-Source attribution metadata attached to resources and attributes. Carries byte/row offsets plus optional `document`.
+Source attribution metadata attached to entries and attributes. Carries byte/row offsets plus optional `document`.
 _Avoid_: display formatting
 
 **DiagnosticBase**:
@@ -58,17 +62,17 @@ _Avoid_: undocumented deep imports
 
 ## Relationships
 
-- `SirenBuilder.fromResources(resources)` accepts raw `Resource`s only and has no `source?` parameter.
-- `SirenBuilder.resources` returns frozen raw resources in caller order, including duplicates.
+- `SirenBuilder.fromEntries(entries)` accepts raw `SirenEntry` array.
+- `SirenBuilder.entries` returns frozen raw entries in caller order, including duplicates.
 - `SirenBuilder.build()` is repeatable and non-consuming.
-- `SirenProject.resources` returns deduplicated resources with implicit milestone completion applied.
+- `SirenProject.entries` returns deduplicated entries with implicit milestone completion applied.
 - `SirenProject.graph` is cached so query helpers reuse the same dependency graph instance.
 - `SirenProject.diagnostics` is the complete semantic snapshot and preserves the current ordering: cycles, dangling dependencies, then duplicates.
 - W001 diagnostics expose dependency cycles; there is no separate public cycles API.
-- Resource and diagnostic file attribution come from `origin.document`; missing attribution leaves `file` undefined.
+- Entry and diagnostic file attribution come from `origin.document`; missing attribution leaves `file` undefined.
 - `SirenProject` is frozen and is only constructed internally by `SirenBuilder.build()`.
 - The package-root export surface intentionally keeps the public snapshot and helper types together so consumers do not need deep imports.
-- `SirenProject` provides `findResourceById()`, `getMilestoneIds()`, `getTasksByMilestone()`, `getDependencyTree()`, and `diagnostics` for consumers.
+- `SirenProject` provides `findEntryById()`, `getMilestoneIds()`, `getTasksByMilestone()`, `getDependencyTree()`, and `diagnostics` for consumers.
 
 ## Language Model
 
@@ -81,7 +85,7 @@ The grammar-shaped parse output that mirrors Tree-sitter nodes before Siren-spec
 _Avoid_: AST, semantic tree
 
 **Semantic IR**:
-The meaning-focused project representation used for resources, dependencies, validation, and utilities.
+The meaning-focused project representation used for entries, dependencies, validation, and utilities.
 _Avoid_: syntax tree, parsed document
 
 **Syntax Trivia**:
@@ -103,12 +107,12 @@ _Avoid_: diagnostic location, semantic origin
 ## Example dialogue
 
 > **Dev:** "Should cycle warnings live outside the project so callers compare diagnostic deltas?"
-> **Domain expert:** "No — a `SirenProject` is the built semantic snapshot, so its diagnostics and resources are already colocated."
+> **Domain expert:** "No — a `SirenProject` is the built semantic snapshot, so its diagnostics and entries are already colocated."
 
 ## Flagged ambiguities
 
 - "context" was used to mean both a query-only view and a built snapshot — resolved: `SirenProject` is the built snapshot.
-- "builder input" was used to mean a document wrapper — resolved: `SirenBuilder.fromResources(resources)` accepts raw resources directly.
+- "builder input" was used to mean a document wrapper — resolved: `SirenBuilder.fromEntries(entries)` accepts raw entries directly.
 - "source" attribution was used to mean a separate constructor argument — resolved: resource origins provide attribution.
 - "document" is overloaded between the core compatibility type and language parsing concepts — resolved: use the package-specific type names in the corresponding layer.
 
@@ -129,7 +133,7 @@ The grammar-shaped parse output that mirrors Tree-sitter nodes before Siren-spec
 _Avoid_: AST, semantic tree
 
 **Semantic IR**:
-The meaning-focused project representation used for resources, dependencies, validation, and utilities.
+The meaning-focused project representation used for entries, dependencies, validation, and utilities.
 _Avoid_: Syntax tree, parsed document
 
 **Syntax Trivia**:

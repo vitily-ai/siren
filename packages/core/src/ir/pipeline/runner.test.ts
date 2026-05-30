@@ -35,16 +35,16 @@ describe('Pipeline', () => {
   });
 
   it('lets a later module replace an envelope key (logical mutation)', () => {
-    const Init = defineModule('Init', (_: Envelope) => ({ resources: [1, 2, 3] }));
-    const Replace = defineModule('Replace', (input: { readonly resources: readonly number[] }) => ({
-      resources: input.resources.map((n) => n * 10),
+    const Init = defineModule('Init', (_: Envelope) => ({ entries: [1, 2, 3] }));
+    const Replace = defineModule('Replace', (input: { readonly entries: readonly number[] }) => ({
+      entries: input.entries.map((n) => n * 10),
     }));
-    const Read = defineModule('Read', (input: { readonly resources: readonly number[] }) => ({
-      sum: input.resources.reduce((acc, n) => acc + n, 0),
+    const Read = defineModule('Read', (input: { readonly entries: readonly number[] }) => ({
+      sum: input.entries.reduce((acc, n) => acc + n, 0),
     }));
 
     const result = Pipeline.start<Envelope>().pipe(Init).pipe(Replace).pipe(Read).run({});
-    expect(result.resources).toEqual([10, 20, 30]);
+    expect(result.entries).toEqual([10, 20, 30]);
     expect(result.sum).toBe(60);
   });
 

@@ -1,5 +1,5 @@
-import type { ResourceGraph } from './resource-graph';
-import type { Resource } from './types';
+import type { EntryGraph } from './entry-graph';
+import type { SirenEntry } from './types';
 
 export interface FileAttribution {
   readonly file?: string;
@@ -21,25 +21,25 @@ export interface SecondOccurrenceAttribution {
   readonly secondColumn?: number;
 }
 
-function rangeOriginForResource(resource: Resource | undefined) {
-  const origin = resource?.origin;
+function rangeOriginForEntry(entry: SirenEntry | undefined) {
+  const origin = entry?.origin;
   if (origin?.kind !== 'range') return undefined;
   return origin;
 }
 
-export function sourceFileForResource(resource: Resource | undefined): string | undefined {
-  return resource?.origin?.document;
+export function sourceFileForEntry(entry: SirenEntry | undefined): string | undefined {
+  return entry?.origin?.document;
 }
 
-export function sourceFilesForResourceIds(
-  resourceIds: readonly string[],
-  graph: ResourceGraph,
+export function sourceFilesForEntryIds(
+  entryIds: readonly string[],
+  graph: EntryGraph,
 ): FileAttribution {
-  if (resourceIds.length === 0) return {};
+  if (entryIds.length === 0) return {};
 
   const files = new Set<string>();
-  for (const resourceId of resourceIds) {
-    const file = sourceFileForResource(graph.getResource(resourceId));
+  for (const entryId of entryIds) {
+    const file = sourceFileForEntry(graph.getEntry(entryId));
     if (file !== undefined) {
       files.add(file);
     }
@@ -48,8 +48,8 @@ export function sourceFilesForResourceIds(
   return files.size > 0 ? { file: Array.from(files).join(', ') } : {};
 }
 
-export function positionForResource(resource: Resource | undefined): PositionAttribution {
-  const origin = rangeOriginForResource(resource);
+export function positionForEntry(entry: SirenEntry | undefined): PositionAttribution {
+  const origin = rangeOriginForEntry(entry);
   if (origin === undefined) return {};
 
   return {
@@ -58,10 +58,10 @@ export function positionForResource(resource: Resource | undefined): PositionAtt
   };
 }
 
-export function firstOccurrencePositionForResource(
-  resource: Resource | undefined,
+export function firstOccurrencePositionForEntry(
+  entry: SirenEntry | undefined,
 ): FirstOccurrencePositionAttribution {
-  const origin = rangeOriginForResource(resource);
+  const origin = rangeOriginForEntry(entry);
   if (origin === undefined) return {};
 
   return {
@@ -70,16 +70,16 @@ export function firstOccurrencePositionForResource(
   };
 }
 
-export function secondOccurrenceAttributionForResource(
-  resource: Resource | undefined,
+export function secondOccurrenceAttributionForEntry(
+  entry: SirenEntry | undefined,
 ): SecondOccurrenceAttribution {
-  const origin = rangeOriginForResource(resource);
+  const origin = rangeOriginForEntry(entry);
   if (origin === undefined) {
-    return { file: sourceFileForResource(resource) };
+    return { file: sourceFileForEntry(entry) };
   }
 
   return {
-    file: sourceFileForResource(resource),
+    file: sourceFileForEntry(entry),
     secondLine: origin.startRow + 1,
     secondColumn: 0,
   };

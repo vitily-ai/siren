@@ -5,32 +5,32 @@ import {
   type Attribute,
   isReference,
   type Origin,
-  type Resource,
+  type SirenEntry,
   type Tuple,
 } from './types';
 
-export function cloneAndFreezeResources(
-  resources: readonly Resource[],
+export function cloneAndFreezeEntries(
+  entries: readonly SirenEntry[],
   seenEphIds: Set<string> = new Set(),
-): readonly Resource[] {
-  return Object.freeze(resources.map((r) => cloneAndFreezeResource(r, seenEphIds)));
+): readonly SirenEntry[] {
+  return Object.freeze(entries.map((r) => cloneAndFreezeEntry(r, seenEphIds)));
 }
 
-function cloneAndFreezeResource(resource: Resource, seenEphIds: Set<string>): Resource {
-  const clone: Resource = {
-    type: resource.type,
-    id: resource.id,
-    ...(resource.status !== undefined ? { status: resource.status } : {}),
-    attributes: Object.freeze(resource.attributes.map(cloneAndFreezeAttribute)),
-    ...(resource.origin ? { origin: cloneAndFreezeOrigin(resource.origin) } : {}),
+function cloneAndFreezeEntry(entry: SirenEntry, seenEphIds: Set<string>): SirenEntry {
+  const clone: SirenEntry = {
+    type: entry.type,
+    id: entry.id,
+    ...(entry.status !== undefined ? { status: entry.status } : {}),
+    attributes: Object.freeze(entry.attributes.map(cloneAndFreezeAttribute)),
+    ...(entry.origin ? { origin: cloneAndFreezeOrigin(entry.origin) } : {}),
   };
 
-  const existingId = getEphId(resource);
+  const existingId = getEphId(entry);
   if (existingId !== undefined) {
     if (seenEphIds.has(existingId)) {
       // defensive check, as eph ids are internal and used for diff calculation
       throw new SirenCoreError(
-        'Duplicate eph-id detected. Multiple resources share the same eph-id identity across document slots. This is unlikely to be user error.',
+        'Duplicate eph-id detected. Multiple entries share the same eph-id identity across document slots. This is unlikely to be user error.',
       );
     }
     seenEphIds.add(existingId);

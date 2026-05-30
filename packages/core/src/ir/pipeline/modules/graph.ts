@@ -1,11 +1,11 @@
-import { ResourceGraph } from '../../resource-graph';
-import type { Resource } from '../../types';
+import { EntryGraph } from '../../entry-graph';
+import type { SirenEntry } from '../../types';
 import { defineModule } from '../types';
 
 /**
  * Graph module: builds the dependency graph once for the entire pipeline.
  *
- * Reads:  { resources }
+ * Reads:  { entries }
  * Writes: { graph }
  *
  * The graph stores ids and edges, both of which are unaffected by implicit
@@ -14,7 +14,7 @@ import { defineModule } from '../types';
  */
 export const GraphModule = defineModule(
   'Graph',
-  (input: { readonly resources: readonly Resource[] }): { readonly graph: ResourceGraph } => {
-    return { graph: ResourceGraph.fromResources(input.resources) };
+  (input: { readonly entries: readonly SirenEntry[] }): { readonly graph: EntryGraph } => {
+    return { graph: EntryGraph.fromEntries(input.entries) };
   },
 );

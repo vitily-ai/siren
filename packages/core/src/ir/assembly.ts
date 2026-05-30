@@ -3,8 +3,8 @@ import { IR_CONTEXT_FACTORY } from './context-internal';
 import type { SirenDocument } from './document';
 import { SirenCoreError } from './errors';
 import { computeDelta, type PatchResult } from './patch-result';
-import { cloneAndFreezeResources } from './snapshot';
-import type { Resource } from './types';
+import { cloneAndFreezeEntries } from './snapshot';
+import type { SirenEntry } from './types';
 
 export class SirenBuilder {
   private constructor(private readonly documentsSnapshot: readonly SirenDocument[]) {
@@ -22,13 +22,13 @@ export class SirenBuilder {
     return new SirenBuilder(cloneAndFreezeDocuments(documents));
   }
 
-  static fromResources(resources: readonly Resource[], ephemeralDocumentId: string): SirenBuilder {
-    // Compatibility construction path: wrap resources in a document and
+  static fromEntries(entries: readonly SirenEntry[], ephemeralDocumentId: string): SirenBuilder {
+    // Compatibility construction path: wrap entries in a document and
     // disable implicit milestone synthesis via directive.
     return SirenBuilder.fromDocuments([
       {
         id: ephemeralDocumentId,
-        resources,
+        entries,
         directive: { implicitMilestone: false },
       },
     ]);
@@ -54,32 +54,32 @@ export class SirenBuilder {
     return this.patch((docs) => docs.map((d) => (d.id === documentId ? fn(d) : d)));
   }
 
-  withResource(resource: Resource, documentId = 'misc'): PatchResult {
+  withEntry(entry: SirenEntry, documentId = 'misc'): PatchResult {
     const existingDocument = this.documentsSnapshot.find((d) => d.id === documentId);
     if (existingDocument === undefined) {
       return this.withDocument({
         id: documentId,
-        resources: [resource],
+        entries: [entry],
         directive: { implicitMilestone: false },
       });
     }
 
     return this.patchDocument(documentId, (doc) => ({
       ...doc,
-      resources: [...doc.resources, resource],
+      entries: [...doc.entries, entry],
     }));
   }
 
-  patchResource(resourceId: string, fn: (res: Resource) => Resource): PatchResult {
+  patchEntry(entryId: string, fn: (res: SirenEntry) => SirenEntry): PatchResult {
     return this.patch((docs) =>
       docs.map((doc) => {
-        if (!doc.resources.some((r) => r.id === resourceId)) {
+        if (!doc.entries.some((r) => r.id === entryId)) {
           return doc;
         }
 
         return {
           ...doc,
-          resources: doc.resources.map((r) => (r.id === resourceId ? fn(r) : r)),
+          entries: doc.entries.map((r) => (r.id === entryId ? fn(r) : r)),
         };
       }),
     );
@@ -102,7 +102,7 @@ function cloneAndFreezeDocument(document: SirenDocument, seenEphIds: Set<string>
 
   return Object.freeze({
     id: document.id,
-    resources: cloneAndFreezeResources(document.resources, seenEphIds),
+    entries: cloneAndFreezeEntries(document.entries, seenEphIds),
     ...(directive !== undefined ? { directive } : {}),
   });
 }

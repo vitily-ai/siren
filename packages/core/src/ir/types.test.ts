@@ -2,24 +2,18 @@
  * Tests for the tuple-first IR type surface.
  *
  * Target shape (see siren/tuple-first-core.siren + docs/adr/0004):
- *   Atom  = string | number | boolean | ResourceReference
+ *   Atom  = string | number | boolean | EntryReference
  *   Tuple = readonly Atom[]
  *   Attribute.value: Tuple
  *   Attribute.raw: REMOVED
- *   isReference(atom: Atom): atom is ResourceReference
+ *   isReference(atom: Atom): atom is EntryReference
  *   Deleted: ArrayValue, PrimitiveValue, isArray, isPrimitive
  *   Scalars are encoded as single-element tuples.
  *   Empty tuple is the absence value (replaces null in attribute positions).
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-  type Atom,
-  type Attribute,
-  isReference,
-  type ResourceReference,
-  type Tuple,
-} from './types';
+import { type Atom, type Attribute, type EntryReference, isReference, type Tuple } from './types';
 
 describe('Tuple-first IR type surface', () => {
   describe('Atom and Tuple', () => {
@@ -30,7 +24,7 @@ describe('Tuple-first IR type surface', () => {
       expect([s, n, b]).toEqual(['hello', 42, true]);
     });
 
-    it('admits ResourceReference as an atom', () => {
+    it('admits EntryReference as an atom', () => {
       const r: Atom = { kind: 'reference', id: 'taskA' };
       expect(isReference(r)).toBe(true);
     });
@@ -64,8 +58,8 @@ describe('Tuple-first IR type surface', () => {
       expect(a.value).toEqual([true]);
     });
 
-    it('accepts a single-element tuple containing a ResourceReference', () => {
-      const ref: ResourceReference = { kind: 'reference', id: 'taskA' };
+    it('accepts a single-element tuple containing a EntryReference', () => {
+      const ref: EntryReference = { kind: 'reference', id: 'taskA' };
       const a: Attribute = { key: 'depends_on', value: [ref] };
       expect(a.value).toHaveLength(1);
       const first = a.value[0]!;
@@ -119,11 +113,11 @@ describe('Tuple-first IR type surface', () => {
   });
 
   describe('isReference operates on Atom', () => {
-    it('returns true for ResourceReference atoms and narrows the type', () => {
+    it('returns true for EntryReference atoms and narrows the type', () => {
       const a: Atom = { kind: 'reference', id: 'taskA' };
       expect(isReference(a)).toBe(true);
       if (isReference(a)) {
-        // narrowed to ResourceReference
+        // narrowed to EntryReference
         expect(a.id).toBe('taskA');
       } else {
         throw new Error('Expected reference');

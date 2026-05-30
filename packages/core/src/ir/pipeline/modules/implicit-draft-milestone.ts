@@ -1,10 +1,10 @@
-import { ResourceGraph } from '../../resource-graph';
+import { EntryGraph } from '../../entry-graph';
 import { defineModule } from '../types';
 
 /**
  * Implicit-draft milestone module.
  *
- * A milestone resource with no successors (no `depends_on`) and no explicit
+ * A milestone entry with no successors (no `depends_on`) and no explicit
  * status is assigned `status: 'draft'`. This module must run before
  * {@link ImplicitCompletionModule} so that completion reasoning always sees
  * orphan milestones as explicitly drafted rather than inferring the rule itself.
@@ -17,24 +17,24 @@ import { defineModule } from '../types';
 export const ImplicitDraftMilestoneModule = defineModule(
   'ImplicitDraftMilestone',
   (input: {
-    readonly graph: ResourceGraph;
+    readonly graph: EntryGraph;
   }): {
-    readonly graph: ResourceGraph;
+    readonly graph: EntryGraph;
   } => {
     let changed = false;
-    const newResources = input.graph.resources.map((resource) => {
-      if (resource.type === 'milestone' && resource.status === undefined) {
-        const successors = input.graph.getSuccessors(resource.id);
+    const newEntries = input.graph.entries.map((entry) => {
+      if (entry.type === 'milestone' && entry.status === undefined) {
+        const successors = input.graph.getSuccessors(entry.id);
         if (successors.length === 0) {
           changed = true;
-          return { ...resource, status: 'draft' as const };
+          return { ...entry, status: 'draft' as const };
         }
       }
-      return resource;
+      return entry;
     });
 
     if (changed) {
-      return { graph: ResourceGraph.fromResources(newResources) };
+      return { graph: EntryGraph.fromEntries(newEntries) };
     }
     return { graph: input.graph };
   },
