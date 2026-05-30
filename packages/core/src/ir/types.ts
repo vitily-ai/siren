@@ -67,7 +67,7 @@ export interface Attribute {
 }
 
 /**
- * SirenEntry types supported by Siren
+ * Entry types supported by Siren
  * Extensible for future types
  */
 export type EntryType = 'task' | 'milestone';

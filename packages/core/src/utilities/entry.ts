@@ -1,7 +1,7 @@
 import { isReference, type SirenEntry } from '../ir/types';
 
 /**
- * Finds a entry by its ID from the given array of entries.
+ * Finds an entry by its ID from the given array of entries.
  * @param entries Array of Siren entries
  * @param id The ID of the entry to find
  * @returns The entry with the matching ID
@@ -16,7 +16,7 @@ export function findEntryById(entries: SirenEntry[], id: string): SirenEntry {
 }
 
 /**
- * Extracts dependency IDs from a entry's depends_on attribute.
+ * Extracts dependency IDs from an entry's depends_on attribute.
  *
  * Reads the tuple-first shape: depends_on is a Tuple (readonly Atom[]) of
  * atoms. Only reference atoms contribute dependency ids; scalar atoms are
@@ -45,5 +45,3 @@ export function isComplete(entry: SirenEntry): entry is SirenEntry & { status: '
 export function isDraft(entry: SirenEntry): entry is SirenEntry & { status: 'draft' } {
   return entry.status === 'draft';
 }
-
-// TODO expose this as a method on an object oriented IR context

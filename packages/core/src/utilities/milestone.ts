@@ -15,7 +15,7 @@ export function getMilestoneIds(entries: readonly SirenEntry[]): string[] {
 /**
  * Returns a Map where keys are milestone IDs and values are arrays of tasks
  * that are not explicitly complete. Draft and no-status tasks remain visible.
- * @param graph SirenEntry graph snapshot
+ * @param graph Entry graph snapshot
  * @returns Map<string, SirenEntry[]>
  */
 
