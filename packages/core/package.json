@@ -31,7 +31,8 @@
     "node": ">=24.0.0"
   },
   "dependencies": {
-    "deep-freeze-es6": "^5.0.0"
+    "deep-freeze-es6": "^5.0.0",
+    "klona": "^2.0.6"
   },
   "devDependencies": {
     "@types/node": "^25.0.6",

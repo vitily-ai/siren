@@ -1,3 +1,5 @@
+import { deepFreeze } from 'deep-freeze-es6';
+import { klona } from 'klona';
 import { SirenProject } from './context';
 import { IR_CONTEXT_FACTORY } from './context-internal';
 import type { SirenDocument } from './document';
@@ -91,20 +93,18 @@ export class SirenBuilder {
 }
 
 function cloneAndFreezeDocument(document: SirenDocument, seenEphIds: Set<string>): SirenDocument {
-  const directive =
-    document.directive === undefined
-      ? undefined
-      : Object.freeze({
-          ...(document.directive.implicitMilestone !== undefined
-            ? { implicitMilestone: document.directive.implicitMilestone }
-            : {}),
-        });
+  // Deep-clone the whole document (preserves every enumerable own string +
+  // symbol property), then re-bind `entries` via the snapshot path so eph-id
+  // stamp/preserve/duplicate-guard semantics apply per entry. Deep-freeze the
+  // result before handing it back.
 
-  return Object.freeze({
-    id: document.id,
+  const clone = {
+    ...klona(document),
     entries: cloneAndFreezeEntries(document.entries, seenEphIds),
-    ...(directive !== undefined ? { directive } : {}),
-  });
+  };
+
+  //FIXME: this deep freeze makes the 'freeze' of cloneAndFreezeEntries redundant
+  return deepFreeze(clone);
 }
 
 function cloneAndFreezeDocuments(documents: readonly SirenDocument[]): readonly SirenDocument[] {

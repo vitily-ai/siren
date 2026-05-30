@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
+import { EPH_ID, getEphId } from './eph-id';
+import { SirenCoreError } from './errors';
 import { cloneAndFreezeEntries } from './snapshot';
-import { isReference, type SirenEntry } from './types';
+import { type Attribute, isReference, type SirenEntry } from './types';
+
+interface ExtendedAttribute extends Attribute {
+  meta: { tag: string; nested: { values: number[] } };
+}
+
+interface ExtendedEntry extends SirenEntry {
+  meta: { tag: string; nested: { values: number[] } };
+  attributes: readonly ExtendedAttribute[];
+}
 
 describe('cloneAndFreezeEntries', () => {
   it('returns a frozen wrapper array even for empty input', () => {
@@ -144,5 +155,167 @@ describe('cloneAndFreezeEntries', () => {
     expect(clonedAttribute?.origin).toBeDefined();
     expect(clonedAttribute?.origin).not.toBe(attributeOrigin);
     expect(Object.isFrozen(clonedAttribute?.origin)).toBe(true);
+  });
+
+  it('preserves enumerable own metadata on entries and attributes', () => {
+    const sourceAttr: ExtendedAttribute = {
+      key: 'description',
+      value: ['hello'],
+      meta: { tag: 'attr-meta', nested: { values: [1, 2] } },
+    };
+    const sourceEntry: ExtendedEntry = {
+      type: 'task',
+      id: 'task-a',
+      attributes: [sourceAttr],
+      meta: { tag: 'entry-meta', nested: { values: [10, 20] } },
+    };
+
+    const [cloned] = cloneAndFreezeEntries([sourceEntry]) as readonly ExtendedEntry[];
+    expect(cloned).toBeDefined();
+    if (!cloned) throw new Error('expected cloned entry');
+
+    expect(cloned.meta).toBeDefined();
+    expect(cloned.meta.tag).toBe('entry-meta');
+    expect(cloned.attributes[0]?.meta).toBeDefined();
+    expect(cloned.attributes[0]?.meta.tag).toBe('attr-meta');
+  });
+
+  it('deep-clones nested metadata so source mutations do not leak into the snapshot, and freezes nested structures', () => {
+    const sourceEntry: ExtendedEntry = {
+      type: 'task',
+      id: 'task-a',
+      attributes: [
+        {
+          key: 'description',
+          value: ['x'],
+          meta: { tag: 'attr', nested: { values: [1, 2] } },
+        },
+      ],
+      meta: { tag: 'entry', nested: { values: [10, 20] } },
+    };
+
+    const [cloned] = cloneAndFreezeEntries([sourceEntry]) as readonly ExtendedEntry[];
+    if (!cloned) throw new Error('expected cloned entry');
+
+    expect(cloned.meta).not.toBe(sourceEntry.meta);
+    expect(cloned.meta.nested).not.toBe(sourceEntry.meta.nested);
+    expect(cloned.meta.nested.values).not.toBe(sourceEntry.meta.nested.values);
+    expect(Object.isFrozen(cloned.meta)).toBe(true);
+    expect(Object.isFrozen(cloned.meta.nested)).toBe(true);
+    expect(Object.isFrozen(cloned.meta.nested.values)).toBe(true);
+
+    const clonedAttrMeta = cloned.attributes[0]?.meta;
+    if (!clonedAttrMeta) throw new Error('expected cloned attribute meta');
+    expect(clonedAttrMeta).not.toBe(sourceEntry.attributes[0]?.meta);
+    expect(Object.isFrozen(clonedAttrMeta)).toBe(true);
+    expect(Object.isFrozen(clonedAttrMeta.nested)).toBe(true);
+    expect(Object.isFrozen(clonedAttrMeta.nested.values)).toBe(true);
+
+    // Mutate source after ingestion; snapshot must be unaffected.
+    sourceEntry.meta.tag = 'MUTATED';
+    sourceEntry.meta.nested.values.push(999);
+    sourceEntry.attributes[0]!.meta.nested.values.push(999);
+
+    expect(cloned.meta.tag).toBe('entry');
+    expect(cloned.meta.nested.values).toEqual([10, 20]);
+    expect(clonedAttrMeta.nested.values).toEqual([1, 2]);
+  });
+
+  it('keeps optional fields absent on the clone even when enumerable metadata is present', () => {
+    const sourceEntry: ExtendedEntry = {
+      type: 'task',
+      id: 'task-a',
+      attributes: [],
+      meta: { tag: 'm', nested: { values: [] } },
+    };
+
+    const [cloned] = cloneAndFreezeEntries([sourceEntry]);
+    if (!cloned) throw new Error('expected cloned entry');
+
+    expect('status' in cloned).toBe(false);
+    expect('origin' in cloned).toBe(false);
+  });
+
+  // eph-id stamping and preservation
+  // ---------------------------------------------------------------------------
+
+  it('stamps a fresh eph-id on an entry that has none', () => {
+    const source: SirenEntry = { type: 'task', id: 'a', attributes: [] };
+    expect(getEphId(source)).toBeUndefined();
+
+    const [cloned] = cloneAndFreezeEntries([source]);
+    if (!cloned) throw new Error('expected entry');
+
+    expect(getEphId(cloned)).toBeDefined();
+    expect(typeof getEphId(cloned)).toBe('string');
+  });
+
+  it('stamped eph-id is non-enumerable, non-writable, non-configurable, and absent from JSON', () => {
+    const [cloned] = cloneAndFreezeEntries([{ type: 'task', id: 'a', attributes: [] }]);
+    if (!cloned) throw new Error('expected entry');
+
+    const descriptor = Object.getOwnPropertyDescriptor(cloned, EPH_ID);
+    expect(descriptor).toBeDefined();
+    expect(descriptor?.enumerable).toBe(false);
+    expect(descriptor?.writable).toBe(false);
+    expect(descriptor?.configurable).toBe(false);
+    expect(JSON.stringify(cloned)).not.toContain('sirenEphId');
+  });
+
+  it('does not stamp an eph-id on the source entry — only the clone is stamped', () => {
+    const source: SirenEntry = { type: 'task', id: 'a', attributes: [] };
+    cloneAndFreezeEntries([source]);
+
+    expect(getEphId(source)).toBeUndefined();
+  });
+
+  it('two entries without eph-ids each receive a distinct stamp', () => {
+    const [a, b] = cloneAndFreezeEntries([
+      { type: 'task', id: 'a', attributes: [] },
+      { type: 'task', id: 'b', attributes: [] },
+    ]);
+    if (!a || !b) throw new Error('expected two entries');
+
+    const idA = getEphId(a);
+    const idB = getEphId(b);
+    expect(idA).toBeDefined();
+    expect(idB).toBeDefined();
+    expect(idA).not.toBe(idB);
+  });
+
+  it('preserves the existing eph-id when the source entry already has one', () => {
+    const [stamped] = cloneAndFreezeEntries([{ type: 'task', id: 'a', attributes: [] }]);
+    if (!stamped) throw new Error('expected stamped entry');
+
+    const originalId = getEphId(stamped);
+    expect(originalId).toBeDefined();
+
+    const [recloned] = cloneAndFreezeEntries([stamped]);
+    if (!recloned) throw new Error('expected recloned entry');
+
+    expect(recloned).not.toBe(stamped);
+    expect(getEphId(recloned)).toBe(originalId);
+  });
+
+  it('preserved eph-id on the clone has a non-enumerable, non-writable, non-configurable descriptor', () => {
+    const [stamped] = cloneAndFreezeEntries([{ type: 'task', id: 'a', attributes: [] }]);
+    if (!stamped) throw new Error('expected stamped entry');
+
+    const [recloned] = cloneAndFreezeEntries([stamped]);
+    if (!recloned) throw new Error('expected recloned entry');
+
+    const descriptor = Object.getOwnPropertyDescriptor(recloned, EPH_ID);
+    expect(descriptor).toBeDefined();
+    expect(descriptor?.enumerable).toBe(false);
+    expect(descriptor?.writable).toBe(false);
+    expect(descriptor?.configurable).toBe(false);
+  });
+
+  it('throws SirenCoreError when two entries in the same call share the same eph-id', () => {
+    const [stamped] = cloneAndFreezeEntries([{ type: 'task', id: 'a', attributes: [] }]);
+    if (!stamped) throw new Error('expected stamped entry');
+
+    // Passing the same frozen object reference twice → same eph-id → duplicate detected
+    expect(() => cloneAndFreezeEntries([stamped, stamped])).toThrow(SirenCoreError);
   });
 });
