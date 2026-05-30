@@ -1,10 +1,11 @@
+import { deepFreeze } from 'deep-freeze-es6';
 import type {
   DependencyTree,
   TraversalControl,
   TraversePredicate,
 } from '../utilities/dependency-tree';
 import { getDependsOn } from '../utilities/entry';
-import { cloneAndFreezeEntries } from './snapshot';
+import { cloneEntries } from './snapshot';
 import type { SirenEntry } from './types';
 
 const MAX_DEPTH = 1000000;
@@ -39,7 +40,7 @@ export class EntryGraph {
   }
 
   static fromEntries(entries: readonly SirenEntry[]): EntryGraph {
-    const frozenEntries = cloneAndFreezeEntries(entries, new Set());
+    const frozenEntries = deepFreeze(cloneEntries(entries, new Set()));
     const entriesById = new Map<string, SirenEntry>(
       frozenEntries.map((entry) => [entry.id, entry]),
     );

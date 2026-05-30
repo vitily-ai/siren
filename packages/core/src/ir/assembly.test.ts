@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import { SirenBuilder } from './assembly';
 import { SirenProject } from './context';
+import type { SirenDocument } from './document';
 import { SirenCoreError } from './errors';
 import { isReference, type Origin, type SirenEntry } from './types';
 
@@ -445,6 +446,54 @@ describe('SirenBuilder', () => {
       const b = SirenBuilder.fromEntries([{ type: 'task', id: 't1', attributes: [] }], 'adhoc');
       const ingested = b.documents[0]!.entries[0]!;
       expect(Object.getOwnPropertySymbols(ingested)).toHaveLength(1);
+    });
+  });
+
+  describe('document metadata passthrough', () => {
+    interface ExtendedDocument extends SirenDocument {
+      meta: { tag: string; nested: { values: number[] } };
+    }
+
+    it('preserves enumerable own metadata on a SirenDocument through SirenBuilder.fromDocuments', () => {
+      const sourceDoc: ExtendedDocument = {
+        id: 'doc-one',
+        entries: [{ type: 'task', id: 't1', attributes: [] }],
+        meta: { tag: 'doc-meta', nested: { values: [1, 2, 3] } },
+      };
+
+      const builder = SirenBuilder.fromDocuments([sourceDoc]);
+      const outDoc = builder.documents[0] as ExtendedDocument | undefined;
+      expect(outDoc).toBeDefined();
+      if (!outDoc) throw new Error('expected document');
+
+      expect(outDoc.meta).toBeDefined();
+      expect(outDoc.meta.tag).toBe('doc-meta');
+      expect(outDoc.meta.nested.values).toEqual([1, 2, 3]);
+    });
+
+    it('deep-clones nested document metadata and freezes it, isolating it from source mutations', () => {
+      const sourceDoc: ExtendedDocument = {
+        id: 'doc-one',
+        entries: [{ type: 'task', id: 't1', attributes: [] }],
+        meta: { tag: 'doc-meta', nested: { values: [1, 2, 3] } },
+      };
+
+      const builder = SirenBuilder.fromDocuments([sourceDoc]);
+      const outDoc = builder.documents[0] as ExtendedDocument | undefined;
+      if (!outDoc) throw new Error('expected document');
+
+      expect(outDoc.meta).not.toBe(sourceDoc.meta);
+      expect(outDoc.meta.nested).not.toBe(sourceDoc.meta.nested);
+      expect(outDoc.meta.nested.values).not.toBe(sourceDoc.meta.nested.values);
+      expect(Object.isFrozen(outDoc.meta)).toBe(true);
+      expect(Object.isFrozen(outDoc.meta.nested)).toBe(true);
+      expect(Object.isFrozen(outDoc.meta.nested.values)).toBe(true);
+
+      sourceDoc.meta.tag = 'MUTATED';
+      sourceDoc.meta.nested.values.push(999);
+
+      expect(outDoc.meta.tag).toBe('doc-meta');
+      expect(outDoc.meta.nested.values).toEqual([1, 2, 3]);
     });
   });
 });
