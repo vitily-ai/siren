@@ -1,17 +1,16 @@
-import { deepFreeze } from 'deep-freeze-es6';
 import { klona } from 'klona';
 import { EPH_ID, getEphId, stampEphId } from './eph-id';
 import { SirenCoreError } from './errors';
 import type { SirenEntry } from './types';
 
-export function cloneAndFreezeEntries(
+export function cloneEntries(
   entries: readonly SirenEntry[],
   seenEphIds: Set<string> = new Set(),
 ): readonly SirenEntry[] {
-  return Object.freeze(entries.map((r) => cloneAndFreezeEntry(r, seenEphIds)));
+  return entries.map((r) => cloneEntry(r, seenEphIds));
 }
 
-function cloneAndFreezeEntry(entry: SirenEntry, seenEphIds: Set<string>): SirenEntry {
+function cloneEntry(entry: SirenEntry, seenEphIds: Set<string>): SirenEntry {
   const clone = klona(entry);
 
   const existingId = getEphId(entry);
@@ -34,5 +33,5 @@ function cloneAndFreezeEntry(entry: SirenEntry, seenEphIds: Set<string>): SirenE
     seenEphIds.add(getEphId(clone)!);
   }
 
-  return deepFreeze(clone);
+  return clone;
 }
