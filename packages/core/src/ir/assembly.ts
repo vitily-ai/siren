@@ -98,9 +98,11 @@ function cloneDocument(document: SirenDocument, seenEphIds: Set<string>): SirenD
   // stamp/preserve/duplicate-guard semantics apply per entry. Deep-freeze the
   // result before handing it back.
 
+  const { entries, ...rest } = document;
+
   return {
-    ...klona(document),
-    entries: cloneEntries(document.entries, seenEphIds),
+    ...klona(rest),
+    entries: cloneEntries(entries, seenEphIds),
   };
 }
 
