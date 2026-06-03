@@ -13,9 +13,10 @@ task templates {
   description = "Design and implement a templates feature for reusable task/milestone patterns"
 }
 
-task cli-doc-ids {
+task cli-doc-ids complete {
   description = "
     ensure that the doc-id's used to construct documents by CLI are full relative file paths from project root,
     not just bare document names. this is because core presumes unique document id's, unlike resource id's.
   "
+  details = "Superseded by eod in siren/entries-over-documents.siren: the SirenDocument type and document IDs are removed from @sirenpm/core entirely. The CLI will pass flat SirenEntry[] to SirenBuilder.fromEntries, so document identity is no longer a core concern."
 }
