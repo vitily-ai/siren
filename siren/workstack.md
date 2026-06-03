@@ -1,0 +1,7 @@
+- `siren mv` - cli lifecycle and mutation step
+- `draft` status support
+- `draft` symbol support in lang
+- lang total refactor
+- core origin demotion and diagnostic refactor
+- built project retains documents?
+  - no i'm pretty sure we remove documents from core - synthesize at the language decode :) /shrug
