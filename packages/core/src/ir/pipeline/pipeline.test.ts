@@ -4,32 +4,6 @@ import { EntryGraph } from '../entry-graph';
 import type { SirenEntry } from '../types';
 import { runIRBuildPipeline } from './index';
 
-type BuilderDocument = {
-  id: string;
-  entries: readonly SirenEntry[];
-  directive?: {
-    implicitMilestone?: boolean;
-  };
-};
-
-type BuildOutput = {
-  readonly entries: readonly SirenEntry[];
-  readonly diagnostics: readonly { readonly code: string }[];
-};
-
-type DocumentsBuilderSurface = {
-  readonly documents: readonly BuilderDocument[];
-  build(): BuildOutput;
-};
-
-type SirenBuilderDocumentsApi = {
-  fromDocuments?: (documents: readonly BuilderDocument[]) => DocumentsBuilderSurface;
-  fromEntries?: (
-    entries: readonly SirenEntry[],
-    ephemeralDocumentId: string,
-  ) => DocumentsBuilderSurface;
-};
-
 describe('runIRBuildPipeline', () => {
   it('produces graph and ordered diagnostics for a representative project', () => {
     const entries: readonly SirenEntry[] = [
@@ -62,13 +36,7 @@ describe('runIRBuildPipeline', () => {
       },
     ];
 
-    const env = runIRBuildPipeline([
-      {
-        id: 'adhoc',
-        entries,
-        directive: { implicitMilestone: false },
-      },
-    ]);
+    const env = runIRBuildPipeline(entries);
 
     expect(env.graph.entries.map((r) => [r.id, r.status])).toEqual([
       ['dup', undefined],
@@ -96,26 +64,23 @@ describe('IR pipeline redundancy regression', () => {
     const buildSpy = vi.spyOn(EntryGraph, 'fromEntries');
 
     try {
-      const assembly = SirenBuilder.fromEntries(
-        [
-          { type: 'task', id: 'task-a', status: 'complete', attributes: [] },
-          { type: 'task', id: 'task-b', status: 'complete', attributes: [] },
-          {
-            type: 'milestone',
-            id: 'release',
-            attributes: [
-              {
-                key: 'depends_on',
-                value: [
-                  { kind: 'reference', id: 'task-a' },
-                  { kind: 'reference', id: 'task-b' },
-                ],
-              },
-            ],
-          },
-        ],
-        'adhoc',
-      );
+      const assembly = SirenBuilder.fromEntries([
+        { type: 'task', id: 'task-a', status: 'complete', attributes: [] },
+        { type: 'task', id: 'task-b', status: 'complete', attributes: [] },
+        {
+          type: 'milestone',
+          id: 'release',
+          attributes: [
+            {
+              key: 'depends_on',
+              value: [
+                { kind: 'reference', id: 'task-a' },
+                { kind: 'reference', id: 'task-b' },
+              ],
+            },
+          ],
+        },
+      ]);
 
       buildSpy.mockClear();
       const ctx = assembly.build();
@@ -139,25 +104,19 @@ describe('IR pipeline implicit-draft-milestone integration (red)', () => {
     // Exercises ImplicitDraftMilestoneModule + ImplicitCompletionModule
     // interacting end-to-end through the real pipeline wiring.
     const env = runIRBuildPipeline([
+      // orphan milestone → drafted; parent depending on it → NOT completed
+      { type: 'milestone', id: 'orphan', attributes: [] },
       {
-        id: 'adhoc',
-        directive: { implicitMilestone: false },
-        entries: [
-          // orphan milestone → drafted; parent depending on it → NOT completed
-          { type: 'milestone', id: 'orphan', attributes: [] },
-          {
-            type: 'milestone',
-            id: 'parent-of-orphan',
-            attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'orphan' }] }],
-          },
-          // normal completion path must still work alongside drafting
-          { type: 'task', id: 'done', status: 'complete', attributes: [] },
-          {
-            type: 'milestone',
-            id: 'completed-release',
-            attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'done' }] }],
-          },
-        ],
+        type: 'milestone',
+        id: 'parent-of-orphan',
+        attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'orphan' }] }],
+      },
+      // normal completion path must still work alongside drafting
+      { type: 'task', id: 'done', status: 'complete', attributes: [] },
+      {
+        type: 'milestone',
+        id: 'completed-release',
+        attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'done' }] }],
       },
     ]);
 
@@ -170,30 +129,23 @@ describe('IR pipeline implicit-draft-milestone integration (red)', () => {
   });
 });
 
-describe('IR pipeline document milestone synthesis (red)', () => {
-  it('treats fromEntries as a thin wrapper over fromDocuments with synthesis disabled directive', () => {
-    const api = SirenBuilder as unknown as SirenBuilderDocumentsApi;
-    const entries: readonly SirenEntry[] = [{ type: 'task', id: 'task-a', attributes: [] }];
-
-    const fromDocumentsBuilder = api.fromDocuments?.([
+describe('IR pipeline raw entry parity', () => {
+  it('matches SirenBuilder.build() output for the same raw entries', () => {
+    const entries: readonly SirenEntry[] = [
+      { type: 'task', id: 'done', status: 'complete', attributes: [] },
       {
-        id: 'adhoc',
-        entries,
-        directive: { implicitMilestone: false },
+        type: 'milestone',
+        id: 'release',
+        attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'done' }] }],
       },
-    ]);
-    expect(fromDocumentsBuilder).toBeDefined();
-    if (!fromDocumentsBuilder) throw new Error('expected fromDocuments builder');
+    ];
 
-    const compatibilityBuilder = api.fromEntries?.(entries, 'adhoc');
-    expect(compatibilityBuilder).toBeDefined();
-    if (!compatibilityBuilder) throw new Error('expected fromEntries wrapper builder');
+    const env = runIRBuildPipeline(entries);
+    const project = SirenBuilder.fromEntries(entries).build();
 
-    expect(compatibilityBuilder.documents).toEqual(fromDocumentsBuilder.documents);
-
-    const fromDocumentsOutput = fromDocumentsBuilder.build();
-    const compatibilityOutput = compatibilityBuilder.build();
-    expect(compatibilityOutput.entries).toEqual(fromDocumentsOutput.entries);
-    expect(compatibilityOutput.diagnostics).toEqual(fromDocumentsOutput.diagnostics);
+    expect(project.entries.map((entry) => [entry.id, entry.status])).toEqual(
+      env.graph.entries.map((entry) => [entry.id, entry.status]),
+    );
+    expect(project.diagnostics).toEqual(env.diagnostics);
   });
 });

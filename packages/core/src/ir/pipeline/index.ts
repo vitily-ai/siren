@@ -1,5 +1,4 @@
 import type { Diagnostic } from '../diagnostics';
-import type { SirenDocument } from '../document';
 import type { EntryGraph } from '../entry-graph';
 import type { SirenEntry } from '../types';
 import { ImplicitCompletionModule } from './modules/completion';
@@ -9,7 +8,6 @@ import { DedupModule } from './modules/dedup';
 import { FinalizeModule } from './modules/finalize';
 import { GraphModule } from './modules/graph';
 import { ImplicitDraftMilestoneModule } from './modules/implicit-draft-milestone';
-import { SynthesisModule } from './modules/synthesis';
 import { Pipeline } from './runner';
 
 /**
@@ -23,15 +21,14 @@ import { Pipeline } from './runner';
  * module in the chain; indirect dependencies are carried opaquely through
  * the envelope):
  *
- *   seed { documents }
- *     → Synthesis              adds   { rawEntries }
- *     → Dedup                  adds   { entries, duplicateDiagnostics }
- *     → Graph                  adds   { graph }
+ *   seed { rawEntries }
+ *     → Dedup                  adds     { entries, duplicateDiagnostics }
+ *     → Graph                  adds     { graph }
  *     → ImplicitDraftMilestone rewrites { graph }
  *     → Completion             rewrites { graph }
- *     → Cycles                 adds   { cycles, cycleDiagnostics }
- *     → Dangling               adds   { danglingDiagnostics }
- *     → Finalize               adds   { diagnostics }
+ *     → Cycles                 adds     { cycles, cycleDiagnostics }
+ *     → Dangling               adds     { danglingDiagnostics }
+ *     → Finalize               adds     { diagnostics }
  */
 export interface IRBuildEnvelope {
   readonly rawEntries: readonly SirenEntry[];
@@ -40,12 +37,11 @@ export interface IRBuildEnvelope {
 }
 
 /**
- * Build the IR pipeline envelope for frozen pre-build documents. This is the
+ * Build the IR pipeline envelope for a frozen flat entry list. This is the
  * only path used to construct a `SirenProject`.
  */
-export function runIRBuildPipeline(documents: readonly SirenDocument[]): IRBuildEnvelope {
-  const pipeline = Pipeline.start<{ readonly documents: readonly SirenDocument[] }>()
-    .pipe(SynthesisModule)
+export function runIRBuildPipeline(rawEntries: readonly SirenEntry[]): IRBuildEnvelope {
+  const pipeline = Pipeline.start<{ readonly rawEntries: readonly SirenEntry[] }>()
     .pipe(DedupModule)
     .pipe(GraphModule)
     .pipe(ImplicitDraftMilestoneModule)
@@ -54,7 +50,7 @@ export function runIRBuildPipeline(documents: readonly SirenDocument[]): IRBuild
     .pipe(DanglingModule)
     .pipe(FinalizeModule);
 
-  const env = pipeline.run({ documents });
+  const env = pipeline.run({ rawEntries });
   return {
     rawEntries: env.rawEntries,
     graph: env.graph,

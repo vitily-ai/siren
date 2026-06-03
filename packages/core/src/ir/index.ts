@@ -11,11 +11,9 @@ export type {
   DiagnosticBase,
   DuplicateIdDiagnostic,
 } from './diagnostics';
-export type { SirenDocument } from './document';
 export { SirenCoreError } from './errors';
 export type {
   ChangeMode,
-  DocumentChange,
   EntryChange,
   PatchResult,
 } from './patch-result';

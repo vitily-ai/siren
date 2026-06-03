@@ -3,7 +3,6 @@ import { isComplete } from '../utilities/entry';
 import { getMilestoneIds, getTasksByMilestone } from '../utilities/milestone';
 import { IR_CONTEXT_FACTORY } from './context-internal';
 import type { Diagnostic } from './diagnostics';
-import type { SirenDocument } from './document';
 import type { EntryGraph } from './entry-graph';
 import { type IRBuildEnvelope, runIRBuildPipeline } from './pipeline';
 import type { SirenEntry } from './types';
@@ -24,16 +23,16 @@ export type {
 export class SirenProject {
   private readonly envelope: IRBuildEnvelope;
 
-  private constructor(documents: readonly SirenDocument[]) {
-    this.envelope = runIRBuildPipeline(documents);
+  private constructor(entries: readonly SirenEntry[]) {
+    this.envelope = runIRBuildPipeline(entries);
     Object.freeze(this);
   }
 
   /**
    * Internal construction path used by SirenBuilder.
    */
-  static [IR_CONTEXT_FACTORY](documents: readonly SirenDocument[]): SirenProject {
-    return new SirenProject(documents);
+  static [IR_CONTEXT_FACTORY](entries: readonly SirenEntry[]): SirenProject {
+    return new SirenProject(entries);
   }
 
   /**
