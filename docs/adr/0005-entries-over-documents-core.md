@@ -40,7 +40,7 @@ Specifically:
 - The pipeline seed is `{ rawEntries }`, and the pipeline starts at deduplication.
 - Core no longer synthesizes per-document milestones.
 
-Synthetic milestone synthesis is relocated to the `@sirenpm/language` decoder. The decoder interprets document directives at this time, and the milestone synthesizer is wired to this. `directive.implicitMilstone` continues to be `false` by default until the grammar can support it. The language-side synthetic milstone depends on all entries in the file rather than
+Synthetic milestone synthesis is relocated to the `@sirenpm/language` decoder. The decoder interprets document directives at this time, and the milestone synthesizer is wired to this. `directive.implicitMilestone` continues to be `false` by default until the grammar can support it. The language-side synthetic milestone depends on all entries in the file rather than
 performing root-detection. That keeps the helper simple and testable without duplicating graph operations while deferring dependency-reduction
 or hierarchy recovery to a future module if it becomes necessary.
 

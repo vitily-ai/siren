@@ -36,7 +36,7 @@ function copySymbolProperties(src: object, dst: object): void {
 }
 
 describe('SirenBuilder', () => {
-  it('preserves caller entry order in assembly documents and first-occurrence order in the built context', () => {
+  it('preserves caller entry order in the builder snapshot and first-occurrence order in the built context', () => {
     const entries: SirenEntry[] = [
       { type: 'task', id: 'second', attributes: [] },
       { type: 'task', id: 'first', attributes: [] },
