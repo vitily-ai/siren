@@ -1,112 +1,45 @@
 import { deepFreeze } from 'deep-freeze-es6';
-import { klona } from 'klona';
 import { SirenProject } from './context';
 import { IR_CONTEXT_FACTORY } from './context-internal';
-import type { SirenDocument } from './document';
-import { SirenCoreError } from './errors';
 import { computeDelta, type PatchResult } from './patch-result';
 import { cloneEntries } from './snapshot';
 import type { SirenEntry } from './types';
 
 export class SirenBuilder {
-  private constructor(private readonly documentsSnapshot: readonly SirenDocument[]) {
+  private constructor(private readonly entriesSnapshot: readonly SirenEntry[]) {
     Object.freeze(this);
   }
 
-  static fromDocuments(documents: readonly SirenDocument[]): SirenBuilder {
-    const seen = new Set<string>();
-    for (const doc of documents) {
-      if (seen.has(doc.id)) {
-        throw new SirenCoreError(`Duplicate document id: "${doc.id}"`);
-      }
-      seen.add(doc.id);
-    }
-    return new SirenBuilder(cloneAndFreezeDocuments(documents));
+  static fromEntries(entries: readonly SirenEntry[]): SirenBuilder {
+    return new SirenBuilder(cloneAndFreezeEntries(entries));
   }
 
-  static fromEntries(entries: readonly SirenEntry[], ephemeralDocumentId: string): SirenBuilder {
-    // Compatibility construction path: wrap entries in a document and
-    // disable implicit milestone synthesis via directive.
-    return SirenBuilder.fromDocuments([
-      {
-        id: ephemeralDocumentId,
-        entries,
-        directive: { implicitMilestone: false },
-      },
-    ]);
+  get entries(): readonly SirenEntry[] {
+    return this.entriesSnapshot;
   }
 
-  get documents(): readonly SirenDocument[] {
-    return this.documentsSnapshot;
-  }
-
-  patch(fn: (docs: readonly SirenDocument[]) => readonly SirenDocument[]): PatchResult {
-    const newBuilder = SirenBuilder.fromDocuments(fn(this.documentsSnapshot));
-    const changes = computeDelta(this.documentsSnapshot, newBuilder.documents);
+  patch(fn: (entries: readonly SirenEntry[]) => readonly SirenEntry[]): PatchResult {
+    const newBuilder = SirenBuilder.fromEntries(fn(this.entriesSnapshot));
+    const changes = computeDelta(this.entriesSnapshot, newBuilder.entries);
     return { builder: newBuilder, changes };
   }
 
-  withDocument(doc: SirenDocument): PatchResult {
-    return this.patch((docs) => {
-      return [...docs, doc];
-    });
-  }
-
-  patchDocument(documentId: string, fn: (doc: SirenDocument) => SirenDocument): PatchResult {
-    return this.patch((docs) => docs.map((d) => (d.id === documentId ? fn(d) : d)));
-  }
-
-  withEntry(entry: SirenEntry, documentId = 'misc'): PatchResult {
-    const existingDocument = this.documentsSnapshot.find((d) => d.id === documentId);
-    if (existingDocument === undefined) {
-      return this.withDocument({
-        id: documentId,
-        entries: [entry],
-        directive: { implicitMilestone: false },
-      });
-    }
-
-    return this.patchDocument(documentId, (doc) => ({
-      ...doc,
-      entries: [...doc.entries, entry],
-    }));
+  withEntry(entry: SirenEntry): PatchResult {
+    return this.patch((entries) => [...entries, entry]);
   }
 
   patchEntry(entryId: string, fn: (res: SirenEntry) => SirenEntry): PatchResult {
-    return this.patch((docs) =>
-      docs.map((doc) => {
-        if (!doc.entries.some((r) => r.id === entryId)) {
-          return doc;
-        }
-
-        return {
-          ...doc,
-          entries: doc.entries.map((r) => (r.id === entryId ? fn(r) : r)),
-        };
-      }),
+    return this.patch((entries) =>
+      entries.map((entry) => (entry.id === entryId ? fn(entry) : entry)),
     );
   }
 
   build(): SirenProject {
-    return SirenProject[IR_CONTEXT_FACTORY](this.documentsSnapshot);
+    return SirenProject[IR_CONTEXT_FACTORY](this.entriesSnapshot);
   }
 }
 
-function cloneDocument(document: SirenDocument, seenEphIds: Set<string>): SirenDocument {
-  // Deep-clone the whole document (preserves every enumerable own string +
-  // symbol property), then re-bind `entries` via the snapshot path so eph-id
-  // stamp/preserve/duplicate-guard semantics apply per entry. Deep-freeze the
-  // result before handing it back.
-
-  const { entries, ...rest } = document;
-
-  return {
-    ...klona(rest),
-    entries: cloneEntries(entries, seenEphIds),
-  };
-}
-
-function cloneAndFreezeDocuments(documents: readonly SirenDocument[]): readonly SirenDocument[] {
+function cloneAndFreezeEntries(entries: readonly SirenEntry[]): readonly SirenEntry[] {
   const seenEphIds = new Set<string>();
-  return deepFreeze(documents.map((document) => cloneDocument(document, seenEphIds)));
+  return deepFreeze(cloneEntries(entries, seenEphIds));
 }

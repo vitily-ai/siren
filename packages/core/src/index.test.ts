@@ -5,22 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { isReference, SirenBuilder, type SirenEntry, SirenProject, version } from './index';
 
 function buildContext(entries: readonly SirenEntry[]) {
-  return SirenBuilder.fromEntries(entries, 'adhoc').build();
+  return SirenBuilder.fromEntries(entries).build();
 }
-
-type BuilderDocument = {
-  id: string;
-  entries: readonly SirenEntry[];
-};
-
-type DocumentsBuilderSurface = {
-  readonly documents: readonly BuilderDocument[];
-  build(): SirenProject;
-};
-
-type SirenBuilderDocumentsApi = {
-  fromDocuments?: (documents: readonly BuilderDocument[]) => DocumentsBuilderSurface;
-};
 
 const FIXTURE_PROJECTS_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -107,26 +93,18 @@ function parseFixtureEntries(source: string): SirenEntry[] {
   return entries;
 }
 
-function loadFixtureDocuments(fixtureSlug: string): BuilderDocument[] {
+function loadFixtureEntries(fixtureSlug: string): SirenEntry[] {
   const fixtureDir = path.join(FIXTURE_PROJECTS_DIR, fixtureSlug);
   const nestedSirenDir = path.join(fixtureDir, 'siren');
   const sourceDir = fs.existsSync(nestedSirenDir) ? nestedSirenDir : fixtureDir;
 
-  return collectSirenFiles(sourceDir).map((filePath) => ({
-    id: path.basename(filePath, '.siren'),
-    entries: parseFixtureEntries(fs.readFileSync(filePath, 'utf8')),
-  }));
+  return collectSirenFiles(sourceDir).flatMap((filePath) =>
+    parseFixtureEntries(fs.readFileSync(filePath, 'utf8')),
+  );
 }
 
-function buildContextFromFixtureDocuments(fixtureSlug: string): SirenProject {
-  const api = SirenBuilder as unknown as SirenBuilderDocumentsApi;
-  expect(typeof api.fromDocuments).toBe('function');
-
-  const builder = api.fromDocuments?.(loadFixtureDocuments(fixtureSlug));
-  expect(builder).toBeDefined();
-  if (!builder) throw new Error('expected builder');
-
-  return builder.build();
+function buildContextFromFixtureEntries(fixtureSlug: string): SirenProject {
+  return SirenBuilder.fromEntries(loadFixtureEntries(fixtureSlug)).build();
 }
 
 function dependsOnIds(entry: SirenEntry): string[] {
@@ -148,7 +126,7 @@ describe('@sirenpm/core', () => {
   });
 
   it('exports SirenBuilder', () => {
-    expect(SirenBuilder.fromEntries([], 'adhoc').documents[0]?.entries).toEqual([]);
+    expect(SirenBuilder.fromEntries([]).entries).toEqual([]);
   });
 
   it('exports SirenProject and builds it through SirenBuilder', () => {
@@ -277,42 +255,52 @@ describe('@sirenpm/core', () => {
     expect(result.get('milestone1')).toEqual([]);
   });
 
-  describe('document milestone synthesis fixtures (red)', () => {
-    it('document-milestone-roots synthesizes document milestone dependencies from roots only', () => {
-      const context = buildContextFromFixtureDocuments('document-milestone-roots');
-      const authMilestone = context.findEntryById('auth');
+  describe('flat entry fixture projects', () => {
+    it('document-milestone-roots preserves dependencies without synthesizing a milestone', () => {
+      const context = buildContextFromFixtureEntries('document-milestone-roots');
 
-      expect(authMilestone.type).toBe('milestone');
-      expect(dependsOnIds(authMilestone)).toEqual(['login']);
+      expect(context.entries.map((entry) => entry.id)).toEqual([
+        'hash-password',
+        'validate-token',
+        'login',
+      ]);
+
+      const login = context.findEntryById('login');
+      expect(login.type).toBe('task');
+      expect(dependsOnIds(login)).toEqual(['hash-password', 'validate-token']);
+      expect(
+        context.entries.some((entry) => entry.type === 'milestone' && entry.id === 'auth'),
+      ).toBe(false);
     });
 
-    it('document-milestone-empty-doc synthesizes an orphan milestone for empty documents', () => {
-      const context = buildContextFromFixtureDocuments('document-milestone-empty-doc');
-      const billingMilestone = context.findEntryById('billing');
+    it('document-milestone-empty-doc yields no entries', () => {
+      const context = buildContextFromFixtureEntries('document-milestone-empty-doc');
 
-      expect(billingMilestone.type).toBe('milestone');
-      expect(dependsOnIds(billingMilestone)).toEqual([]);
+      expect(context.entries).toEqual([]);
+      expect(context.diagnostics).toEqual([]);
     });
 
-    it('document-milestone-explicit-takeover suppresses synthesis on same-document explicit milestone', () => {
-      const context = buildContextFromFixtureDocuments('document-milestone-explicit-takeover');
+    it('document-milestone-explicit-takeover preserves the explicit auth milestone', () => {
+      const context = buildContextFromFixtureEntries('document-milestone-explicit-takeover');
       const authMilestones = context.entries.filter(
         (entry) => entry.type === 'milestone' && entry.id === 'auth',
       );
 
       expect(authMilestones).toHaveLength(1);
+      expect(context.findEntryById('auth').type).toBe('milestone');
+      expect(dependsOnIds(context.findEntryById('auth'))).toEqual(['login']);
       expect(duplicateIdDiagnosticsFor(context, 'auth')).toHaveLength(0);
     });
 
-    it('document-milestone-cross-doc-duplicate reports W003 for explicit and synthetic milestone collisions', () => {
-      const context = buildContextFromFixtureDocuments('document-milestone-cross-doc-duplicate');
+    it('document-milestone-cross-doc-duplicate preserves the explicit auth milestone without synthesizing a duplicate', () => {
+      const context = buildContextFromFixtureEntries('document-milestone-cross-doc-duplicate');
       const authMilestones = context.entries.filter(
         (entry) => entry.type === 'milestone' && entry.id === 'auth',
       );
 
       expect(authMilestones).toHaveLength(1);
-      expect(dependsOnIds(authMilestones[0]!)).toEqual(['login']);
-      expect(duplicateIdDiagnosticsFor(context, 'auth')).toHaveLength(1);
+      expect(dependsOnIds(authMilestones[0]!)).toEqual([]);
+      expect(duplicateIdDiagnosticsFor(context, 'auth')).toHaveLength(0);
     });
   });
 });

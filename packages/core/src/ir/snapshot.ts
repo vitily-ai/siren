@@ -18,7 +18,7 @@ function cloneEntry(entry: SirenEntry, seenEphIds: Set<string>): SirenEntry {
     if (seenEphIds.has(existingId)) {
       // defensive check, as eph ids are internal and used for diff calculation
       throw new SirenCoreError(
-        'Duplicate eph-id detected. Multiple entries share the same eph-id identity across document slots. This is unlikely to be user error.',
+        'Duplicate eph-id detected. Multiple entries share the same eph-id identity. This is unlikely to be user error.',
       );
     }
     seenEphIds.add(existingId);

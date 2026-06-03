@@ -20,7 +20,7 @@ milestone eod-core {
 
 # TDD red — write failing assertions before touching source
 
-task eod-core-red {
+task eod-core-red complete {
   description = "TDD red: write failing tests for the new @sirenpm/core entry-centric API. In assembly.test.ts assert fromEntries as the primary constructor and confirm fromDocuments/withDocument/patchDocument are absent. In patch-result tests assert computeDelta returns EntryChange[] with no DocumentChange. In pipeline.test.ts assert the pipeline seeds with rawEntries and starts at DedupModule with no SynthesisModule step. All added tests must fail against the current implementation before any source changes are made."
   affected_packages = ["@sirenpm/core"]
   context = "entries-over-documents.md"
@@ -29,7 +29,7 @@ task eod-core-red {
 
 # TDD green — builder and patch surface
 
-task eod-core-builder {
+task eod-core-builder complete {
   description = "TDD green: reshape SirenBuilder and SirenProject to operate on flat SirenEntry inputs. Make fromEntries(entries) the sole public constructor. Remove fromDocuments, withDocument, patchDocument, and the ephemeralDocumentId parameter. Make withEntry a plain flat append. Rewrite patch and patchEntry to operate on entry arrays and rename the internal entriesSnapshot field. Update SirenProject constructor to accept entries. Rewrite computeDelta to return EntryChange[] and delete DocumentChange and directiveChanged. Delete packages/core/src/ir/document.ts. Remove SirenDocument and DocumentChange from packages/core/src/ir/index.ts exports."
   affected_packages = ["@sirenpm/core"]
   context = "entries-over-documents.md"
@@ -39,7 +39,7 @@ task eod-core-builder {
 
 # TDD green — pipeline topology
 
-task eod-core-pipeline {
+task eod-core-pipeline complete {
   description = "TDD green: remove SynthesisModule from the core IR pipeline. Seed the pipeline envelope with rawEntries instead of documents. Delete packages/core/src/ir/pipeline/modules/synthesis.ts and its test file. Update packages/core/src/ir/pipeline/index.ts to start the chain at DedupModule and refresh the topology comment. Adjust the input types of DedupModule and GraphModule so they consume flat entries only. Update extended-passthrough.test.ts and any other tests that still assert document-shaped surfaces."
   affected_packages = ["@sirenpm/core"]
   context = "entries-over-documents.md"

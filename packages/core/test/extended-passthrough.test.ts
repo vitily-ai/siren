@@ -14,7 +14,7 @@
  * SirenProject, and then the outputs are cast back to the extended types.
  */
 import { describe, expect, it } from 'vitest';
-import { type Attribute, SirenBuilder, type SirenDocument, type SirenEntry } from '../src';
+import { type Attribute, SirenBuilder, type SirenEntry } from '../src';
 
 // ---------------------------------------------------------------------------
 // Extended types
@@ -27,11 +27,6 @@ interface ExtendedAttribute extends Attribute {
 interface ExtendedEntry extends SirenEntry {
   testValue: 'preserved';
   attributes: readonly ExtendedAttribute[];
-}
-
-interface ExtendedDocument extends SirenDocument {
-  testValue: 'preserved';
-  entries: readonly ExtendedEntry[];
 }
 
 // ---------------------------------------------------------------------------
@@ -51,33 +46,27 @@ const entry: ExtendedEntry = {
   testValue: 'preserved',
 };
 
-const doc: ExtendedDocument = {
-  id: 'doc-one',
-  entries: [entry],
-  testValue: 'preserved',
-};
-
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe('extended field passthrough: SirenBuilder → SirenProject', () => {
-  it('preserves testValue on document through builder.documents', () => {
-    const builder = SirenBuilder.fromDocuments([doc]);
-    const outDoc = builder.documents[0] as ExtendedDocument;
+  it('preserves testValue on entry through builder.entries', () => {
+    const builder = SirenBuilder.fromEntries([entry]);
+    const outEntry = builder.entries[0] as ExtendedEntry;
 
-    expect(outDoc.testValue).toBe('preserved');
+    expect(outEntry.testValue).toBe('preserved');
   });
 
   it('preserves testValue on entry through project.findEntryById', () => {
-    const project = SirenBuilder.fromDocuments([doc]).build();
+    const project = SirenBuilder.fromEntries([entry]).build();
     const outEntry = project.findEntryById('task-alpha') as ExtendedEntry;
 
     expect(outEntry.testValue).toBe('preserved');
   });
 
   it('preserves testValue on attribute through project.findEntryById', () => {
-    const project = SirenBuilder.fromDocuments([doc]).build();
+    const project = SirenBuilder.fromEntries([entry]).build();
     const outAttr = project.findEntryById('task-alpha').attributes[0] as ExtendedAttribute;
 
     expect(outAttr.testValue).toBe('preserved');
@@ -97,9 +86,7 @@ describe('opaque metadata survives pipeline status rewrites', () => {
       meta: { tag: 'orphan-meta' },
     };
 
-    const project = SirenBuilder.fromDocuments([
-      { id: 'doc-draft', entries: [orphanMilestone] },
-    ]).build();
+    const project = SirenBuilder.fromEntries([orphanMilestone]).build();
 
     const out = project.findEntryById('orphan-ms') as MetaEntry;
     expect(out.status).toBe('draft');
@@ -121,9 +108,7 @@ describe('opaque metadata survives pipeline status rewrites', () => {
       meta: { tag: 'completion-meta' },
     };
 
-    const project = SirenBuilder.fromDocuments([
-      { id: 'doc-complete', entries: [completedTask, milestone] },
-    ]).build();
+    const project = SirenBuilder.fromEntries([completedTask, milestone]).build();
 
     const out = project.findEntryById('ms-complete') as MetaEntry;
     expect(out.status).toBe('complete');
