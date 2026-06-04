@@ -7,13 +7,6 @@ import type {
   DuplicateIdDiagnostic,
 } from './diagnostics';
 import type { EntryGraph } from './entry-graph';
-import {
-  firstOccurrencePositionForEntry,
-  positionForEntry,
-  secondOccurrenceAttributionForEntry,
-  sourceFileForEntry,
-  sourceFilesForEntryIds,
-} from './source-attribution';
 import type { SirenEntry } from './types';
 
 export interface SemanticAnalysisInput {
@@ -30,21 +23,15 @@ export interface SemanticAnalysisSnapshot {
 
 export function diagnoseCycles(
   cycles: readonly DependencyCycle[],
-  graph: EntryGraph,
 ): readonly CircularDependencyDiagnostic[] {
   const diagnostics: CircularDependencyDiagnostic[] = [];
 
   for (const cycle of cycles) {
-    const firstNodeId = cycle.nodes[0];
-    const firstEntry = firstNodeId === undefined ? undefined : graph.getEntry(firstNodeId);
-
     diagnostics.push(
       freezeDiagnostic({
         code: 'W001',
         severity: 'warning',
         nodes: cycle.nodes,
-        ...sourceFilesForEntryIds(cycle.nodes, graph),
-        ...positionForEntry(firstEntry),
       }),
     );
   }
@@ -69,8 +56,6 @@ export function diagnoseDanglingDependencies(
             entryId: entry.id,
             entryType: entry.type,
             dependencyId,
-            ...sourceFilesForEntryIds([entry.id], graph),
-            ...positionForEntry(entry),
           }),
         );
       }
@@ -95,10 +80,6 @@ export function diagnoseDuplicateEntries(
           severity: 'warning',
           entryId: entry.id,
           entryType: entry.type,
-          file: sourceFileForEntry(entry),
-          firstFile: sourceFileForEntry(firstEntry),
-          ...firstOccurrencePositionForEntry(firstEntry),
-          ...secondOccurrenceAttributionForEntry(entry),
         }),
       );
     } else {

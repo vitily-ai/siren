@@ -14,9 +14,8 @@ export type {
 } from './ir/diagnostics';
 // IR types (intermediate representation), SirenBuilder, SirenProject, and SirenCoreError
 export * from './ir/index';
-// Origin is IR-agnostic positional metadata
 // Atom/Tuple types and reference guard
-export type { Atom, Origin, Tuple } from './ir/types';
+export type { Atom, Tuple } from './ir/types';
 export { isReference } from './ir/types';
 // Dependency tree utilities
 export type { DependencyTree } from './utilities/dependency-tree';

@@ -203,9 +203,6 @@ describe('SirenBuilder', () => {
         code: 'W001',
         severity: 'warning',
         nodes: ['cycle-a', 'cycle-b', 'cycle-a'],
-        file: 'cycle-a.siren, cycle-b.siren',
-        line: 1,
-        column: 0,
       },
       {
         code: 'W002',
@@ -213,21 +210,12 @@ describe('SirenBuilder', () => {
         entryId: 'has-dangling',
         entryType: 'task',
         dependencyId: 'missing',
-        file: 'dangling.siren',
-        line: 5,
-        column: 0,
       },
       {
         code: 'W003',
         severity: 'warning',
         entryId: 'finished-task',
         entryType: 'task',
-        file: 'complete-second.siren',
-        firstFile: 'complete-first.siren',
-        firstLine: 7,
-        firstColumn: 0,
-        secondLine: 9,
-        secondColumn: 0,
       },
     ]);
     expect(Object.isFrozen(context.entries)).toBe(false);
