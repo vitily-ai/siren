@@ -11,17 +11,24 @@ milestone origin-demotion {
 
 # ── Phase 1: core ─────────────────────────────────────────────────────────────
 
-task origin-demotion-core-red {
-	description = "Write failing tests in @sirenpm/core asserting the new diagnostic shapes: DiagnosticBase has no file/line/column; W001/W002/W003 carry only entry IDs and code-specific fields; SirenEntry and Attribute have no origin field."
+task origin-demotion-core-types complete {
+	description = "Remove RangeOrigin, SyntheticOrigin, and Origin from types.ts. Remove SirenEntry.origin and Attribute.origin. Reduce DiagnosticBase to {code, severity} — strip file, line, column. Update W001/W002/W003 diagnostic interfaces to carry entry IDs instead of extracted position fields. These type changes break existing analysis.ts producers and tests, establishing the red state for downstream tasks."
 	affected_packages = ["@sirenpm/core"]
 	context = "origin-demotion.md"
 }
 
-task origin-demotion-core-green {
-	description = "Remove RangeOrigin, SyntheticOrigin, and Origin from types.ts. Remove SirenEntry.origin and Attribute.origin. Delete source-attribution.ts and its test. Strip file/line/column from DiagnosticBase. Update W001/W002/W003 types and analysis.ts producers to carry only entry IDs. Trim origin-dependent assertions from context.test.ts."
+task origin-demotion-core-tests complete {
+	description = "Write failing tests asserting the new diagnostic shapes (DiagnosticBase has no file/line/column; W001/W002/W003 carry only entry IDs). Delete source-attribution.ts, its test file, and origin-dependent assertions in context.test.ts that are now obsolete under the new model."
 	affected_packages = ["@sirenpm/core"]
 	context = "origin-demotion.md"
-	depends_on = origin-demotion-core-red
+	depends_on = origin-demotion-core-types
+}
+
+task origin-demotion-core-green complete {
+	description = "Update analysis.ts diagnostic producers to build W001/W002/W003 using only entry IDs — no source-attribution helpers. Make all core tests pass under the new type shapes."
+	affected_packages = ["@sirenpm/core"]
+	context = "origin-demotion.md"
+	depends_on = origin-demotion-core-tests
 }
 
 task origin-demotion-core-publish {

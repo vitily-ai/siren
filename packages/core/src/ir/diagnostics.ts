@@ -7,12 +7,6 @@
 export interface DiagnosticBase {
   readonly code: string;
   readonly severity: 'info' | 'warning' | 'error';
-  /** Source file path (when available) */
-  readonly file?: string;
-  /** 1-based line number (when available) */
-  readonly line?: number;
-  /** 0-based column number (when available) */
-  readonly column?: number;
 }
 
 /**
@@ -58,8 +52,9 @@ export interface CircularDependencyDiagnostic extends DiagnosticBase {
  * W003: Duplicate entry ID detected
  *
  * Emitted when multiple entries share the same ID. The first occurrence is kept,
- * and all subsequent occurrences are dropped with a warning. File attribution
- * is derived from each entry's origin.document field.
+ * and all subsequent occurrences are dropped with a warning. The ordering of
+ * first vs second occurrence is determined by array position — core does not
+ * need origin to establish precedence.
  */
 export interface DuplicateIdDiagnostic extends DiagnosticBase {
   readonly code: 'W003';
@@ -68,14 +63,4 @@ export interface DuplicateIdDiagnostic extends DiagnosticBase {
   readonly entryId: string;
   /** Type of the entry (task or milestone) */
   readonly entryType: 'task' | 'milestone';
-  /** 1-based line number of the first (precedent) occurrence */
-  readonly firstLine?: number;
-  /** 0-based column number of the first (precedent) occurrence */
-  readonly firstColumn?: number;
-  /** Source file path of the first (precedent) occurrence (from origin.document) */
-  readonly firstFile?: string;
-  /** 1-based line number of the duplicate (second) occurrence - used for diagnostic position */
-  readonly secondLine?: number;
-  /** 0-based column number of the duplicate (second) occurrence */
-  readonly secondColumn?: number;
 }

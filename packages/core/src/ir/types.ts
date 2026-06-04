@@ -6,30 +6,6 @@
  */
 
 /**
- * Source origin metadata attached to IR/CST nodes.
- *
- * `range` origins point to concrete source positions.
- * `synthetic` origins identify generated entries anchored to a document.
- */
-export interface RangeOrigin {
-  readonly kind: 'range';
-  readonly startByte: number;
-  readonly endByte: number;
-  readonly startRow: number;
-  readonly endRow: number;
-  /** Document identifier (e.g., relative file path from project root) */
-  readonly document?: string;
-}
-
-export interface SyntheticOrigin {
-  readonly kind: 'synthetic';
-  /** Document identifier (e.g., relative file path from project root) */
-  readonly document: string;
-}
-
-export type Origin = RangeOrigin | SyntheticOrigin;
-
-/**
  * Reference to another entry by ID
  */
 export interface EntryReference {
@@ -59,11 +35,6 @@ export type Tuple = readonly Atom[];
 export interface Attribute {
   readonly key: string;
   readonly value: Tuple;
-  /**
-   * Optional source origin information for comment-aware formatting.
-   * This is not semantic and may differ across equivalent parses.
-   */
-  readonly origin?: Origin;
 }
 
 /**
@@ -100,11 +71,6 @@ export interface SirenEntry {
    */
   readonly status?: EntryStatus;
   readonly attributes: readonly Attribute[];
-  /**
-   * Optional source origin information for comment preservation
-   * Used by formatters to interleave comments with exported IR
-   */
-  readonly origin?: Origin;
 }
 
 /**
@@ -121,15 +87,6 @@ export interface Cycle {
   readonly nodes: readonly string[];
   /** Edges in the cycle (optional, for detailed analysis) */
   readonly edges?: readonly [string, string][];
-}
-
-/**
- * Top-level document containing all entries
- */
-export interface Document {
-  readonly entries: readonly SirenEntry[];
-  /** Source file path (if any) */
-  readonly source?: string;
 }
 
 /**

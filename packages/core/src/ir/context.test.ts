@@ -52,81 +52,6 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
     });
   });
 
-  describe('diagnostics with source attribution', () => {
-    it('includes file and position for dangling diagnostics from origin.document', () => {
-      const context = buildContext([
-        {
-          type: 'task',
-          id: 'has-dangling',
-          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'missing' }] }],
-          origin: {
-            kind: 'range',
-            startByte: 0,
-            endByte: 10,
-            startRow: 0,
-            endRow: 0,
-            document: 'project/tasks.siren',
-          },
-        },
-      ]);
-
-      expect(context.diagnostics).toEqual([
-        {
-          code: 'W002',
-          severity: 'warning',
-          entryId: 'has-dangling',
-          entryType: 'task',
-          dependencyId: 'missing',
-          file: 'project/tasks.siren',
-          line: 1,
-          column: 0,
-        },
-      ]);
-    });
-
-    it('includes file attribution for cycles spanning multiple files', () => {
-      const context = buildContext([
-        {
-          type: 'task',
-          id: 'a',
-          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'b' }] }],
-          origin: {
-            kind: 'range',
-            startByte: 0,
-            endByte: 10,
-            startRow: 0,
-            endRow: 0,
-            document: 'project/file1.siren',
-          },
-        },
-        {
-          type: 'task',
-          id: 'b',
-          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'a' }] }],
-          origin: {
-            kind: 'range',
-            startByte: 0,
-            endByte: 10,
-            startRow: 0,
-            endRow: 0,
-            document: 'project/file2.siren',
-          },
-        },
-      ]);
-
-      expect(context.diagnostics).toEqual([
-        {
-          code: 'W001',
-          severity: 'warning',
-          nodes: ['a', 'b', 'a'],
-          file: 'project/file1.siren, project/file2.siren',
-          line: 1,
-          column: 0,
-        },
-      ]);
-    });
-  });
-
   describe('normalization and semantic snapshot', () => {
     it('deduplicates first, then resolves implicit milestone completion', () => {
       const context = buildContext([
@@ -134,28 +59,12 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
           type: 'task',
           id: 'shared-task',
           attributes: [],
-          origin: {
-            kind: 'range',
-            startByte: 0,
-            endByte: 20,
-            startRow: 4,
-            endRow: 4,
-            document: 'first.siren',
-          },
         },
         {
           type: 'task',
           id: 'shared-task',
           status: 'complete',
           attributes: [],
-          origin: {
-            kind: 'range',
-            startByte: 21,
-            endByte: 40,
-            startRow: 11,
-            endRow: 11,
-            document: 'second.siren',
-          },
         },
         {
           type: 'milestone',
@@ -174,12 +83,6 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
           severity: 'warning',
           entryId: 'shared-task',
           entryType: 'task',
-          file: 'second.siren',
-          firstFile: 'first.siren',
-          firstLine: 5,
-          firstColumn: 0,
-          secondLine: 12,
-          secondColumn: 0,
         },
       ]);
     });

@@ -26,7 +26,7 @@ export const CyclesModule = defineModule(
     readonly cycleDiagnostics: readonly CircularDependencyDiagnostic[];
   } => {
     const cycles = detectDependencyCycles(input.graph);
-    const cycleDiagnostics = diagnoseCycles(cycles, input.graph);
+    const cycleDiagnostics = diagnoseCycles(cycles);
     return { cycles, cycleDiagnostics };
   },
 );
