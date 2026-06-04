@@ -1,0 +1,64 @@
+# Origin demotion from core to language
+# Context: docs/adr/0006-origin-demoted-to-language.md
+# Companion: siren/origin-demotion.md
+
+milestone origin-demotion {
+	description = "Remove Origin (RangeOrigin, SyntheticOrigin) from @sirenpm/core and have @sirenpm/language own source provenance via SourcedEntry/SourcedAttribute structural extensions. DiagnosticBase reduces to {code, severity}. Diagnostics carry entry IDs instead of pre-extracted file/line/column fields. Core publishes first; language follows."
+	affected_packages = ["@sirenpm/core", "@sirenpm/language", "@sirenpm/cli"]
+	context = "origin-demotion.md"
+	depends_on = [origin-demotion-core-publish, origin-demotion-language-publish, origin-demotion-cli]
+}
+
+# ── Phase 1: core ─────────────────────────────────────────────────────────────
+
+task origin-demotion-core-red {
+	description = "Write failing tests in @sirenpm/core asserting the new diagnostic shapes: DiagnosticBase has no file/line/column; W001/W002/W003 carry only entry IDs and code-specific fields; SirenEntry and Attribute have no origin field."
+	affected_packages = ["@sirenpm/core"]
+	context = "origin-demotion.md"
+}
+
+task origin-demotion-core-green {
+	description = "Remove RangeOrigin, SyntheticOrigin, and Origin from types.ts. Remove SirenEntry.origin and Attribute.origin. Delete source-attribution.ts and its test. Strip file/line/column from DiagnosticBase. Update W001/W002/W003 types and analysis.ts producers to carry only entry IDs. Trim origin-dependent assertions from context.test.ts."
+	affected_packages = ["@sirenpm/core"]
+	context = "origin-demotion.md"
+	depends_on = origin-demotion-core-red
+}
+
+task origin-demotion-core-publish {
+	description = "Publish a new breaking @sirenpm/core version with Origin removed. The version bump establishes the boundary for downstream consumers to upgrade against."
+	affected_packages = ["@sirenpm/core"]
+	context = "origin-demotion.md"
+	depends_on = origin-demotion-core-green
+}
+
+# ── Phase 2: language ─────────────────────────────────────────────────────────
+
+task origin-demotion-language-red {
+	description = "Write failing tests in @sirenpm/language asserting that Origin, RangeOrigin, and SyntheticOrigin are defined natively in language (not re-exported from core); that SourcedEntry extends SirenEntry with origin; and that SourcedAttribute extends Attribute with origin."
+	affected_packages = ["@sirenpm/language"]
+	context = "origin-demotion.md"
+	depends_on = origin-demotion-core-publish
+}
+
+task origin-demotion-language-green {
+	description = "Define language-native Origin, RangeOrigin, and SyntheticOrigin types. Add SourcedEntry and SourcedAttribute extension interfaces. Replace the re-export of Origin from @sirenpm/core in cst.ts with the language-native definition. Pin @sirenpm/core to the new breaking version."
+	affected_packages = ["@sirenpm/language"]
+	context = "origin-demotion.md"
+	depends_on = origin-demotion-language-red
+}
+
+task origin-demotion-language-publish {
+	description = "Publish a new @sirenpm/language version with language-owned Origin and SourcedEntry/SourcedAttribute types."
+	affected_packages = ["@sirenpm/language"]
+	context = "origin-demotion.md"
+	depends_on = origin-demotion-language-green
+}
+
+# ── Phase 3: CLI (deferred) ───────────────────────────────────────────────────
+
+task origin-demotion-cli {
+	description = "Update @sirenpm/cli formatDiagnostics to extract source provenance from entry IDs carried by each diagnostic type rather than from DiagnosticBase.file/line/column. Requires graph or project context at format time. Details to be scoped at implementation."
+	affected_packages = ["@sirenpm/cli"]
+	context = "origin-demotion.md"
+	depends_on = origin-demotion-language-publish
+}
