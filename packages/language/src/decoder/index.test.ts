@@ -336,5 +336,43 @@ describe('decodeAstToEntries', () => {
         { kind: 'reference', id: 'm' },
       ]);
     });
+
+    it('produces zero additional entries when only an explicit matching milestone exists', async () => {
+      // Document contains only a milestone whose id matches the document name.
+      // Synthesis must not create a duplicate — the explicit milestone already
+      // covers the document.
+      const parsed = await parseDoc('doc.siren', 'milestone doc {}');
+      const withoutSynthesis = parsed.toEntries();
+      const withSynthesis = parsed.toEntries({ synthesizeMilestones: true });
+
+      // Synthesis adds nothing: both calls return the same single entry.
+      expect(withSynthesis).toHaveLength(1);
+      expect(withSynthesis).toEqual(withoutSynthesis);
+      expect(withSynthesis[0].origin.kind).toBe('range');
+
+      // No synthetic-origin entry should appear anywhere.
+      expect(withSynthesis.some((e) => e.origin.kind === 'synthetic')).toBe(false);
+    });
+
+    it('synthesizes a milestone when all entries are dropped by parse errors', async () => {
+      // 'task broken @' is entirely malformed — the AST builder drops every
+      // resource via EL001, leaving zero surviving entries.
+      const parsed = await parseDoc('doc.siren', 'task broken @');
+
+      // Verify the AST has zero resources (all dropped by EL001).
+      expect(parsed.ast.resources).toHaveLength(0);
+      expect(parsed.diagnostics.some((d) => d.code === 'EL001')).toBe(true);
+
+      // Synthesis should still produce a milestone anchored to the document.
+      const entries = parsed.toEntries({ synthesizeMilestones: true });
+      expect(entries).toHaveLength(1);
+
+      const milestone = entries[0];
+      expect(milestone.type).toBe('milestone');
+      expect(milestone.id).toBe('doc');
+      // No surviving entries → empty attributes (no depends_on).
+      expect(milestone.attributes).toEqual([]);
+      expect(milestone.origin).toEqual({ kind: 'synthetic', document: 'doc' });
+    });
   });
 });

@@ -72,4 +72,33 @@ describe('Language Package Projects Integration', async () => {
       }
     });
   });
+
+  describe('synthesis integration', () => {
+    it('synthesizes a milestone for a fixture with no explicit matching milestone', async () => {
+      // no-milestones-only-tasks contains only tasks (alpha, beta) in tasks.siren —
+      // the document id "tasks" has no explicit milestone, so synthesis should
+      // create one.
+      const projectDir = path.join(FIXTURE_PROJECTS_DIR, 'no-milestones-only-tasks');
+      const sourceDir = path.join(projectDir, 'siren');
+      const sirenFiles = collectSirenFiles(sourceDir);
+      expect(sirenFiles.length).toBeGreaterThan(0);
+
+      for (const filePath of sirenFiles) {
+        const content = fs.readFileSync(filePath, 'utf8');
+        // biome-ignore lint/performance/noAwaitInLoops: test
+        const parsed = await parser.parse({ name: path.basename(filePath), content });
+
+        const withoutSynthesis = parsed.toEntries();
+        const withSynthesis = parsed.toEntries({ synthesizeMilestones: true });
+
+        // Synthesis should add exactly one entry (the synthetic milestone).
+        expect(withSynthesis.length).toBe(withoutSynthesis.length + 1);
+
+        // The last entry must be the synthetic milestone.
+        const synthetic = withSynthesis[withSynthesis.length - 1];
+        expect(synthetic.type).toBe('milestone');
+        expect(synthetic.origin.kind).toBe('synthetic');
+      }
+    });
+  });
 });

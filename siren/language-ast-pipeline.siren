@@ -133,7 +133,7 @@ task lang-v060-exports complete {
   depends_on = [lang-v060-origin, lang-v060-decode-entries, lang-v060-synthesis, lang-v060-diagnostics]
 }
 
-task lang-v060-tests {
+task lang-v060-tests complete {
   description = "Update all existing tests for the new entry-shaped decode output, language-native origin, and generic DiagnosticBase. Add test cases for: decodeAstToEntries returning flat SirenEntry[] shape; origin attachment via SourcedEntry/SourcedAttribute; synthesizeMilestones on/off; DiagnosticBase<'E','L'> / DiagnosticBase<'W','L'> conformance; SourcedEntry structural extension typing. Use projects fixtures under packages/language/test/fixtures/projects/ per repo testing rules."
   context = "language-ast-pipeline.md"
   files = "packages/language/src/decoder/index.test.ts, packages/language/src/diagnostics/types.test.ts, packages/language/test/"
