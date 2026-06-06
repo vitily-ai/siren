@@ -43,7 +43,6 @@ export function decodeAstToEntries(
     return {
       type: astResource.kind,
       id: astResource.id,
-      ...(astResource.status !== undefined ? { status: astResource.status } : {}),
       // TODO verify core invariant: missing fields and explicit `undefined`/`null` fields are not differentiated
       status: astResource.status,
       attributes,
