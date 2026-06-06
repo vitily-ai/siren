@@ -9,7 +9,7 @@ import type { Attribute, SirenEntry } from '@sirenpm/core';
  * metadata to core IR types without modifying core.
  */
 
-export interface Origin<Kind extends string = string> {
+export interface OriginBase<Kind extends string = string> {
   readonly kind: Kind;
   readonly document: string;
 }
@@ -17,7 +17,7 @@ export interface Origin<Kind extends string = string> {
 /**
  * Source-range origin pointing to concrete positions in a document.
  */
-export interface RangeOrigin extends Origin<'range'> {
+export interface RangeOrigin extends OriginBase<'range'> {
   readonly kind: 'range';
   readonly startByte: number;
   readonly endByte: number;
@@ -28,10 +28,12 @@ export interface RangeOrigin extends Origin<'range'> {
 /**
  * Synthetic origin for generated entries anchored to a document.
  */
-export interface SyntheticOrigin extends Origin<'synthetic'> {
+export interface SyntheticOrigin extends OriginBase<'synthetic'> {
   readonly kind: 'synthetic';
   readonly document: string;
 }
+
+export type Origin = RangeOrigin | SyntheticOrigin;
 
 /**
  * A core `SirenEntry` extended with a required language-native `origin`.
