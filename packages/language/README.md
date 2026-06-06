@@ -1,6 +1,6 @@
 # @sirenpm/language
 
-`@sirenpm/language` owns the Siren source-language layer: Tree-sitter grammar loading, parsing, Siren AST construction, language diagnostics, decoding parsed documents to core `SirenDocument` input, and canonical formatting.
+`@sirenpm/language` owns the Siren source-language layer: Tree-sitter grammar loading, parsing, Siren AST construction, language diagnostics, decoding parsed documents to flat `SirenEntry[]` core input, and canonical formatting.
 
 The package depends on `@sirenpm/core` for IR types, but core never imports from language.
 
@@ -13,15 +13,15 @@ SourceDocument
   -> private Tree-sitter CST
   -> public Siren AST
   -> ParsedDocument services
-  -> SirenDocument
-  -> SirenBuilder.fromDocuments(...) (core-owned)
+  -> readonly SourcedEntry[]
+  -> SirenBuilder.fromEntries(...) (core-owned)
 ```
 
 The Concrete Syntax Tree is private to this package. It remains the source-authoritative structure for formatting, comments, raw spelling, parse recovery, and origin metadata. Consumers do not receive raw Tree-sitter nodes or a public CST wrapper.
 
-The Siren AST is the public parsed source tree. It is deliberately small: normalized resources, a single resolved status modifier, attributes, and tuple members. It does not carry public spans, raw text, comments, trivia, dependency resolution, duplicate analysis, inferred status, or semantic diagnostics. The package keeps origin data on a private sidechannel so `toSirenDocument()` can attach core `origin` metadata without exposing spans on the public AST.
+The Siren AST is the public parsed source tree. It is deliberately small: normalized resources, a single resolved status modifier, attributes, and tuple members. It does not carry public spans, raw text, comments, trivia, dependency resolution, duplicate analysis, inferred status, or semantic diagnostics. The package keeps origin data on a private sidechannel so `toEntries()` can attach language-native `Origin` metadata without exposing spans on the public AST.
 
-`ParsedDocument` is the public wrapper returned by the parser. It exposes the AST and language diagnostics, and it owns CST-backed services such as formatting and decoding to `SirenDocument`.
+`ParsedDocument` is the public wrapper returned by the parser. It exposes the AST and language diagnostics, and it owns CST-backed services such as formatting and decoding to `SirenEntry[]`.
 
 ## Public API Shape
 
@@ -33,14 +33,14 @@ const parsed = await parser.parse({ name: 'siren/main.siren', content });
 const parsedDocuments = await parser.parseBatch(sourceDocuments);
 ```
 
-The package root also re-exports the public AST and language diagnostic types, along with the diagnostic constructor helpers.
+The package root also re-exports the public AST and language diagnostic types, along with the language-native `Origin` types.
 
 `ParsedDocument` exposes:
 
 ```ts
 parsed.ast;
 parsed.diagnostics;
-parsed.toSirenDocument();
+parsed.toEntries();
 parsed.format();
 ```
 
@@ -49,8 +49,8 @@ parsed.format();
 Language does not provide a `ParsedDocument` to `SirenProject` helper. Project construction remains explicit through core:
 
 ```ts
-const documents = parsedDocuments.map((document) => document.toSirenDocument());
-const project = SirenBuilder.fromDocuments(documents).build();
+const entries = parsedDocuments.flatMap((doc) => doc.toEntries());
+const project = SirenBuilder.fromEntries(entries).build();
 ```
 
 ## Siren AST
@@ -70,21 +70,21 @@ Resources whose CST subtree contains parse errors are omitted from the AST. Vali
 
 ## Decode To Core Input
 
-`ParsedDocument.toSirenDocument()` performs local syntax normalization into core build input. It does not resolve dependencies, detect duplicate resources, infer completion, or produce semantic diagnostics.
+`ParsedDocument.toEntries()` decodes the AST into flat `SirenEntry[]` core input. It does not resolve dependencies, detect duplicate resources, infer completion, or produce semantic diagnostics.
 
 Decode rules:
 
-- The decoded document id comes from `SourceDocument.name`, stripping a trailing `.siren` extension when present.
+- Each entry carries a language-native `Origin` (`RangeOrigin` for parsed resources, `SyntheticOrigin` for generated entries). The source document name is carried on each origin's `document` field.
 - Every AST tuple decodes directly to core `Attribute.value` as `readonly Atom[]`.
 - String, number, and boolean scalars decode as single-element tuples.
 - Bare identifier tuple members decode as unresolved references everywhere.
 - Quoted string tuple members normally decode as strings.
 - Quoted string tuple members inside `depends_on` decode as unresolved references so quoted resource IDs can be referenced.
 - The AST already exposes only the resolved recognized status; repeated recognized modifiers are collapsed before decode.
-- Current parsed documents omit core document directives; decoded documents therefore omit `directive` and rely on core's absent-directive behavior.
-- Resource and attribute `origin` metadata is populated from the package-private origin map when available.
+- Every entry and attribute returned by `toEntries()` carries a required `origin` field (`RangeOrigin` for parsed constructs, `SyntheticOrigin` fallback when origin data is unavailable).
+- Milestone synthesis is opt-in via `toEntries({ synthesizeMilestones: true })`. When enabled, a synthetic milestone is appended per document — see ADR-0005.
 
-`toSirenDocument()` does not resolve dependencies or add semantic warnings; those remain core responsibilities.
+`toEntries()` does not resolve dependencies or add semantic warnings; those remain core responsibilities.
 
 ## Diagnostics
 

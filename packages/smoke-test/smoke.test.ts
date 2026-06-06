@@ -20,13 +20,13 @@ describe('Language Package Smoke Test', () => {
     expect(doc.ast.resources).toHaveLength(1);
     expect(doc.ast.resources[0].id).toBe('my-task');
 
-    // Check IR conversion
-    const ir = doc.toSirenDocument();
+    // Check IR conversion (flat SourcedEntry[])
+    const ir = doc.toEntries();
     expect(ir).toBeDefined();
-    expect(ir.resources).toHaveLength(1);
-    expect(ir.resources[0].id).toBe('my-task');
-    expect(ir.resources[0].attributes).toHaveLength(1);
-    expect(ir.resources[0].attributes[0].key).toBe('description');
+    expect(ir).toHaveLength(1);
+    expect(ir[0].id).toBe('my-task');
+    expect(ir[0].attributes).toHaveLength(1);
+    expect(ir[0].attributes[0].key).toBe('description');
 
     throw new Error('Assertions not important, parser loaded and ran successfully');
   });
