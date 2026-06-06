@@ -1,7 +1,7 @@
 import { Language, type Tree, Parser as TsParser } from 'web-tree-sitter';
 import { buildAst } from '../ast/builder';
 import type { AstOriginMap } from '../ast/origins';
-import { decodeAstToEntries } from '../decoder';
+import { type DecodeDirectives, decodeAstToEntries } from '../decoder';
 import { formatCst } from '../format/formatter';
 import { getWasmUrl } from '../grammar/loadHandle';
 import type { SourcedEntry } from '../origin';
@@ -47,7 +47,6 @@ class ParsedDocumentImpl implements ParsedDocument {
   readonly ast: SirenAst;
   readonly diagnostics: readonly LanguageDiagnostic[];
   readonly #source: SourceDocument;
-  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: retained for lang-format.
   readonly #tree: Tree | null;
   readonly #origins: AstOriginMap;
 
@@ -60,8 +59,8 @@ class ParsedDocumentImpl implements ParsedDocument {
     this.#origins = built.origins;
   }
 
-  toEntries(): readonly SourcedEntry[] {
-    return decodeAstToEntries(this.ast, this.#source, this.#origins);
+  toEntries(options?: DecodeDirectives): readonly SourcedEntry[] {
+    return decodeAstToEntries(this.ast, this.#source, this.#origins, options);
   }
 
   format(): string {

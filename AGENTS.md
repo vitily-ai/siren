@@ -96,6 +96,7 @@ Note that, when iterating across packages, downstream consumers must be rebuilt 
 
 - Language: TypeScript. Follow existing `tsconfig.json` settings.
 - Use the repo's linting/formatting scripts if they exist (check `package.json` scripts). If none exist, follow standard TypeScript conventions used elsewhere in the repo.
+- **Imports are module-scoped only.** Inline `import(...)` type expressions (e.g. `options?: import('../decoder').DecodeDirectives`) are forbidden — always use a top-level `import type` statement instead. This keeps dependency graphs explicit and greppable.
 - Keep `packages/core` portable: do not introduce DOM or Node-specific APIs into `packages/core`.
 - Attributes of all interfaces, classes, and other structured types are `readonly`. Mutations are expressed in copy semantics and typestates.
 

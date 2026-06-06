@@ -1,3 +1,4 @@
+import type { DecodeDirectives } from '../decoder';
 import type { SourcedEntry } from '../origin';
 
 export interface SourceDocument {
@@ -27,7 +28,7 @@ import type { LanguageDiagnostic } from '../diagnostics/types';
 export interface ParsedDocument {
   readonly ast: SirenAst;
   readonly diagnostics: readonly LanguageDiagnostic[];
-  toEntries(): readonly SourcedEntry[];
+  toEntries(options?: DecodeDirectives): readonly SourcedEntry[];
   format(): string;
 }
 

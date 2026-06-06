@@ -222,4 +222,119 @@ describe('decodeAstToEntries', () => {
       expect(entries[0].id).toBe('t');
     });
   });
+
+  describe('synthesis', () => {
+    it('does NOT synthesize a milestone by default (synthesizeMilestones omitted)', async () => {
+      const entries = await decode('doc.siren', 'task t {}');
+      expect(entries.some((e) => e.origin.kind === 'synthetic')).toBe(false);
+      expect(entries.length).toBe(1);
+    });
+
+    it('does NOT synthesize when synthesizeMilestones is false', async () => {
+      const parsed = await parseDoc('doc.siren', 'task t {}');
+      const entries = parsed.toEntries({ synthesizeMilestones: false });
+      expect(entries.length).toBe(1);
+      expect(entries[0].id).toBe('t');
+    });
+
+    it('synthesizes a milestone when synthesizeMilestones is true', async () => {
+      // decode() uses default toEntries() without options.
+      // We need to call parsed.toEntries({ synthesizeMilestones: true }) directly.
+      const parsed = await parseDoc('doc.siren', 'task t {}');
+      const synthesized = parsed.toEntries({ synthesizeMilestones: true });
+      expect(synthesized.length).toBe(2); // task + synthetic milestone
+      const milestone = synthesized[1];
+      expect(milestone.type).toBe('milestone');
+      expect(milestone.id).toBe('doc');
+    });
+
+    it('synthetic milestone id strips .siren suffix from source name', async () => {
+      const parsed = await parseDoc('my-project.siren', 'task t {}');
+      const entries = parsed.toEntries({ synthesizeMilestones: true });
+      expect(entries[1].id).toBe('my-project');
+    });
+
+    it('synthetic milestone id uses source name verbatim when no .siren suffix', async () => {
+      const parsed = await parseDoc('myfile', 'task t {}');
+      const entries = parsed.toEntries({ synthesizeMilestones: true });
+      expect(entries[1].id).toBe('myfile');
+    });
+
+    it('synthetic milestone has SyntheticOrigin with document = milestone id', async () => {
+      const parsed = await parseDoc('proj.siren', 'task t {}');
+      const entries = parsed.toEntries({ synthesizeMilestones: true });
+      const milestone = entries[1];
+      expect(milestone.origin).toEqual({
+        kind: 'synthetic',
+        document: 'proj',
+      });
+    });
+
+    it('synthetic milestone depends_on references all decoded entries in order', async () => {
+      const parsed = await parseDoc('doc.siren', 'task a {}\ntask b {}\ntask c {}');
+      const entries = parsed.toEntries({ synthesizeMilestones: true });
+      const milestone = entries[3]; // last entry
+      expect(milestone.attributes[0].key).toBe('depends_on');
+      expect(milestone.attributes[0].value).toEqual([
+        { kind: 'reference', id: 'a' },
+        { kind: 'reference', id: 'b' },
+        { kind: 'reference', id: 'c' },
+      ]);
+    });
+
+    it('synthetic milestone depends_on attribute has SyntheticOrigin', async () => {
+      const parsed = await parseDoc('doc.siren', 'task t {}');
+      const entries = parsed.toEntries({ synthesizeMilestones: true });
+      const milestone = entries[1];
+      expect(milestone.attributes[0].origin).toEqual({
+        kind: 'synthetic',
+        document: 'doc',
+      });
+    });
+
+    it('empty document synthesizes a milestone with empty attributes', async () => {
+      const parsed = await parseDoc('doc.siren', '');
+      const entries = parsed.toEntries({ synthesizeMilestones: true });
+      expect(entries.length).toBe(1);
+      const milestone = entries[0];
+      expect(milestone.type).toBe('milestone');
+      expect(milestone.id).toBe('doc');
+      expect(milestone.attributes).toEqual([]);
+    });
+
+    it('explicit milestone with same id suppresses synthesis', async () => {
+      const parsed = await parseDoc('doc.siren', 'milestone doc {}');
+      const entries = parsed.toEntries({ synthesizeMilestones: true });
+      expect(entries.length).toBe(1);
+      expect(entries[0].type).toBe('milestone');
+      expect(entries[0].id).toBe('doc');
+      // The origin should be a range origin (from the AST), not synthetic.
+      expect(entries[0].origin.kind).toBe('range');
+    });
+
+    it('explicit milestone with different id does NOT suppress synthesis', async () => {
+      const parsed = await parseDoc('doc.siren', 'milestone other {}');
+      const entries = parsed.toEntries({ synthesizeMilestones: true });
+      expect(entries.length).toBe(2);
+      expect(entries[0].id).toBe('other');
+      expect(entries[1].id).toBe('doc');
+    });
+
+    it('synthetic milestone is appended after all decoded entries', async () => {
+      const parsed = await parseDoc('doc.siren', 'task a {}\ntask b {}');
+      const entries = parsed.toEntries({ synthesizeMilestones: true });
+      expect(entries.map((e) => e.id)).toEqual(['a', 'b', 'doc']);
+    });
+
+    it('synthesis works with multiple entry types (tasks and milestones)', async () => {
+      const parsed = await parseDoc('doc.siren', 'task t {}\nmilestone m {}');
+      const entries = parsed.toEntries({ synthesizeMilestones: true });
+      expect(entries.length).toBe(3);
+      expect(entries[2].id).toBe('doc');
+      expect(entries[2].attributes[0].value).toEqual([
+        { kind: 'reference', id: 't' },
+        { kind: 'reference', id: 'm' },
+      ]);
+    });
+  });
 });

@@ -112,7 +112,7 @@ task lang-v060-decode-entries complete {
   depends_on = lang-v060-origin
 }
 
-task lang-v060-synthesis {
+task lang-v060-synthesis complete {
   description = "TDD green: add a default-off synthesizeMilestones option to decodeAstToEntries/toEntries. When true and origins are present, append one synthetic milestone per source document: id = source name sans .siren suffix, type = milestone, depends_on = references to every decoded entry id, origin = SyntheticOrigin{ document: id }. The .siren-strip logic currently in the SirenDocument id relocation moves here. The milestone is appended as a SourcedEntry with a SyntheticOrigin. Default is false — synthesis is opt-in per ADR-0005. Write tests for on/off behavior."
   context = "language-ast-pipeline.md"
   files = "packages/language/src/decoder/index.ts, packages/language/src/origin.ts"
