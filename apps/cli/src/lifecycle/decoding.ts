@@ -1,5 +1,12 @@
-import { decodeSyntaxDocuments, type ParseDiagnostic, type ParseError } from '@sirenpm/language';
-import type { CliContext } from './context';
+import type { SirenDocument } from '@sirenpm/core';
+import {
+  decodeSyntaxDocuments,
+  type ParseDiagnostic,
+  type ParseError,
+  type ParseResult,
+  type SyntaxDocument,
+} from '@sirenpm/language';
+import type { DeepReadonly } from './context';
 
 function toDiagnosticColumn(column: number | undefined): number | undefined {
   if (column === undefined) return undefined;
@@ -18,12 +25,12 @@ function isDuplicateCompleteParseError(error: ParseError): boolean {
 
 function findResourceForParseError(
   error: ParseError,
-  ctx: CliContext,
-): CliContext['syntaxDocuments'][number]['resources'][number] | undefined {
+  decodableSyntaxDocuments: readonly SyntaxDocument[],
+): SyntaxDocument['resources'][number] | undefined {
   const documentName = error.document;
   const startByte = error.startByte;
 
-  for (const syntaxDocument of ctx.decodableSyntaxDocuments) {
+  for (const syntaxDocument of decodableSyntaxDocuments) {
     if (documentName && syntaxDocument.source.name !== documentName) continue;
 
     for (const resource of syntaxDocument.resources) {
@@ -45,13 +52,13 @@ function findResourceForParseError(
 
 function parseErrorsToDiagnostics(
   errors: readonly ParseError[],
-  ctx: CliContext,
+  decodableSyntaxDocuments: readonly SyntaxDocument[],
 ): readonly ParseDiagnostic[] {
   const diagnostics: ParseDiagnostic[] = [];
 
   for (const error of errors) {
     if (isDuplicateCompleteParseError(error)) {
-      const resource = findResourceForParseError(error, ctx);
+      const resource = findResourceForParseError(error, decodableSyntaxDocuments);
       const resourceId = resource?.identifier.value ?? 'unknown';
       diagnostics.push({
         code: 'WL002',
@@ -79,14 +86,15 @@ function parseErrorsToDiagnostics(
   return diagnostics;
 }
 
-export function runDecoding(ctx: CliContext): void {
-  if (!ctx.parseResult?.tree) {
-    ctx.phasesRun.add('decoding');
-    return;
-  }
+export interface DecodingArtifact {
+  sirenDocuments: readonly SirenDocument[];
+  parseDiagnostics: readonly ParseDiagnostic[];
+}
 
+export function runDecoding(parseResult: DeepReadonly<ParseResult>): DecodingArtifact {
   const errorsByDocument = new Map<string, ParseError[]>();
-  for (const error of ctx.parseResult.errors) {
+  // FIXME why is the null check needed here?
+  for (const error of parseResult?.errors ?? []) {
     const document = error.document ?? 'unknown';
     const errors = errorsByDocument.get(document) ?? [];
     errors.push(error);
@@ -100,23 +108,23 @@ export function runDecoding(ctx: CliContext): void {
     }
   }
 
-  ctx.errorsByDocument = errorsByDocument;
-  ctx.skippedDocuments = skippedDocuments;
-  ctx.decodableSyntaxDocuments = ctx.syntaxDocuments.filter(
+  const syntaxDocuments = parseResult.syntaxDocuments ?? [];
+  const decodableSyntaxDocuments = syntaxDocuments.filter(
     (syntaxDocument) => !skippedDocuments.has(syntaxDocument.source.name),
   );
-  ctx.retainedParseWarnings = ctx.parseResult.errors.filter((error) => {
+  const retainedParseWarnings = parseResult.errors.filter((error) => {
     const severity = error.severity ?? 'error';
     const document = error.document ?? 'unknown';
     return severity === 'warning' && !skippedDocuments.has(document);
   });
 
-  const { documents, diagnostics } = decodeSyntaxDocuments(ctx.decodableSyntaxDocuments);
-  ctx.sirenDocuments = documents ?? [];
-  ctx.decodeDiagnostics = diagnostics;
-  ctx.parseDiagnostics = [
-    ...parseErrorsToDiagnostics(ctx.retainedParseWarnings, ctx),
-    ...diagnostics,
-  ];
-  ctx.phasesRun.add('decoding');
+  const { documents, diagnostics } = decodeSyntaxDocuments(decodableSyntaxDocuments);
+
+  return {
+    sirenDocuments: documents ?? [],
+    parseDiagnostics: [
+      ...parseErrorsToDiagnostics(retainedParseWarnings, decodableSyntaxDocuments),
+      ...diagnostics,
+    ],
+  };
 }

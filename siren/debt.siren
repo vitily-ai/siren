@@ -123,3 +123,7 @@ task bad-golden {
   description = "the format-dry-run cli test is erroneously leaving space before comments after ast refactor"
 
 }
+
+task format-bypasses-lifecycle {
+  description = "`runFormat` consumes the inverted CLI lifecycle for discovery and diagnostics but performs its own per-file CST rendering and writes, instead of being modeled as a QueryFn that returns a QueryArtifact and lets the lifecycle own all stdout/stderr/fs side effects. Reconcile this once the lifecycle's write phase can carry per-file outputs that are independent of builder mutation."
+}

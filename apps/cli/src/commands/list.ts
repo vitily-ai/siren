@@ -1,38 +1,25 @@
+import type { SirenProject } from '@sirenpm/core';
 import { defineCommand } from 'citty';
-import { getLoadedContext } from '../project';
+import { type QueryArtifact, runLifecycle } from '../lifecycle';
 import { renderDependencyTree } from './dependency-tree';
 
-export interface ListResult {
-  milestones: string[];
-  warnings: string[];
+function renderListLines(project: SirenProject, showTasks: boolean): string[] {
+  const milestoneIds = project.getMilestoneIds();
+  if (!showTasks) return [...milestoneIds];
+
+  const lines: string[] = [];
+  for (const milestoneId of milestoneIds) {
+    lines.push(milestoneId);
+    const tree = project.getDependencyTree(milestoneId);
+    lines.push(...renderDependencyTree(tree));
+  }
+  return lines;
 }
 
-export async function list(_showTasks = false): Promise<ListResult> {
-  const ctx = getLoadedContext();
-  if (!ctx) {
-    throw new Error('Project context not loaded');
-  }
-  return { milestones: ctx.milestones, warnings: ctx.warnings };
-}
-
-export async function runList(showTasks = false): Promise<void> {
-  const result = await list(showTasks);
-  const ctx = getLoadedContext();
-
-  if (showTasks && ctx?.ir) {
-    for (const milestoneId of result.milestones) {
-      console.log(milestoneId);
-      const tree = ctx.ir.getDependencyTree(milestoneId);
-      const lines = renderDependencyTree(tree);
-      for (const line of lines) {
-        console.log(line);
-      }
-    }
-  } else {
-    for (const id of result.milestones) {
-      console.log(id);
-    }
-  }
+export function listQuery(showTasks: boolean) {
+  return (project: SirenProject): QueryArtifact => ({
+    stdout: renderListLines(project, showTasks),
+  });
 }
 
 export const listCommand = defineCommand({
@@ -48,6 +35,6 @@ export const listCommand = defineCommand({
     },
   },
   async run({ args }) {
-    await runList(Boolean(args.tasks));
+    await runLifecycle(process.cwd(), { query: listQuery(Boolean(args.tasks)) });
   },
 });

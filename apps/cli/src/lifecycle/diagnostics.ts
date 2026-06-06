@@ -1,46 +1,64 @@
+import type { ParseError } from '@sirenpm/language';
 import { formatDiagnostic } from '../format-diagnostics';
 import { formatParseError } from '../format-parse-error';
-import type { CliContext } from './context';
+import type { CliContext, DeepReadonly } from './context';
 
-export function runDiagnosticsAccumulation(ctx: CliContext): void {
-  if (ctx.parseTreeMissing) {
-    ctx.warnings.push('Warning: no valid parse tree could be produced');
-    ctx.phasesRun.add('diagnostics');
-    return;
+export interface DiagnosticsArtifact {
+  warnings: string[];
+  errors: string[];
+}
+
+export function runDiagnosticsAccumulation(ctx: DeepReadonly<CliContext>): DiagnosticsArtifact {
+  const warnings: string[] = [];
+  const errors: string[] = [];
+
+  if (ctx.files.length > 0 && !ctx.parseResult?.tree) {
+    warnings.push('Warning: no valid parse tree could be produced');
+    return { warnings, errors };
   }
 
-  for (const [document, errors] of ctx.errorsByDocument) {
-    errors.sort((a, b) => a.line - b.line || a.column - b.column);
-    const source = ctx.contentByDocument.get(document) ?? '';
+  const errorsByDocument = new Map<string, ParseError[]>();
+  if (ctx.parseResult) {
+    for (const error of ctx.parseResult.errors) {
+      const document = error.document ?? 'unknown';
+      const docErrors = errorsByDocument.get(document) ?? [];
+      docErrors.push(error);
+      errorsByDocument.set(document, docErrors);
+    }
+  }
 
-    for (const error of errors) {
+  for (const [document, docErrors] of errorsByDocument) {
+    docErrors.sort((a, b) => a.line - b.line || a.column - b.column);
+    const source = ctx.sourceDocuments.find((d) => d.name === document)?.content ?? '';
+
+    for (const error of docErrors) {
       if ((error.severity ?? 'error') === 'warning') continue;
 
-      ctx.errors.push(formatParseError(error, source));
+      errors.push(formatParseError(error, source));
     }
 
-    if (errors.some((error) => (error.severity ?? 'error') === 'error')) {
-      ctx.errors.push(`note: skipping ${document} due to syntax errors`);
+    if (docErrors.some((error) => (error.severity ?? 'error') === 'error')) {
+      errors.push(`note: skipping ${document} due to syntax errors`);
     }
   }
 
   for (const diagnostic of ctx.parseDiagnostics) {
     const formatted = formatDiagnostic(diagnostic);
     if (diagnostic.severity === 'warning') {
-      ctx.warnings.push(formatted);
+      warnings.push(formatted);
     } else if (diagnostic.severity === 'error') {
-      ctx.errors.push(formatted);
+      errors.push(formatted);
     }
   }
 
   for (const diagnostic of ctx.ir?.diagnostics ?? []) {
     const formatted = formatDiagnostic(diagnostic);
     if (diagnostic.severity === 'warning') {
-      ctx.warnings.push(formatted);
+      warnings.push(formatted);
     } else if (diagnostic.severity === 'error') {
-      ctx.errors.push(formatted);
+      errors.push(formatted);
     }
   }
 
-  ctx.phasesRun.add('diagnostics');
+  return { warnings, errors };
 }

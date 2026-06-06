@@ -1,31 +1,45 @@
 import * as path from 'node:path';
-import type { Resource, SirenBuilder, SirenDocument, SirenProject } from '@sirenpm/core';
-import type {
-  ParseDiagnostic,
-  ParseError,
-  ParseResult,
-  SourceDocument,
-  SyntaxDocument,
-} from '@sirenpm/language';
+import type { SirenBuilder, SirenDocument, SirenProject } from '@sirenpm/core';
+import type { ParseDiagnostic, ParseResult, SourceDocument } from '@sirenpm/language';
 
 export const cliPhaseNames = [
   'discovery',
   'parsing',
   'decoding',
   'builder-construction',
+  'builder-mutation',
   'project-build',
   'diagnostics',
-  'presentation',
+  'diagnostics-presented',
+  'query',
+  'write',
+  'query-presented',
 ] as const;
 
 export type CliPhaseName = (typeof cliPhaseNames)[number];
 
-export interface PresentationArtifact {
-  diagnosticsSurfaced: boolean;
-  warningCount: number;
-  errorCount: number;
-  exitCode?: number | string | null;
+export interface QueryArtifact {
+  stdout?: string | string[];
+  stderr?: string | string[];
+  exitCode?: number;
 }
+
+// CliContext must contain ONLY the absolute minimum necessary for cross-phase handoff.
+// It must not contain trivial or easily derived values
+// biome-ignore lint/suspicious/noExplicitAny: `any` is fine here because it is not an assertion
+export type DeepReadonly<T> = T extends (...args: any[]) => any
+  ? T
+  : T extends Map<infer K, infer V>
+    ? ReadonlyMap<K, DeepReadonly<V>>
+    : T extends Set<infer U>
+      ? ReadonlySet<DeepReadonly<U>>
+      : T extends ReadonlyArray<infer U>
+        ? ReadonlyArray<DeepReadonly<U>>
+        : T extends object
+          ? {
+              readonly [K in keyof T]: DeepReadonly<T[K]>;
+            }
+          : T;
 
 export interface CliContext {
   cwd: string;
@@ -33,24 +47,25 @@ export interface CliContext {
   sirenDir: string;
   files: string[];
   sourceDocuments: SourceDocument[];
-  contentByDocument: Map<string, string>;
   parseResult?: ParseResult;
-  syntaxDocuments: readonly SyntaxDocument[];
-  decodableSyntaxDocuments: readonly SyntaxDocument[];
-  errorsByDocument: Map<string, ParseError[]>;
-  skippedDocuments: Set<string>;
-  retainedParseWarnings: readonly ParseError[];
   parseDiagnostics: readonly ParseDiagnostic[];
-  decodeDiagnostics: readonly ParseDiagnostic[];
   sirenDocuments: readonly SirenDocument[];
   builder?: SirenBuilder;
-  resources: Resource[];
-  milestones: string[];
   ir?: SirenProject;
   warnings: string[];
   errors: string[];
-  parseTreeMissing: boolean;
-  presentation?: PresentationArtifact;
+  /** Snapshot of `{absoluteFilePath -> original file content}` captured during parsing. */
+  // FIXME: Remove as Unnecessary complexity - write affected files unconditionally
+  originalFileContents: Map<string, string>;
+  query?: QueryArtifact;
+  /** True once an error has caused downstream phases (query, write) to abort. */
+  aborted: boolean;
+  /** Count of `warnings` already flushed to stderr. */
+  // FIXME: Unnecessary: Either we flush warnings as they are added (no need to track count), or we flush all at the end (no need to track at all).
+  warningsFlushed: number;
+  /** Count of `errors` already flushed to stderr. */
+  // FIXME: Unnecessary: Either we flush errors as they are added (no need to track count), or we flush all at the end (no need to track at all).
+  errorsFlushed: number;
   phasesRun: Set<CliPhaseName>;
 }
 
@@ -62,20 +77,14 @@ export function createCliContext(cwd: string): CliContext {
     sirenDir: path.join(rootDir, 'siren'),
     files: [],
     sourceDocuments: [],
-    contentByDocument: new Map(),
-    syntaxDocuments: [],
-    decodableSyntaxDocuments: [],
-    errorsByDocument: new Map(),
-    skippedDocuments: new Set(),
-    retainedParseWarnings: [],
     parseDiagnostics: [],
-    decodeDiagnostics: [],
     sirenDocuments: [],
-    resources: [],
-    milestones: [],
     warnings: [],
     errors: [],
-    parseTreeMissing: false,
+    originalFileContents: new Map(),
+    aborted: false,
+    warningsFlushed: 0,
+    errorsFlushed: 0,
     phasesRun: new Set(),
   };
 }

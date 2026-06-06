@@ -84,10 +84,30 @@ milestone contradictory-completion-diagnostic { // draft
   depends_on = [draft-states]
 }
 
-milestone draft-symbol-support { // draft
-  description = "the `complete` symbol in the grammar needs to be promoted to a more generic `status` symbol, to support declaring `draft` and future statuses"
+task draft-symbol-support-red {
+  description = "Add failing fixtures and tests for draft keyword support in the grammar and decoder"
   affected_packages = "language"
-  depends_on = [draft-states]
+  details = "Add snippet fixture status-modifier-draft.txt proving task/milestone draft {} parse with status_modifier field; rename existing complete-modifier snippet to new field name; add project fixture draft-modifier/ with decode-IR snapshot asserting status: 'draft'; add round-trip test for renderSirenDocument with status: 'draft'."
+}
+
+task draft-symbol-support-impl {
+  description = "Extend tree-sitter grammar to support draft keyword alongside complete, and update decoder to emit status: 'draft'"
+  affected_packages = "language"
+  depends_on = draft-symbol-support-red
+  details = "Rename complete_modifier field to status_modifier with choice('complete','draft') in grammar.js; regenerate tree-sitter outputs; update packages/language/src/parser/factory.ts to read the new field; update packages/language/src/decoder/index.ts to set status from CST keyword. Leave WL003 conflict wording unchanged—multi-status diagnostics remain under multiple-statuses-diagnostic milestone. Verify exporter round-trip snapshots."
+}
+
+task draft-symbol-support-publish {
+  description = "Publish refreshed @sirenpm/language package with draft keyword support"
+  affected_packages = "language"
+  depends_on = draft-symbol-support-impl
+  details = "Bump and publish @sirenpm/language version. @sirenpm/core is unchanged in this initiative. This publish gates the CLI mv command so downstream consumers can write and read draft keywords."
+}
+
+milestone draft-symbol-support { // draft
+  description = "Extend the grammar to support draft keyword alongside complete, enabling the CLI mv command to write both statuses"
+  affected_packages = "language"
+  depends_on = [draft-symbol-support-red, draft-symbol-support-impl, draft-symbol-support-publish]
 }
 
 milestone multiple-statuses-diagnostic { // draft
