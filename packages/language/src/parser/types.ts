@@ -20,10 +20,10 @@ export type {
   SirenAst,
 } from '../ast/types';
 
-export type { LanguageDiagnostic } from '../diagnostics/types';
+export type { LanguageDiagnostic } from '../diagnostics';
 
 import type { SirenAst } from '../ast/types';
-import type { LanguageDiagnostic } from '../diagnostics/types';
+import type { LanguageDiagnostic } from '../diagnostics';
 
 export interface ParsedDocument {
   readonly ast: SirenAst;

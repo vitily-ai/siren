@@ -18,7 +18,7 @@ export type {
   LanguageDiagnostic,
   WL001Diagnostic,
   WL002Diagnostic,
-} from './diagnostics/types';
+} from './diagnostics';
 export type {
   Origin,
   RangeOrigin,

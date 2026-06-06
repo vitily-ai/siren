@@ -1,5 +1,5 @@
 import type { DiagnosticBase } from '@sirenpm/core';
-import type { Origin } from '../origin';
+import type { Origin } from './origin';
 
 export type LanguageDiagnostic<S extends 'I' | 'W' | 'E' = 'I' | 'W' | 'E'> = DiagnosticBase<
   S,

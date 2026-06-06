@@ -1,10 +1,5 @@
 import type { Node, Tree } from 'web-tree-sitter';
-import {
-  createEL001,
-  createWL001,
-  createWL002,
-  type LanguageDiagnostic,
-} from '../diagnostics/types';
+import { createEL001, createWL001, createWL002, type LanguageDiagnostic } from '../diagnostics';
 import type { SourceDocument } from '../parser/types';
 import type { AstOriginMap, RangeOrigin } from './origins';
 import type {
