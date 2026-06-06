@@ -2,7 +2,7 @@ import { Language, type Tree, Parser as TsParser } from 'web-tree-sitter';
 import { buildAst } from '../ast/builder';
 import type { AstOriginMap } from '../ast/origins';
 import { type DecodeDirectives, decodeAstToEntries } from '../decoder';
-import { formatCst } from '../format/formatter';
+import { formatCst } from '../formatter';
 import { getWasmUrl } from '../grammar/loadHandle';
 import type { SourcedEntry } from '../origin';
 import type { LanguageDiagnostic, ParsedDocument, Parser, SirenAst, SourceDocument } from './types';

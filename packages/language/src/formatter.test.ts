@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createParser } from '../parser/factory';
+import { createParser } from './parser/factory';
 
 describe('Siren Formatter (CST-backed)', () => {
   it('throws on parse errors (refusal)', async () => {

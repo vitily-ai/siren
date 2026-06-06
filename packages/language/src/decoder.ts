@@ -1,8 +1,8 @@
 import type { Atom, Tuple } from '@sirenpm/core';
-import type { AstOriginMap } from '../ast/origins';
-import type { AstTupleMember, SirenAst } from '../ast/types';
-import type { Origin, SourcedAttribute, SourcedEntry } from '../origin';
-import type { SourceDocument } from '../parser/types';
+import type { AstOriginMap } from './ast/origins';
+import type { AstTupleMember, SirenAst } from './ast/types';
+import type { Origin, SourcedAttribute, SourcedEntry } from './origin';
+import type { SourceDocument } from './parser/types';
 
 /**
  * Decode-time directives.

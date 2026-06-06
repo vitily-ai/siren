@@ -1,8 +1,8 @@
 import { isReference, type SirenEntry } from '@sirenpm/core';
 import { describe, expect, it } from 'vitest';
-import type { SourcedEntry } from '../origin';
-import { createParser } from '../parser/factory';
-import type { ParsedDocument, SourceDocument } from '../parser/types';
+import type { SourcedEntry } from './origin';
+import { createParser } from './parser/factory';
+import type { ParsedDocument, SourceDocument } from './parser/types';
 
 async function parseDoc(name: string, content: string): Promise<ParsedDocument> {
   const parser = await createParser();
