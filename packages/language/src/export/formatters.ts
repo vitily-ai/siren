@@ -1,4 +1,4 @@
-import type { AttributeValue } from '@sirenpm/core';
+import type { AttributeValue, ResourceStatus } from '@sirenpm/core';
 import { isArray, isReference } from '@sirenpm/core';
 import type { SyntaxIdentifier } from '../syntax/types';
 
@@ -70,11 +70,11 @@ export function formatAttributeLine(
 export function wrapResourceBlock(
   type: string,
   id: string,
-  complete: boolean,
+  status: ResourceStatus | undefined,
   bodyLines: string[],
   headerTrailingComment?: string,
 ): string {
-  const headerBase = `${type} ${id}${complete ? ' complete' : ''}`;
+  const headerBase = `${type} ${id}${status ? ` ${status}` : ''}`;
   const footer = `}`;
   if (bodyLines.length === 0) {
     let single = `${headerBase} {}`;

@@ -1,0 +1,17 @@
+task design-spec complete {
+}
+
+task build-feature {
+  depends_on = design-spec
+}
+
+task write-docs draft {
+}
+
+task deploy {
+  depends_on = build-feature
+}
+
+milestone release-alpha draft {
+  depends_on = [build-feature, write-docs, deploy]
+}

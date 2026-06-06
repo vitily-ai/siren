@@ -1,0 +1,11 @@
+{
+	"fixture": "draft-cli-coverage",
+	"command": "siren list --tasks",
+	"expect": "stdout"
+}
+---
+release-alpha
+├─ build-feature
+├─ write-docs
+└─ deploy
+   └─ build-feature

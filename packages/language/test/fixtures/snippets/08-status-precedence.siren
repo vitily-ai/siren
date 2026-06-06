@@ -1,0 +1,17 @@
+# Precedence regression: when a resource declares one or more status
+# modifiers (e.g. `draft`, `complete`), the next `task` / `milestone`
+# keyword MUST NOT be greedily absorbed as another status modifier of
+# the preceding resource.
+#
+# Each pair below stresses a different boundary:
+#   - leader with a single modifier, follower with none
+#   - leader with no modifier, follower with a modifier
+#   - leader with multiple modifiers, follower with none
+task a draft {}
+task b {}
+
+task c {}
+milestone d complete {}
+
+milestone e draft complete {}
+task f {}

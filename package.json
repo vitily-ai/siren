@@ -7,6 +7,7 @@
   "packageManager": "yarn@4.1.0",
   "workspaces": [
     "packages/*",
+    "packages/language/grammar",
     "apps/*"
   ],
   "scripts": {

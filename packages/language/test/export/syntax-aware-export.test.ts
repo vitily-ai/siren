@@ -110,4 +110,48 @@ describe('syntax-aware export', () => {
 
     expect(normalizeResources(context2.resources)).toEqual(normalizeResources(context1.resources));
   });
+
+  it('round-trips a single draft resource byte-identically', async () => {
+    const source = 'task foo draft {}\n';
+    const parseResult = await adapter.parse(doc(source));
+    const { context } = createSirenProjectFromParseResult(parseResult);
+
+    const exported = exportToSiren(context, { syntaxDocuments: parseResult.syntaxDocuments });
+
+    expect(exported).toBe(source);
+  });
+
+  it('round-trips a mix of draft, complete, and unstatused resources', async () => {
+    const source = [
+      'task drafty draft {}',
+      '',
+      'task done complete {}',
+      '',
+      'task plain {}',
+      '',
+      'milestone release draft {',
+      '  depends_on = [drafty, done]',
+      '}',
+      '',
+    ].join('\n');
+
+    const parseResult1 = await adapter.parse(doc(source));
+    const { context: context1 } = createSirenProjectFromParseResult(parseResult1);
+    const exported = exportToSiren(context1, { syntaxDocuments: parseResult1.syntaxDocuments });
+
+    expect(exported).toContain('task drafty draft {}');
+    expect(exported).toContain('task done complete {}');
+    expect(exported).toContain('task plain {}');
+    expect(exported).toContain('milestone release draft {');
+
+    // Re-parse the exported source and verify status survives the round trip.
+    const parseResult2 = await adapter.parse(doc(exported));
+    const { context: context2 } = createSirenProjectFromParseResult(parseResult2);
+
+    const byId = new Map(context2.resources.map((r) => [r.id, r.status]));
+    expect(byId.get('drafty')).toBe('draft');
+    expect(byId.get('done')).toBe('complete');
+    expect(byId.get('plain')).toBeUndefined();
+    expect(byId.get('release')).toBe('draft');
+  });
 });

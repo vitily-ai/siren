@@ -80,8 +80,8 @@ function wrapResourceBlock(
   headerTrailingComment?: string,
 ): string {
   const id = renderIdentifier(resource.identifier.raw, resource.identifier.value);
-  const complete = resource.completeKeyword ? ' complete' : '';
-  const headerBase = `${resource.resourceType} ${id}${complete}`;
+  const statusToken = resource.statusKeyword ? ` ${resource.statusKeyword.raw}` : '';
+  const headerBase = `${resource.resourceType} ${id}${statusToken}`;
 
   if (bodyLines.length === 0) {
     const singleLine = `${headerBase} {}`;

@@ -123,3 +123,18 @@ task bad-golden {
   description = "the format-dry-run cli test is erroneously leaving space before comments after ast refactor"
 
 }
+
+task sourcespan-column-data {
+  description = "SourceSpan in packages/language/src/syntax/types.ts carries startByte/endByte/startRow/endRow but no column information. Diagnostics that derive line/column from spans (WL001 in decoder/index.ts, WL002 and WL003 in syntax/lint.ts) all currently hardcode `column: 0` and report the resource header row rather than the offending token's row. Extend SourceSpan with startColumn/endColumn, populate them in parser/factory.ts (extractOrigin) and syntax/builder.ts, then update all span-derived diagnostic emission sites to use the winning token's row+column. Touches WL001, WL002, WL003 in one consistent pass."
+  affected_packages = "language"
+}
+
+task syntax-aware-export-test-stale-complete {
+  description = "packages/language/test/export/syntax-aware-export.test.ts has stale `resource.complete` reads and two `SirenBuilder.fromResources({...complete: false})` call sites left over from the core `Resource.complete -> status` rename. Currently inert (silently dropped) but misleading. Replace with `status` reads / construction."
+  affected_packages = "language"
+}
+
+task cli-show-bare-id-no-deps {
+  description = "`siren show <task-id>` for a task whose only dependencies are all complete prints just the bare id with no tree and no message. There is no signal that complete dependencies were filtered out; ambiguous between 'no dependencies' and 'all dependencies complete'. Add a hint or summary line."
+  affected_packages = "cli"
+}

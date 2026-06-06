@@ -1,0 +1,20 @@
+{"fixture":"draft-cli-coverage","command":"siren format --dry-run"}
+---
+task design-spec complete {}
+
+task build-feature {
+  depends_on = design-spec
+}
+
+task write-docs draft {}
+
+task deploy {
+  depends_on = build-feature
+}
+
+milestone release-alpha draft {
+  depends_on = [build-feature, write-docs, deploy]
+}
+
+Updated 1 files out of 1
+---

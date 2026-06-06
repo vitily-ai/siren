@@ -20,8 +20,9 @@ compiled WebAssembly artifact (`tree-sitter-siren.wasm`).
 Run these after editing `grammar.js`:
 
 ```bash
-yarn workspace @sirenpm/language grammar:generate
-yarn workspace @sirenpm/language grammar:build-wasm
+yarn workspace @sirenpm/grammar generate
+yarn workspace @sirenpm/grammar build-wasm
+yarn workspace @sirenpm/grammar test
 ```
 
 `grammar:build-wasm` requires either `emscripten` or Docker; `tree-sitter-cli`

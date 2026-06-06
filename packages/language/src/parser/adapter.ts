@@ -5,6 +5,7 @@
  * Apps provide concrete implementations for browser (WASM) or Node.
  */
 
+import type { ParseDiagnostic } from '../decoder/index';
 import type { SyntaxDocument } from '../syntax/types';
 import type { DocumentNode } from './cst';
 
@@ -62,6 +63,14 @@ export interface ParseResult {
    * documents. Present whenever a CST tree is available.
    */
   readonly syntaxDocuments?: readonly SyntaxDocument[];
+
+  /**
+   * Parse-phase diagnostics produced by the syntax lint pass that runs
+   * between CST/builder output and `SyntaxResource` finalization. These
+   * cover WL002/WL003-class issues (multi-token status keywords, unknown
+   * status keywords). EL001 parser errors continue to flow via `errors`.
+   */
+  readonly parseDiagnostics?: readonly ParseDiagnostic[];
 }
 
 /**

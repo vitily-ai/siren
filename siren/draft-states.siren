@@ -84,22 +84,75 @@ milestone contradictory-completion-diagnostic { // draft
   depends_on = [draft-states]
 }
 
-milestone draft-symbol-support { // draft
-  description = "the `complete` symbol in the grammar needs to be promoted to a more generic `status` symbol, to support declaring `draft` and future statuses"
-  affected_packages = "language"
-  depends_on = [draft-states]
+milestone draft-symbol-support complete {
+  description = "Promote the grammar's complete keyword slot to an open status-modifier slot accepting draft and unknown tokens, using a permissive-grammar-plus-linting-pass design. Language-only; core ResourceStatus is untouched."
+  context = "siren/draft-symbol-support.md"
+  depends_on = [draft-symbol-cli-goldens, draft-symbol-publish]
 }
 
-milestone multiple-statuses-diagnostic { // draft
+task draft-symbol-grammar-red complete {
+  description = "Add snippets fixtures for `task foo draft {}`, `task foo draft complete {}`, `task foo bogus {}` (unknown status), and a precedence regression ensuring task/milestone keywords are not consumed as status tokens. Fixtures fail until grammar is updated."
+  context = "siren/draft-symbol-support.md"
+  depends_on = draft-states
+}
+
+task draft-symbol-grammar-green complete {
+  description = "Update grammar.js: rename complete_modifier to status_modifier, change the slot from literal complete to $.bare_identifier, switch optional to repeat, add reserved-keyword precedence so task/milestone literals win over bare_identifier in modifier position. Rebuild and commit tree-sitter-siren.wasm. Snippets fixtures pass."
+  context = "siren/draft-symbol-support.md"
+  depends_on = draft-symbol-grammar-red
+}
+
+task draft-symbol-cst-types complete {
+  description = "Rename completeKeyword to statusKeyword in syntax/types.ts; replace findCompleteKeywordToken in syntax/builder.ts with a token-list extractor; update parser/factory.ts field-name references and retire the isDuplicateComplete error-recovery glue."
+  context = "siren/draft-symbol-support.md"
+  depends_on = draft-symbol-grammar-green
+}
+
+task draft-symbol-lint-pass complete {
+  description = "Implement the CST-to-Syntax lint pass: last-wins collapse across multiple status tokens, generalize WL002 to name the winning status, repurpose WL003 as the unknown-status diagnostic (drops unknown tokens), expose a single normalized SyntaxResource.statusKeyword. Add projects fixtures."
+  context = "siren/draft-symbol-support.md"
+  depends_on = draft-symbol-cst-types
+}
+
+task draft-symbol-decoder complete {
+  description = "Read statusKeyword.text into Resource.status in decoder/index.ts; evolve WL001 to fire on keyword-plus-status-attribute mismatch and attribute-only status usage (both drop the attribute, keyword wins on mismatch); delete the old WL003 emission site. Update projects fixtures and decoder unit tests."
+  context = "siren/draft-symbol-support.md"
+  depends_on = draft-symbol-lint-pass
+}
+
+task draft-symbol-exporter complete {
+  description = "Audit siren-exporter.ts, comment-exporter.ts, formatters.ts, and format/syntax-formatter.ts for hardcoded complete-literal references and generalize via isComplete from core. Confirm render-document.ts round-trips draft correctly. Add export round-trip fixtures."
+  context = "siren/draft-symbol-support.md"
+  depends_on = draft-symbol-decoder
+}
+
+task draft-symbol-cli-goldens complete {
+  description = "Add CLI golden tests under apps/cli/test/expected/ for a project containing draft resources, covering list, show, format, and dependency-tree commands."
+  context = "siren/draft-symbol-support.md"
+  depends_on = draft-symbol-exporter
+}
+
+task draft-symbol-publish complete {
+  description = "Add a changeset entry for @sirenpm/language: minor bump for new draft status support, with a note that WL003 is repurposed (breaking diagnostic-code semantics change)."
+  context = "siren/draft-symbol-support.md"
+  depends_on = draft-symbol-cli-goldens
+}
+
+task draft-symbol-backlog-rewire complete {
+  description = "Explode the draft-symbol-support draft milestone into dependency-ordered tasks in draft-states.siren; retarget multiple-statuses-diagnostic to depend on draft-symbol-lint-pass rather than the full milestone."
+  context = "siren/draft-symbol-support.md"
+}
+
+task multiple-statuses-diagnostic {
   description = "multiple statuses declared on a resource must resolve to one status (last-wins) and raise a warning diagnostic"
   affected_packages = "language"
-  depends_on = draft-symbol-support
+  depends_on = draft-symbol-lint-pass
   example = "
   task some-task draft complete {}
   ...
-  WL004 - multiple statuses declared for resource some-task. resource will be considered `complete`.
+  WL002 - multiple statuses declared for resource some-task. resource will be considered `complete`.
   ...
   task some-task-2 draft draft {}
-  WL004 - multiple statuses declared for resource some-task-2. resource will be considered `draft`.
+  WL002 - multiple statuses declared for resource some-task-2. resource will be considered `draft`.
   "
 }

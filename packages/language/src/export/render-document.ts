@@ -13,9 +13,7 @@ export function renderSirenDocument(document: SirenDocument): string {
 
     const header = `${resource.type} ${id}${statusToken}`;
     const block =
-      bodyLines.length === 0
-        ? `${header} {}`
-        : `${header} {\n${bodyLines.join('\n')}\n}`;
+      bodyLines.length === 0 ? `${header} {}` : `${header} {\n${bodyLines.join('\n')}\n}`;
 
     return `${block}\n`;
   });

@@ -27,10 +27,7 @@
     "test": "vitest run --reporter=dot --passWithNoTests --silent",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist *.tsbuildinfo",
-    "grammar:generate": "cd grammar && npx tree-sitter-cli generate",
-    "grammar:build-wasm": "cd grammar && npx tree-sitter-cli build --wasm",
-    "grammar:test": "cd grammar && npx tree-sitter-cli test"
+    "clean": "rm -rf dist *.tsbuildinfo"
   },
   "engines": {
     "node": ">=24.0.0"

@@ -44,9 +44,20 @@ export interface ResourceNode extends CSTNode {
   readonly identifier: IdentifierNode;
   readonly body: readonly AttributeNode[];
   /**
-   * True if the 'complete' keyword is present on this resource (set by parser)
+   * All `status_modifier` field tokens on this resource, in source order.
+   * Empty array when no status keyword is present. The lint pass is responsible
+   * for collapsing multiple tokens to a single winning status and emitting
+   * WL002/WL003 diagnostics; this CST field exposes the raw token list.
    */
-  readonly complete?: boolean;
+  readonly statusKeywords: readonly StatusKeywordCSTNode[];
+}
+
+/**
+ * A single `status_modifier` token captured from the CST.
+ */
+export interface StatusKeywordCSTNode {
+  readonly text: string;
+  readonly origin?: Origin;
 }
 
 /**

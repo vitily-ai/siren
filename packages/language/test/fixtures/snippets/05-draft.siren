@@ -1,0 +1,8 @@
+# Test single non-`complete` status modifier (draft).
+task foo draft {
+  description = "in progress"
+}
+
+milestone m draft {
+  description = "drafted milestone"
+}

@@ -23,12 +23,21 @@ module.exports = grammar({
     // Top-level document: zero or more resources
     document: ($) => repeat($.resource),
 
-    // Resource block: task/milestone + identifier + optional 'complete' + body
+    // Resource block: task/milestone + identifier + open status modifier slot + body
+    //
+    // The modifier slot accepts ZERO or more bare identifiers (e.g. `draft`,
+    // `complete`, or any future status token). The grammar is intentionally
+    // permissive — semantic validation of which tokens are meaningful lives in
+    // the downstream lint pass, not in the grammar.
+    //
+    // `task` and `milestone` string literals take natural lexical priority over
+    // the bare_identifier regex in tree-sitter, so they are never absorbed into
+    // the repeat(status_modifier) slot when the next resource starts.
     resource: ($) =>
       seq(
         field('type', choice('task', 'milestone')),
         field('id', $.identifier),
-        optional(field('complete_modifier', 'complete')),
+        repeat(field('status_modifier', $.bare_identifier)),
         '{',
         field('body', repeat($.attribute)),
         '}',
