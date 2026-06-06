@@ -3,6 +3,19 @@
 Tracked in: `siren/entries-over-documents.siren`  
 ADR: `docs/adr/0005-entries-over-documents-core.md`
 
+> **Post-Adoption Note: Rebuilt Language (ADR-0004)**
+>
+> This plan was written before the ADR-0004 language rebuild replaced `decodeSyntaxDocuments`,
+> `renderSirenDocument`, and `context-factory.ts` with the `SirenAst`/`ParsedDocument`
+> architecture (AST, `ParsedDocument.toSirenDocument()`, etc.). The core design decisions
+> remain valid, but the language-phase implementation surfaces differ. Phase 2 below
+> targets the **pre-rebuild** API and is superseded by the `lang-v060-*` tasks in
+> `siren/language-ast-pipeline.siren`. See the post-adoption note in the ADR for the
+> full mapping table.
+>
+> Core v0.6.0 (both ADR-0005 and ADR-0006) is **published**. Core-phase tasks are complete.
+> Language-phase adoption is gated on the rebuild catching up.
+
 ---
 
 ## Motivation
@@ -28,7 +41,7 @@ This plan removes `SirenDocument` from core entirely, reshapes the builder and p
 
 ### Excluded
 
-- Changing `Origin` out of core. `RangeOrigin.document` and `SyntheticOrigin` remain as shared IR vocabulary for now. Future removal is acknowledged but out of scope.
+- ~~Changing `Origin` out of core.~~ (Removed — resolved by ADR-0006, implemented in core v0.6.0.)
 - Turning synthesis on for real parsed documents. The language-side hook is wired but its default is `false` until grammar support exists.
 - Dependency-reduction or hierarchy-recovery logic for the language-side synthetic milestone. That is a future pipeline module.
 - Any new user-facing grammar syntax for enabling synthesis. The decoder option is the bridge until then.
@@ -41,13 +54,13 @@ These were resolved in the planning session preceding this implementation.
 
 **Core input is flat `readonly SirenEntry[]`.** No grouping unit exists in core. Grouping is reconstructable from `origin.document` if ever needed.
 
-**Builder surface.** `fromEntries(entries)` is the single primary constructor. `fromDocuments`, `withDocument`, `patchDocument`, and the `ephemeralDocumentId` parameter are deleted. `withEntry(entry)` becomes a plain flat append. `patch(fn)` and `patchEntry(id, fn)` remain but operate on entry arrays.
+**Builder surface.** `fromEntries(entries)` is the single primary constructor (implemented in core v0.6.0). `fromDocuments`, `withDocument`, `patchDocument`, and the `ephemeralDocumentId` parameter are deleted. `withEntry(entry)` becomes a plain flat append. `patch(fn)` and `patchEntry(id, fn)` remain but operate on entry arrays.
 
 **Patch/delta.** `PatchResult.changes` is `EntryChange[]` only. `DocumentChange` and `directiveChanged` are deleted. `computeDelta` takes `(oldEntries, newEntries)`.
 
 **Pipeline seed.** The core pipeline seeds `{ rawEntries }` and starts at `DedupModule`. `SynthesisModule` is deleted.
 
-**Synthesis ownership.** The synthesis capability moves to `@sirenpm/language`, wired into `decodeSyntaxDocuments(...)` behind a default-off `synthesizeMilestones` boolean option. The rationale for wiring (rather than leaving it dormant) is that it is testable in isolation and establishes the clear path to grammar support.
+**Synthesis ownership.** The synthesis capability moves to `@sirenpm/language`, wired into the decoder behind a default-off `synthesizeMilestones` boolean option. In the pre-rebuild architecture the target was `decodeSyntaxDocuments(...)`; in the ADR-0004 rebuild it is `decodeAstToEntries(...)` / `ParsedDocument.toEntries()`. The rationale for wiring (rather than leaving it dormant) is that it is testable in isolation and establishes the clear path to grammar support.
 
 **Synthesis semantics.** The language-side synthetic milestone depends on **all** entries decoded from the source document, not just roots. Root-detection is dropped entirely. Completion roll-up remains equivalent. The dependency tree shape flattens for the synthetic milestone (each entry is a direct child rather than in a hierarchy); dependency-reduction is a future module.
 
@@ -93,6 +106,12 @@ Write all the new assertions first and confirm they fail against the current imp
 ---
 
 ## Phase 2 — `@sirenpm/language`
+
+> ⚠️ **Superseded.** This phase targets the **pre-rebuild** language surfaces
+> (`decodeSyntaxDocuments`, `renderSirenDocument`, `context-factory.ts`) that were replaced
+> by the ADR-0004 rebuild. The equivalent work is now tracked by `lang-v060-*` tasks in
+> `siren/language-ast-pipeline.siren`. The original plan is retained below for historical
+> reference against the original design intent.
 
 Depends on the core publish releasing `fromEntries`.
 

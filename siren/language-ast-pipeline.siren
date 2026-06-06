@@ -3,9 +3,9 @@
 # Cross-file dependency: lang-decode blocks on tuple-first-core (siren/tuple-first-core.siren)
 
 milestone language-ast-pipeline {
-  description = "Rebuild @sirenpm/language from scratch using the Siren AST as the public parse boundary. The Tree-sitter CST stays private and backs formatting, diagnostics, and decode. ParsedDocument wraps the public AST and exposes .ast, .diagnostics, .toSirenDocument(), and .format(). Publishes updated @sirenpm/language and @sirenpm/cli. Gated on tuple-first-core for the decode phase."
+  description = "Rebuild @sirenpm/language from scratch using the Siren AST as the public parse boundary. The Tree-sitter CST stays private and backs formatting, diagnostics, and decode. ParsedDocument wraps the public AST and exposes .ast, .diagnostics, .toEntries(), and .format(). Publishes updated @sirenpm/language and @sirenpm/cli. Gated on tuple-first-core for the decode phase. After the rebuild landed, the language package must also adopt @sirenpm/core v0.6.0 breaking changes (ADR-0005 flat entries, ADR-0006 origin demotion, generic DiagnosticBase)."
   context = "language-ast-pipeline.md"
-  depends_on = [lang-docs, lang-parser, lang-ast-builder, lang-diagnostics, lang-decode, lang-format, lang-cli, lang-tests, lang-publish]
+  depends_on = [lang-docs, lang-parser, lang-ast-builder, lang-diagnostics, lang-decode, lang-format, lang-v060-origin, lang-v060-decode-entries, lang-v060-synthesis, lang-v060-diagnostics, lang-v060-exports, lang-v060-tests, lang-cli, lang-tests, lang-publish]
 }
 
 # Phase 1 — Documentation (complete)
@@ -58,7 +58,7 @@ task lang-parser-drop-directive-undefined complete {
 # Phase 3 — AST types, CST-to-AST builder, and diagnostic types (parallel)
 
 task lang-diagnostics complete {
-  description = "Define the structured language diagnostic taxonomy with no embedded display message. Initial codes: EL001 (error — syntax error or malformed resource omitted from AST), WL001 (warning — unrecognized status modifier ignored), WL002 (warning — multiple recognized status modifiers collapsed, last wins). Each type carries contextual fields (resourcePath (fileName -> resourceId), modifier, recognizedModifiers, resolvedStatus, documentName) so frontends can assemble display text. Export a LanguageDiagnostic discriminated union. Base fields (code, severity, origin) from DiagnosticBase in @sirenpm/core."
+  description = "Define the structured language diagnostic taxonomy with no embedded display message. Initial codes: EL001 (error — syntax error or malformed resource omitted from AST), WL001 (warning — unrecognized status modifier ignored), WL002 (warning — multiple recognized status modifiers collapsed, last wins). Each type carries contextual fields (resourcePath (fileName -> resourceId), modifier, recognizedModifiers, resolvedStatus, documentName) so frontends can assemble display text. Export a LanguageDiagnostic discriminated union. Base fields (code, severity, origin) from DiagnosticBase in @sirenpm/core. Note: core v0.6.0 makes DiagnosticBase generic (DiagnosticBase<'E','L'>, DiagnosticBase<'W','L'>) and removes the Origin import — see lang-v060-diagnostics for the reconciliation."
   context = "language-ast-pipeline.md"
   files = "packages/language/src/diagnostics/types.ts"
   depends_on = lang-parser
@@ -74,16 +74,16 @@ task lang-ast-builder complete {
 # Phase 4 — ParsedDocument services (decode gated on tuple-first-core; format independent)
 
 task lang-decode complete {
-  description = "Implement ParsedDocument.toSirenDocument() per decode rules in ADR 0004. Every AST tuple decodes to the tuple-first core value shape (bare readonly atom array). Bare identifier tuple members decode as unresolved ResourceReference everywhere. Quoted string tuple members decode as strings, except inside depends_on where they decode as unresolved references. Resolved status from last-recognized modifier populates Resource.status. Document directive is omitted; core absent-directive default enables synthesis. Private CST backreferences may populate origin metadata; the AST stays span-free. Assumes the tuple-first @sirenpm/core AttributeValue contract is in place; use an explicit shim if not yet published."
+  description = "Implement ParsedDocument.toSirenDocument() per decode rules in ADR 0004. Every AST tuple decodes to the tuple-first core value shape (bare readonly atom array). Bare identifier tuple members decode as unresolved ResourceReference everywhere. Quoted string tuple members decode as strings, except inside depends_on where they decode as unresolved references. Resolved status from last-recognized modifier populates Resource.status. Document directive is omitted; core absent-directive default enables synthesis. Private CST backreferences may populate origin metadata; the AST stays span-free. Assumes the tuple-first @sirenpm/core AttributeValue contract is in place; use an explicit shim if not yet published. Note: core v0.6.0 removes SirenDocument and Resource types — this method must be renamed to toEntries() and return flat SirenEntry[]. See lang-v060-decode-entries."
   context = "language-ast-pipeline.md"
   files = "packages/language/src/decoder/index.ts"
   depends_on = [lang-ast-builder, lang-diagnostics, tuple-first-core]
 }
 
-task lang-range-origin-core-import {
-  description = "Replace the local RangeOrigin shim in packages/language/src/ast/origins.ts with a type import from @sirenpm/core. Requires republishing @sirenpm/core with RangeOrigin re-exported from packages/core/src/index.ts (currently only Origin is re-exported). Non-blocking: the shim is structurally identical to core's RangeOrigin."
+task lang-range-origin-core-import complete {
+  description = "Superseded by ADR-0006 / core v0.6.0: core removed Origin entirely, so there is nothing to import. The local RangeOrigin shim in ast/origins.ts becomes a permanent language-native definition. See lang-v060-origin."
   context = "language-ast-pipeline.md"
-  files = "packages/language/src/ast/origins.ts, packages/core/src/index.ts"
+  files = "packages/language/src/ast/origins.ts"
   depends_on = lang-decode
 }
 
@@ -94,13 +94,59 @@ task lang-format complete {
   depends_on = lang-ast-builder
 }
 
+# Phase 4B — Adopt @sirenpm/core v0.6.0 breaking changes
+# ADR-0005: flat SirenEntry[] replaces SirenDocument/Resource
+# ADR-0006: Origin owned by language, not core; DiagnosticBase is generic <S,P>
+
+task lang-v060-origin {
+  description = "Create packages/language/src/origin.ts owning RangeOrigin (moved from ast/origins.ts), SyntheticOrigin, and the Origin union. Define SourcedEntry extends SirenEntry { readonly origin: Origin } and SourcedAttribute extends Attribute { readonly origin: Origin }. Update ast/origins.ts to import RangeOrigin from ../origin. The AstOriginMap sidechannel is unaffected. Write tests asserting the language-native Origin type and structural extension, and that they are preserved through core. Replaces the stale origin-demotion-language-* tasks from siren/origin-demotion.siren."
+  context = "language-ast-pipeline.md"
+  files = "packages/language/src/origin.ts, packages/language/src/ast/origins.ts, packages/language/src/ast/builder.ts"
+  depends_on = lang-ast-builder
+}
+
+task lang-v060-decode-entries {
+  description = "TDD red/green: rename decoder module from decodeAstToSirenDocument (returning SirenDocument with Resource[]) to decodeAstToEntries (returning readonly SirenEntry[]). Map each AstResource to { type, id, status?, attributes } directly — no Resource/SirenDocument wrapper. Attach Origin via SourcedEntry/SourcedAttribute when the origins map is supplied. Rename ParsedDocument.toSirenDocument() to toEntries(options?) returning readonly SourcedEntry[]. Update parser/types.ts and parser/factory.ts accordingly. Drop all imports of Resource and SirenDocument from @sirenpm/core."
+  context = "language-ast-pipeline.md"
+  files = "packages/language/src/decoder/index.ts, packages/language/src/parser/types.ts, packages/language/src/parser/factory.ts"
+  depends_on = lang-v060-origin
+}
+
+task lang-v060-synthesis {
+  description = "TDD green: add a default-off synthesizeMilestones option to decodeAstToEntries/toEntries. When true and origins are present, append one synthetic milestone per source document: id = source name sans .siren suffix, type = milestone, depends_on = references to every decoded entry id, origin = SyntheticOrigin{ document: id }. The .siren-strip logic currently in the SirenDocument id relocation moves here. The milestone is appended as a SourcedEntry with a SyntheticOrigin. Default is false — synthesis is opt-in per ADR-0005. Write tests for on/off behavior."
+  context = "language-ast-pipeline.md"
+  files = "packages/language/src/decoder/index.ts, packages/language/src/origin.ts"
+  depends_on = lang-v060-decode-entries
+}
+
+task lang-v060-diagnostics {
+  description = "Reconcile language diagnostics with core v0.6.0's generic DiagnosticBase: EL001Diagnostic extends DiagnosticBase<'E','L'>, WL001 and WL002 extend DiagnosticBase<'W','L'>. Replace the import of Origin from @sirenpm/core with import from ../origin (language-owned). The diagnostic codes already fit the DiagnosticCode<Severity,PackageChar> template (EL001 = 'E'+'L'+001, WL001 = 'W'+'L'+001) — the fix is purely the extends clause and the Origin import path. Update factories and test imports accordingly."
+  context = "language-ast-pipeline.md"
+  files = "packages/language/src/diagnostics/types.ts, packages/language/src/diagnostics/types.test.ts"
+  depends_on = lang-v060-origin
+}
+
+task lang-v060-exports {
+  description = "Update @sirenpm/language's public exports: add Origin, RangeOrigin, SyntheticOrigin, SourcedEntry, SourcedAttribute from ./origin. Replace the toSirenDocument type in ParsedDocument with toEntries. Bump @sirenpm/core peer dep from ^0.5.0 to ^0.6.0 in package.json. Bump language version from 0.4.0 to 0.5.0 (pre-publish). Run yarn install."
+  context = "language-ast-pipeline.md"
+  files = "packages/language/src/index.ts, packages/language/package.json"
+  depends_on = [lang-v060-origin, lang-v060-decode-entries, lang-v060-synthesis, lang-v060-diagnostics]
+}
+
+task lang-v060-tests {
+  description = "Update all existing tests for the new entry-shaped decode output, language-native origin, and generic DiagnosticBase. Add test cases for: decodeAstToEntries returning flat SirenEntry[] shape; origin attachment via SourcedEntry/SourcedAttribute; synthesizeMilestones on/off; DiagnosticBase<'E','L'> / DiagnosticBase<'W','L'> conformance; SourcedEntry structural extension typing. Use projects fixtures under packages/language/test/fixtures/projects/ per repo testing rules."
+  context = "language-ast-pipeline.md"
+  files = "packages/language/src/decoder/index.test.ts, packages/language/src/diagnostics/types.test.ts, packages/language/test/"
+  depends_on = [lang-v060-exports, lang-tests]
+}
+
 # Phase 5 — CLI consumer adoption and test coverage (parallel)
 
 task lang-cli {
-  description = "Update the CLI lifecycle to consume the rebuilt @sirenpm/language API. Replace any batch parser.parse(docs[]) calls with per-document loops using parse() or parseBatch(). Replace syntaxDocuments/decodeSyntaxDocuments usage with parsedDoc.toSirenDocument() per document followed by SirenBuilder.fromDocuments(). Replace old formatter calls with parsedDoc.format(). Thread LanguageDiagnostic results into the CLI diagnostic display alongside core semantic diagnostics. The CLI must not call tree-sitter APIs directly."
+  description = "Update the CLI lifecycle to consume the rebuilt @sirenpm/language API. Replace any batch parser.parse(docs[]) calls with per-document loops using parse() or parseBatch(). Replace syntaxDocuments/decodeSyntaxDocuments usage with parsedDoc.toEntries() per document followed by SirenBuilder.fromEntries(). Replace old formatter calls with parsedDoc.format(). Thread LanguageDiagnostic results into the CLI diagnostic display alongside core semantic diagnostics. The CLI must not call tree-sitter APIs directly. Note: CLI also needs eod-cli-bridge (SirenBuilder.fromDocuments → fromEntries, sirenDocuments → sirenEntries) and origin-demotion-cli (diagnostic position resolution via entry references) — tracked in siren/entries-over-documents.siren and siren/origin-demotion.siren."
   context = "language-ast-pipeline.md"
   files = "apps/cli/src/lifecycle/parsing.ts, apps/cli/src/lifecycle/decoding.ts, apps/cli/src/lifecycle/diagnostics.ts, apps/cli/src/commands/format.ts"
-  depends_on = [lang-decode, lang-format, lang-publish]
+  depends_on = [lang-v060-exports, lang-v060-tests, lang-format, lang-publish]
 }
 
 task lang-tests complete {
@@ -113,7 +159,7 @@ task lang-tests complete {
 # Phase 6 — Publication
 
 task lang-publish {
-  description = "Publish updated @sirenpm/language (new public API) and @sirenpm/cli (updated consumer). Both must compile cleanly against the published @sirenpm/core that contains the tuple-first AttributeValue contract. Update package versions. Ensure the WASM artifact is included in the @sirenpm/language npm bundle."
+  description = "Publish updated @sirenpm/language (new public API) and @sirenpm/cli (updated consumer). Both must compile cleanly against the published @sirenpm/core v0.6.0 that removes Origin, SirenDocument, and Resource. Update package versions. Ensure the WASM artifact is included in the @sirenpm/language npm bundle."
   context = "language-ast-pipeline.md"
-  depends_on = lang-tests
+  depends_on = [lang-v060-exports, lang-v060-tests, lang-tests]
 }

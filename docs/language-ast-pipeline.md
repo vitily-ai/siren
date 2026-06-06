@@ -1,5 +1,21 @@
 # Language AST Pipeline
 
+> **Update: Core v0.6.0 Adoption**
+>
+> After the rebuild landed, `@sirenpm/core` published v0.6.0 with two breaking changes that
+> the language package must adopt:
+>
+> - **ADR-0005 (entries over documents):** Flat `SirenEntry[]` replaces `SirenDocument`/`Resource`.
+>   `ParsedDocument.toSirenDocument()` becomes `toEntries()`. `SirenBuilder.fromDocuments()`
+>   becomes `fromEntries()`.
+> - **ADR-0006 (origin demotion):** `Origin` removed from core. Language owns it natively.
+>   `DiagnosticBase` becomes generic `DiagnosticBase<'E','L'>` / `DiagnosticBase<'W','L'>`.
+>
+> The sections below reflect the original ADR-0004 plan. A **Phase 7** section at the end
+> tracks the v0.6.0 adoption work. The siren backlog (`siren/language-ast-pipeline.siren`)
+> has `lang-v060-*` tasks for the implementation. Decisions table entries marked with
+> **(v0.6.0)** reflect the updated target.
+
 ## Overview
 
 Rebuild `@sirenpm/language` from scratch using the Siren AST as the public parse boundary. The grammar and committed WASM artifact remain the implementation jump-off point; all source code in `packages/language/src/` has been deleted and is to be replaced by the architecture described in `docs/adr/0004-siren-ast-language-boundary.md`.
@@ -29,29 +45,30 @@ The decode service (`ParsedDocument.toSirenDocument()`) targets a modified `@sir
 All decisions below are binding. Full rationale is in ADR 0004.
 
 | # | Decision | Binding choice |
-|---|---|---|
+|---|---|---|---|
 | 1 | Public boundary term | Siren AST (public type); `ParsedDocument` (public wrapper); CST private |
 | 2 | AST nature | Span-free, trivia-free, non-semantic. No raw text, comments, spans, dependency resolution, or semantic diagnostics on AST nodes |
 | 3 | CST privacy | Raw Tree-sitter nodes are not public API |
 | 4 | Parser surface | `parser.parse({ name, content })` → `ParsedDocument`; `parser.parseBatch(docs[])` → `ParsedDocument[]` |
-| 5 | ParsedDocument services | `.ast`, `.diagnostics`, `.toSirenDocument()`, `.format()` |
-| 6 | No language project builder | No `ParsedDocument → SirenProject` helper. Callers use `SirenBuilder.fromDocuments(docs.map(d => d.toSirenDocument()))` |
+| 5 **(v0.6.0)** | ParsedDocument services | `.ast`, `.diagnostics`, **`.toEntries(options?)`** (replaces `.toSirenDocument()`), `.format()` |
+| 6 **(v0.6.0)** | No language project builder | No `ParsedDocument → SirenProject` helper. Callers use **`SirenBuilder.fromEntries(docs.flatMap(d => d.toEntries()))`** |
 | 7 | Tuple model | Tuples are normalized readonly member arrays; implicit vs. explicit bracket syntax is not distinguished |
-| 8 | Tuple-first core | Every AST tuple decodes to a tuple-first bare readonly atom array. Core migration is out of scope but assumed |
-| 9 | Identifier values | Bare identifiers → unresolved references everywhere. Quoted strings → strings normally, BUT inside `depends_on` → unresolved references |
+| 8 | Tuple-first core | Every AST tuple decodes to a tuple-first bare readonly atom array (implemented in core v0.5.0). |
+| 9 **(v0.6.0)** | Identifier values | Bare identifiers → `{ kind: 'reference', id }` via `Atom`/`EntryReference`. Quoted strings → string normally, BUT inside `depends_on` → `{ kind: 'reference', id }` |
 | 10 | Status modifiers | Last recognized wins. Unrecognized → `WL001`. Multiple recognized collapsed → `WL002`. Recognized set: `complete`, `draft` |
 | 11 | Formatter | Canonical, CST-backed. Refuses on parse errors. Comments emitted in lexical order as standalone lines. No blank-line or trailing-comment preservation |
 | 12 | Error recovery | Resources with parse errors are omitted from the AST; valid siblings remain; `EL001` emitted per excluded resource |
-| 13 | Directive handling | `toSirenDocument()` omits directive. Core absent-directive default = synthesis enabled |
+| 13 **(v0.6.0)** | Directive + synthesis | `toEntries()` omits directive. Default-off `synthesizeMilestones` option appends one synthetic milestone per source document (per ADR-0005). Core absent-directive default = synthesis enabled. |
 | 14 | AST identifiers | Normalized strings only. Source spelling (quoted vs. bare) is CST-internal |
-| 15 | Origins | Private CST backreferences may populate core `origin` metadata; AST stays span-free |
+| 15 **(v0.6.0)** | Origins | Private CST backreferences populate **language-native** `Origin` on `SourcedEntry`/`SourcedAttribute`; AST stays span-free. Core v0.6.0 removed `Origin` — it is defined at `packages/language/src/origin.ts`. |
 | 16 | Formatting | Walks private CST, not the public AST |
 
 ---
 
 ## Out of Scope
 
-- **Tuple-first core migration** (`@sirenpm/core` `AttributeValue` change): tracked separately in `tuple-first-core.siren`.
+- ~~**Tuple-first core migration** (`@sirenpm/core` `AttributeValue` change): tracked separately.~~ (Resolved — core v0.5.0 published with tuple-first contract.)
+- ~~**Origin removal from core** (`Origin`, `RangeOrigin`, `SyntheticOrigin`):~~ (Resolved — core v0.6.0 published with Origin removed. Language adoption tracked in Phase 7.)
 - **Directive syntax in grammar**: future grammar work; AST nodes for directives will be added when grammar adds them.
 - **Blank-line and trailing-comment preservation**: deferred past initial formatter implementation.
 - **Semantic diagnostics** (`W001`–`W003`): remain in `@sirenpm/core`; language emits only `EL001`, `WL001`, `WL002`.
@@ -113,26 +130,27 @@ Initial taxonomy:
 | `WL001` | warning | `resourceId`, `modifier`, `documentName` |
 | `WL002` | warning | `resourceId`, `recognizedModifiers`, `resolvedStatus`, `documentName` |
 
-Export a union type `LanguageDiagnostic` and discriminated subtypes per code. The `DiagnosticBase` from `@sirenpm/core` provides the `code`, `severity`, and optional `origin` base. No embedded `message` field.
+Export a union type `LanguageDiagnostic` and discriminated subtypes per code. The `DiagnosticBase` from `@sirenpm/core` provides the `code` and `severity`. No embedded `message` field. The `origin` field is **language-native** (defined at `packages/language/src/origin.ts`, not from core). Because core v0.6.0 makes `DiagnosticBase` generic over severity and package char, the concrete extends are `EL001Diagnostic extends DiagnosticBase<'E','L'>`, `WL001`/`WL002` extend `DiagnosticBase<'W','L'>`.
 
 Depends on: `lang-parser`
 
 ---
 
-### `lang-decode` — ParsedDocument.toSirenDocument()
+### `lang-decode` — ParsedDocument.toSirenDocument() (→ toEntries() in v0.6.0)
 
 **Relevant files:** `packages/language/src/decoder/index.ts`
 
-Implement `ParsedDocument.toSirenDocument()` following all decode rules from ADR 0004:
+Implement `ParsedDocument.toSirenDocument()` (pre-v0.6.0 name) / `toEntries()` (v0.6.0+) following all decode rules from ADR 0004:
 
 - Every AST tuple decodes to the tuple-first core value shape (bare readonly atom array).
-- Bare identifier tuple members → unresolved `ResourceReference`.
-- Quoted string tuple members → string, except inside `depends_on` → unresolved `ResourceReference`.
-- Resolved status from last-recognized modifier → `Resource.status`.
-- Document directive omitted from `SirenDocument`; core absent-directive default = synthesis enabled.
-- Private CST backreferences may populate `origin` metadata while the AST stays span-free.
+- Bare identifier tuple members → `{ kind: 'reference', id }` (`EntryReference`).
+- Quoted string tuple members → string, except inside `depends_on` → `{ kind: 'reference', id }`.
+- Resolved status from last-recognized modifier → `entry.status`.
+- No document-level wrapper: output is a flat `readonly SirenEntry[]` (or `SourcedEntry[]` when origins are present), not a `SirenDocument` with `resources`.
+- Document directive is omitted; the `synthesizeMilestones` option (default-off) appends one synthetic milestone per source document.
+- Private CST backreferences may populate language-native `Origin` metadata via `SourcedEntry`/`SourcedAttribute` while the AST stays span-free.
 
-This task assumes the tuple-first `@sirenpm/core` contract (`Attribute.value` is a bare readonly tuple array) is in place. If that contract is not yet published, implementation must use an explicit shim with a comment referencing this assumption.
+**v0.6.0 adoption:** The method is renamed from `toSirenDocument(): SirenDocument` to `toEntries(options?: { synthesizeMilestones?: boolean }): readonly SourcedEntry[]`. The decoder drops `import { Resource, SirenDocument }` and uses `SirenEntry`/`Attribute`/`Tuple`/`Atom` from `@sirenpm/core` and `Origin` from the language-native `../origin`.
 
 Depends on: `lang-ast-builder`, `lang-diagnostics`, `tuple-first-core`
 
@@ -164,11 +182,13 @@ Depends on: `lang-ast-builder`
 Update the CLI lifecycle to consume the rebuilt `@sirenpm/language` API:
 
 1. Replace any remaining `parser.parse(docs[])` batch calls with per-document loops over `parser.parse(doc)` or `parser.parseBatch(docs)`.
-2. Replace `syntaxDocuments` / `decodeSyntaxDocuments` usage with `ParsedDocument.toSirenDocument()` per document, then `SirenBuilder.fromDocuments(...)`.
+2. Replace `syntaxDocuments` / `decodeSyntaxDocuments` usage with `ParsedDocument.toEntries()` per document, then `SirenBuilder.fromEntries(...)`.
 3. Replace old formatter calls with `parsedDoc.format()`.
 4. Thread language diagnostics into the CLI diagnostic display alongside core semantic diagnostics.
 
 The CLI must not call tree-sitter APIs directly; all source-language access goes through `@sirenpm/language`.
+
+**v0.6.0 adoption note:** The CLI also needs `eod-cli-bridge` (`SirenBuilder.fromDocuments` → `fromEntries`, `sirenDocuments` → `sirenEntries`) and `origin-demotion-cli` (diagnostic position resolution via entry references instead of `DiagnosticBase.file`/`line`/`column`). These are tracked in `siren/entries-over-documents.siren` and `siren/origin-demotion.siren`.
 
 Depends on: `lang-decode`, `lang-format`
 
@@ -192,9 +212,50 @@ Depends on: `lang-decode`, `lang-format`
 
 ### `lang-publish` — Publish updated packages
 
-Publish updated `@sirenpm/language` (with new public API) and `@sirenpm/cli` (with updated consumer). Both must compile cleanly against the published `@sirenpm/core` version that contains the tuple-first `AttributeValue` contract. Update CLI and language package versions appropriately. Ensure WASM artifact is included in the language npm bundle.
+Publish updated `@sirenpm/language` (with new public API) and `@sirenpm/cli` (with updated consumer). Both must compile cleanly against the published `@sirenpm/core` v0.6.0 that removes `Origin`, `SirenDocument`, and `Resource`. Update CLI and language package versions appropriately. Ensure WASM artifact is included in the language npm bundle.
 
 Depends on: `lang-cli`, `lang-tests`
+
+---
+
+## Phase 7 — Adopt `@sirenpm/core` v0.6.0 Breaking Changes
+
+After the ADR-0004 rebuild landed, `@sirenpm/core` published v0.6.0 with two breaking changes
+that the language package must adopt. This phase is tracked by the `lang-v060-*` tasks in
+`siren/language-ast-pipeline.siren`.
+
+### What changed in core
+
+| Change | ADR | Core version |
+|---|---|---|
+| Flat `SirenEntry[]` replaces `SirenDocument`/`Resource`. `SirenBuilder.fromEntries()` only. | 0005 | v0.6.0 |
+| `Origin`, `RangeOrigin`, `SyntheticOrigin` removed from core. Language owns them natively. | 0006 | v0.6.0 |
+| `DiagnosticBase` now generic: `DiagnosticBase<'E','L'>` / `DiagnosticBase<'W','L'>`. No `file`/`line`/`column`. | 0006 | v0.6.0 |
+| `SourcedEntry extends SirenEntry { origin: Origin }` — structural extension preserved by klona/deep-freeze. | 0006 | — (language-side) |
+| Tuple-first `Attribute.value` (bare `readonly Atom[]`). | (prerequisite) | v0.5.0 |
+
+### Tasks
+
+See `siren/language-ast-pipeline.siren` for the full dependency-ordered task list. Summary:
+
+| Task | What it does |
+|---|---|
+| `lang-v060-origin` | Create `packages/language/src/origin.ts` owning `RangeOrigin` (moved from `ast/origins.ts`), `SyntheticOrigin`, and the `Origin` union. Define `SourcedEntry`/`SourcedAttribute`. |
+| `lang-v060-decode-entries` | Rename `decodeAstToSirenDocument` → `decodeAstToEntries` returning `readonly SirenEntry[]`. Rename `toSirenDocument()` → `toEntries(options?)`. Drop `Resource`/`SirenDocument` imports. |
+| `lang-v060-synthesis` | Add default-off `synthesizeMilestones` option to `toEntries()`. Append one synthetic milestone per source document (id = name sans `.siren`, `SyntheticOrigin`). |
+| `lang-v060-diagnostics` | Swap `extends DiagnosticBase` → `extends DiagnosticBase<'E','L'>` / `<'W','L'>`. Replace core `Origin` import with `../origin`. |
+| `lang-v060-exports` | Export `Origin` types and `Sourced*` extensions. Bump core dep to `^0.6.0`, language version to `0.5.0`. |
+| `lang-v060-tests` | Update all tests for entry-shaped decode, language-native origin, generic `DiagnosticBase`, and synthesis. |
+
+### Superseded backlog
+
+The following tasks in other backlog files targeted the pre-rebuild language surfaces and are
+marked `complete` as superseded:
+
+| File | Superseded tasks | Replaced by |
+|---|---|---|
+| `siren/entries-over-documents.siren` | `eod-lang-red`, `eod-lang-decoder`, `eod-lang-renderer`, `eod-lang-publish` | `lang-v060-decode-entries`, `lang-v060-synthesis`, `lang-v060-exports` |
+| `siren/origin-demotion.siren` | `origin-demotion-language-red`, `origin-demotion-language-green`, `origin-demotion-language-publish` | `lang-v060-origin`, `lang-v060-diagnostics`, `lang-v060-exports` |
 
 ---
 

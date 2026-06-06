@@ -3,10 +3,10 @@
 # Full implementation plan: siren/entries-over-documents.md
 
 milestone eod {
-  description = "Remove SirenDocument as a semantic-core concept and make @sirenpm/core operate on flat SirenEntry inputs throughout. Remove document-oriented builder methods, document-grouped patch bookkeeping, and the SynthesisModule from the IR pipeline. Relocate per-file milestone synthesis to @sirenpm/language as decode-time syntax sugar behind a default-off option. Replace the dead renderSirenDocument surface with entry-level renderEntry. Update @sirenpm/cli to consume the new flat-entry contract. Phased by package with a publish boundary after each package before downstream work begins."
+  description = "Remove SirenDocument as a semantic-core concept and make @sirenpm/core operate on flat SirenEntry inputs throughout. Remove document-oriented builder methods, document-grouped patch bookkeeping, and the SynthesisModule from the IR pipeline. Relocate per-file milestone synthesis to @sirenpm/language as decode-time syntax sugar behind a default-off option. Replace the dead renderSirenDocument surface with entry-level renderEntry. Update @sirenpm/cli to consume the new flat-entry contract. Phased by package with a publish boundary after each package before downstream work begins. Note: core phase complete (v0.6.0 published). Language phase superseded by lang-v060-* tasks in siren/language-ast-pipeline.siren — the pre-rebuild API surfaces (decodeSyntaxDocuments, renderSirenDocument, context-factory.ts) that eod-lang targeted no longer exist."
   affected_packages = ["@sirenpm/core", "@sirenpm/language", "@sirenpm/cli"]
   context = "entries-over-documents.md"
-  depends_on = [eod-core, eod-lang, eod-cli]
+  depends_on = [eod-core, eod-cli]
 }
 
 # ─── Phase 1: @sirenpm/core ───────────────────────────────────────────────────
@@ -49,59 +49,61 @@ task eod-core-pipeline complete {
 
 # Publish — synchronisation point for downstream packages
 
-task eod-core-publish {
-  description = "Publish @sirenpm/core 0.x breaking release. The changeset must document: SirenDocument type removed; SynthesisModule removed from the IR pipeline; fromDocuments/withDocument/patchDocument builder variants removed; PatchResult.changes is now EntryChange[] with no DocumentChange. This release is the synchronisation point — @sirenpm/language and @sirenpm/cli must not be updated to the new contract until this version is available on the registry."
+task eod-core-publish complete {
+  description = "Publish @sirenpm/core 0.x breaking release. The changeset must document: SirenDocument type removed; SynthesisModule removed from the IR pipeline; fromDocuments/withDocument/patchDocument builder variants removed; PatchResult.changes is now EntryChange[] with no DocumentChange. This release is the synchronisation point — @sirenpm/language and @sirenpm/cli must not be updated to the new contract until this version is available on the registry. Completed: core v0.6.0 published."
   affected_packages = ["@sirenpm/core"]
   context = "entries-over-documents.md"
   depends_on = [eod-core-builder, eod-core-pipeline]
 }
 
-# ─── Phase 2: @sirenpm/language ──────────────────────────────────────────────
+# ─── Phase 2: @sirenpm/language — SUPERSEDED ─────────────────────────────────
 
-milestone eod-lang {
-  description = "Reshape @sirenpm/language's decode output from SirenDocument[] to flat SirenEntry[]. Relocate per-file milestone synthesis to the decoder as a default-off synthesizeMilestones option. Replace the dead renderSirenDocument surface with entry-level renderEntry. Publish a 0.x release that consumes the new core contract."
+# The ADR-0004 rebuild of @sirenpm/language replaced the API surfaces that these
+# tasks target (decodeSyntaxDocuments, renderSirenDocument, context-factory.ts).
+# The flat-entries + synthesis adoption is now tracked by lang-v060-* tasks in
+# siren/language-ast-pipeline.siren. These tasks are retained as a record of
+# the original design intent.
+
+milestone eod-lang complete {
+  description = "Reshape @sirenpm/language's decode output from SirenDocument[] to flat SirenEntry[]. Relocate per-file milestone synthesis to the decoder as a default-off synthesizeMilestones option. Replace the dead renderSirenDocument surface with entry-level renderEntry. Publish a 0.x release that consumes the new core contract. Marked complete — superseded by lang-v060-* tasks in siren/language-ast-pipeline.siren (the pre-rebuild API surfaces no longer exist)."
   affected_packages = ["@sirenpm/language"]
   context = "entries-over-documents.md"
-  depends_on = eod-lang-publish
 }
 
 # TDD red — write failing assertions before touching decoder or renderer
 
-task eod-lang-red {
-  description = "TDD red: write failing tests for the reshaped @sirenpm/language decode contract. Assert decodeSyntaxDocuments returns entries: readonly SirenEntry[] instead of documents. Assert that passing synthesizeMilestones: true appends one synthetic milestone per source document — the milestone id equals the document source name and its depends_on references every entry decoded from that document (no root-detection). Assert that renderEntry(entry) returns a well-formed Siren source block string for tasks and milestones. All tests must fail before implementation begins."
+task eod-lang-red complete {
+  description = "TDD red: write failing tests for the reshaped @sirenpm/language decode contract. Assert decodeSyntaxDocuments returns entries: readonly SirenEntry[] instead of documents. Assert that passing synthesizeMilestones: true appends one synthetic milestone per source document — the milestone id equals the document source name and its depends_on references every entry decoded from that document (no root-detection). Assert that renderEntry(entry) returns a well-formed Siren source block string for tasks and milestones. All tests must fail before implementation begins. Superseded by lang-v060-decode-entries and lang-v060-synthesis in siren/language-ast-pipeline.siren."
   affected_packages = ["@sirenpm/language"]
   context = "entries-over-documents.md"
-  depends_on = eod-core-publish
-  files = "packages/language/src/decoder/index.ts, packages/language/test/export/render-document.test.ts"
+  note = "superseded by lang-v060-decode-entries, lang-v060-synthesis"
 }
 
 # TDD green — decoder output shape and synthesis relocation
 
-task eod-lang-decoder {
-  description = "TDD green: rewrite packages/language/src/decoder/index.ts so decodeSyntaxDocuments returns flat SirenEntry[] in DecodeResult.entries and removes the documents field. Remove the deprecated DecodedDocument type alias. Add a synthesizeMilestones?: boolean option (default false) that when true appends a synthetic milestone per source document: id is the document source name, type is milestone, depends_on references all entries decoded from that document, origin is SyntheticOrigin. Update context-factory.ts to call SirenBuilder.fromEntries and thread the synthesizeMilestones option through createSirenProjectFromSyntaxDocuments and createSirenProjectFromParseResult."
+task eod-lang-decoder complete {
+  description = "TDD green: rewrite packages/language/src/decoder/index.ts so decodeSyntaxDocuments returns flat SirenEntry[] in DecodeResult.entries and removes the documents field. Remove the deprecated DecodedDocument type alias. Add a synthesizeMilestones?: boolean option (default false). Superseded by lang-v060-decode-entries in siren/language-ast-pipeline.siren — the rebuilt decoder is decodeAstToEntries, not decodeSyntaxDocuments."
   affected_packages = ["@sirenpm/language"]
   context = "entries-over-documents.md"
-  depends_on = eod-lang-red
-  files = "packages/language/src/decoder/index.ts, packages/language/src/context-factory.ts"
+  note = "superseded by lang-v060-decode-entries"
 }
 
 # TDD green — entry-level renderer
 
-task eod-lang-renderer {
-  description = "TDD green: replace the renderSirenDocument surface in packages/language/src/export/render-document.ts with renderEntry(entry: SirenEntry): string. Reuse the existing block-building logic for type, identifier, status token, and attributes. Update packages/language/src/index.ts to stop exporting renderSirenDocument and export renderEntry in its place. Rewrite or delete the existing render-document test to cover renderEntry."
+task eod-lang-renderer complete {
+  description = "TDD green: replace the renderSirenDocument surface in packages/language/src/export/render-document.ts with renderEntry(entry: SirenEntry): string. Superseded — the ADR-0004 rebuild does not have a render-document.ts renderer surface."
   affected_packages = ["@sirenpm/language"]
   context = "entries-over-documents.md"
-  depends_on = eod-lang-red
-  files = "packages/language/src/export/render-document.ts, packages/language/src/index.ts, packages/language/test/export/render-document.test.ts"
+  note = "superseded — no render-document.ts in ADR-0004 rebuild"
 }
 
 # Publish — synchronisation point for CLI
 
-task eod-lang-publish {
-  description = "Publish @sirenpm/language 0.x breaking release. The changeset must document: DecodeResult.documents renamed to entries; DecodedDocument alias removed; renderSirenDocument removed in favour of renderEntry; new synthesizeMilestones option added to decodeSyntaxDocuments (default false). This release is the synchronisation point that unblocks eod-cli-bridge."
+task eod-lang-publish complete {
+  description = "Publish @sirenpm/language 0.x breaking release. Superseded by lang-v060-exports and lang-publish in siren/language-ast-pipeline.siren."
   affected_packages = ["@sirenpm/language"]
   context = "entries-over-documents.md"
-  depends_on = [eod-lang-decoder, eod-lang-renderer]
+  note = "superseded by lang-v060-exports, lang-publish"
 }
 
 # ─── Phase 3: @sirenpm/cli ────────────────────────────────────────────────────

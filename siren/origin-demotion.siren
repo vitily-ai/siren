@@ -3,10 +3,10 @@
 # Companion: siren/origin-demotion.md
 
 milestone origin-demotion {
-	description = "Remove Origin (RangeOrigin, SyntheticOrigin) from @sirenpm/core and have @sirenpm/language own source provenance via SourcedEntry/SourcedAttribute structural extensions. DiagnosticBase reduces to {code, severity}. Diagnostics carry entry IDs instead of pre-extracted file/line/column fields. Core publishes first; language follows."
+	description = "Remove Origin (RangeOrigin, SyntheticOrigin) from @sirenpm/core and have @sirenpm/language own source provenance via SourcedEntry/SourcedAttribute structural extensions. DiagnosticBase reduces to {code, severity}. Diagnostics carry entry IDs instead of pre-extracted file/line/column fields. Core publishes first; language follows. Note: core phase complete (v0.6.0 published). Language phase superseded by lang-v060-origin, lang-v060-diagnostics in siren/language-ast-pipeline.siren — the pre-rebuild API surfaces (cst.ts re-export, context-factory.ts) that the language-phase tasks targeted no longer exist."
 	affected_packages = ["@sirenpm/core", "@sirenpm/language", "@sirenpm/cli"]
 	context = "origin-demotion.md"
-	depends_on = [origin-demotion-core-publish, origin-demotion-language-publish, origin-demotion-cli]
+	depends_on = [origin-demotion-core-publish, origin-demotion-cli]
 }
 
 # ── Phase 1: core ─────────────────────────────────────────────────────────────
@@ -31,40 +31,44 @@ task origin-demotion-core-green complete {
 	depends_on = origin-demotion-core-tests
 }
 
-task origin-demotion-core-publish {
-	description = "Publish a new breaking @sirenpm/core version with Origin removed. The version bump establishes the boundary for downstream consumers to upgrade against."
+task origin-demotion-core-publish complete {
+	description = "Publish a new breaking @sirenpm/core version with Origin removed. The version bump establishes the boundary for downstream consumers to upgrade against. Completed: core v0.6.0 published."
 	affected_packages = ["@sirenpm/core"]
 	context = "origin-demotion.md"
-	depends_on = origin-demotion-core-green
 }
 
-# ── Phase 2: language ─────────────────────────────────────────────────────────
+# ── Phase 2: language — SUPERSEDED ─────────────────────────────────────────────
 
-task origin-demotion-language-red {
-	description = "Write failing tests in @sirenpm/language asserting that Origin, RangeOrigin, and SyntheticOrigin are defined natively in language (not re-exported from core); that SourcedEntry extends SirenEntry with origin; and that SourcedAttribute extends Attribute with origin."
+# The ADR-0004 rebuild of @sirenpm/language replaced the API surfaces that these
+# tasks target (cst.ts re-export, context-factory.ts). The language-native Origin
+# and SourcedEntry/SourcedAttribute adoption is tracked by lang-v060-origin and
+# lang-v060-diagnostics in siren/language-ast-pipeline.siren.
+
+task origin-demotion-language-red complete {
+	description = "Write failing tests in @sirenpm/language asserting that Origin, RangeOrigin, and SyntheticOrigin are defined natively in language (not re-exported from core); that SourcedEntry extends SirenEntry with origin; and that SourcedAttribute extends Attribute with origin. Superseded by lang-v060-origin in siren/language-ast-pipeline.siren."
 	affected_packages = ["@sirenpm/language"]
 	context = "origin-demotion.md"
-	depends_on = origin-demotion-core-publish
+	note = "superseded by lang-v060-origin"
 }
 
-task origin-demotion-language-green {
-	description = "Define language-native Origin, RangeOrigin, and SyntheticOrigin types. Add SourcedEntry and SourcedAttribute extension interfaces. Replace the re-export of Origin from @sirenpm/core in cst.ts with the language-native definition. Pin @sirenpm/core to the new breaking version."
+task origin-demotion-language-green complete {
+	description = "Define language-native Origin, RangeOrigin, and SyntheticOrigin types. Add SourcedEntry and SourcedAttribute extension interfaces. No cst.ts to update in the ADR-0004 rebuild — origin is defined natively in packages/language/src/origin.ts. Superseded by lang-v060-origin in siren/language-ast-pipeline.siren."
 	affected_packages = ["@sirenpm/language"]
 	context = "origin-demotion.md"
-	depends_on = origin-demotion-language-red
+	note = "superseded by lang-v060-origin"
 }
 
-task origin-demotion-language-publish {
-	description = "Publish a new @sirenpm/language version with language-owned Origin and SourcedEntry/SourcedAttribute types."
+task origin-demotion-language-publish complete {
+	description = "Publish a new @sirenpm/language version with language-owned Origin and SourcedEntry/SourcedAttribute types. Superseded by lang-v060-exports and lang-publish in siren/language-ast-pipeline.siren."
 	affected_packages = ["@sirenpm/language"]
 	context = "origin-demotion.md"
-	depends_on = origin-demotion-language-green
+	note = "superseded by lang-v060-exports, lang-publish"
 }
 
 # ── Phase 3: CLI (deferred) ───────────────────────────────────────────────────
 
 task origin-demotion-cli {
-	description = "Update @sirenpm/cli formatDiagnostics to extract source provenance from entry IDs carried by each diagnostic type rather than from DiagnosticBase.file/line/column. Requires graph or project context at format time. Details to be scoped at implementation."
+	description = "Update @sirenpm/cli formatDiagnostics to extract source provenance from entry IDs carried by each diagnostic type rather than from DiagnosticBase.file/line/column. Requires graph or project context at format time. Details to be scoped at implementation. Blocked on lang-v060-exports in siren/language-ast-pipeline.siren (language must publish with v0.6.0 adoption first)."
 	affected_packages = ["@sirenpm/cli"]
 	context = "origin-demotion.md"
 	depends_on = origin-demotion-language-publish
