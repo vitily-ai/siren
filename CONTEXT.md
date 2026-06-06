@@ -13,19 +13,19 @@ Immutable built semantic snapshot with resolved entries, cached graph/query help
 _Avoid_: query-only view, incremental result
 
 **Document**:
-Top-level resource container exported from core for compatibility and source attribution metadata.
+Abstract language-domain term loosely meaning a source file.
 _Avoid_: public build input wrapper
 
 **Entry - `SirenEntry` - Formerly "Resource"**:
-Decoded task or milestone with `type`, `id`, optional `status`, `attributes`, and optional `origin`.
+Decoded task or milestone with `type`, `id`, optional `status`, and `attributes`. Origin (source location) is owned by `@sirenpm/language` and passes through as an opaque structural extension.
 _Avoid_: raw syntax node
 
 **Resource**:
-Catch-all conventional term referring to any value or structure represented in a project, including Documents, Entries, Attributes, etc.
+Catch-all conventional term referring to any value or structure represented in a project, including Entries, Attributes, etc.
 _Avoid_: Introducing this term into code
 
 **Attribute**:
-A key-value pair within an entry. The `value` field is always a `Tuple`, even for scalar values. Optional `origin` metadata supports comment-aware formatting.
+A key-value pair within an entry. The `value` field is always a `Tuple`, even for scalar values. Origin (source location) is owned by `@sirenpm/language` and passes through as an opaque structural extension.
 _Avoid_: null values, Attribute.raw (removed field)
 
 **Atom**:
@@ -36,12 +36,8 @@ _Avoid_: PrimitiveValue (superseded type)
 An ordered, readonly sequence of atoms (`readonly Atom[]`). Scalar attributes are encoded as single-element tuples; list-valued attributes are multi-element tuples; absence is the empty tuple `[]`. The `isReference` guard discriminates atoms, not tuples. The `isArray` and `isPrimitive` guards have been removed.
 _Avoid_: AttributeValue (superseded), ArrayValue (superseded), null for absence
 
-**Origin**:
-Source attribution metadata attached to entries and attributes. Carries byte/row offsets plus optional `document`.
-_Avoid_: display formatting
-
 **DiagnosticBase**:
-Shared diagnostic shape `{ code, severity, file?, line?, column? }` with no `message`.
+Shared diagnostic shape parameterised on severity and package char: `{ code, severity }` with no `message`. No source position fields — provenance is resolved by the consumer from entry references carried by concrete diagnostic types.
 _Avoid_: formatted text message
 
 **Semantic Diagnostic**:
@@ -69,7 +65,6 @@ _Avoid_: undocumented deep imports
 - `SirenProject.graph` is cached so query helpers reuse the same dependency graph instance.
 - `SirenProject.diagnostics` is the complete semantic snapshot and preserves the current ordering: cycles, dangling dependencies, then duplicates.
 - W001 diagnostics expose dependency cycles; there is no separate public cycles API.
-- Entry and diagnostic file attribution come from `origin.document`; missing attribution leaves `file` undefined.
 - `SirenProject` is frozen and is only constructed internally by `SirenBuilder.build()`.
 - The package-root export surface intentionally keeps the public snapshot and helper types together so consumers do not need deep imports.
 - `SirenProject` provides `findEntryById()`, `getMilestoneIds()`, `getTasksByMilestone()`, `getDependencyTree()`, and `diagnostics` for consumers.
@@ -85,7 +80,7 @@ The public simplified representation of Siren grammatical source for one documen
 _Avoid_: semantic IR, source-preserving tree, parsed document model
 
 **ParsedDocument**:
-The public document wrapper returned by `@sirenpm/language` parsing. It exposes a `Siren AST`, structured language diagnostics, and CST-backed services such as formatting and decoding to core `SirenDocument` input, while keeping the CST private.
+The public document wrapper returned by `@sirenpm/language` parsing. It exposes a `Siren AST`, structured language diagnostics, and CST-backed services such as formatting and decoding to core `SirenEntry[]` input, while keeping the CST private.
 _Avoid_: AST node, project snapshot, language-level project builder
 
 **Semantic IR**:
@@ -106,9 +101,9 @@ _Avoid_: array-only value, scalar-only value
 - A **ParsedDocument** owns the private **Concrete Syntax Tree** and public **Siren AST** for the same source document.
 - A **Siren AST** is grammatical source data only; dependency resolution, duplicate detection, inferred status, and semantic diagnostics belong to **Semantic IR** in `@sirenpm/core`.
 - Formatting walks the private **Concrete Syntax Tree**, not the **Siren AST**.
-- `ParsedDocument.toSirenDocument()` decodes the **Siren AST** into core `SirenDocument` input and may use private CST backreferences to populate core `origin` metadata.
-- `@sirenpm/language` does not expose a `ParsedDocument` to `SirenProject` helper; callers pass decoded `SirenDocument`s to `SirenBuilder.fromDocuments(...)`.
-- Parsed documents omit core document directives until directive syntax exists in the grammar; absent directives leave core implicit milestone synthesis enabled by default.
+- `ParsedDocument.toEntries()` decodes the **Siren AST** into a core `SirenEntry` list input.
+- `@sirenpm/language` does not expose a `ParsedDocument` to `SirenProject` helper; callers pass decoded `SirenEntry[]` to `SirenBuilder.fromEntries(...)`.
+- Parsed documents omit document directives until directive syntax exists in the grammar; absent directives leave language-side implicit milestone synthesis disabled by default.
 
 ## Example dialogues
 
@@ -123,7 +118,7 @@ _Avoid_: array-only value, scalar-only value
 - "context" was used to mean both a query-only view and a built snapshot — resolved: `SirenProject` is the built snapshot.
 - "builder input" was used to mean a document wrapper — resolved: `SirenBuilder.fromEntries(entries)` accepts raw entries directly.
 - "source" attribution was used to mean a separate constructor argument — resolved: resource origins provide attribution.
-- "document" is overloaded between core build input and language parsing concepts — resolved: use `SirenDocument` for core input and `ParsedDocument` for the language wrapper.
+- "document" is overloaded between core build input and language parsing concepts — resolved: core accepts flat `SirenEntry[]` (no document wrapper); `ParsedDocument` is the language-side wrapper.
 - "parsed document model" previously named the language boundary — superseded: use **Siren AST** for the public source tree and **ParsedDocument** for the wrapper.
 - "lossless syntax tree" and "parsed document model" were both used for the language boundary — superseded: use **Siren AST** for the public simplified source tree and **ParsedDocument** for the wrapper.
 - "AST" can imply semantics in some ecosystems — resolved here: **Siren AST** is grammatical source data only and does not encode project semantics.
