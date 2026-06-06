@@ -13,7 +13,7 @@ import type { Envelope, Module } from './types';
  *     Modules may return keys that already exist on the envelope; the new
  *     value shadows the prior one downstream (this is how "logical mutation"
  *     is encoded — for example, the implicit-completion module replaces
- *     `graph` with a completion-resolved ResourceGraph snapshot).
+ *     `graph` with a completion-resolved EntryGraph snapshot).
  *  3. Returns the terminal envelope (frozen).
  *
  * Type-level guarantees:

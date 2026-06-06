@@ -3,10 +3,9 @@ import { isComplete } from '../utilities/entry';
 import { getMilestoneIds, getTasksByMilestone } from '../utilities/milestone';
 import { IR_CONTEXT_FACTORY } from './context-internal';
 import type { Diagnostic } from './diagnostics';
-import type { SirenDocument } from './document';
+import type { EntryGraph } from './entry-graph';
 import { type IRBuildEnvelope, runIRBuildPipeline } from './pipeline';
-import type { ResourceGraph } from './resource-graph';
-import type { Resource } from './types';
+import type { SirenEntry } from './types';
 
 export type {
   CircularDependencyDiagnostic,
@@ -24,25 +23,25 @@ export type {
 export class SirenProject {
   private readonly envelope: IRBuildEnvelope;
 
-  private constructor(documents: readonly SirenDocument[]) {
-    this.envelope = runIRBuildPipeline(documents);
+  private constructor(entries: readonly SirenEntry[]) {
+    this.envelope = runIRBuildPipeline(entries);
     Object.freeze(this);
   }
 
   /**
    * Internal construction path used by SirenBuilder.
    */
-  static [IR_CONTEXT_FACTORY](documents: readonly SirenDocument[]): SirenProject {
-    return new SirenProject(documents);
+  static [IR_CONTEXT_FACTORY](entries: readonly SirenEntry[]): SirenProject {
+    return new SirenProject(entries);
   }
 
   /**
-   * Get deduplicated resources with implicit milestone completeness resolved.
+   * Get deduplicated entries with implicit milestone completeness resolved.
    * Milestones whose every dependency is complete are promoted to `status: 'complete'`.
    * First occurrence of each ID is kept, duplicates are dropped.
    */
-  get resources(): readonly Resource[] {
-    return this.envelope.graph.resources;
+  get entries(): readonly SirenEntry[] {
+    return this.envelope.graph.entries;
   }
 
   /**
@@ -50,23 +49,23 @@ export class SirenProject {
    * so consumers (LSP, exporters, advanced queries) can reuse the same graph
    * instance instead of rebuilding it.
    */
-  get graph(): ResourceGraph {
+  get graph(): EntryGraph {
     return this.envelope.graph;
   }
 
-  findResourceById(id: string): Resource {
-    const resource = this.envelope.graph.getResource(id);
-    if (!resource) {
-      throw new Error(`Resource with ID '${id}' not found`);
+  findEntryById(id: string): SirenEntry {
+    const entry = this.envelope.graph.getEntry(id);
+    if (!entry) {
+      throw new Error(`Entry with ID '${id}' not found`);
     }
-    return resource;
+    return entry;
   }
 
   getMilestoneIds(): string[] {
-    return getMilestoneIds(this.resources);
+    return getMilestoneIds(this.entries);
   }
 
-  getTasksByMilestone(): Map<string, Resource[]> {
+  getTasksByMilestone(): Map<string, SirenEntry[]> {
     return getTasksByMilestone(this.envelope.graph);
   }
 
@@ -74,11 +73,11 @@ export class SirenProject {
   // but eventually needs to support a more expressive query interface
   getDependencyTree(rootId: string): DependencyTree {
     // By default, treat milestone nodes (except the root) as leaves when
-    // expanding from a root resource. This mirrors CLI/listing behavior
+    // expanding from a root entry. This mirrors CLI/listing behavior
     // where milestones act as grouping nodes and are not expanded further
     // in dependency trees unless explicitly requested. Also filter out
-    // resources whose status is complete.
-    const traversePredicate = (r: Resource) => {
+    // entries whose status is complete.
+    const traversePredicate = (r: SirenEntry) => {
       if (isComplete(r)) return false;
       // Include non-root milestones as leaves (include but don't expand)
       if (r.type === 'milestone' && r.id !== rootId) {

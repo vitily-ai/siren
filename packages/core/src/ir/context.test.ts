@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { SirenBuilder } from './assembly';
-import type { Resource } from './types';
+import type { SirenEntry } from './types';
 
-function buildContext(resources: readonly Resource[]) {
-  return SirenBuilder.fromResources(resources, 'adhoc').build();
+function buildContext(entries: readonly SirenEntry[]) {
+  return SirenBuilder.fromEntries(entries, 'adhoc').build();
 }
 
 describe('SirenProject (builder-built semantic snapshot)', () => {
@@ -21,8 +21,8 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           code: 'W002',
           severity: 'warning',
-          resourceId: 'has-dangling',
-          resourceType: 'milestone',
+          entryId: 'has-dangling',
+          entryType: 'milestone',
           dependencyId: 'missing-dep',
         },
       ]);
@@ -52,81 +52,6 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
     });
   });
 
-  describe('diagnostics with source attribution', () => {
-    it('includes file and position for dangling diagnostics from origin.document', () => {
-      const context = buildContext([
-        {
-          type: 'task',
-          id: 'has-dangling',
-          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'missing' }] }],
-          origin: {
-            kind: 'range',
-            startByte: 0,
-            endByte: 10,
-            startRow: 0,
-            endRow: 0,
-            document: 'project/tasks.siren',
-          },
-        },
-      ]);
-
-      expect(context.diagnostics).toEqual([
-        {
-          code: 'W002',
-          severity: 'warning',
-          resourceId: 'has-dangling',
-          resourceType: 'task',
-          dependencyId: 'missing',
-          file: 'project/tasks.siren',
-          line: 1,
-          column: 0,
-        },
-      ]);
-    });
-
-    it('includes file attribution for cycles spanning multiple files', () => {
-      const context = buildContext([
-        {
-          type: 'task',
-          id: 'a',
-          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'b' }] }],
-          origin: {
-            kind: 'range',
-            startByte: 0,
-            endByte: 10,
-            startRow: 0,
-            endRow: 0,
-            document: 'project/file1.siren',
-          },
-        },
-        {
-          type: 'task',
-          id: 'b',
-          attributes: [{ key: 'depends_on', value: [{ kind: 'reference', id: 'a' }] }],
-          origin: {
-            kind: 'range',
-            startByte: 0,
-            endByte: 10,
-            startRow: 0,
-            endRow: 0,
-            document: 'project/file2.siren',
-          },
-        },
-      ]);
-
-      expect(context.diagnostics).toEqual([
-        {
-          code: 'W001',
-          severity: 'warning',
-          nodes: ['a', 'b', 'a'],
-          file: 'project/file1.siren, project/file2.siren',
-          line: 1,
-          column: 0,
-        },
-      ]);
-    });
-  });
-
   describe('normalization and semantic snapshot', () => {
     it('deduplicates first, then resolves implicit milestone completion', () => {
       const context = buildContext([
@@ -134,28 +59,12 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
           type: 'task',
           id: 'shared-task',
           attributes: [],
-          origin: {
-            kind: 'range',
-            startByte: 0,
-            endByte: 20,
-            startRow: 4,
-            endRow: 4,
-            document: 'first.siren',
-          },
         },
         {
           type: 'task',
           id: 'shared-task',
           status: 'complete',
           attributes: [],
-          origin: {
-            kind: 'range',
-            startByte: 21,
-            endByte: 40,
-            startRow: 11,
-            endRow: 11,
-            document: 'second.siren',
-          },
         },
         {
           type: 'milestone',
@@ -164,7 +73,7 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         },
       ]);
 
-      expect(context.resources.map((resource) => [resource.id, resource.status])).toEqual([
+      expect(context.entries.map((entry) => [entry.id, entry.status])).toEqual([
         ['shared-task', undefined],
         ['release', undefined],
       ]);
@@ -172,14 +81,8 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         {
           code: 'W003',
           severity: 'warning',
-          resourceId: 'shared-task',
-          resourceType: 'task',
-          file: 'second.siren',
-          firstFile: 'first.siren',
-          firstLine: 5,
-          firstColumn: 0,
-          secondLine: 12,
-          secondColumn: 0,
+          entryId: 'shared-task',
+          entryType: 'task',
         },
       ]);
     });
@@ -235,18 +138,18 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
         },
       ]);
 
-      const resource = context.resources[0];
+      const entry = context.entries[0];
       const diagnostic = context.diagnostics[0];
 
-      expect(resource).toBeDefined();
+      expect(entry).toBeDefined();
       expect(diagnostic).toBeDefined();
-      if (!resource || !diagnostic) throw new Error('expected IR snapshot data');
+      if (!entry || !diagnostic) throw new Error('expected IR snapshot data');
 
       expect(Object.isFrozen(context)).toBe(true);
-      expect(Object.isFrozen(context.resources)).toBe(false);
-      expect(Object.isFrozen(resource)).toBe(true);
-      expect(Object.isFrozen(resource.attributes)).toBe(true);
-      expect(Object.isFrozen(resource.attributes[0])).toBe(true);
+      expect(Object.isFrozen(context.entries)).toBe(false);
+      expect(Object.isFrozen(entry)).toBe(true);
+      expect(Object.isFrozen(entry.attributes)).toBe(true);
+      expect(Object.isFrozen(entry.attributes[0])).toBe(true);
       expect(Object.isFrozen(context.diagnostics)).toBe(true);
       expect(Object.isFrozen(diagnostic)).toBe(true);
     });
@@ -291,21 +194,21 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
       ]);
 
       const tree = context.getDependencyTree('root');
-      expect(tree.dependencies.map((dependency) => dependency.resource.id).sort()).toEqual([
+      expect(tree.dependencies.map((dependency) => dependency.entry.id).sort()).toEqual([
         'draft-milestone',
         'draft-task',
         'todo-task',
       ]);
 
       const draftTask = tree.dependencies.find(
-        (dependency) => dependency.resource.id === 'draft-task',
+        (dependency) => dependency.entry.id === 'draft-task',
       );
-      expect(draftTask?.dependencies.map((dependency) => dependency.resource.id)).toEqual([
+      expect(draftTask?.dependencies.map((dependency) => dependency.entry.id)).toEqual([
         'draft-child',
       ]);
 
       const draftMilestone = tree.dependencies.find(
-        (dependency) => dependency.resource.id === 'draft-milestone',
+        (dependency) => dependency.entry.id === 'draft-milestone',
       );
       expect(draftMilestone?.dependencies).toHaveLength(0);
     });

@@ -11,20 +11,18 @@ export type {
   DiagnosticBase,
   DuplicateIdDiagnostic,
 } from './diagnostics';
-export type { SirenDocument } from './document';
 export { SirenCoreError } from './errors';
 export type {
   ChangeMode,
-  DocumentChange,
+  EntryChange,
   PatchResult,
-  ResourceChange,
 } from './patch-result';
 export type {
   Atom,
   Attribute,
-  Resource,
-  ResourceReference,
-  ResourceStatus,
-  ResourceType,
+  EntryReference,
+  EntryStatus,
+  EntryType,
+  SirenEntry,
   Tuple,
 } from './types';

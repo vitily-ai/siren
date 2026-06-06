@@ -1,4 +1,4 @@
-import type { Resource } from '../ir/types';
+import type { SirenEntry } from '../ir/types';
 
 /**
  * Controls how a node is traversed in the dependency tree.
@@ -18,15 +18,15 @@ export interface TraversalControl {
  * - `TraversalControl` → explicit control over inclusion and expansion
  */
 export type TraversePredicate = (
-  resource: Resource,
-  parent?: Resource,
+  entry: SirenEntry,
+  parent?: SirenEntry,
 ) => boolean | TraversalControl;
 
 export interface DependencyTree {
-  resource: Resource;
+  entry: SirenEntry;
   dependencies: DependencyTree[];
   /** If true, this node represents a detected cycle */
   cycle?: boolean;
-  /** If true, this node represents a missing referenced resource */
+  /** If true, this node represents a missing referenced entry */
   missing?: boolean;
 }

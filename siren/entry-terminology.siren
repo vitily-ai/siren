@@ -1,0 +1,34 @@
+# entry-terminology — Adopt Entry / SirenEntry as the code-facing term across public packages
+# `Resource` remains a documentation-only conventional term and should stay out of code.
+
+milestone entry-terminology {
+  description = "Adopt Entry / SirenEntry as the code-facing term across core, language, and CLI while keeping Resource as documentation-only terminology."
+  affected_packages = ["@sirenpm/core", "@sirenpm/language", "@sirenpm/cli"]
+  depends_on = [
+    entry-terminology-core,
+    entry-terminology-language,
+    entry-terminology-cli,
+    entry-terminology-backlog,
+  ]
+}
+
+task entry-terminology-core {
+  description = "Rename the core public IR and builder surface from Resource to Entry, introduce SirenEntry as the canonical exported type, and publish the updated core package so downstream adoption can begin against the new terminology."
+  affected_packages = ["@sirenpm/core"]
+}
+
+task entry-terminology-language {
+  description = "Update language parsing, decode, format, and export surfaces to consume Entry / SirenEntry after the core rename, keep Resource confined to prose or migration notes, and publish the refreshed language package for CLI adoption."
+  affected_packages = ["@sirenpm/language"]
+  depends_on = entry-terminology-core
+}
+
+task entry-terminology-cli {
+  description = "Update CLI code and user-facing terminology to consume the renamed package surfaces and use Entry consistently where the CLI refers to semantic project data."
+  affected_packages = ["@sirenpm/cli"]
+  depends_on = [entry-terminology-core, entry-terminology-language]
+}
+
+task entry-terminology-backlog {
+    description = "Update siren backlog to reflect new terminology"
+}

@@ -42,10 +42,9 @@ node apps/cli/dist/index.js
 
 - `packages/core` — environment-agnostic core library with `SirenBuilder`, `SirenProject`, IR types, semantic validation, `DiagnosticBase`, `IRExporter`, and shared utilities
 - `packages/language` — tree-sitter grammar, parser factory (`createParser()`), CST → IR decoder, exporters/formatters; depends on `@sirenpm/core`
-- `apps/web` — Vite-based browser app **STUB - NOT STARTED**
 - `apps/cli` — Node CLI built with `tsup`/`esbuild`; depends on `@sirenpm/core` + `@sirenpm/language` via npm pins
 
-CLI and language consume `@sirenpm/core` from the npm registry (not `workspace:*`); each package ships independently. The web app uses `workspace:*` because it is not published.
+CLI and language consume `@sirenpm/core` from the npm registry (not `workspace:*`); each package ships independently.
 
 ## Install & build (dev)
 
@@ -73,6 +72,7 @@ After this the `siren` command should be callable from any directory, e.g. `sire
 ## Developer notes
 
 - Core is environment-agnostic: do not introduce DOM or Node-specific APIs into `packages/core`.
+- `SirenBuilder` snapshots document input by deep-cloning and deep-freezing it; enumerable own extension metadata stays opaque and frozen, while non-enumerable internals such as `EPH_ID` remain implementation details.
 - The parser uses a Tree-sitter grammar (WASM) located in `packages/language/grammar`. The committed `tree-sitter-siren.wasm` ships with the package; CI guards against grammar/WASM drift.
 - To iterate on `@sirenpm/core` and a downstream package together locally, link manually (`yarn link`) or temporarily swap the npm-pinned dep to `workspace:*`.
 - Tests use Vitest; run per-package tests via `yarn workspace <pkg> test`.

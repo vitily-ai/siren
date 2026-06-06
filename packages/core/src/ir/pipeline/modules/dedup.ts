@@ -1,25 +1,25 @@
-import { diagnoseDuplicateResources } from '../../analysis';
+import { diagnoseDuplicateEntries } from '../../analysis';
 import type { DuplicateIdDiagnostic } from '../../diagnostics';
-import { deduplicateResources } from '../../normalization';
-import type { Resource } from '../../types';
+import { deduplicateEntries } from '../../normalization';
+import type { SirenEntry } from '../../types';
 import { defineModule } from '../types';
 
 /**
  * Dedup module: first-occurrence-wins deduplication and W003 emission.
  *
- * Reads:  { rawResources }
- * Writes: { resources, duplicateDiagnostics }
+ * Reads:  { rawEntries }
+ * Writes: { entries, duplicateDiagnostics }
  */
 export const DedupModule = defineModule(
   'Dedup',
   (input: {
-    readonly rawResources: readonly Resource[];
+    readonly rawEntries: readonly SirenEntry[];
   }): {
-    readonly resources: readonly Resource[];
+    readonly entries: readonly SirenEntry[];
     readonly duplicateDiagnostics: readonly DuplicateIdDiagnostic[];
   } => {
-    const resources = deduplicateResources(input.rawResources);
-    const duplicateDiagnostics = diagnoseDuplicateResources(input.rawResources);
-    return { resources, duplicateDiagnostics };
+    const entries = deduplicateEntries(input.rawEntries);
+    const duplicateDiagnostics = diagnoseDuplicateEntries(input.rawEntries);
+    return { entries, duplicateDiagnostics };
   },
 );

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { ResourceGraph } from './resource-graph';
-import type { Resource } from './types';
+import { EntryGraph } from './entry-graph';
+import type { SirenEntry } from './types';
 
-function resource(id: string, dependsOn?: readonly string[]): Resource {
+function entry(id: string, dependsOn?: readonly string[]): SirenEntry {
   return {
     type: 'task',
     id,
@@ -18,46 +18,46 @@ function resource(id: string, dependsOn?: readonly string[]): Resource {
   };
 }
 
-describe('ResourceGraph', () => {
+describe('EntryGraph', () => {
   describe('basic operations', () => {
     it('starts empty', () => {
-      const graph = ResourceGraph.fromResources([]);
+      const graph = EntryGraph.fromEntries([]);
       expect(graph.getNodes()).toEqual([]);
     });
 
-    it('exposes a consistent resource index', () => {
-      const graph = ResourceGraph.fromResources([resource('a'), resource('b')]);
+    it('exposes a consistent entry index', () => {
+      const graph = EntryGraph.fromEntries([entry('a'), entry('b')]);
 
       expect(graph.getNodes()).toEqual(['a', 'b']);
-      expect(graph.getResource('a')).toBe(graph.resources[0]);
-      expect(graph.getResource('b')).toBe(graph.resources[1]);
-      expect(graph.resources.map((current) => current.id)).toEqual(['a', 'b']);
+      expect(graph.getEntry('a')).toBe(graph.entries[0]);
+      expect(graph.getEntry('b')).toBe(graph.entries[1]);
+      expect(graph.entries.map((current) => current.id)).toEqual(['a', 'b']);
     });
 
-    it('adds resource ids as nodes', () => {
-      const graph = ResourceGraph.fromResources([resource('a'), resource('b')]);
+    it('adds entry ids as nodes', () => {
+      const graph = EntryGraph.fromEntries([entry('a'), entry('b')]);
       expect(graph.getNodes()).toEqual(['a', 'b']);
     });
 
     it('adds edges from depends_on relationships', () => {
-      const graph = ResourceGraph.fromResources([resource('a', ['b'])]);
+      const graph = EntryGraph.fromEntries([entry('a', ['b'])]);
       expect(graph.getNodes()).toEqual(['a', 'b']);
       expect(graph.getSuccessors('a')).toEqual(['b']);
       expect(graph.getSuccessors('b')).toEqual([]);
     });
 
     it('deduplicates duplicate dependency edges', () => {
-      const graph = ResourceGraph.fromResources([resource('a', ['b', 'b'])]);
+      const graph = EntryGraph.fromEntries([entry('a', ['b', 'b'])]);
       expect(graph.getSuccessors('a')).toEqual(['b']);
     });
 
     it('handles multiple edges from one node', () => {
-      const graph = ResourceGraph.fromResources([resource('a', ['b', 'c'])]);
+      const graph = EntryGraph.fromEntries([entry('a', ['b', 'c'])]);
       expect(graph.getSuccessors('a')).toEqual(['b', 'c']);
     });
 
     it('handles incoming edges', () => {
-      const graph = ResourceGraph.fromResources([resource('a', ['c']), resource('b', ['c'])]);
+      const graph = EntryGraph.fromEntries([entry('a', ['c']), entry('b', ['c'])]);
       expect(graph.getSuccessors('c')).toEqual([]);
       expect(graph.getSuccessors('a')).toEqual(['c']);
       expect(graph.getSuccessors('b')).toEqual(['c']);
@@ -66,66 +66,62 @@ describe('ResourceGraph', () => {
 
   describe('cycle detection', () => {
     it('detects no cycle in empty graph', () => {
-      const graph = ResourceGraph.fromResources([]);
+      const graph = EntryGraph.fromEntries([]);
       expect(graph.hasCycle()).toBe(false);
       expect(graph.getCycles()).toEqual([]);
     });
 
     it('detects no cycle in single node graph', () => {
-      const graph = ResourceGraph.fromResources([resource('a')]);
+      const graph = EntryGraph.fromEntries([entry('a')]);
       expect(graph.hasCycle()).toBe(false);
       expect(graph.getCycles()).toEqual([]);
     });
 
     it('detects no cycle in a DAG', () => {
-      const graph = ResourceGraph.fromResources([
-        resource('a', ['b', 'c']),
-        resource('b', ['c']),
-        resource('c'),
-      ]);
+      const graph = EntryGraph.fromEntries([entry('a', ['b', 'c']), entry('b', ['c']), entry('c')]);
       expect(graph.hasCycle()).toBe(false);
       expect(graph.getCycles()).toEqual([]);
     });
 
     it('detects self-loop cycle', () => {
-      const graph = ResourceGraph.fromResources([resource('a', ['a'])]);
+      const graph = EntryGraph.fromEntries([entry('a', ['a'])]);
       expect(graph.hasCycle()).toBe(true);
       expect(graph.getCycles()).toEqual([['a', 'a']]);
     });
 
     it('detects simple cycle', () => {
-      const graph = ResourceGraph.fromResources([resource('a', ['b']), resource('b', ['a'])]);
+      const graph = EntryGraph.fromEntries([entry('a', ['b']), entry('b', ['a'])]);
       expect(graph.hasCycle()).toBe(true);
       expect(graph.getCycles()).toEqual([['a', 'b', 'a']]);
     });
 
     it('detects cycle in larger graph', () => {
-      const graph = ResourceGraph.fromResources([
-        resource('a', ['b']),
-        resource('b', ['c']),
-        resource('c', ['a']),
+      const graph = EntryGraph.fromEntries([
+        entry('a', ['b']),
+        entry('b', ['c']),
+        entry('c', ['a']),
       ]);
       expect(graph.hasCycle()).toBe(true);
       expect(graph.getCycles()).toEqual([['a', 'b', 'c', 'a']]);
     });
 
     it('handles disconnected components with cycles', () => {
-      const graph = ResourceGraph.fromResources([
-        resource('a', ['b']),
-        resource('b'),
-        resource('c', ['d']),
-        resource('d', ['c']),
+      const graph = EntryGraph.fromEntries([
+        entry('a', ['b']),
+        entry('b'),
+        entry('c', ['d']),
+        entry('d', ['c']),
       ]);
       expect(graph.hasCycle()).toBe(true);
       expect(graph.getCycles()).toEqual([['c', 'd', 'c']]);
     });
 
     it('detects multiple cycles', () => {
-      const graph = ResourceGraph.fromResources([
-        resource('a', ['b']),
-        resource('b', ['a']),
-        resource('c', ['d']),
-        resource('d', ['c']),
+      const graph = EntryGraph.fromEntries([
+        entry('a', ['b']),
+        entry('b', ['a']),
+        entry('c', ['d']),
+        entry('d', ['c']),
       ]);
       expect(graph.hasCycle()).toBe(true);
       expect(graph.getCycles()).toEqual([

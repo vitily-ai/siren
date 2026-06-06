@@ -9,7 +9,6 @@ Repository layout
 - `packages/core` — Core IR types, semantic validation, `SirenBuilder`, `SirenProject`, and shared utilities. Must remain environment-agnostic (no DOM/Node APIs).
 - `packages/language` — Tree-sitter grammar, parser factory, CST → IR decoder, exporters, and formatters.
 - `packages/language/grammar` — Tree-sitter grammar sources plus the committed WASM binary used by tests and apps.
-- `apps/web` — Vite web frontend shell (currently a minimal placeholder backed by `@sirenpm/core`).
 - `apps/cli` — Node CLI (bundled with `tsup`/`esbuild`).
 - `siren/` — bootstrapped siren project tracking development progress and goals.
 
@@ -35,16 +34,6 @@ Run all tests:
 ```bash
 yarn test
 ```
-
-Why we run a root build before tests
------------------------------------
-
-The root `test` script runs `yarn build:quiet` before the workspace test sweep.
-This ensures workspace packages' compiled `dist` artifacts are up to date when tests
-import package entrypoints (many packages export their runtime from `dist`). Running
-tests without building can cause suites to load stale built files and fail unpredictably
-depending on the `workspaces foreach` scheduling. The root `test` script makes `yarn test`
-deterministic by building first.
 
 Run core package tests:
 

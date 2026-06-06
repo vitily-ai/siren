@@ -1,11 +1,12 @@
+import { deepFreeze } from 'deep-freeze-es6';
 import type {
   DependencyTree,
   TraversalControl,
   TraversePredicate,
 } from '../utilities/dependency-tree';
 import { getDependsOn } from '../utilities/entry';
-import { cloneAndFreezeResources } from './snapshot';
-import type { Resource } from './types';
+import { cloneEntries } from './snapshot';
+import type { SirenEntry } from './types';
 
 const MAX_DEPTH = 1000000;
 
@@ -16,7 +17,7 @@ function normalizeControl(result: boolean | TraversalControl): TraversalControl 
   return result;
 }
 
-function makeMissingResource(id: string): Resource {
+function makeMissingEntry(id: string): SirenEntry {
   return {
     type: 'task',
     id,
@@ -25,23 +26,23 @@ function makeMissingResource(id: string): Resource {
 }
 
 /**
- * Immutable resource graph snapshot.
+ * Immutable entry graph snapshot.
  *
- * Owns the frozen resource array, id -> Resource index, and dependency
+ * Owns the frozen entry array, id -> SirenEntry index, and dependency
  * adjacency in one consistent structure.
  */
-export class ResourceGraph {
+export class EntryGraph {
   private constructor(
-    private readonly resourceIndex: ReadonlyMap<string, Resource>,
+    private readonly entryIndex: ReadonlyMap<string, SirenEntry>,
     private readonly adjacency: Map<string, Set<string>>,
   ) {
     Object.freeze(this);
   }
 
-  static fromResources(resources: readonly Resource[]): ResourceGraph {
-    const frozenResources = cloneAndFreezeResources(resources, new Set());
-    const resourcesById = new Map<string, Resource>(
-      frozenResources.map((resource) => [resource.id, resource]),
+  static fromEntries(entries: readonly SirenEntry[]): EntryGraph {
+    const frozenEntries = deepFreeze(cloneEntries(entries, new Set()));
+    const entriesById = new Map<string, SirenEntry>(
+      frozenEntries.map((entry) => [entry.id, entry]),
     );
     const adjacency = new Map<string, Set<string>>();
 
@@ -57,26 +58,26 @@ export class ResourceGraph {
       adjacency.get(source)!.add(target);
     };
 
-    for (const resource of frozenResources) {
-      addNode(resource.id);
-      for (const dependencyId of getDependsOn(resource)) {
-        addEdge(resource.id, dependencyId);
+    for (const entry of frozenEntries) {
+      addNode(entry.id);
+      for (const dependencyId of getDependsOn(entry)) {
+        addEdge(entry.id, dependencyId);
       }
     }
 
-    return new ResourceGraph(resourcesById, adjacency);
+    return new EntryGraph(entriesById, adjacency);
   }
 
-  get resources(): readonly Resource[] {
-    return Array.from(this.resourceIndex.values());
+  get entries(): readonly SirenEntry[] {
+    return Array.from(this.entryIndex.values());
   }
 
-  getResource(id: string): Resource | undefined {
-    return this.resourceIndex.get(id);
+  getEntry(id: string): SirenEntry | undefined {
+    return this.entryIndex.get(id);
   }
 
-  hasResource(id: string): boolean {
-    return this.resourceIndex.has(id);
+  hasEntry(id: string): boolean {
+    return this.entryIndex.has(id);
   }
 
   getSuccessors(id: string): string[] {
@@ -200,13 +201,13 @@ export class ResourceGraph {
     rootId: string,
     traversePredicate: TraversePredicate = () => true,
   ): DependencyTree {
-    const rootResource = this.resourceIndex.get(rootId);
-    if (!rootResource) {
-      throw new Error(`Resource with id ${rootId} not found`);
+    const rootEntry = this.entryIndex.get(rootId);
+    if (!rootEntry) {
+      throw new Error(`SirenEntry with id ${rootId} not found`);
     }
 
-    const tree: DependencyTree = { resource: rootResource, dependencies: [] };
-    const rootControl = normalizeControl(traversePredicate(rootResource));
+    const tree: DependencyTree = { entry: rootEntry, dependencies: [] };
+    const rootControl = normalizeControl(traversePredicate(rootEntry));
     if (!rootControl.expand) {
       return tree;
     }
@@ -230,14 +231,14 @@ export class ResourceGraph {
         const parent = nodesByPath.get(parentKey);
         if (!parent) return false;
 
-        const resource = this.resourceIndex.get(nodeId) ?? makeMissingResource(nodeId);
-        const control = normalizeControl(traversePredicate(resource, parent.resource));
+        const entry = this.entryIndex.get(nodeId) ?? makeMissingEntry(nodeId);
+        const control = normalizeControl(traversePredicate(entry, parent.entry));
         if (!control.include) {
           return false;
         }
 
-        const child: DependencyTree = { resource, dependencies: [] };
-        if (!this.resourceIndex.has(nodeId)) {
+        const child: DependencyTree = { entry, dependencies: [] };
+        if (!this.entryIndex.has(nodeId)) {
           child.missing = true;
         }
 
@@ -250,8 +251,8 @@ export class ResourceGraph {
           const parent = nodesByPath.get(pathKey(path));
           if (!parent) return;
 
-          const cycResource = this.resourceIndex.get(to) ?? makeMissingResource(to);
-          parent.dependencies.push({ resource: cycResource, dependencies: [], cycle: true });
+          const cycEntry = this.entryIndex.get(to) ?? makeMissingEntry(to);
+          parent.dependencies.push({ entry: cycEntry, dependencies: [], cycle: true });
         },
       },
     );

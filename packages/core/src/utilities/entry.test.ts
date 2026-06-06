@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { Resource } from '../ir/types';
-import { findResourceById, isComplete, isDraft } from './entry';
+import type { SirenEntry } from '../ir/types';
+import { findEntryById, isComplete, isDraft } from './entry';
 
-describe('findResourceById', () => {
-  const mockResources: Resource[] = [
+describe('findEntryById', () => {
+  const mockEntries: SirenEntry[] = [
     {
       type: 'task',
       id: 'task1',
@@ -18,33 +18,33 @@ describe('findResourceById', () => {
     },
   ];
 
-  it('should return the resource when ID matches', () => {
-    const result = findResourceById(mockResources, 'task1');
-    expect(result).toEqual(mockResources[0]);
+  it('should return the entry when ID matches', () => {
+    const result = findEntryById(mockEntries, 'task1');
+    expect(result).toEqual(mockEntries[0]);
   });
 
   it('should throw an error when ID does not match', () => {
-    expect(() => findResourceById(mockResources, 'nonexistent')).toThrow(
-      "Resource with ID 'nonexistent' not found",
+    expect(() => findEntryById(mockEntries, 'nonexistent')).toThrow(
+      "Entry with ID 'nonexistent' not found",
     );
   });
 });
 
 describe('status helpers', () => {
-  const implicitStatus: Resource = {
+  const implicitStatus: SirenEntry = {
     type: 'task',
     id: 'implicit',
     attributes: [],
   };
 
-  const draft: Resource = {
+  const draft: SirenEntry = {
     type: 'task',
     id: 'draft',
     status: 'draft',
     attributes: [],
   };
 
-  const complete: Resource = {
+  const complete: SirenEntry = {
     type: 'task',
     id: 'complete',
     status: 'complete',

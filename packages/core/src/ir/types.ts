@@ -6,33 +6,9 @@
  */
 
 /**
- * Source origin metadata attached to IR/CST nodes.
- *
- * `range` origins point to concrete source positions.
- * `synthetic` origins identify generated resources anchored to a document.
+ * Reference to another entry by ID
  */
-export interface RangeOrigin {
-  readonly kind: 'range';
-  readonly startByte: number;
-  readonly endByte: number;
-  readonly startRow: number;
-  readonly endRow: number;
-  /** Document identifier (e.g., relative file path from project root) */
-  readonly document?: string;
-}
-
-export interface SyntheticOrigin {
-  readonly kind: 'synthetic';
-  /** Document identifier (e.g., relative file path from project root) */
-  readonly document: string;
-}
-
-export type Origin = RangeOrigin | SyntheticOrigin;
-
-/**
- * Reference to another resource by ID
- */
-export interface ResourceReference {
+export interface EntryReference {
   readonly kind: 'reference';
   readonly id: string;
 }
@@ -43,7 +19,7 @@ export interface ResourceReference {
  * Scalars are encoded directly; references are objects with `kind: 'reference'`.
  * `null` is intentionally NOT an atom — absence is encoded as the empty Tuple.
  */
-export type Atom = string | number | boolean | ResourceReference;
+export type Atom = string | number | boolean | EntryReference;
 
 /**
  * A Tuple is an ordered, readonly sequence of atoms.
@@ -59,23 +35,18 @@ export type Tuple = readonly Atom[];
 export interface Attribute {
   readonly key: string;
   readonly value: Tuple;
-  /**
-   * Optional source origin information for comment-aware formatting.
-   * This is not semantic and may differ across equivalent parses.
-   */
-  readonly origin?: Origin;
 }
 
 /**
- * Resource types supported by Siren
+ * Entry types supported by Siren
  * Extensible for future types
  */
-export type ResourceType = 'task' | 'milestone';
+export type EntryType = 'task' | 'milestone';
 
 /**
- * Explicit resource status values captured in the IR.
+ * Explicit entry status values captured in the IR.
  *
- * Status is optional on resources for this milestone:
+ * Status is optional on entries for this milestone:
  * - `undefined` means no explicit status was declared.
  * - `draft` preserves an explicit draft declaration.
  * - `complete` preserves an explicit completion declaration.
@@ -83,28 +54,23 @@ export type ResourceType = 'task' | 'milestone';
  * Later pipeline modules may derive completion from dependencies and
  * materialize that state in `status`.
  */
-export type ResourceStatus = 'draft' | 'complete';
+export type EntryStatus = 'draft' | 'complete';
 
 /**
- * A Siren resource (task or milestone)
+ * A Siren entry (task or milestone)
  */
-export interface Resource {
-  readonly type: ResourceType;
+export interface SirenEntry {
+  readonly type: EntryType;
   readonly id: string;
   /**
-   * Optional explicit status declared on the resource.
+   * Optional explicit status declared on the entry.
    *
    * This may be absent when no status keyword is present. Explicit `draft`
    * must remain representable; completion may also be derived by later
    * pipeline modules.
    */
-  readonly status?: ResourceStatus;
+  readonly status?: EntryStatus;
   readonly attributes: readonly Attribute[];
-  /**
-   * Optional source origin information for comment preservation
-   * Used by formatters to interleave comments with exported IR
-   */
-  readonly origin?: Origin;
 }
 
 /**
@@ -124,17 +90,8 @@ export interface Cycle {
 }
 
 /**
- * Top-level document containing all resources
+ * Type guard: narrows an Atom to an EntryReference.
  */
-export interface Document {
-  readonly resources: readonly Resource[];
-  /** Source file path (if any) */
-  readonly source?: string;
-}
-
-/**
- * Type guard: narrows an Atom to a ResourceReference.
- */
-export function isReference(atom: Atom): atom is ResourceReference {
+export function isReference(atom: Atom): atom is EntryReference {
   return typeof atom === 'object' && atom !== null && 'kind' in atom && atom.kind === 'reference';
 }

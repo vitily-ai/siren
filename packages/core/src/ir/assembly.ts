@@ -1,113 +1,45 @@
+import { deepFreeze } from 'deep-freeze-es6';
 import { SirenProject } from './context';
 import { IR_CONTEXT_FACTORY } from './context-internal';
-import type { SirenDocument } from './document';
-import { SirenCoreError } from './errors';
 import { computeDelta, type PatchResult } from './patch-result';
-import { cloneAndFreezeResources } from './snapshot';
-import type { Resource } from './types';
+import { cloneEntries } from './snapshot';
+import type { SirenEntry } from './types';
 
 export class SirenBuilder {
-  private constructor(private readonly documentsSnapshot: readonly SirenDocument[]) {
+  private constructor(private readonly entriesSnapshot: readonly SirenEntry[]) {
     Object.freeze(this);
   }
 
-  static fromDocuments(documents: readonly SirenDocument[]): SirenBuilder {
-    const seen = new Set<string>();
-    for (const doc of documents) {
-      if (seen.has(doc.id)) {
-        throw new SirenCoreError(`Duplicate document id: "${doc.id}"`);
-      }
-      seen.add(doc.id);
-    }
-    return new SirenBuilder(cloneAndFreezeDocuments(documents));
+  static fromEntries(entries: readonly SirenEntry[]): SirenBuilder {
+    return new SirenBuilder(cloneAndFreezeEntries(entries));
   }
 
-  static fromResources(resources: readonly Resource[], ephemeralDocumentId: string): SirenBuilder {
-    // Compatibility construction path: wrap resources in a document and
-    // disable implicit milestone synthesis via directive.
-    return SirenBuilder.fromDocuments([
-      {
-        id: ephemeralDocumentId,
-        resources,
-        directive: { implicitMilestone: false },
-      },
-    ]);
+  get entries(): readonly SirenEntry[] {
+    return this.entriesSnapshot;
   }
 
-  get documents(): readonly SirenDocument[] {
-    return this.documentsSnapshot;
-  }
-
-  patch(fn: (docs: readonly SirenDocument[]) => readonly SirenDocument[]): PatchResult {
-    const newBuilder = SirenBuilder.fromDocuments(fn(this.documentsSnapshot));
-    const changes = computeDelta(this.documentsSnapshot, newBuilder.documents);
+  patch(fn: (entries: readonly SirenEntry[]) => readonly SirenEntry[]): PatchResult {
+    const newBuilder = SirenBuilder.fromEntries(fn(this.entriesSnapshot));
+    const changes = computeDelta(this.entriesSnapshot, newBuilder.entries);
     return { builder: newBuilder, changes };
   }
 
-  withDocument(doc: SirenDocument): PatchResult {
-    return this.patch((docs) => {
-      return [...docs, doc];
-    });
+  withEntry(entry: SirenEntry): PatchResult {
+    return this.patch((entries) => [...entries, entry]);
   }
 
-  patchDocument(documentId: string, fn: (doc: SirenDocument) => SirenDocument): PatchResult {
-    return this.patch((docs) => docs.map((d) => (d.id === documentId ? fn(d) : d)));
-  }
-
-  withResource(resource: Resource, documentId = 'misc'): PatchResult {
-    const existingDocument = this.documentsSnapshot.find((d) => d.id === documentId);
-    if (existingDocument === undefined) {
-      return this.withDocument({
-        id: documentId,
-        resources: [resource],
-        directive: { implicitMilestone: false },
-      });
-    }
-
-    return this.patchDocument(documentId, (doc) => ({
-      ...doc,
-      resources: [...doc.resources, resource],
-    }));
-  }
-
-  patchResource(resourceId: string, fn: (res: Resource) => Resource): PatchResult {
-    return this.patch((docs) =>
-      docs.map((doc) => {
-        if (!doc.resources.some((r) => r.id === resourceId)) {
-          return doc;
-        }
-
-        return {
-          ...doc,
-          resources: doc.resources.map((r) => (r.id === resourceId ? fn(r) : r)),
-        };
-      }),
+  patchEntry(entryId: string, fn: (res: SirenEntry) => SirenEntry): PatchResult {
+    return this.patch((entries) =>
+      entries.map((entry) => (entry.id === entryId ? fn(entry) : entry)),
     );
   }
 
   build(): SirenProject {
-    return SirenProject[IR_CONTEXT_FACTORY](this.documentsSnapshot);
+    return SirenProject[IR_CONTEXT_FACTORY](this.entriesSnapshot);
   }
 }
 
-function cloneAndFreezeDocument(document: SirenDocument, seenEphIds: Set<string>): SirenDocument {
-  const directive =
-    document.directive === undefined
-      ? undefined
-      : Object.freeze({
-          ...(document.directive.implicitMilestone !== undefined
-            ? { implicitMilestone: document.directive.implicitMilestone }
-            : {}),
-        });
-
-  return Object.freeze({
-    id: document.id,
-    resources: cloneAndFreezeResources(document.resources, seenEphIds),
-    ...(directive !== undefined ? { directive } : {}),
-  });
-}
-
-function cloneAndFreezeDocuments(documents: readonly SirenDocument[]): readonly SirenDocument[] {
+function cloneAndFreezeEntries(entries: readonly SirenEntry[]): readonly SirenEntry[] {
   const seenEphIds = new Set<string>();
-  return Object.freeze(documents.map((document) => cloneAndFreezeDocument(document, seenEphIds)));
+  return deepFreeze(cloneEntries(entries, seenEphIds));
 }
