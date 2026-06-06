@@ -15,7 +15,7 @@ export type {
 // IR types (intermediate representation), SirenBuilder, SirenProject, and SirenCoreError
 export * from './ir/index';
 // Atom/Tuple types and reference guard
-export type { Atom, Tuple } from './ir/types';
+export type { Atom, SirenEntry, Tuple } from './ir/types';
 export { isReference } from './ir/types';
 // Dependency tree utilities
 export type { DependencyTree } from './utilities/dependency-tree';
