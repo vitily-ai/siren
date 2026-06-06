@@ -114,7 +114,7 @@ jobs:
           if [ "$GRAMMAR_TS" -gt "$WASM_TS" ]; then
             GRAMMAR_DATE=$(git log -1 --format=%ci -- "$GRAMMAR")
             WASM_DATE=$(git log -1 --format=%ci -- "$WASM")
-            echo "::error file=$GRAMMAR::grammar.js (last commit $GRAMMAR_DATE) is newer than tree-sitter-siren.wasm (last commit $WASM_DATE). Regenerate with 'yarn workspace @sirenpm/language grammar:build-wasm' and commit in the same PR."
+            echo "::error file=$GRAMMAR::grammar.js (last commit $GRAMMAR_DATE) is newer than tree-sitter-siren.wasm (last commit $WASM_DATE). Regenerate with 'yarn workspace @sirenpm/language grammar:build' and commit in the same PR."
             exit 1
           fi
 
