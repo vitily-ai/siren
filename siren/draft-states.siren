@@ -72,10 +72,33 @@ task implicit-draft-milestones-module complete {
   depends_on = [implicit-draft-milestones-fixture, implicit-draft-milestones-core-tests]
 }
 
-milestone implicit-draft-tasks { // draft
-  description = "a task with no attributes other than dependencies and no explicit status is implied to be in `draft` status"
+milestone implicit-draft-tasks {
+  description = "Introduce ImplicitDraftTaskModule into the core IR build pipeline. A task resource whose attributes contain only depends_on entries (or none), with no explicit status and no complete predecessor, is implicitly assigned status='draft'. Runs after ImplicitCompletionModule so the parent-completeness gate always sees settled completion state."
   affected_packages = "core"
-  depends_on = [draft-states]
+  depends_on = [implicit-draft-tasks-core-tests, implicit-draft-tasks-module]
+  context = "siren/implicit-draft-tasks.md"
+}
+
+task implicit-draft-tasks-core-tests {
+  description = "Add packages/core/src/ir/pipeline/modules/implicit-draft-task.test.ts (TDD red) mirroring implicit-draft-milestone.test.ts, as well as typed module stub so tests can fail properly. Cases: bare orphan task → draft; task with only depends_on and no complete predecessors → draft; task with description only → untouched; description + depends_on → untouched; explicit complete → untouched; any complete predecessor → untouched; mixed predecessors with one complete → untouched (short-circuit); milestones never affected. Add a pipeline-integration block in pipeline.test.ts confirming the module runs after ImplicitCompletionModule."
+  affected_packages = "core"
+  depends_on = draft-states
+  context = "siren/implicit-draft-tasks.md"
+}
+
+task implicit-draft-tasks-module {
+  description = "Implement ImplicitDraftTaskModule: promote a task to status='draft' when type='task', status===undefined, all attributes have key==='depends_on', and no predecessor is complete (short-circuit on first). Rebuild ResourceGraph.fromResources after promotion. Wire into runIRBuildPipeline after ImplicitCompletionModule and before CyclesModule. Update the topology docblock in index.ts. Throw a core invariant error if a predecessor ID resolves to no resource."
+  affected_packages = "core"
+  depends_on = implicit-draft-tasks-core-tests
+  context = "siren/implicit-draft-tasks.md"
+}
+
+// Follow-up: apply the same parent-completeness gate to ImplicitDraftMilestoneModule
+task implicit-draft-milestone-parent-gate {
+  description = "Add a 'no complete predecessor' gate to ImplicitDraftMilestoneModule, symmetric with the gate introduced in ImplicitDraftTaskModule. Today an orphan milestone is drafted even when a complete predecessor depends on it, which can create a contradictory state. Should mirror the short-circuit predicate from the task module."
+  affected_packages = "core"
+  depends_on = implicit-draft-milestones-module
+  context = "siren/implicit-draft-tasks.md"
 }
 
 milestone contradictory-completion-diagnostic { // draft
