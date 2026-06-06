@@ -19,6 +19,12 @@ export type {
   WL001Diagnostic,
   WL002Diagnostic,
 } from './diagnostics/types';
-export { createEL001, createWL001, createWL002 } from './diagnostics/types';
+export type {
+  Origin,
+  RangeOrigin,
+  SourcedAttribute,
+  SourcedEntry,
+  SyntheticOrigin,
+} from './origin';
 export { createParser } from './parser/factory';
 export type { ParsedDocument, Parser, SourceDocument } from './parser/types';

@@ -126,7 +126,7 @@ task lang-v060-diagnostics complete {
   depends_on = lang-v060-origin
 }
 
-task lang-v060-exports {
+task lang-v060-exports complete {
   description = "Update @sirenpm/language's public exports: add Origin, RangeOrigin, SyntheticOrigin, SourcedEntry, SourcedAttribute from ./origin. Replace the toSirenDocument type in ParsedDocument with toEntries. Increment version in package.json (pre-publish)."
   context = "language-ast-pipeline.md"
   files = "packages/language/src/index.ts, packages/language/package.json"

@@ -10,10 +10,10 @@ import type {
 import { createEL001, createWL001, createWL002 } from './types';
 
 describe('language diagnostic types', () => {
-  it('re-exports the diagnostic types and factories from the package root', () => {
-    expect(typeof languageRoot.createEL001).toBe('function');
-    expect(typeof languageRoot.createWL001).toBe('function');
-    expect(typeof languageRoot.createWL002).toBe('function');
+  it('re-exports the diagnostic types from the package root', () => {
+    // createParser is the canonical value export; diagnostic factories are
+    // internal-only (used by ast/builder.ts). Diagnostic *types* are public.
+    expect(typeof languageRoot.createParser).toBe('function');
   });
 
   it('type-only: variant interfaces are exported and discriminated by code', () => {
