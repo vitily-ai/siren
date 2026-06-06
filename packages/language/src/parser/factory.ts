@@ -47,10 +47,10 @@ class ParsedDocumentImpl implements ParsedDocument {
   readonly ast: SirenAst;
   readonly diagnostics: readonly LanguageDiagnostic[];
   readonly #source: SourceDocument;
-  readonly #tree: Tree | null;
+  readonly #tree: Tree;
   readonly #origins: AstOriginMap;
 
-  constructor(source: SourceDocument, tree: Tree | null) {
+  constructor(source: SourceDocument, tree: Tree) {
     this.#source = source;
     this.#tree = tree;
     const built = buildAst(tree, source);
@@ -64,12 +64,7 @@ class ParsedDocumentImpl implements ParsedDocument {
   }
 
   format(): string {
-    if (!this.#tree) {
-      throw new Error('Cannot format a document without a parse tree');
-    }
-    const hasErrors =
-      this.diagnostics.some((d) => d.severity === 'error') || this.#tree.rootNode.hasError;
-    return formatCst(this.#tree, this.#source.content, hasErrors);
+    return formatCst(this.#tree, this.#source.content);
   }
 }
 
@@ -82,6 +77,9 @@ export async function createParser(): Promise<Parser> {
 
   const parseOne = (document: SourceDocument): ParsedDocument => {
     const tree = tsParser.parse(document.content ?? '');
+    if (!tree) {
+      throw new Error('Parse failed: tree-sitter returned no tree');
+    }
     return new ParsedDocumentImpl(document, tree);
   };
 

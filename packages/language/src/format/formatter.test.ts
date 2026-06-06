@@ -11,6 +11,20 @@ describe('Siren Formatter (CST-backed)', () => {
     expect(() => doc.format()).toThrow(/Cannot format/);
   });
 
+  it('does NOT throw on warning-only diagnostics (no tree ERROR nodes)', async () => {
+    const parser = await createParser();
+    // Unrecognized modifier 'foo' is syntactically valid (no ERROR nodes in tree)
+    // but produces a WL001 warning from the AST builder.
+    const doc = await parser.parse({
+      name: 'warning.siren',
+      content: 'task my-task foo { }',
+    });
+    expect(doc.diagnostics.some((d) => d.severity === 'error')).toBe(false);
+    expect(doc.diagnostics.length).toBeGreaterThan(0);
+    expect(() => doc.format()).not.toThrow();
+    expect(doc.format()).toBe('task my-task foo {}\n');
+  });
+
   it('re-formats dirty spacing to canonical spacing', async () => {
     const parser = await createParser();
     const input = 'task  a  {   depends_on  =  b   }';

@@ -146,8 +146,8 @@ function formatResource(resourceNode: Node): string[] {
  * Walks the private tree-sitter CST to emit canonical, deterministic Siren text.
  * Throws or handles errors if the document has parse errors.
  */
-export function formatCst(tree: Tree, _content: string, hasErrors: boolean): string {
-  if (hasErrors || tree.rootNode.hasError) {
+export function formatCst(tree: Tree, _content: string): string {
+  if (tree.rootNode.hasError) {
     throw new Error('Cannot format a document with parse errors');
   }
 

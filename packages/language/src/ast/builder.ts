@@ -28,9 +28,6 @@ export interface BuildAstResult {
   readonly origins: AstOriginMap;
 }
 
-const EMPTY_AST: SirenAst = Object.freeze({ resources: Object.freeze([]) });
-const EMPTY_DIAGNOSTICS: readonly LanguageDiagnostic[] = Object.freeze([]);
-
 function rangeOriginFromNode(node: Node, documentName: string): RangeOrigin {
   return {
     kind: 'range',
@@ -242,9 +239,8 @@ function buildResource(
  * - `ERROR` node directly under the document → emit `EL001` with
  *   `nodeType: 'ERROR'`.
  */
-export function buildAst(tree: Tree | null, source: SourceDocument): BuildAstResult {
+export function buildAst(tree: Tree, source: SourceDocument): BuildAstResult {
   const origins: AstOriginMap = new WeakMap();
-  if (!tree) return { ast: EMPTY_AST, diagnostics: EMPTY_DIAGNOSTICS, origins };
 
   const root = tree.rootNode;
   const resources: AstResource[] = [];
