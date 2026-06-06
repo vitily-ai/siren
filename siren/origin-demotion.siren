@@ -45,14 +45,14 @@ task origin-demotion-core-publish complete {
 # lang-v060-diagnostics in siren/language-ast-pipeline.siren.
 
 task origin-demotion-language-red complete {
-	description = "Write failing tests in @sirenpm/language asserting that Origin, RangeOrigin, and SyntheticOrigin are defined natively in language (not re-exported from core); that SourcedEntry extends SirenEntry with origin; and that SourcedAttribute extends Attribute with origin. Superseded by lang-v060-origin in siren/language-ast-pipeline.siren."
+	description = "Write failing tests in @sirenpm/language asserting that Origin, RangeOrigin, and SyntheticOrigin are defined natively in language (not re-exported from core); that SourcedEntry extends SirenEntry with origin; and that SourcedAttribute extends Attribute with origin. Superseded by lang-v060-origin in siren/language-ast-pipeline.siren — marked complete when lang-v060-origin shipped."
 	affected_packages = ["@sirenpm/language"]
 	context = "origin-demotion.md"
 	note = "superseded by lang-v060-origin"
 }
 
 task origin-demotion-language-green complete {
-	description = "Define language-native Origin, RangeOrigin, and SyntheticOrigin types. Add SourcedEntry and SourcedAttribute extension interfaces. No cst.ts to update in the ADR-0004 rebuild — origin is defined natively in packages/language/src/origin.ts. Superseded by lang-v060-origin in siren/language-ast-pipeline.siren."
+	description = "Define language-native Origin, RangeOrigin, and SyntheticOrigin types. Add SourcedEntry and SourcedAttribute extension interfaces. No cst.ts to update in the ADR-0004 rebuild — origin is defined natively in packages/language/src/origin.ts. Superseded by lang-v060-origin in siren/language-ast-pipeline.siren — marked complete when lang-v060-origin shipped."
 	affected_packages = ["@sirenpm/language"]
 	context = "origin-demotion.md"
 	note = "superseded by lang-v060-origin"

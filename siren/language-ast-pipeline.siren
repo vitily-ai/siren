@@ -98,7 +98,7 @@ task lang-format complete {
 # ADR-0005: flat SirenEntry[] replaces SirenDocument/Resource
 # ADR-0006: Origin owned by language, not core; DiagnosticBase is generic <S,P>
 
-task lang-v060-origin {
+task lang-v060-origin complete {
   description = "Create packages/language/src/origin.ts owning RangeOrigin (moved from ast/origins.ts), SyntheticOrigin, and the Origin union. Define SourcedEntry extends SirenEntry { readonly origin: Origin } and SourcedAttribute extends Attribute { readonly origin: Origin }. Update ast/origins.ts to import RangeOrigin from ../origin. The AstOriginMap sidechannel is unaffected. Write tests asserting the language-native Origin type and structural extension, and that they are preserved through core. Replaces the stale origin-demotion-language-* tasks from siren/origin-demotion.siren."
   context = "language-ast-pipeline.md"
   files = "packages/language/src/origin.ts, packages/language/src/ast/origins.ts, packages/language/src/ast/builder.ts"
