@@ -99,6 +99,7 @@ Note that, when iterating across packages, downstream consumers must be rebuilt 
 - **Imports are module-scoped only.** Inline `import(...)` type expressions (e.g. `options?: import('../decoder').DecodeDirectives`) are forbidden — always use a top-level `import type` statement instead. This keeps dependency graphs explicit and greppable.
 - Keep `packages/core` portable: do not introduce DOM or Node-specific APIs into `packages/core`.
 - Attributes of all interfaces, classes, and other structured types are `readonly`. Mutations are expressed in copy semantics and typestates.
+- **No Trivial Subdirectories.** Do not create module subdirectories for the sake of it. Only do so if such a subdirectory meaningfully contains multiple non-test modules.
 
 ## Build & Release
 
