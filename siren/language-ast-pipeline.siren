@@ -105,7 +105,7 @@ task lang-v060-origin complete {
   depends_on = lang-ast-builder
 }
 
-task lang-v060-decode-entries {
+task lang-v060-decode-entries complete {
   description = "TDD red/green: rename decoder module from decodeAstToSirenDocument (returning SirenDocument with Resource[]) to decodeAstToEntries (returning readonly SirenEntry[]). Map each AstResource to { type, id, status?, attributes } directly — no Resource/SirenDocument wrapper. Attach Origin via SourcedEntry/SourcedAttribute when the origins map is supplied. Rename ParsedDocument.toSirenDocument() to toEntries(options?) returning readonly SourcedEntry[]. Update parser/types.ts and parser/factory.ts accordingly. Drop all imports of Resource and SirenDocument from @sirenpm/core."
   context = "language-ast-pipeline.md"
   files = "packages/language/src/decoder/index.ts, packages/language/src/parser/types.ts, packages/language/src/parser/factory.ts"
@@ -119,7 +119,7 @@ task lang-v060-synthesis {
   depends_on = lang-v060-decode-entries
 }
 
-task lang-v060-diagnostics {
+task lang-v060-diagnostics complete {
   description = "Reconcile language diagnostics with core v0.6.0's generic DiagnosticBase: EL001Diagnostic extends DiagnosticBase<'E','L'>, WL001 and WL002 extend DiagnosticBase<'W','L'>. Replace the import of Origin from @sirenpm/core with import from ../origin (language-owned). The diagnostic codes already fit the DiagnosticCode<Severity,PackageChar> template (EL001 = 'E'+'L'+001, WL001 = 'W'+'L'+001) — the fix is purely the extends clause and the Origin import path. Update factories and test imports accordingly."
   context = "language-ast-pipeline.md"
   files = "packages/language/src/diagnostics/types.ts, packages/language/src/diagnostics/types.test.ts"

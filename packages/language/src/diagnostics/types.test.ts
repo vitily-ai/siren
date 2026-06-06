@@ -1,6 +1,6 @@
-import type { Origin } from '@sirenpm/core';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import * as languageRoot from '../index';
+import type { Origin } from '../origin';
 import type {
   EL001Diagnostic,
   LanguageDiagnostic,

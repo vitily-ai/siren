@@ -1,4 +1,4 @@
-import type { SirenDocument } from '@sirenpm/core';
+import type { SourcedEntry } from '../origin';
 
 export interface SourceDocument {
   readonly name: string;
@@ -27,7 +27,7 @@ import type { LanguageDiagnostic } from '../diagnostics/types';
 export interface ParsedDocument {
   readonly ast: SirenAst;
   readonly diagnostics: readonly LanguageDiagnostic[];
-  toSirenDocument(): SirenDocument;
+  toEntries(): readonly SourcedEntry[];
   format(): string;
 }
 

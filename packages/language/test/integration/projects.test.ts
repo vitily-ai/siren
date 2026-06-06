@@ -56,18 +56,18 @@ describe('Language Package Projects Integration', async () => {
         // Ensure CST compiles successfully
         expect(parsed.ast).toBeDefined();
 
-        // Convert parsed CST to SirenDocument (runs decoder)
-        const sirenDoc = parsed.toSirenDocument();
-        expect(sirenDoc).toBeDefined();
-        expect(sirenDoc.id).toBe(path.basename(filePath, '.siren'));
-        expect(Array.isArray(sirenDoc.resources)).toBe(true);
+        // Convert parsed CST to entries (runs decoder)
+        const entries = parsed.toEntries();
+        expect(entries).toBeDefined();
+        expect(Array.isArray(entries)).toBe(true);
 
-        // Check each resource is decoded with basic structure
-        for (const resource of sirenDoc.resources) {
-          expect(resource.type).toMatch(/^(task|milestone)$/);
-          expect(resource.id).toBeTypeOf('string');
-          expect(resource.id.length).toBeGreaterThan(0);
-          expect(Array.isArray(resource.attributes)).toBe(true);
+        // Check each entry is decoded with basic structure
+        for (const entry of entries) {
+          expect(entry.type).toMatch(/^(task|milestone)$/);
+          expect(entry.id).toBeTypeOf('string');
+          expect(entry.id.length).toBeGreaterThan(0);
+          expect(Array.isArray(entry.attributes)).toBe(true);
+          expect(entry.origin).toBeDefined();
         }
       }
     });

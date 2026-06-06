@@ -1,4 +1,10 @@
-import type { DiagnosticBase, Origin } from '@sirenpm/core';
+import type { DiagnosticBase } from '@sirenpm/core';
+import type { Origin } from '../origin';
+
+export type LanguageDiagnostic<S extends 'I' | 'W' | 'E' = 'I' | 'W' | 'E'> = DiagnosticBase<
+  S,
+  'L'
+>;
 
 /**
  * EL001 — Resource excluded from AST due to parse errors in its subtree.
@@ -7,7 +13,7 @@ import type { DiagnosticBase, Origin } from '@sirenpm/core';
  * `resourceId` is optional because a resource whose identifier itself failed to
  * parse cannot supply one.
  */
-export interface EL001Diagnostic extends DiagnosticBase {
+export interface EL001Diagnostic extends LanguageDiagnostic<'E'> {
   readonly code: 'EL001';
   readonly severity: 'error';
   readonly resourceId?: string;
@@ -22,7 +28,7 @@ export interface EL001Diagnostic extends DiagnosticBase {
  * Emitted once per unrecognized modifier token on a resource. The recognized
  * set is `complete` and `draft`; anything else triggers this warning.
  */
-export interface WL001Diagnostic extends DiagnosticBase {
+export interface WL001Diagnostic extends LanguageDiagnostic<'W'> {
   readonly code: 'WL001';
   readonly severity: 'warning';
   readonly resourceId: string;
@@ -37,7 +43,7 @@ export interface WL001Diagnostic extends DiagnosticBase {
  * Emitted when more than one recognized modifier is supplied; last-recognized
  * wins and the surplus modifiers are reported via this diagnostic.
  */
-export interface WL002Diagnostic extends DiagnosticBase {
+export interface WL002Diagnostic extends LanguageDiagnostic<'W'> {
   readonly code: 'WL002';
   readonly severity: 'warning';
   readonly resourceId: string;
@@ -47,32 +53,10 @@ export interface WL002Diagnostic extends DiagnosticBase {
   readonly origin?: Origin;
 }
 
-/**
- * Discriminated union of all language-phase diagnostics, keyed by `code`.
- */
-export type LanguageDiagnostic = EL001Diagnostic | WL001Diagnostic | WL002Diagnostic;
-
-export interface EL001Input {
-  readonly resourceId?: string;
-  readonly documentName: string;
-  readonly nodeType: string;
-  readonly origin?: Origin;
-}
-
-export interface WL001Input {
-  readonly resourceId: string;
-  readonly modifier: string;
-  readonly documentName: string;
-  readonly origin?: Origin;
-}
-
-export interface WL002Input {
-  readonly resourceId: string;
-  readonly recognizedModifiers: readonly string[];
-  readonly resolvedStatus: string;
-  readonly documentName: string;
-  readonly origin?: Origin;
-}
+type DiagnosticInput<T extends LanguageDiagnostic> = Omit<T, 'code' | 'severity'>;
+export interface EL001Input extends DiagnosticInput<EL001Diagnostic> {}
+export interface WL001Input extends DiagnosticInput<WL001Diagnostic> {}
+export interface WL002Input extends DiagnosticInput<WL002Diagnostic> {}
 
 export function createEL001(input: EL001Input): EL001Diagnostic {
   return Object.freeze({

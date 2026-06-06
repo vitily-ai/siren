@@ -1,10 +1,10 @@
-import type { SirenDocument } from '@sirenpm/core';
 import { Language, type Tree, Parser as TsParser } from 'web-tree-sitter';
 import { buildAst } from '../ast/builder';
 import type { AstOriginMap } from '../ast/origins';
-import { decodeAstToSirenDocument } from '../decoder';
+import { decodeAstToEntries } from '../decoder';
 import { formatCst } from '../format/formatter';
 import { getWasmUrl } from '../grammar/loadHandle';
+import type { SourcedEntry } from '../origin';
 import type { LanguageDiagnostic, ParsedDocument, Parser, SirenAst, SourceDocument } from './types';
 
 let runtimeInit: Promise<void> | undefined;
@@ -60,8 +60,8 @@ class ParsedDocumentImpl implements ParsedDocument {
     this.#origins = built.origins;
   }
 
-  toSirenDocument(): SirenDocument {
-    return decodeAstToSirenDocument(this.ast, this.#source, this.#origins);
+  toEntries(): readonly SourcedEntry[] {
+    return decodeAstToEntries(this.ast, this.#source, this.#origins);
   }
 
   format(): string {

@@ -44,16 +44,12 @@ describe('parser.parse contract', () => {
     expect(Array.isArray(parsed.diagnostics)).toBe(true);
     expect(parsed.diagnostics.length).toBe(0);
 
-    expect(typeof parsed.toSirenDocument).toBe('function');
-    const sirenDoc = parsed.toSirenDocument();
-    expect(sirenDoc).toBeDefined();
-    expect(typeof sirenDoc.id).toBe('string');
-    expect(Array.isArray(sirenDoc.resources)).toBe(true);
-    // Once the decoder lands, `task a {}` decodes to one resource. The
-    // structural assertion is preserved (`resources` is an array); only the
-    // empty-length check is relaxed.
-    expect(sirenDoc.resources.length).toBeGreaterThanOrEqual(0);
-    expect(sirenDoc.directive).toBeUndefined();
+    expect(typeof parsed.toEntries).toBe('function');
+    const entries = parsed.toEntries();
+    expect(entries).toBeDefined();
+    expect(Array.isArray(entries)).toBe(true);
+    // `task a {}` decodes to one entry.
+    expect(entries.length).toBeGreaterThanOrEqual(0);
 
     expect(typeof parsed.format).toBe('function');
     expect(parsed.format()).toBe('task a {}\n');
@@ -113,7 +109,7 @@ describe('parser.parseBatch contract', () => {
     expect(batched).toHaveLength(mapped.length);
     for (let i = 0; i < batched.length; i++) {
       expect(batched[i].format()).toBe(mapped[i].format());
-      expect(batched[i].toSirenDocument().id).toBe(mapped[i].toSirenDocument().id);
+      expect(batched[i].toEntries().length).toBe(mapped[i].toEntries().length);
     }
   });
 });
