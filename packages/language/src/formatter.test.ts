@@ -104,4 +104,91 @@ task b {}
     const expected = 'task a {\n  depends_on = b\n}\n\ntask b {}\n';
     expect(parsed.format()).toBe(expected);
   });
+
+  describe('format() mutation (lang-format-mutate)', () => {
+    it('format() updates .source.content to canonical text', async () => {
+      const parser = await createParser();
+      const input = 'task  a  {   depends_on  =  b   }';
+      const parsed = await parser.parse({ name: 'messy.siren', content: input });
+
+      const formatted = parsed.format();
+      const expected = 'task a {\n  depends_on = b\n}\n';
+      expect(formatted).toBe(expected);
+
+      // FAILS: source.content is still the original messy input,
+      // because format() currently does NOT mutate #sourceContent.
+      expect(parsed.source.content).toBe(expected);
+    });
+
+    it('format() preserves toEntries() decoding after mutation', async () => {
+      const parser = await createParser();
+      const input = 'task  a  {   depends_on  =  b   }';
+      const parsed = await parser.parse({ name: 'messy.siren', content: input });
+
+      const entriesBefore = parsed.toEntries();
+      expect(entriesBefore).toHaveLength(1);
+      expect(entriesBefore[0].type).toBe('task');
+      expect(entriesBefore[0].id).toBe('a');
+
+      parsed.format();
+
+      // Entries should still decode correctly after format() mutates state.
+      // This is a regression guard — may already pass, but must not regress.
+      const entriesAfter = parsed.toEntries();
+      expect(entriesAfter).toHaveLength(1);
+      expect(entriesAfter[0].type).toBe('task');
+      expect(entriesAfter[0].id).toBe('a');
+      // Semantic content is preserved; origins naturally shift after reformat.
+      expect(entriesAfter[0].attributes.map((a) => ({ key: a.key, value: a.value }))).toEqual(
+        entriesBefore[0].attributes.map((a) => ({ key: a.key, value: a.value })),
+      );
+    });
+
+    it('format() is idempotent in output and source', async () => {
+      const parser = await createParser();
+      const input = 'task  a  {   depends_on  =  b   }';
+      const parsed = await parser.parse({ name: 'messy.siren', content: input });
+
+      const first = parsed.format();
+      const second = parsed.format();
+
+      // Idempotent output: both calls return the same canonical string.
+      expect(second).toBe(first);
+
+      // FAILS: after format(), source.content should reflect canonical form.
+      // Currently source.content is never mutated, so it still holds the
+      // original messy input.
+      expect(parsed.source.content).toBe(first);
+    });
+
+    it('format() then .source reflects canonical state (extra spaces)', async () => {
+      const parser = await createParser();
+      // Extra spaces inside header and body.
+      const input = 'task  foo  { }';
+      const parsed = await parser.parse({ name: 'extra-spaces.siren', content: input });
+
+      const formatted = parsed.format();
+      const expected = 'task foo {}\n';
+      expect(formatted).toBe(expected);
+
+      // FAILS: source.content is still 'task  foo  { }' because format()
+      // does NOT mutate #sourceContent.
+      expect(parsed.source.content).toBe(expected);
+    });
+
+    it('format() on already-canonical doc is no-op for source', async () => {
+      const parser = await createParser();
+      const canonical = 'task foo {}\n';
+      const parsed = await parser.parse({ name: 'canonical.siren', content: canonical });
+
+      const formatted = parsed.format();
+      expect(formatted).toBe(canonical);
+
+      // FAILS: source.content is never updated by format(), but since the
+      // input was already canonical the values happen to match. After
+      // implementation this must still hold — a no-op mutation must not
+      // alter already-canonical source.
+      expect(parsed.source.content).toBe(canonical);
+    });
+  });
 });
