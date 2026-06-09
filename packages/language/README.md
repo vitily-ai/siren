@@ -82,7 +82,7 @@ Decode rules:
 - Quoted string tuple members inside `depends_on` decode as unresolved references so quoted resource IDs can be referenced.
 - The AST already exposes only the resolved recognized status; repeated recognized modifiers are collapsed before decode.
 - Every entry and attribute returned by `toEntries()` carries a required `origin` field (`RangeOrigin` for parsed constructs, `SyntheticOrigin` fallback when origin data is unavailable).
-- Milestone synthesis is opt-in via `toEntries({ synthesizeMilestones: true })`. When enabled, a synthetic milestone is appended per document — see ADR-0005.
+- Implicit milestone synthesis configurable via document-level directives. When enabled, a synthetic milestone is appended per document — see ADR-0005. (Nominal, but functionally disabled until document directives are supported in grammar.)
 
 `toEntries()` does not resolve dependencies or add semantic warnings; those remain core responsibilities.
 
