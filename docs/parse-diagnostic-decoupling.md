@@ -370,17 +370,6 @@ Run the golden test suite after Phase 2 to identify which golden files fail. Exp
 
 Use `scripts/create-golden.sh` to regenerate goldens for affected test inputs, then review each diff to confirm it matches the expected behavioral changes before committing.
 
-### 3b — Add language test fixtures
-
-**Directory:** `packages/language/test/fixtures/snippets/`
-
-Add at least two fixture files:
-
-1. `missing-token.siren` — a snippet containing a resource block with a missing `}` and/or missing identifier. The fixture test asserts that `ParseError` with `kind: 'missing_token'` and the expected message is emitted.
-2. `unexpected-token.siren` — a snippet with a stray token at the top level. The fixture test asserts `kind: 'unexpected_token'` with the new message format (no expected list).
-
-These fixtures lock the post-refactor diagnostic message format so that future grammar changes that accidentally alter it will fail the fixture test explicitly.
-
 ---
 
 ## Phase 4: Dead Code Cleanup

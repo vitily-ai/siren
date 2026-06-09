@@ -233,6 +233,18 @@
               }
             ]
           }
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "STRING",
+              "value": ","
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
         }
       ]
     },
@@ -286,10 +298,6 @@
           "name": "boolean_literal"
         }
       ]
-    },
-    "str_open": {
-      "type": "STRING",
-      "value": "\""
     },
     "string_literal": {
       "type": "SEQ",
@@ -357,7 +365,11 @@
       "value": "\\s"
     }
   ],
-  "conflicts": [],
+  "conflicts": [
+    [
+      "_implicit_tuple"
+    ]
+  ],
   "precedences": [],
   "externals": [],
   "inline": [],

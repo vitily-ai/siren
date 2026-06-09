@@ -208,7 +208,7 @@ task lang-cli {
 }
 
 task lang-tests complete {
-  description = "Add focused tests at each layer: parser tests for WASM resolution and parseBatch aggregation; AST tests for status modifier resolution (WL001, WL002), tuple members, and parse-error omission (EL001); decode tests for tuple-first values, bare vs. quoted identifiers, depends_on quoted references, directive omission, and origin population; formatter tests for canonical output, parse-error refusal, and lexical-order comment preservation. Use projects fixtures under packages/language/test/fixtures/projects/ for decode, snippets fixtures for grammar/AST cases, and apps/cli/test/expected/ for CLI goldens."
+  description = "Add focused tests at each layer: parser tests for WASM resolution and parseBatch aggregation; AST tests for status modifier resolution (WL001, WL002), tuple members, and parse-error omission (EL001); decode tests for tuple-first values, bare vs. quoted identifiers, depends_on quoted references, directive omission, and origin population; formatter tests for canonical output, parse-error refusal, and lexical-order comment preservation. Use projects fixtures under packages/language/test/fixtures/projects/ for decode, corpus fixtures for grammar/AST cases, and apps/cli/test/expected/ for CLI goldens."
   context = "language-ast-pipeline.md"
   files = "packages/language/test/, apps/cli/test/expected/"
   depends_on = [lang-decode, lang-format]

@@ -21,6 +21,8 @@ module.exports = grammar({
 
   word: ($) => $.bare_identifier,
 
+  conflicts: ($) => [[$._implicit_tuple]],
+
   rules: {
     // Top-level document: zero or more resources
     document: ($) => repeat($.resource),
@@ -63,7 +65,7 @@ module.exports = grammar({
 
     // Recursion currently not supported, so tuples are flat currently
     _tuple_member: ($) => choice($.literal, $.bare_identifier),
-    _implicit_tuple: ($) => seq($._tuple_member, repeat(seq(',', $._tuple_member))),
+    _implicit_tuple: ($) => seq($._tuple_member, repeat(seq(',', $._tuple_member)), optional(',')),
     _explicit_tuple: ($) => seq('[', optional($._implicit_tuple), ']'),
 
     // Currently, expressions are static, so they just wrap tuples.
