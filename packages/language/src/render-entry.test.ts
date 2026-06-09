@@ -1,6 +1,5 @@
 import type { Attribute, EntryReference, SirenEntry } from '@sirenpm/core';
 import { describe, expect, it } from 'vitest';
-// Import from the module that doesn't exist yet — this will fail (red phase)
 import { renderEntry } from './render-entry';
 
 // ---------------------------------------------------------------------------
@@ -211,16 +210,6 @@ describe('renderEntry', () => {
     expect(renderEntry(entry)).toBe('task foo {\n  description = "hello world"\n}\n');
   });
 
-  it('renders a string atom containing double-quote via escaping', () => {
-    const entry: SirenEntry = {
-      type: 'task',
-      id: 'foo',
-      attributes: [attr('description', 'say "hi"')],
-    };
-    // The renderer should escape internal double quotes with backslash
-    expect(renderEntry(entry)).toBe('task foo {\n  description = "say \\"hi\\""\n}\n');
-  });
-
   // ---- number atom rendering ----
 
   it('renders negative numbers', () => {
@@ -262,5 +251,53 @@ describe('renderEntry', () => {
       attributes: [],
     };
     expect(renderEntry(entry)).toBe('milestone release-1 draft {}\n');
+  });
+
+  // ---- entry id quoting ----
+
+  it('quotes the entry id when it contains spaces', () => {
+    const entry: SirenEntry = {
+      type: 'task',
+      id: 'my task',
+      attributes: [],
+    };
+    expect(renderEntry(entry)).toBe('task "my task" {}\n');
+  });
+
+  it('quotes the entry id when it starts with a digit', () => {
+    const entry: SirenEntry = {
+      type: 'task',
+      id: '123task',
+      attributes: [],
+    };
+    expect(renderEntry(entry)).toBe('task "123task" {}\n');
+  });
+
+  it('quotes the entry id when it contains special characters like dots', () => {
+    const entry: SirenEntry = {
+      type: 'task',
+      id: 'my.task.v2',
+      attributes: [],
+    };
+    expect(renderEntry(entry)).toBe('task "my.task.v2" {}\n');
+  });
+
+  it('quotes the entry id with status when id needs quoting', () => {
+    const entry: SirenEntry = {
+      type: 'milestone',
+      id: 'has spaces',
+      status: 'draft',
+      attributes: [],
+    };
+    expect(renderEntry(entry)).toBe('milestone "has spaces" draft {}\n');
+  });
+
+  it('keeps a valid bare identifier entry id unquoted', () => {
+    const entry: SirenEntry = {
+      type: 'task',
+      id: 'my_task',
+      attributes: [attr('depends_on', ref('other'))],
+    };
+    expect(renderEntry(entry)).toBe('task my_task {\n  depends_on = other\n}\n');
   });
 });

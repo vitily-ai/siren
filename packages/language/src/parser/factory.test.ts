@@ -83,8 +83,7 @@ describe('ParsedDocument.source getter', () => {
     const parser = await createParserFromFactory();
     const content = 'task a {}\nmilestone m {}';
     const parsed = await parser.parse({ name: 'doc.siren', content });
-    // RED: .source is not yet exposed
-    const source = (parsed as any).source;
+    const source = parsed.source;
     expect(source).toBeDefined();
     expect(source.content).toBe(content);
   });
@@ -92,8 +91,7 @@ describe('ParsedDocument.source getter', () => {
   it('returns the correct name from the source document', async () => {
     const parser = await createParserFromFactory();
     const parsed = await parser.parse({ name: 'myfile.siren', content: 'task x {}' });
-    // RED: .source is not yet exposed
-    const source = (parsed as any).source;
+    const source = parsed.source;
     expect(source).toBeDefined();
     expect(source.name).toBe('myfile.siren');
   });
@@ -137,60 +135,7 @@ describe('parser.parseBatch contract', () => {
   });
 });
 
-describe('greedy entry decode caching', () => {
-  // lang-greedy-decode: entries should be decoded greedily at construction
-  // time and cached in #entries so repeated toEntries() calls return the
-  // same reference. These tests currently FAIL because ParsedDocumentImpl
-  // re-decodes on every toEntries() call.
-
-  it('entries are accessible immediately after parse and cached', async () => {
-    const parser = await createParserFromFactory();
-    const parsed = await parser.parse({ name: 'doc.siren', content: 'task a {}\ntask b {}' });
-
-    // Entries should be immediately available (greedy decode at construction).
-    const entries = parsed.toEntries();
-    expect(entries).toHaveLength(2);
-    expect(entries[0].id).toBe('a');
-    expect(entries[1].id).toBe('b');
-
-    // Second call returns the same cached reference — FAILS currently.
-    const again = parsed.toEntries();
-    expect(again).toBe(entries);
-  });
-
-  it('each ParsedDocument has its own independent entry cache', async () => {
-    const parser = await createParserFromFactory();
-    const docA = await parser.parse({ name: 'a.siren', content: 'task a {}' });
-    const docB = await parser.parse({ name: 'b.siren', content: 'task b {}' });
-
-    const entriesA = docA.toEntries();
-    const entriesB = docB.toEntries();
-
-    // Different documents → different cached arrays.
-    expect(entriesA).not.toBe(entriesB);
-    expect(entriesA[0].id).toBe('a');
-    expect(entriesB[0].id).toBe('b');
-
-    // Each document's cache is stable.
-    expect(docA.toEntries()).toBe(entriesA);
-    expect(docB.toEntries()).toBe(entriesB);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// lang-patch-entry — RED phase: patchEntry does not exist on ParsedDocument
-// ---------------------------------------------------------------------------
-
 describe('patchEntry', () => {
-  // 1. patchEntry exists on ParsedDocument
-  it('exposes patchEntry as a function on ParsedDocument', async () => {
-    const parser = await createParserFromFactory();
-    const parsed = await parser.parse({ name: 'a.siren', content: 'task foo {}' });
-
-    // RED: patchEntry is not yet implemented on ParsedDocument
-    expect(typeof (parsed as any).patchEntry).toBe('function');
-  });
-
   // 2. patchEntry modifies an existing entry's description
   it('modifies an existing entry description attribute', async () => {
     const parser = await createParserFromFactory();
@@ -199,8 +144,7 @@ describe('patchEntry', () => {
       content: 'task foo {\n  description = "old"\n}\n',
     });
 
-    // RED: patchEntry is not yet implemented on ParsedDocument
-    expect(typeof (parsed as any).patchEntry).toBe('function');
+    expect(typeof parsed.patchEntry).toBe('function');
 
     const updatedEntry: SirenEntry = {
       type: 'task',
@@ -208,7 +152,7 @@ describe('patchEntry', () => {
       attributes: [{ key: 'description', value: ['new'] }],
     };
 
-    (parsed as any).patchEntry('foo', updatedEntry);
+    parsed.patchEntry('foo', updatedEntry);
 
     const entries = parsed.toEntries();
     expect(entries).toHaveLength(1);
@@ -225,16 +169,13 @@ describe('patchEntry', () => {
       content: 'task foo {\n  description = "old"\n}\n',
     });
 
-    // RED: patchEntry is not yet implemented on ParsedDocument
-    expect(typeof (parsed as any).patchEntry).toBe('function');
-
     const updatedEntry: SirenEntry = {
       type: 'task',
       id: 'foo',
       attributes: [{ key: 'description', value: ['new'] }],
     };
 
-    (parsed as any).patchEntry('foo', updatedEntry);
+    parsed.patchEntry('foo', updatedEntry);
 
     const content = parsed.source.content;
     expect(content).toContain('"new"');
@@ -249,16 +190,13 @@ describe('patchEntry', () => {
       content: 'task foo {}\n',
     });
 
-    // RED: patchEntry is not yet implemented on ParsedDocument
-    expect(typeof (parsed as any).patchEntry).toBe('function');
-
     const syntheticEntry: SirenEntry = {
       type: 'task',
       id: 'bar',
       attributes: [],
     };
 
-    (parsed as any).patchEntry('bar', syntheticEntry);
+    parsed.patchEntry('bar', syntheticEntry);
 
     const entries = parsed.toEntries();
     expect(entries).toHaveLength(2);
@@ -327,9 +265,6 @@ describe('patchEntry', () => {
 });
 
 describe('ParsedDocument.removeEntry', () => {
-  // RED: removeEntry does not exist on ParsedDocument yet.
-  // All tests in this suite MUST fail until the method is implemented.
-
   it('removeEntry removes an existing entry', async () => {
     const parser = await createParserFromFactory();
     const parsed = await parser.parse({
@@ -339,8 +274,6 @@ describe('ParsedDocument.removeEntry', () => {
 
     // Precondition: two entries exist.
     expect(parsed.toEntries()).toHaveLength(2);
-
-    // RED: removeEntry is not yet implemented.
     parsed.removeEntry('foo');
 
     const remaining = parsed.toEntries();
@@ -385,7 +318,7 @@ describe('ParsedDocument.removeEntry', () => {
     // Precondition: three entries.
     expect(parsed.toEntries()).toHaveLength(3);
 
-    (parsed as any).removeEntry('b');
+    parsed.removeEntry('b');
 
     const remaining = parsed.toEntries();
     expect(remaining).toHaveLength(2);

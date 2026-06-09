@@ -1,7 +1,6 @@
 ---
 status: accepted
 supersedes: 0001-parsed-document-model-language-boundary
-extended-by: this-document (entry mutation section)
 ---
 
 # Siren AST Is the Language Boundary

@@ -115,8 +115,6 @@ task b {}
       const expected = 'task a {\n  depends_on = b\n}\n';
       expect(formatted).toBe(expected);
 
-      // FAILS: source.content is still the original messy input,
-      // because format() currently does NOT mutate #sourceContent.
       expect(parsed.source.content).toBe(expected);
     });
 

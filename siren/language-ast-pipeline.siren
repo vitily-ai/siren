@@ -149,7 +149,6 @@ task lang-render-entry complete {
   description = "Create packages/language/src/render-entry.ts with an internal renderEntry(entry: SirenEntry): string function. Always canonical output: EntryReference→bare identifier (quoted if invalid ident chars), string→quoted string, number→number literal, boolean→true/false. Single-atom tuples render bare (no brackets). Multi-atom tuples render comma-separated (no brackets). Empty tuple attributes are skipped. Status modifier rendered inline (task id complete { ... }). Empty body renders as task id {}. Not exported from package index. Write focused unit tests for each entry shape."
   context = "language-ast-pipeline.md"
   files = "packages/language/src/render-entry.ts"
-  pr = "https://github.com/gan/siren/commit/phase-5b"
 }
 
 task lang-greedy-decode complete {

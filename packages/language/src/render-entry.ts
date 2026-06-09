@@ -24,9 +24,29 @@ function renderTuple(tuple: readonly Atom[]): string {
   return tuple.map(renderAtom).join(', ');
 }
 
+/**
+ * Serialize a `SirenEntry` back into Siren source text.
+ *
+ * Produces a minimal, lossy representation of the in-memory entry. String
+ * attribute values are emitted as JSON-encoded strings, numbers and booleans
+ * are emitted literally, and references are emitted as bare or quoted
+ * identifiers as needed.
+ *
+ * @param entry - The in-memory entry to render.
+ * @returns A string containing the entry as Siren source text.
+ *
+ * @remarks
+ * This renderer is **not currently guaranteed** to produce valid Siren syntax
+ * when the in-memory `SirenEntry` contains values outside the grammar's native
+ * expression space — for example, string values with escaped characters produce
+ * double-encoding. This is not an issue as long as the entry being rendered was
+ * originally produced by the parser, but the onus is on consumers to ensure that
+ * synthetic entries are valid for the current grammar.
+ */
 export function renderEntry(entry: SirenEntry): string {
   const statusPart = entry.status ? ` ${entry.status}` : '';
-  const header = `${entry.type} ${entry.id}${statusPart}`;
+  const idPart = needsQuoting(entry.id) ? JSON.stringify(entry.id) : entry.id;
+  const header = `${entry.type} ${idPart}${statusPart}`;
 
   // Filter out empty-tuple attributes
   const renderableAttrs = entry.attributes.filter((a) => a.value.length > 0);

@@ -51,7 +51,7 @@ All decisions below are binding. Full rationale is in ADR 0004.
 | 2 | AST nature | Span-free, trivia-free, non-semantic. No raw text, comments, spans, dependency resolution, or semantic diagnostics on AST nodes |
 | 3 | CST privacy | Raw Tree-sitter nodes are not public API |
 | 4 | Parser surface | `parser.parse({ name, content })` → `ParsedDocument`; `parser.parseBatch(docs[])` → `ParsedDocument[]` |
-| 5 **(v0.6.0, Phase 8)** | ParsedDocument services | `.ast`, `.diagnostics`, `.toEntries(options?)`, `.format()`, `.patchEntry()`, `.removeEntry()`, `.source` |
+| 5 **(v0.6.0, Phase 8)** | ParsedDocument services | `.ast`, `.diagnostics`, `.toEntries()`, `.format()`, `.patchEntry()`, `.removeEntry()`, `.source` |
 | 6 **(v0.6.0, Phase 8)** | No language project builder | No `ParsedDocument → SirenProject` helper. Callers use **`SirenBuilder.fromEntries(docs.flatMap(d => d.toEntries()))`**. To write back to source, use `.source.content` or `.format()` after mutation. |
 | 7 | Tuple model | Tuples are normalized readonly member arrays; implicit vs. explicit bracket syntax is not distinguished |
 | 8 | Tuple-first core | Every AST tuple decodes to a tuple-first bare readonly atom array (implemented in core v0.5.0). |
@@ -152,7 +152,7 @@ Implement `ParsedDocument.toSirenDocument()` (pre-v0.6.0 name) / `toEntries()` (
 - Document directive is omitted; the `synthesizeMilestones` option (default-off) appends one synthetic milestone per source document.
 - Private CST backreferences may populate language-native `Origin` metadata via `SourcedEntry`/`SourcedAttribute` while the AST stays span-free.
 
-**v0.6.0 adoption:** The method is renamed from `toSirenDocument(): SirenDocument` to `toEntries(options?: { synthesizeMilestones?: boolean }): readonly SourcedEntry[]`. The decoder drops `import { Resource, SirenDocument }` and uses `SirenEntry`/`Attribute`/`Tuple`/`Atom` from `@sirenpm/core` and `Origin` from the language-native `../origin`.
+**v0.6.0 adoption:** The method is renamed from `toSirenDocument(): SirenDocument` to `toEntries(): readonly SourcedEntry[]`. The decoder drops `import { Resource, SirenDocument }` and uses `SirenEntry`/`Attribute`/`Tuple`/`Atom` from `@sirenpm/core` and `Origin` from the language-native `../origin`.
 
 Depends on: `lang-ast-builder`, `lang-diagnostics`, `tuple-first-core`
 
