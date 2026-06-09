@@ -1,7 +1,5 @@
-import type { AstAttribute, AstResource } from './types';
 import type { RangeOrigin } from '../origin';
-
-export type { RangeOrigin };
+import type { AstAttribute, AstResource } from './types';
 
 /**
  * Package-private sidechannel mapping AST nodes (resources and attributes) to

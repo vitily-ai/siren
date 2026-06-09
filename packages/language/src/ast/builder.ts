@@ -1,7 +1,8 @@
 import type { Node, Tree } from 'web-tree-sitter';
 import { createEL001, createWL001, createWL002, type LanguageDiagnostic } from '../diagnostics';
+import type { RangeOrigin } from '../origin';
 import type { SourceDocument } from '../parser/types';
-import type { AstOriginMap, RangeOrigin } from './origins';
+import type { AstOriginMap } from './origins';
 import type {
   AstAttribute,
   AstResource,
@@ -161,7 +162,7 @@ function buildResource(
   origins: AstOriginMap,
 ): AstResource {
   const headerNode = resourceNode.namedChild(0);
-  if (!headerNode || headerNode.type !== 'resource_header') {
+  if (headerNode?.type !== 'resource_header') {
     throw unexpected(
       `resource first named child is not resource_header (got ${headerNode?.type ?? 'null'})`,
     );
@@ -174,7 +175,7 @@ function buildResource(
   const recognized: AstStatusModifier[] = [];
   for (let i = 0; i < headerNode.namedChildCount; i++) {
     const child = headerNode.namedChild(i);
-    if (!child || child.type !== 'resource_modifier') continue;
+    if (child?.type !== 'resource_modifier') continue;
     const inner = child.namedChild(0);
     if (!inner) throw unexpected('resource_modifier has no named child');
     const text = identifierText(inner);
@@ -213,7 +214,7 @@ function buildResource(
   if (bodyNode) {
     for (let i = 0; i < bodyNode.namedChildCount; i++) {
       const child = bodyNode.namedChild(i);
-      if (!child || child.type !== 'attribute') continue;
+      if (child?.type !== 'attribute') continue;
       attributes.push(buildAttribute(child, documentName, origins));
     }
   }

@@ -108,7 +108,7 @@ function formatResource(resourceNode: Node): string[] {
   const idText = idNode ? idNode.text : '';
   const modifierNodes = headerNode.children.filter((c) => c.type === 'resource_modifier');
   const modifierTexts = modifierNodes.map((m) => m.text);
-  const modifierStr = modifierTexts.length > 0 ? ' ' + modifierTexts.join(' ') : '';
+  const modifierStr = modifierTexts.length > 0 ? ` ${modifierTexts.join(' ')}` : '';
 
   const bodyNode = resourceNode.childForFieldName('body');
   const isEmpty = !bodyNode || !hasAttributesOrComments(bodyNode);
@@ -129,10 +129,10 @@ function formatResource(resourceNode: Node): string[] {
       const keyNode = element.node.childForFieldName('key');
       const valueNode = element.node.childForFieldName('value');
       if (keyNode && valueNode) {
-        lines.push('  ' + formatAttribute(keyNode, valueNode));
+        lines.push(`  ${formatAttribute(keyNode, valueNode)}`);
       }
     } else if (element.type === 'comment') {
-      lines.push('  ' + formatCommentText(element.node.text));
+      lines.push(`  ${formatCommentText(element.node.text)}`);
     }
   }
 
@@ -185,7 +185,7 @@ export function formatCst(tree: Tree, _content: string): string {
 
   // File ends with a trailing newline if it has any statements.
   if (lines.length > 0) {
-    return lines.join('\n') + '\n';
+    return `${lines.join('\n')}\n`;
   }
   return '';
 }

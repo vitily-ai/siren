@@ -1,20 +1,21 @@
 # Language AST Pipeline
 
-> **Update: Core v0.6.0 Adoption**
+> **Updates**
 >
-> After the rebuild landed, `@sirenpm/core` published v0.6.0 with two breaking changes that
-> the language package must adopt:
->
+> **Core v0.6.0 Adoption** (Phase 7, complete): After the rebuild landed, `@sirenpm/core`
+> published v0.6.0 with two breaking changes that the language package must adopt:
 > - **ADR-0005 (entries over documents):** Flat `SirenEntry[]` replaces `SirenDocument`/`Resource`.
 >   `ParsedDocument.toSirenDocument()` becomes `toEntries()`. `SirenBuilder.fromDocuments()`
 >   becomes `fromEntries()`.
 > - **ADR-0006 (origin demotion):** `Origin` removed from core. Language owns it natively.
 >   `DiagnosticBase` becomes generic `DiagnosticBase<'E','L'>` / `DiagnosticBase<'W','L'>`.
 >
-> The sections below reflect the original ADR-0004 plan. A **Phase 7** section at the end
-> tracks the v0.6.0 adoption work. The siren backlog (`siren/language-ast-pipeline.siren`)
-> has `lang-v060-*` tasks for the implementation. Decisions table entries marked with
-> **(v0.6.0)** reflect the updated target.
+> **Entry Render-to-Source** (Phase 8): Adds `renderEntry()`, `patchEntry()`, `removeEntry()`,
+> and `.source` getter so the CLI can implement mutation commands. `format()` becomes mutating.
+> Greedy decode at construction. See Phase 8 for full design.
+>
+> The siren backlog (`siren/language-ast-pipeline.siren`) has all tasks. Decisions table entries
+> marked with **(v0.6.0)** or **(Phase 8)** reflect the updated targets.
 
 ## Overview
 
@@ -50,8 +51,8 @@ All decisions below are binding. Full rationale is in ADR 0004.
 | 2 | AST nature | Span-free, trivia-free, non-semantic. No raw text, comments, spans, dependency resolution, or semantic diagnostics on AST nodes |
 | 3 | CST privacy | Raw Tree-sitter nodes are not public API |
 | 4 | Parser surface | `parser.parse({ name, content })` → `ParsedDocument`; `parser.parseBatch(docs[])` → `ParsedDocument[]` |
-| 5 **(v0.6.0)** | ParsedDocument services | `.ast`, `.diagnostics`, **`.toEntries(options?)`** (replaces `.toSirenDocument()`), `.format()` |
-| 6 **(v0.6.0)** | No language project builder | No `ParsedDocument → SirenProject` helper. Callers use **`SirenBuilder.fromEntries(docs.flatMap(d => d.toEntries()))`** |
+| 5 **(v0.6.0, Phase 8)** | ParsedDocument services | `.ast`, `.diagnostics`, `.toEntries()`, `.format()`, `.patchEntry()`, `.removeEntry()`, `.source` |
+| 6 **(v0.6.0, Phase 8)** | No language project builder | No `ParsedDocument → SirenProject` helper. Callers use **`SirenBuilder.fromEntries(docs.flatMap(d => d.toEntries()))`**. To write back to source, use `.source.content` or `.format()` after mutation. |
 | 7 | Tuple model | Tuples are normalized readonly member arrays; implicit vs. explicit bracket syntax is not distinguished |
 | 8 | Tuple-first core | Every AST tuple decodes to a tuple-first bare readonly atom array (implemented in core v0.5.0). |
 | 9 **(v0.6.0)** | Identifier values | Bare identifiers → `{ kind: 'reference', id }` via `Atom`/`EntryReference`. Quoted strings → string normally, BUT inside `depends_on` → `{ kind: 'reference', id }` |
@@ -69,6 +70,7 @@ All decisions below are binding. Full rationale is in ADR 0004.
 
 - ~~**Tuple-first core migration** (`@sirenpm/core` `AttributeValue` change): tracked separately.~~ (Resolved — core v0.5.0 published with tuple-first contract.)
 - ~~**Origin removal from core** (`Origin`, `RangeOrigin`, `SyntheticOrigin`):~~ (Resolved — core v0.6.0 published with Origin removed. Language adoption tracked in Phase 7.)
+- ~~**Entry render-to-source**:~~ (Resolved — Phase 8 adds `renderEntry()`, `patchEntry()`, `removeEntry()`, and `.source` getter. Enables CLI mutation commands.)
 - **Directive syntax in grammar**: future grammar work; AST nodes for directives will be added when grammar adds them.
 - **Blank-line and trailing-comment preservation**: deferred past initial formatter implementation.
 - **Semantic diagnostics** (`W001`–`W003`): remain in `@sirenpm/core`; language emits only `EL001`, `WL001`, `WL002`.
@@ -150,7 +152,7 @@ Implement `ParsedDocument.toSirenDocument()` (pre-v0.6.0 name) / `toEntries()` (
 - Document directive is omitted; the `synthesizeMilestones` option (default-off) appends one synthetic milestone per source document.
 - Private CST backreferences may populate language-native `Origin` metadata via `SourcedEntry`/`SourcedAttribute` while the AST stays span-free.
 
-**v0.6.0 adoption:** The method is renamed from `toSirenDocument(): SirenDocument` to `toEntries(options?: { synthesizeMilestones?: boolean }): readonly SourcedEntry[]`. The decoder drops `import { Resource, SirenDocument }` and uses `SirenEntry`/`Attribute`/`Tuple`/`Atom` from `@sirenpm/core` and `Origin` from the language-native `../origin`.
+**v0.6.0 adoption:** The method is renamed from `toSirenDocument(): SirenDocument` to `toEntries(): readonly SourcedEntry[]`. The decoder drops `import { Resource, SirenDocument }` and uses `SirenEntry`/`Attribute`/`Tuple`/`Atom` from `@sirenpm/core` and `Origin` from the language-native `../origin`.
 
 Depends on: `lang-ast-builder`, `lang-diagnostics`, `tuple-first-core`
 
@@ -171,6 +173,8 @@ Rules:
 
 The formatter operates on the private CST, not the public AST. No public CST types are introduced.
 
+**Phase 8 mutation:** This task establishes the pure formatter. Phase 8 makes `format()` mutating (updates `#source.content`, re-parses, re-decodes). See Phase 8 for details.
+
 Depends on: `lang-ast-builder`
 
 ---
@@ -183,14 +187,14 @@ Update the CLI lifecycle to consume the rebuilt `@sirenpm/language` API:
 
 1. Replace any remaining `parser.parse(docs[])` batch calls with per-document loops over `parser.parse(doc)` or `parser.parseBatch(docs)`.
 2. Replace `syntaxDocuments` / `decodeSyntaxDocuments` usage with `ParsedDocument.toEntries()` per document, then `SirenBuilder.fromEntries(...)`.
-3. Replace old formatter calls with `parsedDoc.format()`.
+3. Replace old formatter calls with `parsedDoc.format()` and use `parsedDoc.source` to write mutated content to disk.
 4. Thread language diagnostics into the CLI diagnostic display alongside core semantic diagnostics.
 
 The CLI must not call tree-sitter APIs directly; all source-language access goes through `@sirenpm/language`.
 
 **v0.6.0 adoption note:** The CLI also needs `eod-cli-bridge` (`SirenBuilder.fromDocuments` → `fromEntries`, `sirenDocuments` → `sirenEntries`) and `origin-demotion-cli` (diagnostic position resolution via entry references instead of `DiagnosticBase.file`/`line`/`column`). These are tracked in `siren/entries-over-documents.siren` and `siren/origin-demotion.siren`.
 
-Depends on: `lang-decode`, `lang-format`
+Depends on: `lang-v060-exports`, `lang-v060-tests`, `lang-format`, `lang-format-mutate`, `lang-source-getter`, `lang-interface-update`, `lang-patch-entry`, `lang-remove-entry`
 
 ---
 
@@ -214,15 +218,15 @@ Depends on: `lang-decode`, `lang-format`
 
 Publish updated `@sirenpm/language` (with new public API) and `@sirenpm/cli` (with updated consumer). Both must compile cleanly against the published `@sirenpm/core` v0.6.0 that removes `Origin`, `SirenDocument`, and `Resource`. Update CLI and language package versions appropriately. Ensure WASM artifact is included in the language npm bundle.
 
-Depends on: `lang-cli`, `lang-tests`
+Depends on: `lang-cli`, `lang-tests`, `lang-render-integration`
 
 ---
 
-## Phase 7 — Adopt `@sirenpm/core` v0.6.0 Breaking Changes
+## Phase 7 — Adopt `@sirenpm/core` v0.6.0 Breaking Changes (complete)
 
 After the ADR-0004 rebuild landed, `@sirenpm/core` published v0.6.0 with two breaking changes
 that the language package must adopt. This phase is tracked by the `lang-v060-*` tasks in
-`siren/language-ast-pipeline.siren`.
+`siren/language-ast-pipeline.siren`. All Phase 7 tasks are now marked `complete`.
 
 ### What changed in core
 
@@ -259,11 +263,85 @@ marked `complete` as superseded:
 
 ---
 
+## Phase 8 — Entry Render-to-Source
+
+After the ADR-0004 rebuild and v0.6.0 adoption, `ParsedDocument` can parse, decode, and format but
+cannot render **arbitrary programmatic entries** (synthetic milestones, mutated entries) back to
+`.siren` source text. `ParsedDocument.format()` walks the private CST — it can only canonicalize
+what was already parsed. Phase 8 adds entry render-to-source so the CLI can implement mutation
+commands (`siren edit`, `siren set`) that modify entries and write back to source files.
+
+### Design
+
+Rather than building a separate string-only renderer that bypasses the formatting pipeline,
+Phase 8 introduces a **splice → re-parse → format** approach that reuses `formatCst`:
+
+1. **`renderEntry(entry: SirenEntry): string`** — internal helper that produces a canonical,
+   deterministic `.siren` block for any entry, independent of whether it originated from a parse.
+2. **`patchEntry(id, entry)`** — renders the entry, finds the resource's source span in the
+   current CST (fresh traversal — no cached offsets that could go stale), splices the rendered
+   text into `#source.content`, incremental re-parses with `tree.edit()` + old tree, then
+   re-decodes AST, diagnostics, and entries. If no span is found (synthetic entry), appends to
+   end of source.
+3. **`format()` becomes mutating** — after canonicalizing via `formatCst`, updates `#source.content`
+   to the canonical text, re-parses, re-decodes. Every call leaves the document in a canonicalized
+   state.
+4. **Greedy decode at construction** — entries are decoded once and cached in `#entries`. Every
+   mutation (patch, remove, format) re-decodes. `toEntries()` returns the cache.
+
+### Design Decisions
+
+| # | Decision | Binding choice |
+|---|---|---|
+| 17 | Render target | `ParsedDocument.patchEntry()` is the public mutation surface; `renderEntry()` is internal |
+| 18 | Span lookup | Fresh CST traversal per call — no cached span map that could go stale |
+| 19 | Re-parse strategy | Incremental (`tree.edit()` + `tsParser.parse(text, oldTree)`) |
+| 20 | Mutations | Internal mutation (private fields) with hybrid readonly public surface |
+| 21 | `renderEntry` output | Always canonical; no formatting preservation |
+| 22 | Comments on patched entries | Lost — acceptable; canonical wins |
+| 23 | Empty tuple attributes | Skipped — not rendered |
+| 24 | Tuple bracket rendering | Always bare (comma-separated, no `[...]` brackets) |
+| 25 | Identifier quoting | Bare when valid identifier (`[a-zA-Z_][a-zA-Z0-9_-]*`), quoted otherwise |
+| 26 | Re-parse failure | Throw — indicates bug in `renderEntry` |
+| 27 | `.source` getter | Returns `SourceDocument { name, content }` reflecting current mutated state |
+
+### Render-entry rendering rules
+
+- `EntryReference` → bare identifier (quoted if invalid ident chars)
+- `string` → double-quoted string
+- `number` → number literal
+- `boolean` → `true` / `false`
+- Single-atom tuple: `key = value` (no brackets)
+- Multi-atom tuple: `key = value1, value2, ...` (comma-separated, no brackets)
+- Empty tuple attribute → skip (don't render)
+- Status: `task id complete { ... }` or `task id draft { ... }`
+- Empty body: `task id {}`
+
+### Tasks
+
+| Task | What it does |
+|---|---|
+| `lang-render-entry` | Create `packages/language/src/render-entry.ts` with internal `renderEntry()`. Focused unit tests. |
+| `lang-greedy-decode` | Cache decoded entries at construction; `toEntries()` returns cache. |
+| `lang-format-mutate` | `format()` updates `#source.content`, re-parses, re-decodes. |
+| `lang-source-getter` | Add `readonly source: SourceDocument` to `ParsedDocument`. |
+| `lang-patch-entry` | Implement `patchEntry(id, entry)` with splice + re-parse. Depends on `render-entry`, `greedy-decode`. |
+| `lang-remove-entry` | Implement `removeEntry(id)` with span splice-out + re-parse. Depends on `greedy-decode`. |
+| `lang-interface-update` | Wire `patchEntry`, `removeEntry`, `source` into `ParsedDocument` interface. |
+| `lang-render-integration` | End-to-end: parse → patch → format → verify round-trip. CLI golden tests. |
+
+All tasks block `lang-cli` (the CLI must consume the full `ParsedDocument` API including mutation
+and source access).
+
+---
+
 ## Cross-File Dependency
 
 `lang-decode` depends on the `tuple-first-core` milestone in `siren/tuple-first-core.siren`. That file is a stub; its internal tasks are TBD. Until `tuple-first-core` ships, `lang-decode` cannot be implemented against the real contract. `lang-cli` and `lang-publish` both depend on `lang-decode` and are therefore also gated.
 
-The work in `lang-parser`, `lang-ast-builder`, `lang-diagnostics`, and `lang-format` is independent of the core tuple migration and can proceed immediately.
+`lang-cli` also depends on Phase 5B (entry render-to-source): `lang-format-mutate`, `lang-source-getter`, `lang-interface-update`, `lang-patch-entry`, and `lang-remove-entry` must land before the CLI can consume the full `ParsedDocument` API.
+
+The work in `lang-parser`, `lang-ast-builder`, `lang-diagnostics`, `lang-format`, and Phase 5B `lang-render-entry` / `lang-greedy-decode` is independent and can proceed immediately.
 
 ---
 
@@ -274,6 +352,11 @@ The work in `lang-parser`, `lang-ast-builder`, `lang-diagnostics`, and `lang-for
 - `yarn workspace @sirenpm/cli test` — golden files match.
 - `yarn workspaces foreach -pv run test` — full suite green.
 - `parser.parse({ name: 'x.siren', content })` returns `ParsedDocument` without configuring WASM paths.
-- `parsedDoc.toSirenDocument()` followed by `SirenBuilder.fromDocuments([...])` builds a valid `SirenProject`.
+- `parsedDoc.toEntries()` returns `readonly SourcedEntry[]`; `SirenBuilder.fromEntries(...)` builds a valid `SirenProject`.
 - `parsedDoc.format()` on a valid document is idempotent.
 - `parsedDoc.format()` on a document with parse errors throws or returns a diagnostic.
+- `parsedDoc.format()` mutates internal state: subsequent `.source.content` equals the canonical output.
+- `parsedDoc.patchEntry(id, entry)` splices canonical entry text into source; re-parse succeeds and `toEntries()` reflects the update.
+- `parsedDoc.patchEntry(id, entry)` on a synthetic ID (not in CST) appends the entry to the end of source.
+- `parsedDoc.removeEntry(id)` removes the entry's source span; re-parse succeeds and `toEntries()` no longer contains it.
+- `parsedDoc.source.content` always reflects the current source (initial, patched, or canonicalized).

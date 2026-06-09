@@ -1,4 +1,4 @@
-import type { DecodeDirectives } from '../decoder';
+import type { SirenEntry } from '@sirenpm/core';
 import type { SourcedEntry } from '../origin';
 
 export interface SourceDocument {
@@ -28,8 +28,11 @@ import type { LanguageDiagnostic } from '../diagnostics';
 export interface ParsedDocument {
   readonly ast: SirenAst;
   readonly diagnostics: readonly LanguageDiagnostic[];
-  toEntries(options?: DecodeDirectives): readonly SourcedEntry[];
+  readonly source: SourceDocument;
+  toEntries(): readonly SourcedEntry[];
   format(): string;
+  patchEntry(id: string, entry: SirenEntry): void;
+  removeEntry(id: string): void;
 }
 
 export interface Parser {

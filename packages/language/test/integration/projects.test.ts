@@ -2,7 +2,33 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { Language, Parser as TsParser } from 'web-tree-sitter';
+import { buildAst } from '../../src/ast/builder';
+import { decodeAstToEntries } from '../../src/decoder';
+import { getWasmUrl } from '../../src/grammar/loadHandle';
 import { createParser } from '../../src/index';
+
+// ---------------------------------------------------------------------------
+// Module-level cached tree-sitter initialisation (shared by all tests)
+// ---------------------------------------------------------------------------
+let initPromise: Promise<void> | undefined;
+async function ensureRuntimeInit(): Promise<void> {
+  if (!initPromise) {
+    initPromise = TsParser.init();
+  }
+  await initPromise;
+}
+
+let langPromise: Promise<Language> | undefined;
+async function getSirenLanguage(): Promise<Language> {
+  if (!langPromise) {
+    langPromise = (async () => {
+      await ensureRuntimeInit();
+      return Language.load(getWasmUrl().pathname);
+    })();
+  }
+  return langPromise;
+}
 
 const FIXTURE_PROJECTS_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -77,19 +103,30 @@ describe('Language Package Projects Integration', async () => {
     it('synthesizes a milestone for a fixture with no explicit matching milestone', async () => {
       // no-milestones-only-tasks contains only tasks (alpha, beta) in tasks.siren —
       // the document id "tasks" has no explicit milestone, so synthesis should
-      // create one.
+      // create one. We drive through decodeAstToEntries directly, bypassing
+      // the stateful ParsedDocument class (which does not expose options).
       const projectDir = path.join(FIXTURE_PROJECTS_DIR, 'no-milestones-only-tasks');
       const sourceDir = path.join(projectDir, 'siren');
       const sirenFiles = collectSirenFiles(sourceDir);
       expect(sirenFiles.length).toBeGreaterThan(0);
 
+      const lang = await getSirenLanguage();
+
       for (const filePath of sirenFiles) {
         const content = fs.readFileSync(filePath, 'utf8');
-        // biome-ignore lint/performance/noAwaitInLoops: test
-        const parsed = await parser.parse({ name: path.basename(filePath), content });
+        const name = path.basename(filePath);
 
-        const withoutSynthesis = parsed.toEntries();
-        const withSynthesis = parsed.toEntries({ synthesizeMilestones: true });
+        // Build AST + origins directly (bypass ParsedDocument).
+        const tsParser = new TsParser();
+        tsParser.setLanguage(lang);
+        const tree = tsParser.parse(content);
+        if (!tree) throw new Error('Parse failed');
+        const built = buildAst(tree, { name, content });
+
+        const withoutSynthesis = decodeAstToEntries(built.ast, { name, content }, built.origins);
+        const withSynthesis = decodeAstToEntries(built.ast, { name, content }, built.origins, {
+          synthesizeMilestones: true,
+        });
 
         // Synthesis should add exactly one entry (the synthetic milestone).
         expect(withSynthesis.length).toBe(withoutSynthesis.length + 1);
