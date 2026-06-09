@@ -7,8 +7,17 @@ import {
   type SourceDocument,
 } from '@sirenpm/language';
 import { defineCommand } from 'citty';
+import { runLifecycle } from '../lifecycle';
 import { getParser } from '../parser';
-import { loadProject } from '../project';
+
+// NOTE: TODO[FORMAT-LIFECYCLE-BYPASS]
+// `format` is an intentional exception to the runLifecycle({mutate, query})
+// inversion: it operates on per-file CST `SyntaxDocument`s (to preserve trivia
+// and comments), not on the semantic `SirenDocument` / `SirenProject` model the
+// rest of the lifecycle is built around. It therefore consumes only the
+// discovery/parsing artefacts and performs its own per-file render + write +
+// round-trip validation. Tracked as debt: `format-bypasses-lifecycle` in
+// `siren/debt.siren`. Revisit if a second syntax-level command appears.
 
 export interface FormatOptions {
   dryRun?: boolean;
@@ -63,9 +72,11 @@ function debugStringifyResources(resources: readonly Resource[]): string {
 }
 
 export async function runFormat(opts: FormatOptions = {}): Promise<void> {
-  // Reload project context to ensure files are discovered in test envs
-  const ctx = await loadProject(process.cwd());
-  if (!ctx) throw new Error('Project context not loaded');
+  // Run the lifecycle to perform discovery, parsing, build, and diagnostics
+  // presentation. We discard the returned project (format doesn't operate on
+  // it) and consume only `ctx.files` for the per-file CST work below.
+  const ctx = await runLifecycle(process.cwd());
+
   const parser = await getParser();
 
   const totalFiles = ctx.files.length;
