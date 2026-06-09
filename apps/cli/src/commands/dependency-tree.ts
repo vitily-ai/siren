@@ -16,7 +16,7 @@ export function renderDependencyTree(
   maxDepth = 2,
 ): string[] {
   const lines: string[] = [];
-  const dependencies = tree.dependencies.filter((dependency) => !isComplete(dependency.resource));
+  const dependencies = tree.dependencies.filter((dependency) => !isComplete(dependency.entry));
 
   if (dependencies.length === 0) {
     return lines;
@@ -25,11 +25,11 @@ export function renderDependencyTree(
   if (depth >= maxDepth - 1 && dependencies.length > 0) {
     const hasGrandchildren = dependencies.some(
       (dependency) =>
-        dependency.dependencies.filter((child) => !isComplete(child.resource)).length > 0,
+        dependency.dependencies.filter((child) => !isComplete(child.entry)).length > 0,
     );
     if (hasGrandchildren) {
       const countAllDependencies = (node: DependencyTree): number => {
-        const childDependencies = node.dependencies.filter((child) => !isComplete(child.resource));
+        const childDependencies = node.dependencies.filter((child) => !isComplete(child.entry));
         if (childDependencies.length === 0) {
           return 0;
         }
@@ -55,7 +55,7 @@ export function renderDependencyTree(
           if (!dependency) continue;
           const isLastDependency = index === dependencies.length - 1;
           const connector = isLastDependency ? '└─' : '├─';
-          lines.push(`${prefix}${connector} ${dependency.resource.id}`);
+          lines.push(`${prefix}${connector} ${dependency.entry.id}`);
         }
         return lines;
       }
@@ -73,14 +73,14 @@ export function renderDependencyTree(
         );
 
         let current: DependencyTree | undefined = firstDependency;
-        while (current?.dependencies.some((dependency) => !isComplete(dependency.resource))) {
-          current = current.dependencies.find((dependency) => !isComplete(dependency.resource));
+        while (current?.dependencies.some((dependency) => !isComplete(dependency.entry))) {
+          current = current.dependencies.find((dependency) => !isComplete(dependency.entry));
         }
         if (current && current !== firstDependency) {
-          lines.push(`${childPrefix}└─ ${current.resource.id}`);
+          lines.push(`${childPrefix}└─ ${current.entry.id}`);
         }
       } else {
-        lines.push(`${prefix}└─ ${firstDependency.resource.id}`);
+        lines.push(`${prefix}└─ ${firstDependency.entry.id}`);
       }
       return lines;
     }
@@ -92,7 +92,7 @@ export function renderDependencyTree(
     const isLastDependency = index === dependencies.length - 1;
     const connector = isLastDependency ? '└─' : '├─';
 
-    lines.push(`${prefix}${connector} ${dependency.resource.id}`);
+    lines.push(`${prefix}${connector} ${dependency.entry.id}`);
 
     if (hasCycleInTree(dependency)) {
       const childPrefix = prefix + (isLastDependency ? '   ' : '│  ');

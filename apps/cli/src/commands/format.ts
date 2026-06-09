@@ -1,80 +1,43 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { Resource } from '@sirenpm/core';
-import {
-  createSirenProjectFromParseResult,
-  renderSyntaxDocument,
-  type SourceDocument,
-} from '@sirenpm/language';
+import type { SirenEntry } from '@sirenpm/core';
 import { defineCommand } from 'citty';
 import { runLifecycle } from '../lifecycle';
 import { getParser } from '../parser';
 
 // NOTE: TODO[FORMAT-LIFECYCLE-BYPASS]
 // `format` is an intentional exception to the runLifecycle({mutate, query})
-// inversion: it operates on per-file CST `SyntaxDocument`s (to preserve trivia
-// and comments), not on the semantic `SirenDocument` / `SirenProject` model the
-// rest of the lifecycle is built around. It therefore consumes only the
-// discovery/parsing artefacts and performs its own per-file render + write +
-// round-trip validation. Tracked as debt: `format-bypasses-lifecycle` in
-// `siren/debt.siren`. Revisit if a second syntax-level command appears.
+// inversion: it operates per-file on the language `ParsedDocument` (whose
+// `format()` is CST-backed and comment-preserving), not on the semantic
+// `SirenProject` model the rest of the lifecycle is built around. It therefore
+// consumes only the discovery artefact (`ctx.files`) and performs its own
+// per-file parse + format + round-trip validation + write.
 
 export interface FormatOptions {
   dryRun?: boolean;
   verbose?: boolean;
 }
 
-// TODO move to helper - this is duplicated a lot
-/** Helper to wrap a source string as a SourceDocument array */
-function doc(content: string, name: string): SourceDocument[] {
-  return [{ name, content }];
-}
-
-function resourcesEqual(a: readonly Resource[], b: readonly Resource[]): boolean {
-  try {
-    // Compare semantics only, ignoring origin field (which may differ between parses)
-    const stripOrigin = (r: Resource) => {
-      const { origin, ...rest } = r;
-      return {
-        ...rest,
-        attributes: r.attributes.map((attr) => {
-          const { raw, origin: attrOrigin, ...attrRest } = attr;
-          return attrRest;
-        }),
-      };
-    };
-    // NOTE: TODO[RT-COMPARE]
-    // The current round-trip semantic comparison uses JSON.stringify after
-    // stripping `origin` and other runtime fields. This approach is brittle:
-    // - attribute ordering changes can break the equality
-    // - IR shape changes may introduce transient fields
-    // Consider replacing this with a deterministic comparator that ignores
-    // origin/raw fields and compares semantics explicitly.
-    // See task `runformat-roundtrip` in siren/debt.siren.
-    return JSON.stringify(a.map(stripOrigin)) === JSON.stringify(b.map(stripOrigin));
-  } catch (_e) {
-    return false;
-  }
-}
-
-function debugStringifyResources(resources: readonly Resource[]): string {
-  const stripOrigin = (r: Resource) => {
-    const { origin, ...rest } = r;
-    return {
-      ...rest,
-      attributes: r.attributes.map((attr) => {
-        const { raw, ...attrRest } = attr;
-        return attrRest;
-      }),
-    };
-  };
-  return JSON.stringify(resources.map(stripOrigin), null, 2);
+/**
+ * Reduce entries to a semantic key, ignoring language-owned `origin` metadata
+ * (present on `SourcedEntry`/`SourcedAttribute`) so a format round-trip can be
+ * checked for semantic preservation.
+ */
+// FIXME figure out what problem this solves? Entry id or origin should be good enough.
+function semanticKey(entries: readonly SirenEntry[]): string {
+  const stripped = entries.map((entry) => ({
+    type: entry.type,
+    id: entry.id,
+    status: entry.status,
+    attributes: entry.attributes.map((attr) => ({ key: attr.key, value: attr.value })),
+  }));
+  return JSON.stringify(stripped);
 }
 
 export async function runFormat(opts: FormatOptions = {}): Promise<void> {
   // Run the lifecycle to perform discovery, parsing, build, and diagnostics
   // presentation. We discard the returned project (format doesn't operate on
-  // it) and consume only `ctx.files` for the per-file CST work below.
+  // it) and consume only `ctx.files` for the per-file work below.
   const ctx = await runLifecycle(process.cwd());
 
   const parser = await getParser();
@@ -88,45 +51,29 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
     try {
       const source = fs.readFileSync(filePath, 'utf-8');
       const relPath = path.relative(process.cwd(), filePath);
-      const parseResult = await parser.parse(doc(source, relPath));
-      const hasParseErrors = parseResult.errors.some(
-        (error) => (error.severity ?? 'error') === 'error',
-      );
-      if (!parseResult.tree || hasParseErrors) {
+      const parsed = await parser.parse({ name: relPath, content: source });
+
+      if (parsed.diagnostics.some((diagnostic) => diagnostic.severity === 'error')) {
+        // FIXME this is no longer the case
+        // language now removes only affected entries, not the whole document
         console.error(`Skipping ${relPath} (parse error)`);
         return result;
       }
 
-      const syntaxDocument = parseResult.syntaxDocuments?.[0];
-      if (!syntaxDocument) {
-        console.error(`Skipping ${relPath} (parse error)`);
-        return result;
-      }
+      // Capture the decoded semantics before format() mutates the document.
+      const beforeKey = semanticKey(parsed.toEntries());
+      const toWrite = parsed.format();
 
-      const { context: perFileIR } = createSirenProjectFromParseResult(parseResult);
-      const toWrite = renderSyntaxDocument(syntaxDocument);
-
-      // Validate round-trip: parse formatted text and decode
-      const parse2 = await parser.parse(doc(toWrite, relPath));
-      const formattedHasParseErrors = parse2.errors.some(
-        (error) => (error.severity ?? 'error') === 'error',
-      );
-      if (!parse2.tree || formattedHasParseErrors) {
+      // format() re-parses canonical output; a regression there would surface
+      // as new error diagnostics.
+      if (parsed.diagnostics.some((diagnostic) => diagnostic.severity === 'error')) {
+        // FIXME this needs to be a defensive language error, not a cli check
         console.error(`Format produced unparsable output for ${filePath}`);
         return result;
       }
-      const { context: decoded2 } = createSirenProjectFromParseResult(parse2);
-      if (!resourcesEqual(perFileIR.resources, decoded2.resources)) {
+
+      if (beforeKey !== semanticKey(parsed.toEntries())) {
         console.error(`Format round-trip changed semantics for ${filePath}; skipping`);
-        if (process.env.SIREN_FORMAT_DEBUG === '1') {
-          console.error('--- SIREN_FORMAT_DEBUG: original decoded resources ---');
-          console.error(debugStringifyResources(perFileIR.resources));
-          console.error('--- SIREN_FORMAT_DEBUG: re-decoded resources ---');
-          console.error(debugStringifyResources(decoded2.resources));
-          console.error('--- SIREN_FORMAT_DEBUG: formatted output ---');
-          console.error(toWrite);
-          console.error('--- /SIREN_FORMAT_DEBUG ---');
-        }
         return result;
       }
 
@@ -145,9 +92,7 @@ export async function runFormat(opts: FormatOptions = {}): Promise<void> {
 
       // TODO[RUNFORMAT-ATOMIC]
       // Currently the formatter writes files with `fs.writeFileSync` which is
-      // not atomic and has no backup or rollback semantics. Implement an
-      // atomic write (write to temp file + rename) and optionally expose a
-      // documented `--backup` or safe-backup behavior. See task
+      // not atomic and has no backup or rollback semantics. See task
       // `runformat-atomic-backup` in siren/debt.siren.
       fs.writeFileSync(filePath, toWrite, 'utf-8');
       result.updated = true;

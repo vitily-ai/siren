@@ -1,6 +1,6 @@
 import * as path from 'node:path';
-import type { SirenBuilder, SirenDocument, SirenProject } from '@sirenpm/core';
-import type { ParseDiagnostic, ParseResult, SourceDocument } from '@sirenpm/language';
+import type { SirenBuilder, SirenProject } from '@sirenpm/core';
+import type { LanguageDiagnostic, ParsedDocument, SourceDocument, SourcedEntry } from '@sirenpm/language';
 
 export const cliPhaseNames = [
   'discovery',
@@ -47,9 +47,12 @@ export interface CliContext {
   sirenDir: string;
   files: string[];
   sourceDocuments: SourceDocument[];
-  parseResult?: ParseResult;
-  parseDiagnostics: readonly ParseDiagnostic[];
-  sirenDocuments: readonly SirenDocument[];
+  /** Per-file parsed documents from `parser.parseBatch`. Own the CST-backed services. */
+  parsedDocuments: ParsedDocument[];
+  /** Structured language diagnostics (EL001/WL001/WL002) collected from parsed documents. */
+  languageDiagnostics: readonly LanguageDiagnostic[];
+  /** Flattened, origin-carrying entries decoded from every parsed document. */
+  entries: readonly SourcedEntry[];
   builder?: SirenBuilder;
   ir?: SirenProject;
   warnings: string[];
@@ -77,8 +80,9 @@ export function createCliContext(cwd: string): CliContext {
     sirenDir: path.join(rootDir, 'siren'),
     files: [],
     sourceDocuments: [],
-    parseDiagnostics: [],
-    sirenDocuments: [],
+    parsedDocuments: [],
+    languageDiagnostics: [],
+    entries: [],
     warnings: [],
     errors: [],
     originalFileContents: new Map(),

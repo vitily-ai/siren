@@ -1,13 +1,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { ParseResult, SourceDocument } from '@sirenpm/language';
+import type { ParsedDocument, SourceDocument } from '@sirenpm/language';
 import { getParser } from '../parser';
 import type { CliContext, DeepReadonly } from './context';
 
 export interface ParsingArtifact {
   sourceDocuments: SourceDocument[];
   originalFileContents: Map<string, string>;
-  parseResult?: ParseResult;
+  parsedDocuments: ParsedDocument[];
 }
 
 export async function runParsing(ctx: DeepReadonly<CliContext>): Promise<ParsingArtifact> {
@@ -23,11 +23,11 @@ export async function runParsing(ctx: DeepReadonly<CliContext>): Promise<Parsing
     };
   });
 
-  const parseResult = await parser.parse(sourceDocuments);
+  const parsedDocuments = await parser.parseBatch(sourceDocuments);
 
   return {
     sourceDocuments,
     originalFileContents,
-    parseResult,
+    parsedDocuments,
   };
 }

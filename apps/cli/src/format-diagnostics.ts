@@ -3,6 +3,12 @@
  *
  * Formats structured diagnostics into standardized CLI output:
  * `file:line:col: code: message`
+ *
+ * Under ADR-0006 core diagnostics (W001/W002/W003) no longer carry source
+ * positions — they reference entries by id. The CLI resolves positions by
+ * looking up each referenced entry's language-owned `Origin` via an injected
+ * resolver. Language diagnostics (EL001/WL001/WL002) carry their own optional
+ * `origin` and structured fields; the CLI assembles display text from them.
  */
 
 import type {
@@ -11,71 +17,70 @@ import type {
   Diagnostic,
   DuplicateIdDiagnostic,
 } from '@sirenpm/core';
-import type { ParseDiagnostic } from '@sirenpm/language';
+import type {
+  EL001Diagnostic,
+  LanguageDiagnostic,
+  Origin,
+  WL001Diagnostic,
+  WL002Diagnostic,
+} from '@sirenpm/language';
+
+/** Resolve a referenced entry's source origin (provided by the project snapshot). */
+export type OriginResolver = (entryId: string) => Origin | undefined;
+
+export type AnyDiagnostic = Diagnostic | LanguageDiagnostic;
 
 /**
- * Format a diagnostic for CLI display
+ * Format a diagnostic for CLI display.
  *
  * Output format: `file:line:col: code: message`
- *
- * - W001 (Circular dependency): message assembled from `nodes` array
- * - W002 (Dangling dependency): message assembled from resource info and dependency
- * - W003 (Duplicate ID): message assembled from duplicate metadata
- * - WL001/WL002/WL003/EL001: message passed through from ParseDiagnostic
- *
- * @param diagnostic - Structured diagnostic from core (Diagnostic or ParseDiagnostic)
- * @returns Formatted diagnostic string
  */
-export function formatDiagnostic(diagnostic: Diagnostic | ParseDiagnostic): string {
-  const prefix = formatPrefix(diagnostic);
+export function formatDiagnostic(diagnostic: AnyDiagnostic, resolveOrigin?: OriginResolver): string {
+  const origin = originForDiagnostic(diagnostic, resolveOrigin);
+  const prefix = formatPrefix(origin);
   const message = formatMessage(diagnostic);
   return `${prefix}: ${diagnostic.code}: ${message}`;
 }
 
-type DuplicatePositionDiagnostic = {
-  readonly secondLine?: number;
-  readonly secondColumn?: number;
-};
-
-// Centralize duplicate-position codes so additional duplicate diagnostics can opt in explicitly.
-const duplicatePositionCodes = new Set(['W003']);
-
-function usesDuplicatePosition(diagnostic: Diagnostic | ParseDiagnostic): boolean {
-  return duplicatePositionCodes.has(diagnostic.code);
-}
-
-function hasDuplicatePosition(
-  diagnostic: Diagnostic | ParseDiagnostic,
-): diagnostic is (Diagnostic | ParseDiagnostic) & DuplicatePositionDiagnostic {
-  return 'secondLine' in diagnostic && 'secondColumn' in diagnostic;
-}
-
-/**
- * Format the position prefix (file:line:col)
- *
- * For duplicate ID diagnostics, position is the duplicate (second) occurrence.
- */
-function formatPrefix(diagnostic: Diagnostic | ParseDiagnostic): string {
-  const file = diagnostic.file ?? 'unknown';
-
-  // Duplicate-ID diagnostics use secondLine/secondColumn for the diagnostic position.
-  if (usesDuplicatePosition(diagnostic) && hasDuplicatePosition(diagnostic)) {
-    const line = diagnostic.secondLine ?? 0;
-    const column = diagnostic.secondColumn ?? 0;
-    return `${file}:${line}:${column}`;
+/** Convert an `Origin` (or its absence) into a `file:line:col` prefix. */
+function formatPrefix(origin: Origin | undefined): string {
+  const file = origin?.document ?? 'unknown';
+  if (origin && origin.kind === 'range') {
+    return `${file}:${origin.startRow + 1}:0`;
   }
-
-  // All other diagnostic types have standard line/column
-  const withPos = diagnostic as { line?: number; column?: number };
-  const line = withPos.line ?? 0;
-  const column = withPos.column ?? 0;
-  return `${file}:${line}:${column}`;
+  return `${file}:0:0`;
 }
 
 /**
- * Format the diagnostic message based on code
+ * Resolve the source origin a diagnostic should point at.
+ *
+ * - Core diagnostics carry entry ids; resolve via the project snapshot.
+ * - Language diagnostics carry their own optional `origin`.
  */
-function formatMessage(diagnostic: Diagnostic | ParseDiagnostic): string {
+function originForDiagnostic(
+  diagnostic: AnyDiagnostic,
+  resolveOrigin?: OriginResolver,
+): Origin | undefined {
+  switch (diagnostic.code) {
+    case 'W001': {
+      const start = (diagnostic as CircularDependencyDiagnostic).nodes?.[0];
+      return start ? resolveOrigin?.(start) : undefined;
+    }
+    case 'W002':
+      return resolveOrigin?.((diagnostic as DanglingDependencyDiagnostic).entryId);
+    case 'W003':
+      return resolveOrigin?.((diagnostic as DuplicateIdDiagnostic).entryId);
+    case 'EL001':
+    case 'WL001':
+    case 'WL002':
+      return (diagnostic as EL001Diagnostic | WL001Diagnostic | WL002Diagnostic).origin;
+    default:
+      return undefined;
+  }
+}
+
+/** Assemble the human-readable message from a diagnostic's structured fields. */
+function formatMessage(diagnostic: AnyDiagnostic): string {
   switch (diagnostic.code) {
     case 'W001':
       return formatCircularDependency(diagnostic as CircularDependencyDiagnostic);
@@ -83,35 +88,54 @@ function formatMessage(diagnostic: Diagnostic | ParseDiagnostic): string {
       return formatDanglingDependency(diagnostic as DanglingDependencyDiagnostic);
     case 'W003':
       return formatDuplicateId(diagnostic as DuplicateIdDiagnostic);
+    case 'EL001':
+      return formatSyntaxExclusion(diagnostic as EL001Diagnostic);
+    case 'WL001':
+      return formatUnknownStatus(diagnostic as WL001Diagnostic);
+    case 'WL002':
+      return formatCollapsedStatus(diagnostic as WL002Diagnostic);
     default:
-      // WL001, WL002, WL003, EL001 - pass through message
-      return (diagnostic as ParseDiagnostic).message;
+      return diagnostic.code;
   }
 }
 
-/**
- * Format W001: Circular dependency detected
- */
+/** W001: Circular dependency detected */
 function formatCircularDependency(diagnostic: CircularDependencyDiagnostic): string {
   const chain = (diagnostic.nodes ?? []).join(' -> ');
   return `Circular dependency detected: ${chain}`;
 }
 
-/**
- * Format W002: Dangling dependency
- */
+/** W002: Dangling dependency */
 function formatDanglingDependency(diagnostic: DanglingDependencyDiagnostic): string {
-  const { resourceType, resourceId, dependencyId } = diagnostic;
-  return `Dangling dependency: ${resourceType ?? 'undefined'} '${resourceId ?? 'undefined'}' depends on '${dependencyId ?? 'undefined'}'`;
+  const { entryType, entryId, dependencyId } = diagnostic;
+  return `Dangling dependency: ${entryType} '${entryId}' depends on '${dependencyId}'`;
 }
 
 /**
- * Format W003: Duplicate resource ID detected
+ * W003: Duplicate entry ID detected
+ *
+ * Core no longer carries the first-occurrence position (ADR-0006), so the
+ * message is reduced to the entry identity. First-occurrence attribution would
+ * require the CLI to track entry ordering/origins itself.
  */
-// TODO formalize {document}:{line}:{column} as a canonical address format in core diagnostics and refactor to use that consistently across all diagnostics for accurate CLI formatting without needing augmentation in the CLI layer.
 function formatDuplicateId(diagnostic: DuplicateIdDiagnostic): string {
-  const { resourceType, resourceId, firstLine, firstColumn, firstFile } = diagnostic;
-  const firstLocation = `${firstLine ?? 0}:${firstColumn ?? 0}`;
-  const firstWithFile = firstFile ? `${firstFile}:${firstLocation}` : firstLocation;
-  return `Duplicate resource ID detected: ${resourceType} '${resourceId}' first defined at ${firstWithFile}`;
+  const { entryType, entryId } = diagnostic;
+  return `Duplicate entry ID detected: ${entryType} '${entryId}'`;
+}
+
+/** EL001: Resource excluded from the AST due to a parse error in its subtree. */
+function formatSyntaxExclusion(diagnostic: EL001Diagnostic): string {
+  const subject = diagnostic.resourceId ? ` '${diagnostic.resourceId}'` : '';
+  return `Invalid syntax: could not parse ${diagnostic.nodeType}${subject}`;
+}
+
+/** WL001: Unrecognized status modifier ignored. */
+function formatUnknownStatus(diagnostic: WL001Diagnostic): string {
+  return `Unrecognized status modifier '${diagnostic.modifier}' on '${diagnostic.resourceId}' was ignored`;
+}
+
+/** WL002: Multiple recognized status modifiers collapsed (last wins). */
+function formatCollapsedStatus(diagnostic: WL002Diagnostic): string {
+  const modifiers = diagnostic.recognizedModifiers.join(', ');
+  return `Resource '${diagnostic.resourceId}' has multiple status modifiers (${modifiers}); resolved to '${diagnostic.resolvedStatus}'`;
 }

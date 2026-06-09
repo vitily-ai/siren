@@ -7,6 +7,6 @@ export interface BuildingArtifact {
 
 export function runBuilderConstruction(ctx: DeepReadonly<CliContext>): BuildingArtifact {
   return {
-    builder: SirenBuilder.fromDocuments(ctx.sirenDocuments),
+    builder: SirenBuilder.fromEntries(ctx.entries),
   };
 }

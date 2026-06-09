@@ -1,130 +1,29 @@
-import type { SirenDocument } from '@sirenpm/core';
-import {
-  decodeSyntaxDocuments,
-  type ParseDiagnostic,
-  type ParseError,
-  type ParseResult,
-  type SyntaxDocument,
-} from '@sirenpm/language';
+import type { LanguageDiagnostic, ParsedDocument, SourcedEntry } from '@sirenpm/language';
 import type { DeepReadonly } from './context';
 
-function toDiagnosticColumn(column: number | undefined): number | undefined {
-  if (column === undefined) return undefined;
-  return Math.max(0, column - 1);
-}
-
-function isDuplicateCompleteParseError(error: ParseError): boolean {
-  return (
-    (error.severity ?? 'error') === 'warning' &&
-    error.kind === 'unexpected_token' &&
-    error.found === 'complete' &&
-    (error.expected ?? []).includes('{') &&
-    error.message.includes("duplicate 'complete' keyword")
-  );
-}
-
-function findResourceForParseError(
-  error: ParseError,
-  decodableSyntaxDocuments: readonly SyntaxDocument[],
-): SyntaxDocument['resources'][number] | undefined {
-  const documentName = error.document;
-  const startByte = error.startByte;
-
-  for (const syntaxDocument of decodableSyntaxDocuments) {
-    if (documentName && syntaxDocument.source.name !== documentName) continue;
-
-    for (const resource of syntaxDocument.resources) {
-      if (startByte !== undefined) {
-        if (startByte >= resource.span.startByte && startByte <= resource.span.endByte) {
-          return resource;
-        }
-      } else if (
-        error.line >= resource.span.startRow + 1 &&
-        error.line <= resource.span.endRow + 1
-      ) {
-        return resource;
-      }
-    }
-  }
-
-  return undefined;
-}
-
-function parseErrorsToDiagnostics(
-  errors: readonly ParseError[],
-  decodableSyntaxDocuments: readonly SyntaxDocument[],
-): readonly ParseDiagnostic[] {
-  const diagnostics: ParseDiagnostic[] = [];
-
-  for (const error of errors) {
-    if (isDuplicateCompleteParseError(error)) {
-      const resource = findResourceForParseError(error, decodableSyntaxDocuments);
-      const resourceId = resource?.identifier.value ?? 'unknown';
-      diagnostics.push({
-        code: 'WL002',
-        message: `Resource '${resourceId}' has 'complete' keyword specified more than once. Only one is allowed; resource will be treated as complete: true.`,
-        severity: 'warning',
-        file: resource?.span.document ?? error.document,
-        line: resource ? resource.span.startRow + 1 : error.line,
-        column: resource ? 0 : toDiagnosticColumn(error.column),
-      });
-      continue;
-    }
-
-    if ((error.severity ?? 'error') === 'error') {
-      diagnostics.push({
-        code: 'EL001',
-        message: `Invalid syntax: ${error.message}`,
-        severity: 'error',
-        file: error.document,
-        line: error.line,
-        column: toDiagnosticColumn(error.column),
-      });
-    }
-  }
-
-  return diagnostics;
-}
-
 export interface DecodingArtifact {
-  sirenDocuments: readonly SirenDocument[];
-  parseDiagnostics: readonly ParseDiagnostic[];
+  entries: readonly SourcedEntry[];
+  languageDiagnostics: readonly LanguageDiagnostic[];
 }
 
-export function runDecoding(parseResult: DeepReadonly<ParseResult>): DecodingArtifact {
-  const errorsByDocument = new Map<string, ParseError[]>();
-  // FIXME why is the null check needed here?
-  for (const error of parseResult?.errors ?? []) {
-    const document = error.document ?? 'unknown';
-    const errors = errorsByDocument.get(document) ?? [];
-    errors.push(error);
-    errorsByDocument.set(document, errors);
+/**
+ * Flatten parsed documents into core-facing entries and collect language
+ * diagnostics.
+ *
+ * Under the ADR-0004 boundary the language package owns parse-error handling:
+ * resources whose subtree failed to parse are excluded from each document's
+ * AST and reported as `EL001`, so `toEntries()` already yields only decodable
+ * entries. Decoding therefore reduces to a flatten over the parsed documents.
+ */
+export function runDecoding(parsedDocuments: DeepReadonly<ParsedDocument[]>): DecodingArtifact {
+  const entries: SourcedEntry[] = [];
+  const languageDiagnostics: LanguageDiagnostic[] = [];
+
+  for (const parsed of parsedDocuments as readonly ParsedDocument[]) {
+    entries.push(...parsed.toEntries());
+    languageDiagnostics.push(...parsed.diagnostics);
   }
 
-  const skippedDocuments = new Set<string>();
-  for (const [document, errors] of errorsByDocument) {
-    if (errors.some((error) => (error.severity ?? 'error') === 'error')) {
-      skippedDocuments.add(document);
-    }
-  }
-
-  const syntaxDocuments = parseResult.syntaxDocuments ?? [];
-  const decodableSyntaxDocuments = syntaxDocuments.filter(
-    (syntaxDocument) => !skippedDocuments.has(syntaxDocument.source.name),
-  );
-  const retainedParseWarnings = parseResult.errors.filter((error) => {
-    const severity = error.severity ?? 'error';
-    const document = error.document ?? 'unknown';
-    return severity === 'warning' && !skippedDocuments.has(document);
-  });
-
-  const { documents, diagnostics } = decodeSyntaxDocuments(decodableSyntaxDocuments);
-
-  return {
-    sirenDocuments: documents ?? [],
-    parseDiagnostics: [
-      ...parseErrorsToDiagnostics(retainedParseWarnings, decodableSyntaxDocuments),
-      ...diagnostics,
-    ],
-  };
+  return { entries, languageDiagnostics };
 }
+

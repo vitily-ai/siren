@@ -1,6 +1,5 @@
-import type { ParseResult } from '@sirenpm/language';
 import { runBuilderConstruction } from './building';
-import { type CliContext, createCliContext, type DeepReadonly } from './context';
+import { type CliContext, createCliContext } from './context';
 import { runDecoding } from './decoding';
 import { runDiagnosticsAccumulation } from './diagnostics';
 import { runDiscovery } from './discovery';
@@ -49,12 +48,12 @@ export async function runLifecycle(cwd: string, hooks: LifecycleHooks = {}): Pro
   const parsingArt = await runParsing(ctx);
   ctx.sourceDocuments = parsingArt.sourceDocuments;
   ctx.originalFileContents = parsingArt.originalFileContents;
-  ctx.parseResult = parsingArt.parseResult;
+  ctx.parsedDocuments = parsingArt.parsedDocuments;
   ctx.phasesRun.add('parsing');
 
-  const decodingArt = runDecoding(ctx.parseResult as DeepReadonly<ParseResult>);
-  ctx.sirenDocuments = decodingArt.sirenDocuments;
-  ctx.parseDiagnostics = decodingArt.parseDiagnostics;
+  const decodingArt = runDecoding(ctx.parsedDocuments);
+  ctx.entries = decodingArt.entries;
+  ctx.languageDiagnostics = decodingArt.languageDiagnostics;
   ctx.phasesRun.add('decoding');
 
   const buildingArt = runBuilderConstruction(ctx);
