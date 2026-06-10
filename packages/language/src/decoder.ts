@@ -113,7 +113,7 @@ function appendSyntheticMilestone(
           {
             key: 'depends_on',
             value: entries.map((e) => ({ kind: 'reference' as const, id: e.id })),
-            origin: { kind: 'synthetic', document: documentId },
+            origin: { kind: 'synthetic', document: sourceName },
           },
         ]
       : [];
@@ -122,7 +122,7 @@ function appendSyntheticMilestone(
     type: 'milestone',
     id: documentId,
     attributes: dependsOnAttr,
-    origin: { kind: 'synthetic', document: documentId },
+    origin: { kind: 'synthetic', document: sourceName },
   };
 
   return [...entries, syntheticMilestone];

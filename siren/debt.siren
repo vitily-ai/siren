@@ -83,11 +83,6 @@ task comment-export-performance {
   link = ["https://github.com/vitily-ai/siren/pull/34#discussion_r3140583683", "https://github.com/vitily-ai/siren/pull/34#discussion_r3140583769"]
 }
 
-task loadproject-cache-per-file-artifacts {
-  description = "loadproject-cache-er-file-artifacts.md"
-  link = "https://github.com/vitily-ai/siren/pull/35#discussion_r3140855905"
-}
-
 task bad-golden {
 
   description = "the format-dry-run cli test is erroneously leaving space before comments after ast refactor"

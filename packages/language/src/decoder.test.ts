@@ -320,14 +320,14 @@ describe('decodeAstToEntries', () => {
       expect(entries[1].id).toBe('myfile');
     });
 
-    it('synthetic milestone has SyntheticOrigin with document = milestone id', async () => {
+    it('synthetic milestone has SyntheticOrigin with document = source name', async () => {
       const { entries } = await buildAndDecode('proj.siren', 'task t {}', {
         synthesizeMilestones: true,
       });
       const milestone = entries[1];
       expect(milestone.origin).toEqual({
         kind: 'synthetic',
-        document: 'proj',
+        document: 'proj.siren',
       });
     });
 
@@ -344,14 +344,14 @@ describe('decodeAstToEntries', () => {
       ]);
     });
 
-    it('synthetic milestone depends_on attribute has SyntheticOrigin', async () => {
+    it('synthetic milestone depends_on attribute has SyntheticOrigin with document = source name', async () => {
       const { entries } = await buildAndDecode('doc.siren', 'task t {}', {
         synthesizeMilestones: true,
       });
       const milestone = entries[1];
       expect(milestone.attributes[0].origin).toEqual({
         kind: 'synthetic',
-        document: 'doc',
+        document: 'doc.siren',
       });
     });
 
@@ -442,7 +442,7 @@ describe('decodeAstToEntries', () => {
       expect(milestone.id).toBe('doc');
       // No surviving entries → empty attributes (no depends_on).
       expect(milestone.attributes).toEqual([]);
-      expect(milestone.origin).toEqual({ kind: 'synthetic', document: 'doc' });
+      expect(milestone.origin).toEqual({ kind: 'synthetic', document: 'doc.siren' });
     });
   });
 });
