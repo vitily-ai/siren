@@ -66,7 +66,7 @@ yarn workspace <package-name> tsc --noEmit
 
 - Make changes in the appropriate package under `packages/` or `apps/`.
 - Add/update unit tests in the same package.
-- Grammar/parser changes must include a matching `snippets` fixture under `packages/language/test/fixtures/snippets/`.
+- Grammar/parser changes must include a matching `corpus` fixture under `packages/language/src/grammar/test/corpus/`.
 - Decoder/IR changes must include a matching `projects` fixture under `packages/language/test/fixtures/projects/` (and purely semantic core changes should use core unit tests).
 - Run `yarn install` when changing workspace dependencies.
 - Use `yarn workspace <name> <script>` to run package-local scripts.
@@ -86,7 +86,7 @@ yarn test -t "Test Name Pattern"
 ```
 
 - Core change testing rules (must follow):
-  - Grammar/parser changes → add `snippets` fixtures under `packages/language/test/fixtures/snippets/`
+  - Grammar/parser changes → add `corpus` fixtures under `packages/language/src/grammar/test/corpus/`
   - Decoder/IR changes → add `projects` fixtures under `packages/language/test/fixtures/projects/` (or core IR unit tests when purely semantic)
   - CLI behavior changes → add golden-file tests under `apps/cli/test/expected/`
 

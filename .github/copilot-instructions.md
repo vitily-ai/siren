@@ -65,7 +65,7 @@ apps/
 - **Playwright** only for browser E2E tests requiring real WASM loading
 
 ### Testing guidelines for code changes
-- **Grammar/parser changes**: Any change to `packages/language` that affects parsing should include an associated `snippets` fixture under `packages/language/test/fixtures/snippets/` demonstrating the grammar case being modified or added.
+- **Grammar/parser changes**: Any change to `packages/language` that affects parsing should include an associated `corpus` fixture under `packages/language/src/grammar/test/corpus/` demonstrating the grammar case being modified or added.
 - **Decoder/IR changes**: Changes that affect CST → IR decoding or the intermediate representation must include a corresponding `projects` fixture under `packages/language/test/fixtures/projects/` (and, when the change is purely semantic in core, exercise the IR via core unit tests).
 - **CLI changes**: Any change to the CLI behavior (commands, output formatting, warnings ordering) should include a golden-file test under `apps/cli/test/expected/` asserting stdout and, where applicable, stderr output. Use the `fixture-utils` helper to copy `projects` fixtures into temporary directories for CLI tests.
 

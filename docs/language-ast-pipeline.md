@@ -208,7 +208,7 @@ Add tests at each layer that owns behavior:
 - **Formatter tests**: canonical output; parse-error refusal; comment preservation in lexical order.
 - **CLI golden tests**: update only if CLI behavior changes.
 
-Use `projects` fixtures under `packages/language/test/fixtures/projects/` for decode coverage. Use `snippets` fixtures under `packages/language/test/fixtures/snippets/` for grammar/AST cases. Use `apps/cli/test/expected/` golden files for CLI assertions.
+Use `projects` fixtures under `packages/language/test/fixtures/projects/` for decode coverage. Use `corpus` fixtures under `packages/language/src/grammar/test/corpus/` for grammar/AST cases. Use `apps/cli/test/expected/` golden files for CLI assertions.
 
 Depends on: `lang-decode`, `lang-format`
 

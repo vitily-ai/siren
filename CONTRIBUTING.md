@@ -55,7 +55,7 @@ How to add features
 
 1. Open an issue describing the change and the acceptance criteria.
 2. Add or update unit tests in the appropriate package.
-3. Grammar/parser changes should add a focused snippet fixture under `packages/language/test/fixtures/snippets/`.
+3. Grammar/parser changes should add a focused fixture to the corpus under `packages/language/src/grammar/test/corpus/`.
 4. Decoder or IR changes should add a focused project fixture under `packages/language/test/fixtures/projects/` (or core IR unit tests when the change is purely semantic).
 5. CLI behavior changes should add a golden-file test under `apps/cli/test/expected/`.
 6. Implement the change with minimal, focused edits.
@@ -229,15 +229,6 @@ Test files that target a specific module include a doc comment at the top scopin
 
 Follow this pattern when creating new test files: declare what the file tests — and, crucially, what it does **not** test.
 
-### Snippet fixtures (grammar testing)
-
-Snippet fixtures in `packages/language/test/fixtures/snippets/` are minimal `.siren` files that exercise specific grammar constructs. Conventions:
-
-- Numbered for predictable ordering: `01-minimal.siren`, `02-simple.siren`, etc.
-- Each file focuses on a single grammar dimension (e.g., dependencies, comments, quoted identifiers, status modifiers).
-- The first line should be a comment describing the purpose: `# Minimal example - simplest valid Siren file`.
-- When adding a grammar/parser feature, include a snippet fixture demonstrating it and a decoder test that references the fixture.
-
 ### What not to test
 
 - **Do not write tests that assert structure.** Structural properties (field shapes, union discrimination, optionality, readonlyness) are enforced by the TypeScript type system. A test that checks whether a type has a certain field adds noise without catching runtime failures.
@@ -254,7 +245,7 @@ Snippet fixtures in `packages/language/test/fixtures/snippets/` are minimal `.si
 
 When contributing a change, verify each applicable item:
 
-- [ ] Grammar/parser change → snippet fixture added under `packages/language/test/fixtures/snippets/`
+- [ ] Grammar/parser change → new corpus scenario added to `packages/language/src/grammar/test/corpus`
 - [ ] Decoder/IR change → project fixture added under `packages/language/test/fixtures/projects/` (and `packages/core/test/fixtures/projects/`)
 - [ ] CLI behavior change → golden file added under `apps/cli/test/expected/`
 - [ ] Core semantic change → core unit test(s) added in `packages/core/test/`
@@ -267,7 +258,7 @@ Fixtures
 
 - Purpose: Fixtures are representative `.siren` inputs and golden outputs used by unit and integration tests to validate parsing, decoding, and behavior of clients (CLI, web, etc).
 - Common locations:
-	- `packages/language/test/fixtures/snippets/` — small focused grammar examples for parser and decoder tests (numbered `01-minimal.siren`, `02-simple.siren`, etc.)
+	- `packages/language/src/grammar/test/corpus/` — small focused grammar examples and CST snapshots for observability into parser behavior
 	- `packages/language/test/fixtures/projects/` — full project fixtures used by decoder, integration, and CLI tests
 	- `packages/core/test/fixtures/projects/` — duplicate of `packages/language/test/fixtures/projects/` (see duplication note below)
 	- `apps/cli/test/expected/` — golden stdout/stderr outputs for CLI tests

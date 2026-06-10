@@ -153,9 +153,6 @@ task b {}
       // Idempotent output: both calls return the same canonical string.
       expect(second).toBe(first);
 
-      // FAILS: after format(), source.content should reflect canonical form.
-      // Currently source.content is never mutated, so it still holds the
-      // original messy input.
       expect(parsed.source.content).toBe(first);
     });
 
@@ -169,8 +166,6 @@ task b {}
       const expected = 'task foo {}\n';
       expect(formatted).toBe(expected);
 
-      // FAILS: source.content is still 'task  foo  { }' because format()
-      // does NOT mutate #sourceContent.
       expect(parsed.source.content).toBe(expected);
     });
 
@@ -182,10 +177,6 @@ task b {}
       const formatted = parsed.format();
       expect(formatted).toBe(canonical);
 
-      // FAILS: source.content is never updated by format(), but since the
-      // input was already canonical the values happen to match. After
-      // implementation this must still hold — a no-op mutation must not
-      // alter already-canonical source.
       expect(parsed.source.content).toBe(canonical);
     });
   });

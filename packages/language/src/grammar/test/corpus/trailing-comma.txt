@@ -1,0 +1,133 @@
+==================
+Explicit tuple trailing comma
+==================
+
+task x {
+  deps = [A, B,]
+}
+
+---
+
+(document
+  (resource
+    (resource_header
+      type: (resource_type)
+      id: (identifier
+        (bare_identifier)))
+    body: (block
+      (block_open)
+      (attribute
+        key: (bare_identifier)
+        value: (expression
+          (tuple
+            (bare_identifier)
+            (bare_identifier))))
+      (block_close))))
+
+==================
+Single-element explicit tuple trailing comma
+==================
+
+task x {
+  deps = [A,]
+}
+
+---
+
+(document
+  (resource
+    (resource_header
+      type: (resource_type)
+      id: (identifier
+        (bare_identifier)))
+    body: (block
+      (block_open)
+      (attribute
+        key: (bare_identifier)
+        value: (expression
+          (tuple
+            (bare_identifier))))
+      (block_close))))
+
+==================
+Implicit tuple trailing comma
+==================
+
+task x {
+  deps = A, B,
+}
+
+---
+
+(document
+  (resource
+    (resource_header
+      type: (resource_type)
+      id: (identifier
+        (bare_identifier)))
+    body: (block
+      (block_open)
+      (attribute
+        key: (bare_identifier)
+        value: (expression
+          (tuple
+            (bare_identifier)
+            (bare_identifier))))
+      (block_close))))
+
+==================
+Single-element implicit tuple trailing comma
+==================
+
+task x {
+  deps = A,
+}
+
+---
+
+(document
+  (resource
+    (resource_header
+      type: (resource_type)
+      id: (identifier
+        (bare_identifier)))
+    body: (block
+      (block_open)
+      (attribute
+        key: (bare_identifier)
+        value: (expression
+          (tuple
+            (bare_identifier))))
+      (block_close))))
+
+==================
+Trailing comma doesn't swallow next attribute
+==================
+
+task x {
+  deps = A,
+  foo = 123
+}
+
+---
+
+(document
+  (resource
+    (resource_header
+      type: (resource_type)
+      id: (identifier
+        (bare_identifier)))
+    body: (block
+      (block_open)
+      (attribute
+        key: (bare_identifier)
+        value: (expression
+          (tuple
+            (bare_identifier))))
+      (attribute
+        key: (bare_identifier)
+        value: (expression
+          (tuple
+            (literal
+              (number_literal)))))
+      (block_close))))
