@@ -1,0 +1,8 @@
+# Build artifacts (keep WASM, ignore native libs)
+*.so
+*.dylib
+*.dll
+build/
+
+# Dependencies
+node_modules/

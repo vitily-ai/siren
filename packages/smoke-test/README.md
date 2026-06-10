@@ -1,0 +1,5 @@
+# Siren language init smoke test
+
+The one (1) test module that runs here serves a singular purpose - to ensure that the `language` package, as packaged and ideally reflecting its publishing to npm, properly locates and loads its internal WASM binary.
+
+This smoke is accomplished by initializing the language parser as a singleton in module scope, outside of the vitest lifecycle. If the parser fails to initialize, the test will fail on account of an unhandled exception escaping the module. If the test itself is actually reached, and runs, the purpose of the smoke is already achieved. For this reason, the test itself is marked as `it.fails` and throws unconditionally, because the assertions contained within are not actually the responsibility of this test. At best, they are a signal that more basal tests within `@sirenpm/language` are probably failing.

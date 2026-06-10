@@ -2,7 +2,7 @@
 # Design decisions resolved in planning session May 2026.
 # Cross-file dependency: lang-decode in siren/language-ast-pipeline.siren blocks on this milestone.
 
-milestone tuple-first-core {
+milestone tuple-first-core complete {
   description = "Migrate @sirenpm/core's Attribute.value contract from a scalar/array/reference discriminated union (AttributeValue) to a tuple-first flat readonly array of atoms (Tuple = readonly Atom[]). Atom replaces PrimitiveValue and ResourceReference as the sole atom-level type; null is removed from the atom set as it is no longer produced by the grammar. ArrayValue, PrimitiveValue, isArray, and isPrimitive are deleted. isReference is retyped to discriminate Atom. Attribute.raw is dropped. Empty tuple is the absence value. SirenBuilder.fromResources accepts strictly tuple-shaped input with no normalization shim. This is a breaking change to @sirenpm/core and a hard prerequisite for @sirenpm/language implementing ParsedDocument.toSirenDocument() against the tuple-first decode rules in docs/adr/0004-siren-ast-language-boundary.md."
   affected_packages = ["@sirenpm/core"]
   depends_on = tuple-first-core-publish
@@ -10,7 +10,7 @@ milestone tuple-first-core {
 
 # TDD red — write the tests first and confirm they fail against the current shape
 
-task tuple-first-core-tests {
+task tuple-first-core-tests complete {
   description = "TDD red: update packages/core/src/ir/types.test.ts and packages/core/src/utilities/dependency-tree.test.ts to assert the new tuple-first shape. Attribute.value must be typed as readonly Atom[] where Atom = string | number | boolean | ResourceReference. Scalars are represented as single-element tuples. isReference operates on Atom. Tests must fail against the current core before any type changes are made."
   affected_packages = ["@sirenpm/core"]
   files = "packages/core/src/ir/types.test.ts, packages/core/src/utilities/dependency-tree.test.ts"
@@ -18,7 +18,7 @@ task tuple-first-core-tests {
 
 # TDD green — migrate types and internal consumers to make the red tests pass
 
-task tuple-first-core-types {
+task tuple-first-core-types complete {
   description = "TDD green: rewrite packages/core/src/ir/types.ts — introduce Atom (string | number | boolean | ResourceReference) and Tuple (readonly Atom[]), delete ArrayValue, PrimitiveValue, isArray, and isPrimitive, retype isReference to discriminate Atom, and drop Attribute.raw. Migrate internal consumers: cloneAndFreezeAttributeValue in snapshot.ts and depends_on extraction in utilities/entry.ts. Update index.ts public exports. All core tests must pass."
   affected_packages = ["@sirenpm/core"]
   files = "packages/core/src/ir/types.ts, packages/core/src/ir/snapshot.ts, packages/core/src/utilities/entry.ts, packages/core/src/index.ts"
@@ -27,7 +27,7 @@ task tuple-first-core-types {
 
 # CONTEXT.md — update glossary to reflect the new type surface
 
-task tuple-first-core-context {
+task tuple-first-core-context complete {
   description = "Update CONTEXT.md core model glossary: introduce Atom and Tuple as canonical terms, mark AttributeValue, PrimitiveValue, and ArrayValue as superseded, drop references to isArray and isPrimitive as public guards, and add a note that empty tuple is the absence value replacing null in attribute positions."
   affected_packages = ["@sirenpm/core"]
   files = "CONTEXT.md"
@@ -36,7 +36,7 @@ task tuple-first-core-context {
 
 # Publication — bump version, add changeset, and publish
 
-task tuple-first-core-publish {
+task tuple-first-core-publish complete {
   description = "Add a changeset bumping @sirenpm/core to the next 0.x release (0.5.0) documenting the breaking AttributeValue → Tuple migration: deleted types (ArrayValue, PrimitiveValue), deleted guards (isArray, isPrimitive), deleted fields (Attribute.raw), and the new Atom / Tuple surface. Tag and publish via the existing release workflow. This task is the synchronization point that unblocks lang-decode in language-ast-pipeline."
   affected_packages = ["@sirenpm/core"]
   depends_on = [tuple-first-core-types, tuple-first-core-context]

@@ -1,56 +1,30 @@
-/**
- * @sirenpm/language
- * Parser, decoder, and exporter for the Siren grammar.
- */
+// biome-ignore-all lint/performance/noBarrelFile: Public API export
 
-// biome-ignore-all lint/performance/noBarrelFile: public package entrypoint; mirrors @sirenpm/core.
-
-export type { CreateSirenProjectResult } from './context-factory';
-// Bridge — decode parser output or syntax documents into a fully-populated SirenProject.
-export {
-  createSirenProjectFromParseResult,
-  createSirenProjectFromSyntaxDocuments,
-} from './context-factory';
-export type { ParseDiagnostic } from './decoder/index';
-// Decoder — Parsed Document Model → IR transformation, with language-phase diagnostics.
-export { decodeSyntaxDocuments } from './decoder/index';
-// Renderer — render a SirenDocument (IR) back to Siren source text.
-export { renderSirenDocument } from './export/render-document';
-// Formatter — render parsed syntax documents without semantic IR.
-export { renderSyntaxDocument } from './format/syntax-formatter';
-// Parser adapter contracts
 export type {
-  CommentToken,
-  ParseError,
-  ParseResult,
-  ParserAdapter,
-  SourceDocument,
-} from './parser/adapter';
-// Concrete syntax tree node types
+  AstAttribute,
+  AstBooleanMember,
+  AstIdentifierMember,
+  AstNumberMember,
+  AstResource,
+  AstResourceKind,
+  AstStatusModifier,
+  AstStringMember,
+  AstTuple,
+  AstTupleMember,
+  SirenAst,
+} from './ast/types';
 export type {
-  ArrayNode,
-  AttributeNode,
-  CSTNode,
-  DocumentNode,
-  ExpressionNode,
-  IdentifierNode,
-  LiteralNode,
+  EL001Diagnostic,
+  LanguageDiagnostic,
+  WL001Diagnostic,
+  WL002Diagnostic,
+} from './diagnostics';
+export type {
   Origin,
-  ReferenceNode,
-  ResourceNode,
-} from './parser/cst';
-// Parser factory — owns web-tree-sitter runtime + grammar loading.
+  RangeOrigin,
+  SourcedAttribute,
+  SourcedEntry,
+  SyntheticOrigin,
+} from './origin';
 export { createParser } from './parser/factory';
-
-export type {
-  SourceSpan,
-  SyntaxAttribute,
-  SyntaxDocument,
-  SyntaxExpression,
-  SyntaxIdentifier,
-  SyntaxResource,
-  SyntaxSourceDocument,
-  SyntaxToken,
-  SyntaxTrivia,
-  SyntaxTriviaClassification,
-} from './syntax/types';
+export type { ParsedDocument, Parser, SourceDocument } from './parser/types';

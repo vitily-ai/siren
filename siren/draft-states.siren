@@ -90,16 +90,9 @@ milestone draft-symbol-support { // draft
   depends_on = [draft-states]
 }
 
-milestone multiple-statuses-diagnostic { // draft
+milestone multiple-statuses-diagnostic complete {
   description = "multiple statuses declared on a resource must resolve to one status (last-wins) and raise a warning diagnostic"
   affected_packages = "language"
   depends_on = draft-symbol-support
-  example = "
-  task some-task draft complete {}
-  ...
-  WL004 - multiple statuses declared for resource some-task. resource will be considered `complete`.
-  ...
-  task some-task-2 draft draft {}
-  WL004 - multiple statuses declared for resource some-task-2. resource will be considered `draft`.
-  "
+  example = "<example removed> due to multiline string constraint. check git history for this resource"
 }

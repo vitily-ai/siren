@@ -1,0 +1,33 @@
+import { createParser } from '@sirenpm/language';
+import { describe, expect, it } from 'vitest';
+
+const PARSER = createParser();
+
+// We don't actually care if this test runs successfully
+// We only care that the package imports properly and that the parser
+// constructs, meaning it resolves the WASM artifact.
+describe('Language Package Smoke Test', () => {
+  it.fails('should load the parser and convert to IR from bundled output', async () => {
+    const source = {
+      name: 'smoke.siren',
+      content: 'task my-task { description = "smoke test" }',
+    };
+
+    const doc = await (await PARSER).parse(source);
+
+    // Check AST
+    expect(doc.ast).toBeDefined();
+    expect(doc.ast.resources).toHaveLength(1);
+    expect(doc.ast.resources[0].id).toBe('my-task');
+
+    // Check IR conversion (flat SourcedEntry[])
+    const ir = doc.toEntries();
+    expect(ir).toBeDefined();
+    expect(ir).toHaveLength(1);
+    expect(ir[0].id).toBe('my-task');
+    expect(ir[0].attributes).toHaveLength(1);
+    expect(ir[0].attributes[0].key).toBe('description');
+
+    throw new Error('Assertions not important, parser loaded and ran successfully');
+  });
+});

@@ -66,7 +66,7 @@ yarn workspace <package-name> tsc --noEmit
 
 - Make changes in the appropriate package under `packages/` or `apps/`.
 - Add/update unit tests in the same package.
-- Grammar/parser changes must include a matching `snippets` fixture under `packages/language/test/fixtures/snippets/`.
+- Grammar/parser changes must include a matching `corpus` fixture under `packages/language/src/grammar/test/corpus/`.
 - Decoder/IR changes must include a matching `projects` fixture under `packages/language/test/fixtures/projects/` (and purely semantic core changes should use core unit tests).
 - Run `yarn install` when changing workspace dependencies.
 - Use `yarn workspace <name> <script>` to run package-local scripts.
@@ -86,7 +86,7 @@ yarn test -t "Test Name Pattern"
 ```
 
 - Core change testing rules (must follow):
-  - Grammar/parser changes → add `snippets` fixtures under `packages/language/test/fixtures/snippets/`
+  - Grammar/parser changes → add `corpus` fixtures under `packages/language/src/grammar/test/corpus/`
   - Decoder/IR changes → add `projects` fixtures under `packages/language/test/fixtures/projects/` (or core IR unit tests when purely semantic)
   - CLI behavior changes → add golden-file tests under `apps/cli/test/expected/`
 
@@ -96,8 +96,10 @@ Note that, when iterating across packages, downstream consumers must be rebuilt 
 
 - Language: TypeScript. Follow existing `tsconfig.json` settings.
 - Use the repo's linting/formatting scripts if they exist (check `package.json` scripts). If none exist, follow standard TypeScript conventions used elsewhere in the repo.
+- **Imports are module-scoped only.** Inline `import(...)` type expressions (e.g. `options?: import('../decoder').DecodeDirectives`) are forbidden — always use a top-level `import type` statement instead. This keeps dependency graphs explicit and greppable.
 - Keep `packages/core` portable: do not introduce DOM or Node-specific APIs into `packages/core`.
 - Attributes of all interfaces, classes, and other structured types are `readonly`. Mutations are expressed in copy semantics and typestates.
+- **No Trivial Subdirectories.** Do not create module subdirectories for the sake of it. Only do so if such a subdirectory meaningfully contains multiple non-test modules.
 
 ## Build & Release
 

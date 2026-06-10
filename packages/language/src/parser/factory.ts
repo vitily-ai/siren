@@ -1,597 +1,256 @@
+import type { SirenEntry } from '@sirenpm/core';
+import { Language, type Node, type Tree, Parser as TsParser } from 'web-tree-sitter';
+import { buildAst } from '../ast/builder';
+import type { AstOriginMap } from '../ast/origins';
+import { decodeAstToEntries } from '../decoder';
+import { formatCst } from '../formatter';
+import { getWasmUrl } from '../grammar/loadHandle';
+import type { SourcedEntry } from '../origin';
+import { renderEntry } from '../render-entry';
+import type { LanguageDiagnostic, ParsedDocument, Parser, SirenAst, SourceDocument } from './types';
+
+let runtimeInit: Promise<void> | undefined;
+function ensureRuntimeInit(): Promise<void> {
+  if (!runtimeInit) {
+    runtimeInit = TsParser.init();
+  }
+  return runtimeInit;
+}
+
+let languagePromise: Promise<Language> | undefined;
 /**
- * Parser factory.
- *
- * Owns the `web-tree-sitter` runtime and Siren grammar WASM. Zero-config:
- * callers invoke `createParser()` and receive a fully initialized
- * `ParserAdapter`. Grammar WASM is resolved relative to the emitted bundle
- * using `import.meta.url`; `Language.load` receives a filesystem path in
- * Node. Browser support is deferred to a later phase.
+ * Loads the tree-sitter Language WASM. This is memoized to avoid repeated
+ * fetch and compilation across `createParser()` calls.
  */
-
-import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { Language, Parser } from 'web-tree-sitter';
-import { buildSyntaxDocuments } from '../syntax/builder';
-import type {
-  CommentToken,
-  ParseError,
-  ParseResult,
-  ParserAdapter,
-  SourceDocument,
-} from './adapter';
-import type {
-  ArrayNode,
-  AttributeNode,
-  DocumentNode,
-  ExpressionNode,
-  IdentifierNode,
-  LiteralNode,
-  ReferenceNode,
-  ResourceNode,
-} from './cst';
-
-// Module-level flag: `Parser.init()` must run exactly once per process.
-let parserInitPromise: Promise<void> | null = null;
-
-function ensureParserInitialized(): Promise<void> {
-  if (!parserInitPromise) {
-    parserInitPromise = Parser.init();
+function getLanguage(): Promise<Language> {
+  if (!languagePromise) {
+    languagePromise = (async () => {
+      await ensureRuntimeInit();
+      // only pathname here because tree-sitter breaks if scheme is included
+      // side-note, raw tree-sitter supports URL directly, but the typescript doesn't allow it.
+      // Open issue against tree-sitter?
+      return Language.load(getWasmUrl().pathname);
+    })();
   }
-  return parserInitPromise;
+  return languagePromise;
 }
 
-// Resolve the grammar WASM location. The WASM ships at
-// `<pkg>/grammar/tree-sitter-siren.wasm`. When loaded from the bundled
-// `dist/index.js`, that's one level up. When tests run against the raw
-// source (`src/parser/factory.ts`), it's two levels up. Try both and use
-// whichever exists.
-function resolveGrammarWasmPath(): string {
-  const bundleRelative = new URL('../grammar/tree-sitter-siren.wasm', import.meta.url);
-  const sourceRelative = new URL('../../grammar/tree-sitter-siren.wasm', import.meta.url);
-  for (const url of [bundleRelative, sourceRelative]) {
-    const path = fileURLToPath(url);
-    if (existsSync(path)) return path;
-  }
-  // Fall back to the bundle-relative path; surfaces a clear ENOENT.
-  return fileURLToPath(bundleRelative);
-}
+const EMPTY_DIAGNOSTICS: readonly LanguageDiagnostic[] = Object.freeze([]);
 
 /**
- * Create a ready-to-use `ParserAdapter`.
- *
- * Each invocation returns a fresh adapter backed by its own `Parser`
- * instance. `Parser.init()` runs lazily on the first call; subsequent calls
- * reuse the cached initialization.
+ * Walk `root`'s named children to find a `resource` node whose id matches
+ * `targetId`. Returns the `resource` CST node if found, or `undefined`.
  */
-export async function createParser(): Promise<ParserAdapter> {
-  await ensureParserInitialized();
+function findResourceNode(root: Node, targetId: string): Node | undefined {
+  for (let i = 0; i < root.namedChildCount; i++) {
+    const child = root.namedChild(i);
+    if (child?.type !== 'resource') continue;
 
-  const wasmPath = resolveGrammarWasmPath();
-  const language = await Language.load(wasmPath);
+    const headerNode = child.namedChild(0);
+    if (headerNode?.type !== 'resource_header') continue;
 
-  const parser = new Parser();
-  parser.setLanguage(language);
+    const idNode = headerNode.childForFieldName('id');
+    if (!idNode) continue;
 
-  return buildAdapter(parser);
-}
+    const inner = idNode.namedChild(0);
+    if (!inner) continue;
 
-// ---------------------------------------------------------------------------
-// Adapter construction
-//
-// CST conversion, error extraction, and comment extraction. Depends on the
-// concrete `web-tree-sitter` `Parser` instance owned by this package.
-// ---------------------------------------------------------------------------
-
-interface DocumentBoundary {
-  name: string;
-  startByte: number;
-  startRow: number;
-}
-
-// Lightweight structural shape for tree-sitter runtime nodes. Kept permissive
-// because the web-tree-sitter type surface is large and our conversion code
-// only touches a small subset.
-interface NodeLike {
-  type?: string;
-  text?: string;
-  namedChildren?: NodeLike[];
-  parent?: NodeLike;
-  startPosition?: { row?: number; column?: number };
-  endPosition?: { row?: number };
-  startIndex?: number;
-  endIndex?: number;
-  childForFieldName?: (s: string) => NodeLike | undefined;
-  childrenForFieldName?: (s: string) => NodeLike[];
-  children?: NodeLike[];
-  isMissing?: boolean;
-  hasError?: boolean;
-  descendantsOfType?: (type: string | string[]) => NodeLike[];
-}
-
-function buildAdapter(parser: Parser): ParserAdapter {
-  function scanToken(source: string, index: number): { token: string; length: number } {
-    let i = index;
-    while (i < source.length && /\s/u.test(source[i]!)) i++;
-    if (i >= source.length) return { token: 'EOF', length: 1 };
-
-    const ch = source[i]!;
-
-    if (ch === '"') {
-      let j = i + 1;
-      while (j < source.length && source[j] !== '"') j++;
-      if (j < source.length) j++;
-      const token = source.slice(i, j);
-      return { token, length: Math.max(1, token.length) };
-    }
-
-    if (/[a-zA-Z_]/u.test(ch)) {
-      let j = i + 1;
-      while (j < source.length && /[a-zA-Z0-9_-]/u.test(source[j]!)) j++;
-      const token = source.slice(i, j);
-      return { token, length: Math.max(1, token.length) };
-    }
-
-    if (/[0-9]/u.test(ch)) {
-      let j = i + 1;
-      while (j < source.length && /[0-9]/u.test(source[j]!)) j++;
-      if (j < source.length && source[j] === '.') {
-        j++;
-        while (j < source.length && /[0-9]/u.test(source[j]!)) j++;
-      }
-      const token = source.slice(i, j);
-      return { token, length: Math.max(1, token.length) };
-    }
-
-    let j = i + 1;
-    while (
-      j < source.length &&
-      !/\s/u.test(source[j]!) &&
-      !/[a-zA-Z0-9_"]/u.test(source[j]!) &&
-      j - i < 16
-    ) {
-      j++;
-    }
-    const token = source.slice(i, j);
-    return { token, length: Math.max(1, token.length) };
-  }
-
-  function formatExpectedList(expected: readonly string[]): string {
-    const items = expected.map((e) => `'${e}'`);
-    if (items.length === 0) return '';
-    if (items.length === 1) return items[0]!;
-    if (items.length === 2) return `${items[0]} or ${items[1]}`;
-    return `${items.slice(0, -1).join(', ')}, or ${items[items.length - 1]}`;
-  }
-
-  function isMissingResourceId(node: NodeLike): boolean {
-    if (String(node.type ?? '') !== 'bare_identifier' || !node.isMissing) return false;
-    if (String(node.parent?.type ?? '') !== 'identifier') return false;
-    let cur: NodeLike | undefined = node.parent;
-    while (cur) {
-      if (String(cur.type ?? '') === 'resource') return true;
-      cur = cur.parent;
-    }
-    return false;
-  }
-
-  function extractOrigin(node: NodeLike | undefined, boundary: DocumentBoundary) {
-    if (!node) return undefined;
-    const startPos = node.startPosition;
-    const endPos = node.endPosition;
-    if (!startPos || !endPos) return undefined;
-    return {
-      kind: 'range' as const,
-      startByte: (Number(node.startIndex ?? 0) as number) - boundary.startByte,
-      endByte: (Number(node.endIndex ?? 0) as number) - boundary.startByte,
-      startRow: (Number(startPos.row ?? 0) as number) - boundary.startRow,
-      endRow: (Number(endPos.row ?? 0) as number) - boundary.startRow,
-      document: boundary.name,
-    };
-  }
-
-  function findDocumentForByte(
-    globalByte: number,
-    boundaries: readonly DocumentBoundary[],
-  ): DocumentBoundary {
-    for (let i = boundaries.length - 1; i >= 0; i--) {
-      const boundary = boundaries[i];
-      if (boundary && boundary.startByte <= globalByte) {
-        return boundary;
-      }
-    }
-    return boundaries[0] ?? { name: 'unknown', startByte: 0, startRow: 0 };
-  }
-
-  function convertIdentifier(node: NodeLike, boundary: DocumentBoundary): IdentifierNode {
-    const child = node.namedChildren?.[0];
-    if (!child) {
-      return {
-        type: 'identifier',
-        value: node ? String(node.text ?? '') : '',
-        quoted: false,
-        text: node ? String(node.text ?? '') : '',
-        origin: extractOrigin(node, boundary),
-      };
-    }
-
-    const isQuoted = String(child.type ?? '') === 'quoted_identifier';
-    let value = String(child.text ?? '');
-    if (isQuoted && value.startsWith('"') && value.endsWith('"')) {
-      value = value.slice(1, -1);
-    }
-
-    return {
-      type: 'identifier',
-      value,
-      quoted: isQuoted,
-      text: String(node.text ?? ''),
-      origin: extractOrigin(node, boundary),
-    };
-  }
-
-  function convertLiteralDirect(node: NodeLike, boundary: DocumentBoundary): LiteralNode | null {
-    const origin = extractOrigin(node, boundary);
-    switch (String(node.type ?? '')) {
-      case 'string_literal': {
-        let value = String(node.text ?? '');
-        if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
-        return {
-          type: 'literal',
-          literalType: 'string',
-          value,
-          text: String(node.text ?? ''),
-          origin,
-        };
-      }
-      case 'number_literal': {
-        const value = parseFloat(String(node.text ?? ''));
-        return {
-          type: 'literal',
-          literalType: 'number',
-          value,
-          text: String(node.text ?? ''),
-          origin,
-        };
-      }
-      case 'boolean_literal': {
-        const value = String(node.text) === 'true';
-        return {
-          type: 'literal',
-          literalType: 'boolean',
-          value,
-          text: String(node.text ?? ''),
-          origin,
-        };
-      }
-      case 'null_literal':
-        return {
-          type: 'literal',
-          literalType: 'null',
-          value: null,
-          text: String(node.text ?? ''),
-          origin,
-        };
-      default:
-        return null;
-    }
-  }
-
-  function convertReference(node: NodeLike, boundary: DocumentBoundary): ReferenceNode {
-    const identifier: IdentifierNode = {
-      type: 'identifier',
-      value: String(node.text ?? ''),
-      quoted: false,
-      text: String(node.text ?? ''),
-      origin: extractOrigin(node, boundary),
-    };
-    return { type: 'reference', identifier, origin: extractOrigin(node, boundary) };
-  }
-
-  function convertArray(node: NodeLike, boundary: DocumentBoundary): ArrayNode {
-    const elements: ExpressionNode[] = [];
-    for (const child of node.namedChildren ?? []) {
-      const expr = convertExpression(child, boundary);
-      if (expr) elements.push(expr);
-    }
-    return { type: 'array', elements, origin: extractOrigin(node, boundary) };
-  }
-
-  function convertLiteral(node: NodeLike, boundary: DocumentBoundary): LiteralNode | null {
-    const child = node.namedChildren?.[0];
-    if (!child) return null;
-    return convertLiteralDirect(child, boundary);
-  }
-
-  function convertExpression(
-    node: NodeLike | undefined,
-    boundary: DocumentBoundary,
-  ): ExpressionNode | null {
-    if (!node) return null;
-    if (String(node.type ?? '') === 'expression') {
-      const child = node.namedChildren?.[0];
-      if (!child) return null;
-      return convertExpression(child, boundary);
-    }
-
-    switch (String(node.type ?? '')) {
-      case 'literal':
-        return convertLiteral(node, boundary);
-      case 'reference':
-        return convertReference(node, boundary);
-      case 'array':
-        return convertArray(node, boundary);
-      case 'string_literal':
-      case 'number_literal':
-      case 'boolean_literal':
-      case 'null_literal':
-        return convertLiteralDirect(node, boundary);
-      case 'bare_identifier':
-        return convertReference(node, boundary);
-      default:
-        return null;
-    }
-  }
-
-  function convertAttribute(node: NodeLike, boundary: DocumentBoundary): AttributeNode | null {
-    const keyNode = node.childForFieldName?.('key');
-    const valueNode = node.childForFieldName?.('value');
-    if (!keyNode || !valueNode) return null;
-
-    const key: IdentifierNode = {
-      type: 'identifier',
-      value: String(keyNode.text ?? ''),
-      quoted: false,
-      text: String(keyNode.text ?? ''),
-      origin: extractOrigin(keyNode, boundary),
-    };
-    const value = convertExpression(valueNode, boundary);
-    if (!value) return null;
-    return { type: 'attribute', key, value, origin: extractOrigin(node, boundary) };
-  }
-
-  function convertResource(node: NodeLike, boundary: DocumentBoundary): ResourceNode | null {
-    const typeNode = node?.childForFieldName?.('type');
-    const idNode = node?.childForFieldName?.('id');
-    const completeModifierNode = node?.childForFieldName?.('complete_modifier');
-    if (!typeNode || !idNode) return null;
-
-    const resourceType = String(typeNode.text) as 'task' | 'milestone';
-    const identifier = convertIdentifier(idNode, boundary);
-    const complete = !!completeModifierNode;
-    const attributes: AttributeNode[] = [];
-
-    const bodyChildren = node.childrenForFieldName?.('body');
-    for (const child of bodyChildren ?? []) {
-      if (String(child.type ?? '') === 'attribute') {
-        const attr = convertAttribute(child, boundary);
-        if (attr) attributes.push(attr);
-      }
-    }
-
-    return {
-      type: 'resource',
-      resourceType,
-      identifier,
-      complete,
-      body: attributes,
-      origin: extractOrigin(node, boundary),
-    };
-  }
-
-  function convertDocument(root: NodeLike, boundaries: readonly DocumentBoundary[]): DocumentNode {
-    const resources: ResourceNode[] = [];
-    for (const child of root.namedChildren ?? []) {
-      if (String(child.type ?? '') === 'resource') {
-        const boundary = findDocumentForByte(Number(child.startIndex ?? 0), boundaries);
-        const r = convertResource(child, boundary);
-        if (r) resources.push(r);
-      }
-    }
-    const rootBoundary = boundaries[0] ?? { name: 'unknown', startByte: 0, startRow: 0 };
-    return { type: 'document', resources, origin: extractOrigin(root, rootBoundary) };
-  }
-
-  function extractErrors(
-    node: NodeLike | undefined,
-    boundaries: readonly DocumentBoundary[],
-    documents: readonly SourceDocument[],
-  ): ParseError[] {
-    const sourceByDoc = new Map<string, string>();
-    for (const doc of documents) {
-      if (doc) sourceByDoc.set(doc.name, doc.content);
-    }
-
-    const errors: ParseError[] = [];
-    const seen = new Set<string>();
-
-    const emit = (error: ParseError) => {
-      const key = `${error.document ?? 'unknown'}:${error.line}:${error.column}:${error.message}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      errors.push(error);
-    };
-
-    const topLevelExpected = ['task', 'milestone'] as const;
-    const walk = (n: NodeLike | undefined) => {
-      if (!n) return;
-      const nType = String(n.type ?? '');
-      const isMissing = Boolean(n.isMissing);
-      const children = n.children ?? [];
-      const isLeafError =
-        nType === 'ERROR' && !children.some((c) => String(c.type ?? '') === 'ERROR');
-
-      if (isMissing) {
-        const boundary = findDocumentForByte(Number(n.startIndex ?? 0), boundaries);
-        const startPos = n.startPosition;
-        const localStartByte = Number(n.startIndex ?? 0) - boundary.startByte;
-        const expectedToken =
-          nType === '}'
-            ? '}'
-            : nType === ']'
-              ? ']'
-              : nType === 'bare_identifier'
-                ? isMissingResourceId(n)
-                  ? 'identifier after resource type'
-                  : 'expression'
-                : nType;
-
-        emit({
-          severity: 'error',
-          kind: 'missing_token',
-          message: `expected ${expectedToken}`,
-          expected: [expectedToken],
-          line: (Number(startPos?.row ?? 0) as number) - boundary.startRow + 1,
-          column: (Number(startPos?.column ?? 0) as number) + 1,
-          document: boundary.name,
-          startByte: localStartByte,
-          endByte: localStartByte,
-        });
-      } else if (isLeafError) {
-        const boundary = findDocumentForByte(Number(n.startIndex ?? 0), boundaries);
-        const startPos = n.startPosition;
-        const localStartByte = Number(n.startIndex ?? 0) - boundary.startByte;
-        const source = sourceByDoc.get(boundary.name) ?? '';
-        const scanned = scanToken(source, localStartByte);
-        const found = scanned.token;
-
-        let nearestNonErrorParent = n.parent;
-        while (String(nearestNonErrorParent?.type ?? '') === 'ERROR') {
-          nearestNonErrorParent = nearestNonErrorParent?.parent;
-        }
-        const parentType = String(n.parent?.type ?? '');
-        const isTopLevel =
-          !nearestNonErrorParent || String(nearestNonErrorParent.type ?? '') === 'document';
-        const expected = isTopLevel ? [...topLevelExpected] : [];
-
-        const isDuplicateComplete =
-          found === 'complete' &&
-          parentType === 'resource' &&
-          n.parent?.childForFieldName?.('complete_modifier') != null;
-
-        const message = isDuplicateComplete
-          ? `duplicate 'complete' keyword; expected '{'`
-          : expected.length > 0
-            ? `unexpected token '${found}'; expected ${formatExpectedList(expected)}`
-            : `unexpected token '${found}'`;
-
-        emit({
-          severity: isDuplicateComplete ? 'warning' : 'error',
-          kind: 'unexpected_token',
-          message,
-          found,
-          expected: isDuplicateComplete ? ['{'] : expected,
-          line: (Number(startPos?.row ?? 0) as number) - boundary.startRow + 1,
-          column: (Number(startPos?.column ?? 0) as number) + 1,
-          document: boundary.name,
-          startByte: localStartByte,
-          endByte: Math.min(localStartByte + scanned.length, source.length),
-        });
-
-        const startIndex = Number(n.startIndex ?? 0);
-        const endIndex = Number(n.endIndex ?? startIndex);
-        for (const b of boundaries) {
-          if (b.startByte <= startIndex) continue;
-          if (b.startByte >= endIndex) continue;
-          const docSource = sourceByDoc.get(b.name) ?? '';
-          const docScanned = scanToken(docSource, 0);
-          emit({
-            severity: 'error',
-            kind: 'unexpected_token',
-            message: `unexpected token '${docScanned.token}'; expected ${formatExpectedList([
-              ...topLevelExpected,
-            ])}`,
-            found: docScanned.token,
-            expected: [...topLevelExpected],
-            line: 1,
-            column: 1,
-            document: b.name,
-            startByte: 0,
-            endByte: Math.min(docScanned.length, docSource.length),
-          });
+    let idText: string;
+    if (inner.type === 'bare_identifier') {
+      idText = inner.text;
+    } else if (inner.type === 'string_literal') {
+      let bodyText = '';
+      for (let j = 0; j < inner.namedChildCount; j++) {
+        const c = inner.namedChild(j);
+        if (c && c.type === 'str_body') {
+          bodyText = c.text;
+          break;
         }
       }
-
-      for (const child of children) walk(child);
-    };
-    walk(node);
-    return errors;
-  }
-
-  function extractComments(
-    root: NodeLike | undefined,
-    source: string,
-    boundaries: readonly DocumentBoundary[],
-  ): CommentToken[] {
-    const comments: CommentToken[] = [];
-    const commentNodes = root?.descendantsOfType?.('comment') ?? [];
-
-    for (const commentNode of commentNodes) {
-      const startIndex = Number(commentNode.startIndex ?? 0);
-      const endIndex = Number(commentNode.endIndex ?? startIndex);
-      const boundary = findDocumentForByte(startIndex, boundaries);
-      comments.push({
-        startByte: startIndex - boundary.startByte,
-        endByte: endIndex - boundary.startByte,
-        startRow: (Number(commentNode.startPosition?.row ?? 0) as number) - boundary.startRow,
-        endRow: (Number(commentNode.endPosition?.row ?? 0) as number) - boundary.startRow,
-        text: source.slice(startIndex, endIndex),
-        document: boundary.name,
-      });
+      idText = bodyText;
+    } else {
+      continue;
     }
 
-    comments.sort((a, b) => {
-      if (a.document !== b.document) {
-        return (a.document ?? '').localeCompare(b.document ?? '');
-      }
-      return a.startByte - b.startByte;
+    if (idText === targetId) {
+      return child;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Concrete ParsedDocument.
+ *
+ * The raw tree-sitter CST is retained on a `#tree` private field for future
+ * tasks (`lang-format`) to consume. It is intentionally NOT exposed on the
+ * public `ParsedDocument` type — downstream services gain access via internal
+ * helpers (e.g. the AST builder is invoked at construction time).
+ */
+class ParsedDocumentImpl implements ParsedDocument {
+  readonly #sourceName: string;
+  #sourceContent: string;
+  #tree: Tree;
+  #ast: SirenAst;
+  #diagnostics: readonly LanguageDiagnostic[];
+  #origins: AstOriginMap;
+  #entries: readonly SourcedEntry[];
+  readonly #reparse: (content: string, oldTree: Tree) => Tree;
+
+  // TODO: remove, not needed, breaks encapsulation
+  get ast(): SirenAst {
+    return this.#ast;
+  }
+
+  get diagnostics(): readonly LanguageDiagnostic[] {
+    return this.#diagnostics;
+  }
+
+  constructor(
+    source: SourceDocument,
+    tree: Tree,
+    // TODO reparse does not need to be external. tree and content are both captured already.
+    reparse: (content: string, oldTree: Tree) => Tree,
+  ) {
+    this.#sourceName = source.name;
+    this.#sourceContent = source.content;
+    this.#tree = tree;
+    this.#reparse = reparse;
+    const built = buildAst(tree, source);
+    this.#ast = built.ast;
+    // TODO: buildAst should return empty diags by default
+    this.#diagnostics = built.diagnostics ?? EMPTY_DIAGNOSTICS;
+    this.#origins = built.origins;
+    // TODO: directives should come from the document, instead of being hardcoded here. Requires grammar support.
+    this.#entries = decodeAstToEntries(this.#ast, source, this.#origins, {
+      synthesizeMilestones: false,
     });
-
-    return comments;
   }
+
+  get source(): SourceDocument {
+    return { name: this.#sourceName, content: this.#sourceContent };
+  }
+
+  toEntries(): readonly SourcedEntry[] {
+    return this.#entries;
+  }
+
+  format(): string {
+    const canonical = formatCst(this.#tree, this.#sourceContent);
+    this.#sourceContent = canonical;
+    this.#tree = this.#reparse(canonical, this.#tree);
+    const rebuilt = buildAst(this.#tree, this.#toSourceDoc());
+    this.#ast = rebuilt.ast;
+    this.#diagnostics = rebuilt.diagnostics ?? EMPTY_DIAGNOSTICS;
+    this.#origins = rebuilt.origins;
+    this.#redecode();
+    return canonical;
+  }
+
+  patchEntry(id: string, entry: SirenEntry): void {
+    const resourceNode = findResourceNode(this.#tree.rootNode, id);
+    const rendered = renderEntry(entry);
+
+    if (resourceNode) {
+      // Extend endIndex to include the following newline separator, if any,
+      // so the splice replaces the resource plus its trailing whitespace.
+      // (Tree-sitter classifies whitespace as "extra", so named node spans
+      // do not include the trailing newline.)
+      let endIndex = resourceNode.endIndex;
+      if (endIndex < this.#sourceContent.length && this.#sourceContent[endIndex] === '\n') {
+        endIndex++;
+      }
+
+      // Splice rendered block in place of existing resource span.
+      this.#sourceContent =
+        this.#sourceContent.slice(0, resourceNode.startIndex) +
+        rendered +
+        this.#sourceContent.slice(endIndex);
+    } else {
+      // Append synthetic entry at end.
+      const trimmed = this.#sourceContent.trimEnd();
+      if (trimmed.length === 0) {
+        this.#sourceContent = rendered;
+      } else {
+        this.#sourceContent = `${trimmed}\n\n${rendered}`;
+      }
+    }
+
+    // Incremental re-parse using the previous tree.
+    this.#tree = this.#reparse(this.#sourceContent, this.#tree);
+
+    // Rebuild AST and sidechannel from the updated tree.
+    const rebuilt = buildAst(this.#tree, this.#toSourceDoc());
+    this.#ast = rebuilt.ast;
+    this.#diagnostics = rebuilt.diagnostics ?? EMPTY_DIAGNOSTICS;
+    this.#origins = rebuilt.origins;
+
+    // Re-decode entries.
+    this.#redecode();
+  }
+
+  removeEntry(id: string): void {
+    const targetNode = findResourceNode(this.#tree.rootNode, id);
+
+    if (!targetNode) {
+      throw new Error(`Entry not found: ${id}`);
+    }
+
+    // Splice byte range out of source content.
+    const startIndex = targetNode.startIndex;
+    const endIndex = targetNode.endIndex;
+    let newContent = this.#sourceContent.slice(0, startIndex) + this.#sourceContent.slice(endIndex);
+    // Trim leading blank lines left by removing the first resource.
+    newContent = newContent.replace(/^\n+/, '');
+    this.#sourceContent = newContent;
+
+    // Incremental re-parse, AST rebuild, diagnostics, origins, entries.
+    this.#tree = this.#reparse(this.#sourceContent, this.#tree);
+    const rebuilt = buildAst(this.#tree, this.#toSourceDoc());
+    this.#ast = rebuilt.ast;
+    this.#diagnostics = rebuilt.diagnostics ?? EMPTY_DIAGNOSTICS;
+    this.#origins = rebuilt.origins;
+    this.#redecode();
+  }
+
+  #redecode(): void {
+    this.#entries = decodeAstToEntries(this.#ast, this.#toSourceDoc(), this.#origins);
+  }
+
+  #toSourceDoc(): SourceDocument {
+    return { name: this.#sourceName, content: this.#sourceContent };
+  }
+}
+
+export async function createParser(): Promise<Parser> {
+  const language = await getLanguage();
+  // One Parser instance per `createParser()` call; the loaded `Language` is
+  // cached on the instance and reused across every `parse` / `parseBatch`.
+  const tsParser = new TsParser();
+  tsParser.setLanguage(language);
+
+  const parseOne = (document: SourceDocument): ParsedDocument => {
+    const tree = tsParser.parse(document.content ?? '');
+    if (!tree) {
+      throw new Error('Parse failed: tree-sitter returned no tree');
+    }
+
+    // FIXME: reparse should be internal to parseddocimpl
+    // also oldtree isn't even being used for incremental reparse - why?
+    const reparse = (content: string, _oldTree: Tree): Tree => {
+      const newTree = tsParser.parse(content);
+      if (!newTree) throw new Error('Re-parse failed');
+      return newTree;
+    };
+    return new ParsedDocumentImpl(document, tree, reparse);
+  };
 
   return {
-    async parse(documents: readonly SourceDocument[]) {
-      const boundaries: DocumentBoundary[] = [];
-      let concatenated = '';
-      let currentByte = 0;
-      let currentRow = 0;
-
-      for (let i = 0; i < documents.length; i++) {
-        const doc = documents[i];
-        if (!doc) continue;
-        boundaries.push({ name: doc.name, startByte: currentByte, startRow: currentRow });
-        concatenated += doc.content;
-        // ASCII-byte approximation (matches the original implementation).
-        currentByte += doc.content.length;
-        currentRow += doc.content.split('\n').length - 1;
-
-        if (i < documents.length - 1) {
-          concatenated += '\n';
-          currentByte += 1;
-          currentRow += 1;
-        }
-      }
-
-      const tree = (parser as unknown as { parse(s: string): unknown }).parse(concatenated) as
-        | { rootNode: NodeLike; hasError?: boolean }
-        | null
-        | undefined;
-      if (!tree) throw new Error('parser returned null tree');
-      const root = tree.rootNode;
-      const hasError = Boolean(tree.hasError === true || root?.hasError === true);
-      const errors = hasError ? extractErrors(root, boundaries, documents) : [];
-      const documentNode = convertDocument(root, boundaries);
-      const comments = extractComments(root, concatenated, boundaries);
-      const syntaxDocuments = buildSyntaxDocuments(documentNode, documents, comments);
-      const success = !hasError;
-      const result: ParseResult = {
-        tree: documentNode,
-        errors,
-        success,
-        comments,
-        syntaxDocuments,
-      };
-      return result;
-    },
+    parse: async (document) => parseOne(document),
+    // Sequential map: tree-sitter's `Parser` is not designed for concurrent
+    // reuse, and the underlying `parse` is synchronous, so a serial loop is
+    // both safe and trivially equivalent to per-document `parse` calls
+    // (as asserted by the contract test).
+    parseBatch: async (documents) => documents.map(parseOne),
   };
 }

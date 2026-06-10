@@ -59,6 +59,27 @@ Language now owns the file-oriented boundary more explicitly. If a caller wants 
 
 The removal is an intentional breaking `v0.x` change to `@sirenpm/core`.
 
+## Post-Adoption Note for the Rebuilt Language (ADR-0004)
+
+This ADR was written against the pre-rebuild language architecture (`decodeSyntaxDocuments`,
+`renderSirenDocument`, `context-factory.ts`). The ADR-0004 rebuild of `@sirenpm/language`
+changes the language-side API surfaces, but the core design decisions — flat `SirenEntry[]`
+inputs, `fromEntries` as the sole builder path, synthesis relocated to language — remain
+fully valid. The specific mapping is:
+
+| Pre-rebuild surface | Rebuilt surface (ADR-0004) | Notes |
+|---|---|---|
+| `decodeSyntaxDocuments` → `DecodeResult.documents` | `decodeAstToEntries()` → `readonly SirenEntry[]` | Renamed to match flat-entries contract |
+| `renderSirenDocument()` | `renderEntry()` (planned) | Entry-level render, not document-level |
+| `context-factory.ts` / `createSirenProjectFromSyntaxDocuments` | `ParsedDocument.toEntries()` | Decoder is a `ParsedDocument` service |
+| `SirenBuilder.fromDocuments()` | `SirenBuilder.fromEntries()` | Core changed in v0.6.0 |
+| Synthetic milestone via document directives | `synthesizeMilestones` option on `toEntries()` | Default-off, per ADR-0005 contract |
+
+The `siren/entries-over-documents.siren` backlog tasks for the language phase
+(`eod-lang-red`, `eod-lang-decoder`, `eod-lang-renderer`, `eod-lang-publish`) targeted the
+pre-rebuild surfaces and are superseded by `lang-v060-*` tasks in
+`siren/language-ast-pipeline.siren`.
+
 ## Alternatives Considered
 
 Keeping `Document` in core as a lightweight grouping wrapper would preserve the old builder surface, but it
