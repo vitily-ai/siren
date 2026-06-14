@@ -2,7 +2,7 @@
 # Decision context: docs/adr/0005-entries-over-documents-core.md
 # Full implementation plan: siren/entries-over-documents.md
 
-milestone eod {
+milestone eod complete {
   description = "Remove SirenDocument as a semantic-core concept and make @sirenpm/core operate on flat SirenEntry inputs throughout. Remove document-oriented builder methods, document-grouped patch bookkeeping, and the SynthesisModule from the IR pipeline. Relocate per-file milestone synthesis to @sirenpm/language as decode-time syntax sugar behind a default-off option. Replace the dead renderSirenDocument surface with entry-level renderEntry. Update @sirenpm/cli to consume the new flat-entry contract. Phased by package with a publish boundary after each package before downstream work begins. Note: core phase complete (v0.6.0 published). Language phase superseded by lang-v060-* tasks in siren/language-ast-pipeline.siren — the pre-rebuild API surfaces (decodeSyntaxDocuments, renderSirenDocument, context-factory.ts) that eod-lang targeted no longer exist."
   affected_packages = ["@sirenpm/core", "@sirenpm/language", "@sirenpm/cli"]
   context = "entries-over-documents.md"
@@ -11,7 +11,7 @@ milestone eod {
 
 # ─── Phase 1: @sirenpm/core ───────────────────────────────────────────────────
 
-milestone eod-core {
+milestone eod-core complete {
   description = "Reshape @sirenpm/core around flat SirenEntry inputs: remove SirenDocument, delete SynthesisModule, collapse patch bookkeeping to EntryChange[], and publish a breaking 0.x release as the synchronisation point for downstream packages."
   affected_packages = ["@sirenpm/core"]
   context = "entries-over-documents.md"
@@ -108,14 +108,14 @@ task eod-lang-publish complete {
 
 # ─── Phase 3: @sirenpm/cli ────────────────────────────────────────────────────
 
-milestone eod-cli {
+milestone eod-cli complete {
   description = "Update @sirenpm/cli to consume the new flat-entry contract from @sirenpm/core and @sirenpm/language. CLI user-facing output must remain unchanged because synthesis stays default-off on the real parse path."
   affected_packages = ["@sirenpm/cli"]
   context = "entries-over-documents.md"
   depends_on = eod-cli-bridge
 }
 
-task eod-cli-bridge {
+task eod-cli-bridge complete {
   description = "Update CLI lifecycle to the flat-entry contract. Rename sirenDocuments to sirenEntries in apps/cli/src/lifecycle/context.ts and update the type to readonly SirenEntry[]. Update decoding.ts to store DecodeResult.entries. Update building.ts to call SirenBuilder.fromEntries(ctx.sirenEntries). Run golden tests and confirm all pass without any expected-output changes — any golden diff is a regression that must be fixed in this task, not by updating the golden files."
   affected_packages = ["@sirenpm/cli"]
   context = "entries-over-documents.md"
