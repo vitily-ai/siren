@@ -108,7 +108,7 @@ describe('decodeAstToEntries', () => {
       ]);
     });
 
-    it('omits entries that the AST builder dropped via EL001', async () => {
+    it('omits entries that the AST builder dropped via ELXXX', async () => {
       // Stray token between entries → tree-sitter parses `task broken @` as a
       // top-level ERROR node, which the AST builder reports as EL001 and drops.
       // The well-formed `task ok {}` must survive.
@@ -123,7 +123,7 @@ describe('decodeAstToEntries', () => {
       // one was reported via EL001 and dropped; assert the diagnostic is there
       // so a regression that silently drops entries without reporting will
       // fail loudly.
-      expect(diagnostics.some((d) => d.code === 'EL001')).toBe(true);
+      expect(diagnostics.some((d) => d.code.startsWith('EL'))).toBe(true);
     });
   });
 
@@ -432,7 +432,7 @@ describe('decodeAstToEntries', () => {
 
       // Verify the AST has zero resources (all dropped by EL001).
       expect(ast.resources).toHaveLength(0);
-      expect(diagnostics.some((d) => d.code === 'EL001')).toBe(true);
+      expect(diagnostics.some((d) => d.code.startsWith('EL'))).toBe(true);
 
       // Synthesis should still produce a milestone anchored to the document.
       expect(entries).toHaveLength(1);

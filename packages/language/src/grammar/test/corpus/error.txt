@@ -246,3 +246,35 @@ task immediate_comma {
             (literal
               (number_literal)))))
       (block_close))))
+
+==================
+Nonsense
+==================
+
+this is not valid siren syntax!!!
+
+---
+
+(document
+  (ERROR
+    (resource_header
+      type: (resource_type
+        (MISSING "task"))
+      id: (identifier
+        (bare_identifier))
+      status_modifier: (resource_modifier
+        (identifier
+          (bare_identifier)))
+      status_modifier: (resource_modifier
+        (identifier
+          (bare_identifier)))
+      status_modifier: (resource_modifier
+        (identifier
+          (bare_identifier)))
+      status_modifier: (resource_modifier
+        (identifier
+          (bare_identifier)))
+      status_modifier: (resource_modifier
+        (identifier
+          (bare_identifier))))
+  (UNEXPECTED '!')))

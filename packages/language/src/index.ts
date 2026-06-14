@@ -14,10 +14,12 @@ export type {
   SirenAst,
 } from './ast/types';
 export type {
-  EL001Diagnostic,
+  EL001GenericParseErrorDiagnostic as EL001FallbackDiagnostic,
+  EL002MissingTokenDiagnostic,
+  EL003UnexpectedTokenDiagnostic,
   LanguageDiagnostic,
-  WL001Diagnostic,
-  WL002Diagnostic,
+  WL001UnrecognizedModifierDiagnostic,
+  WL002CollapsedModifiersDiagnostic,
 } from './diagnostics';
 export type {
   Origin,

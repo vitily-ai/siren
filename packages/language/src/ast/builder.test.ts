@@ -3,12 +3,13 @@ import type {
   AstAttribute,
   AstResource,
   AstTupleMember,
-  EL001Diagnostic,
+  EL002MissingTokenDiagnostic,
+  EL003UnexpectedTokenDiagnostic,
   LanguageDiagnostic,
   ParsedDocument,
   RangeOrigin,
-  WL001Diagnostic,
-  WL002Diagnostic,
+  WL001UnrecognizedModifierDiagnostic,
+  WL002CollapsedModifiersDiagnostic,
 } from '../index';
 import { createParser } from '../index';
 
@@ -17,11 +18,26 @@ async function parse(content: string, name = 'doc.siren'): Promise<ParsedDocumen
   return parser.parse({ name, content });
 }
 
-function byCode<C extends LanguageDiagnostic['code']>(
+function assertDiagnosticCode<C extends LanguageDiagnostic['code']>(
   diagnostics: readonly LanguageDiagnostic[],
   code: C,
+  expect = true,
 ): readonly Extract<LanguageDiagnostic, { code: C }>[] {
-  return diagnostics.filter((d): d is Extract<LanguageDiagnostic, { code: C }> => d.code === code);
+  // throw if no diagnostics with the code are found
+  const results = diagnostics.filter(
+    (d): d is Extract<LanguageDiagnostic, { code: C }> => d.code === code,
+  );
+  if (expect && results.length === 0) {
+    throw new Error(
+      `No diagnostics with code ${code} found. Available diagnostics: ${diagnostics.map((d) => d.code).join(', ')}`,
+    );
+  }
+  if (!expect && results.length > 0) {
+    throw new Error(
+      `Expected no diagnostics with code ${code}, but found: ${results.map((d) => d.code).join(', ')}`,
+    );
+  }
+  return results;
 }
 
 describe('buildAst — empty / trivial documents', () => {
@@ -91,42 +107,42 @@ describe('buildAst — status modifiers (Decision 10)', () => {
     expect(parsed.ast.resources).toHaveLength(1);
     expect(parsed.ast.resources[0].status).toBeUndefined();
 
-    const wl001 = byCode(parsed.diagnostics, 'WL001');
+    const wl001 = assertDiagnosticCode(parsed.diagnostics, 'WL001');
     expect(wl001).toHaveLength(1);
-    const d: WL001Diagnostic = wl001[0];
+    const d: WL001UnrecognizedModifierDiagnostic = wl001[0];
     expect(d.modifier).toBe('blocked');
     expect(d.resourceId).toBe('foo');
     expect(d.documentName).toBe('doc.siren');
     expect(d.severity).toBe('warning');
 
-    expect(byCode(parsed.diagnostics, 'WL002')).toHaveLength(0);
+    assertDiagnosticCode(parsed.diagnostics, 'WL002', false);
   });
 
   it('task foo complete draft {} → status draft (last wins), one WL002', async () => {
     const parsed = await parse('task foo complete draft {}');
     expect(parsed.ast.resources[0].status).toBe('draft');
 
-    const wl002 = byCode(parsed.diagnostics, 'WL002');
+    const wl002 = assertDiagnosticCode(parsed.diagnostics, 'WL002');
     expect(wl002).toHaveLength(1);
-    const d: WL002Diagnostic = wl002[0];
+    const d: WL002CollapsedModifiersDiagnostic = wl002[0];
     expect(d.recognizedModifiers).toEqual(['complete', 'draft']);
     expect(d.resolvedStatus).toBe('draft');
     expect(d.resourceId).toBe('foo');
     expect(d.documentName).toBe('doc.siren');
 
-    expect(byCode(parsed.diagnostics, 'WL001')).toHaveLength(0);
+    assertDiagnosticCode(parsed.diagnostics, 'WL001', false);
   });
 
   it('task foo blocked complete {} → status complete, one WL001, no WL002', async () => {
     const parsed = await parse('task foo blocked complete {}');
     expect(parsed.ast.resources[0].status).toBe('complete');
 
-    const wl001 = byCode(parsed.diagnostics, 'WL001');
+    const wl001 = assertDiagnosticCode(parsed.diagnostics, 'WL001');
     expect(wl001).toHaveLength(1);
     expect(wl001[0].modifier).toBe('blocked');
     expect(wl001[0].resourceId).toBe('foo');
 
-    expect(byCode(parsed.diagnostics, 'WL002')).toHaveLength(0);
+    assertDiagnosticCode(parsed.diagnostics, 'WL002', false);
   });
 
   it('task foo "complete" {} → quoted recognized modifier yields status complete, no diagnostics', async () => {
@@ -145,12 +161,12 @@ describe('buildAst — status modifiers (Decision 10)', () => {
     const parsed = await parse('task foo "blocked" {}');
     expect(parsed.ast.resources[0].status).toBeUndefined();
 
-    const wl001 = byCode(parsed.diagnostics, 'WL001');
+    const wl001 = assertDiagnosticCode(parsed.diagnostics, 'WL001');
     expect(wl001).toHaveLength(1);
     expect(wl001[0].modifier).toBe('blocked');
     expect(wl001[0].resourceId).toBe('foo');
 
-    expect(byCode(parsed.diagnostics, 'WL002')).toHaveLength(0);
+    assertDiagnosticCode(parsed.diagnostics, 'WL002', false);
   });
 });
 
@@ -196,34 +212,23 @@ describe('buildAst — attribute values', () => {
   });
 });
 
-// TODO: note for TDD green
-// many of these assertions are at the mercy of the grammar and
-// the whims of tree-sitter's error recovery.
-// if after implementation some of these test fail, and the cause
-// appears to be one of those two things, mark the test to be skipped (it.skip)
-describe('buildAst — parse-error resource omission (EL001)', () => {
-  it('omits resource with malformed attribute; valid sibling remains; one EL001', async () => {
-    // NOTE: a literal missing-brace (`task broken {\ntask ok {}\n`) is greedily
-    // consumed by tree-sitter into a single `resource` node whose body extends
-    // to EOF — there is no recoverable second sibling under any reasonable
-    // implementation. We use a malformed-attribute fixture instead (`x =` with
-    // no rhs), which tree-sitter cleanly recovers from at the next `task`
-    // keyword, yielding two sibling `resource` nodes (the first with
-    // `hasError === true`). This preserves the tester's intent: a broken
-    // resource is omitted, the valid sibling remains, and one EL001 is raised.
+describe('parse-error resource omission', () => {
+  it('omits resource with malformed attribute; valid sibling remains; one diagnostic', async () => {
     const content = 'task broken { x = }\ntask ok {}\n';
     const parsed = await parse(content, 'mixed.siren');
 
     const ids = parsed.ast.resources.map((r) => r.id);
     expect(ids).toEqual(['ok']);
 
-    const el001 = byCode(parsed.diagnostics, 'EL001');
-    expect(el001).toHaveLength(1);
-    const d: EL001Diagnostic = el001[0];
+    const diags = assertDiagnosticCode(parsed.diagnostics, 'EL002');
+    expect(diags).toHaveLength(1);
+    const d: EL002MissingTokenDiagnostic = diags[0];
     expect(d.documentName).toBe('mixed.siren');
     expect(d.severity).toBe('error');
-    expect(d.nodeType).toBe('resource');
     expect(d.resourceId).toBe('broken');
+    // note this `bare_identifier` expectation is known to be misleading
+    // as pointed out in the corresponding corpus test
+    expect(d.missingToken).toBe('bare_identifier');
   });
 
   it('salvages resourceId when header is valid but body is broken', async () => {
@@ -231,9 +236,10 @@ describe('buildAst — parse-error resource omission (EL001)', () => {
     const parsed = await parse(content, 'salvage.siren');
 
     expect(parsed.ast.resources).toHaveLength(0);
-    const el001 = byCode(parsed.diagnostics, 'EL001');
-    expect(el001).toHaveLength(1);
-    expect(el001[0].resourceId).toBe('salvaged');
+    const el002 = assertDiagnosticCode(parsed.diagnostics, 'EL002');
+    expect(el002).toHaveLength(1);
+    expect(el002[0].resourceId).toBe('salvaged');
+    expect(el002[0].missingToken).toBe('bare_identifier');
   });
 
   it('omits multiple broken resources surgically, preserving interleaved valid ones', async () => {
@@ -248,72 +254,130 @@ milestone ok3 {}
 
     expect(parsed.ast.resources.map((r) => r.id)).toEqual(['ok1', 'ok2', 'ok3']);
 
-    const el001 = byCode(parsed.diagnostics, 'EL001');
-    expect(el001).toHaveLength(2);
-    expect(el001.map((d) => d.resourceId)).toEqual(['broken1', 'broken2']);
+    const el002 = assertDiagnosticCode(parsed.diagnostics, 'EL002');
+    expect(el002).toHaveLength(2);
+    expect(el002.map((d) => d.resourceId)).toEqual(['broken1', 'broken2']);
   });
 
   it('no resourceId salvaged when header itself is malformed', async () => {
     // 'task {' is missing the identifier, so the headerId salvaging logic
     // should fail to find a valid idNode or identifierText.
+    // The parser inserts a MISSING bare_identifier after 'task', which
+    // classifies as EL002 with no resourceId (header has error).
     const content = 'task { x = 1 }';
     const parsed = await parse(content, 'malformed-header.siren');
 
     expect(parsed.ast.resources).toHaveLength(0);
-    const el001 = byCode(parsed.diagnostics, 'EL001');
-    expect(el001).toHaveLength(1);
-    expect(el001[0].resourceId).toBeUndefined();
+    const el002 = assertDiagnosticCode(parsed.diagnostics, 'EL002');
+    expect(el002).toHaveLength(1);
+    expect(el002[0].resourceId).toBeUndefined();
+    expect(el002[0].missingToken).toBe('bare_identifier');
   });
 });
 
 describe('buildAst — diagnostic documentName threading', () => {
   it('documentName matches source.name for warnings', async () => {
     const parsed = await parse('task foo blocked {}', 'custom-name.siren');
-    const wl001 = byCode(parsed.diagnostics, 'WL001');
+    const wl001 = assertDiagnosticCode(parsed.diagnostics, 'WL001');
     expect(wl001).toHaveLength(1);
     expect(wl001[0].documentName).toBe('custom-name.siren');
   });
 });
 
 describe('buildAst — top-level ERROR nodes', () => {
-  it('stray `}` at document scope → one EL001 with nodeType "ERROR"', async () => {
+  it('stray `}` at document scope → one EL003 with expected symbols', async () => {
     // The grammar produces a direct `ERROR` child of `document` for stray
-    // syntax that cannot be salvaged into a `resource` (verified via a probe
-    // against the tree-sitter grammar).
+    // syntax that cannot be salvaged into a `resource`. The error classifier
+    // detects expected alternatives via lookahead and emits EL003.
     const parsed = await parse('}', 'doc.siren');
     expect(parsed.ast.resources).toEqual([]);
 
-    const el001 = byCode(parsed.diagnostics, 'EL001');
-    expect(el001).toHaveLength(1);
-    expect(el001[0].nodeType).toBe('ERROR');
-    expect(el001[0].documentName).toBe('doc.siren');
-    expect(el001[0].resourceId).toBeUndefined();
+    const el003: EL003UnexpectedTokenDiagnostic[] = assertDiagnosticCode(
+      parsed.diagnostics,
+      'EL003',
+    );
+    expect(el003).toHaveLength(1);
+    expect(el003[0].documentName).toBe('doc.siren');
+    expect(el003[0].resourceId).toBeUndefined();
+    expect(el003[0].expected.length).toBeGreaterThan(0);
+    expect(el003[0]?.expected).toStrictEqual([
+      // TODO come up with a way to reduce this to terminals only
+      'task',
+      'milestone',
+      'comment',
+      'document', // what is document?
+      'resource_type',
+      'resource_header',
+      'resource',
+      'ERROR',
+    ]);
   });
 
-  it('stray `}` between two resources → both resources kept, one EL001', async () => {
+  it('stray `}` between two resources → both resources kept, one EL003', async () => {
     const parsed = await parse('task a {}\n}\ntask b {}', 'doc.siren');
     expect(parsed.ast.resources.map((r) => r.id)).toEqual(['a', 'b']);
 
-    const el001 = byCode(parsed.diagnostics, 'EL001');
-    expect(el001).toHaveLength(1);
-    expect(el001[0].nodeType).toBe('ERROR');
+    const el003 = assertDiagnosticCode(parsed.diagnostics, 'EL003');
+    expect(el003).toHaveLength(1);
+    expect(el003[0].expected.length).toBeGreaterThan(0);
+  });
+
+  it('missing block_close → EL002 without expected (no keyword alternatives for anonymous tokens)', async () => {
+    const content = 'task foo {\n  value = "test"\n';
+    const parsed = await parse(content, 'unclosed.siren');
+
+    const el002 = assertDiagnosticCode(parsed.diagnostics, 'EL002');
+    // One EL002 for the missing block_close (inside the resource)
+    expect(el002).toHaveLength(1);
+    expect(el002[0].missingToken).toBe('block_close');
+    // block_close has underscores and isn't a keyword terminal — no alternatives
+    expect(el002[0].expected).toBeUndefined();
+  });
+
+  it('missing bare_identifier → EL002 without expected (no keyword alternatives for identifier)', async () => {
+    const content = 'task { x = 1 }';
+    const parsed = await parse(content, 'no-id.siren');
+
+    const el002 = assertDiagnosticCode(parsed.diagnostics, 'EL002');
+    expect(el002).toHaveLength(1);
+    expect(el002[0].missingToken).toBe('bare_identifier');
+    // bare_identifier has underscores — no keyword alternatives
+    expect(el002[0].expected).toBeUndefined();
+  });
+
+  it('missing equals in attribute → no spurious EL002 expected field', async () => {
+    const content = 'task bad {\n  key "value"\n}';
+    const parsed = await parse(content, 'missing-eq.siren');
+
+    // This particular input may produce EL003 (ERROR node) or EL002 (MISSING
+    // node) depending on tree-sitter's recovery. Either is fine — the
+    // important assertion is that no diagnostic carries a spurious expected.
+    const el002 = parsed.diagnostics.filter(
+      (d) => d.code === 'EL002',
+    ) as EL002MissingTokenDiagnostic[];
+    el002.forEach((d) => {
+      expect(d.missingToken).toBeDefined();
+      // Non-keyword missing tokens should not carry expected
+      expect(d.expected).toBeUndefined();
+    });
   });
 });
 
 describe('buildAst — origins & diagnostic spans', () => {
-  it('assigns accurate origin spans to EL001 diagnostics', async () => {
+  it('assigns accurate origin spans to EL002 diagnostics', async () => {
     const content = 'task broken { x = }';
     const parsed = await parse(content);
 
-    const el001 = byCode(parsed.diagnostics, 'EL001');
-    expect(el001).toHaveLength(1);
-    const d = el001[0];
+    const el002 = assertDiagnosticCode(parsed.diagnostics, 'EL002');
+    expect(el002).toHaveLength(1);
+    const d: EL002MissingTokenDiagnostic = el002[0];
     expect(d.origin).toBeDefined();
     expect(d.origin?.kind).toBe('range');
 
     const origin = d.origin as RangeOrigin;
-    // EL001 should cover the whole resource node including the parse error
-    expect(content.slice(origin.startByte, origin.endByte)).toBe(content);
+    // EL002 points at the MISSING node position (zero-width, right before `}`)
+    expect(origin.startByte).toBe(origin.endByte);
+    expect(origin.startByte).toBeLessThan(content.length);
     expect(origin.startRow).toBe(0);
     expect(origin.endRow).toBe(0);
   });
@@ -322,7 +386,7 @@ describe('buildAst — origins & diagnostic spans', () => {
     const content = 'task foo blocked complete draft {}';
     const parsed = await parse(content);
 
-    const wl001 = byCode(parsed.diagnostics, 'WL001');
+    const wl001 = assertDiagnosticCode(parsed.diagnostics, 'WL001');
     expect(wl001).toHaveLength(1);
     const d1 = wl001[0];
     expect(d1.origin).toBeDefined();
@@ -331,7 +395,7 @@ describe('buildAst — origins & diagnostic spans', () => {
     // WL001 (unrecognized) should cover just the 'blocked' modifier
     expect(content.slice(o1.startByte, o1.endByte)).toBe('blocked');
 
-    const wl002 = byCode(parsed.diagnostics, 'WL002');
+    const wl002 = assertDiagnosticCode(parsed.diagnostics, 'WL002');
     expect(wl002).toHaveLength(1);
     const d2 = wl002[0];
     expect(d2.origin).toBeDefined();
@@ -348,13 +412,15 @@ describe('buildAst — origins & diagnostic spans', () => {
 task ok {}`;
     const parsed = await parse(content);
 
-    const el001 = byCode(parsed.diagnostics, 'EL001');
-    expect(el001).toHaveLength(1);
-    const origin = el001[0].origin as RangeOrigin;
+    // The MISSING bare_identifier after `x = ` on line 1 produces EL002.
+    const el002 = assertDiagnosticCode(parsed.diagnostics, 'EL002');
+    expect(el002).toHaveLength(1);
+    const origin = el002[0].origin as RangeOrigin;
 
-    expect(origin.startRow).toBe(0);
-    expect(origin.endRow).toBe(2);
-    expect(content.slice(origin.startByte, origin.endByte)).toBe('task broken {\n  x = \n}');
+    // EL002 origin is narrowed to the first (and only) line of the MISSING node.
+    expect(origin.startRow).toBe(1);
+    expect(origin.endRow).toBe(1);
+    expect(origin.startByte).toBe(origin.endByte); // zero-width MISSING node
   });
 
   it('assigns accurate origin spans to top-level ERROR nodes', async () => {
@@ -362,10 +428,11 @@ task ok {}`;
     const content = '} task t {}';
     const parsed = await parse(content);
 
-    const el001 = byCode(parsed.diagnostics, 'EL001');
-    expect(el001).toHaveLength(1);
-    const origin = el001[0].origin as RangeOrigin;
+    const el003 = assertDiagnosticCode(parsed.diagnostics, 'EL003');
+    expect(el003).toHaveLength(1);
+    const origin = el003[0].origin as RangeOrigin;
 
+    // EL003 origin is narrowed to the first line of the ERROR node.
     expect(content.slice(origin.startByte, origin.endByte)).toBe('}');
     expect(origin.startRow).toBe(0);
     expect(origin.endRow).toBe(0);
