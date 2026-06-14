@@ -11,6 +11,9 @@ export function runProjectBuild(ctx: DeepReadonly<CliContext>): ProjectBuildArti
   }
 
   return {
+    // FIXME: Something wrong with types
+    // Debugger shows `ctx.builder` is of shape `{builder: _SirenBuilder, changes: Array}`
+    // but TypeScript is saying that `ctx.builder` ought to be the `SirenBuilder` itself.
     ir: ctx.builder.build(),
   };
 }

@@ -1,11 +1,11 @@
-import type { EL001Diagnostic } from '@sirenpm/language';
+import type { RangeOrigin } from '@sirenpm/language';
 
-function clamp(n: number, min: number, max: number): number {
+export function clamp(n: number, min: number, max: number): number {
   return Math.min(Math.max(n, min), max);
 }
 
 /** Byte offset of the start of `row` (0-based) within `source`. */
-function rowStartByte(source: string, row: number): number {
+export function rowStartByte(source: string, row: number): number {
   let index = 0;
   for (let line = 0; line < row; line++) {
     const next = source.indexOf('\n', index);
@@ -16,21 +16,16 @@ function rowStartByte(source: string, row: number): number {
 }
 
 /**
- * Render an `EL001` syntax-error diagnostic as a caret snippet.
+ * Render a caret-snippet block for a source range origin.
  *
- * EL001 reports a resource excluded from the AST. When the diagnostic carries a
- * range `origin`, we reconstruct the offending line and underline the span;
- * otherwise we fall back to a positionless message.
+ * Returns the gutter separator, numbered source line, and underline carets
+ * (e.g. `"  |\n1 | text\n  | ^^^"`). Does NOT include the diagnostic header
+ * line — callers should produce that separately via `formatDiagnostic()`.
  */
-export function formatSyntaxError(diagnostic: EL001Diagnostic, source: string): string {
-  const document = diagnostic.documentName ?? 'unknown';
-  const subject = diagnostic.resourceId ? ` '${diagnostic.resourceId}'` : '';
-  const message = `could not parse ${diagnostic.nodeType}${subject}`;
-
-  const origin = diagnostic.origin;
-  if (!origin || origin.kind !== 'range') {
-    return [`error: ${message}`, ` --> ${document}`].join('\n');
-  }
+export function renderCaretSnippet(origin: RangeOrigin, source: string): string {
+  const isMultiLine = origin.endRow > origin.startRow;
+  const snippet = source.slice(origin.startByte, origin.endByte);
+  const _trimmedSnippet = snippet.endsWith('\n') ? snippet.slice(0, -1) : snippet;
 
   const lines = source.split(/\r?\n/u);
   const lineNumber = origin.startRow + 1;
@@ -38,8 +33,11 @@ export function formatSyntaxError(diagnostic: EL001Diagnostic, source: string): 
 
   const lineStart = rowStartByte(source, origin.startRow);
   const columnNumber = clamp(origin.startByte - lineStart + 1, 1, lineText.length + 1);
+
+  // For single-line spans, underline the exact range.
+  // For multi-line spans (resource-level EL001 fallback), underline to end of first line.
   const remainingOnLine = Math.max(1, lineText.length - (columnNumber - 1));
-  const spanLength = Math.max(1, origin.endByte - origin.startByte);
+  const spanLength = isMultiLine ? remainingOnLine : Math.max(1, origin.endByte - origin.startByte);
   const underlineLength = clamp(spanLength, 1, remainingOnLine);
 
   const lineNo = String(lineNumber);
@@ -47,12 +45,15 @@ export function formatSyntaxError(diagnostic: EL001Diagnostic, source: string): 
   const caretSpaces = ' '.repeat(Math.max(0, columnNumber - 1));
   const carets = '^'.repeat(underlineLength);
 
-  return [
-    `error: ${message}`,
-    ` --> ${document}:${lineNumber}:${columnNumber}`,
-    `  |`,
-    `${lineNo} | ${lineText}`,
-    `${gutter} | ${caretSpaces}${carets}`,
-  ].join('\n');
-}
+  const parts = [`  |`, `${lineNo} | ${lineText}`, `${gutter} | ${caretSpaces}${carets}`];
 
+  // For multi-line spans, add a note.
+  if (isMultiLine) {
+    parts.push(
+      `${gutter} | ${' '.repeat(lineText.length)}`,
+      `${gutter} = note: the parse error is inside this block`,
+    );
+  }
+
+  return parts.join('\n');
+}

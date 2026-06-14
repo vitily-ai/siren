@@ -26,4 +26,3 @@ export function runDecoding(parsedDocuments: DeepReadonly<ParsedDocument[]>): De
 
   return { entries, languageDiagnostics };
 }
-

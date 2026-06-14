@@ -95,7 +95,7 @@ describe('siren main', () => {
 
     expect(consoleErrorSpy).toHaveBeenCalled();
     const errOutput = consoleErrorSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
-    expect(errOutput).toContain('--> siren/broken.siren:1:1');
+    expect(errOutput).toContain('siren/broken.siren:1:1: EL003: unexpected token');
     expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
   });
 
@@ -123,7 +123,7 @@ describe('siren main', () => {
     await main(['show', 'missing']);
 
     const errOutput = consoleErrorSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
-    expect(errOutput).toContain('Resource with id missing not found');
+    expect(errOutput).toContain('SirenEntry with id missing not found');
     expect(process.exitCode).toBe(1);
     expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
   });

@@ -15,6 +15,8 @@ export type {
 } from './ast/types';
 export type {
   EL001Diagnostic,
+  EL002Diagnostic,
+  EL003Diagnostic,
   LanguageDiagnostic,
   WL001Diagnostic,
   WL002Diagnostic,

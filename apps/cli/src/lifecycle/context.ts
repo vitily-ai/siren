@@ -1,6 +1,11 @@
 import * as path from 'node:path';
 import type { SirenBuilder, SirenProject } from '@sirenpm/core';
-import type { LanguageDiagnostic, ParsedDocument, SourceDocument, SourcedEntry } from '@sirenpm/language';
+import type {
+  LanguageDiagnostic,
+  ParsedDocument,
+  SourceDocument,
+  SourcedEntry,
+} from '@sirenpm/language';
 
 export const cliPhaseNames = [
   'discovery',

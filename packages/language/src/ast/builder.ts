@@ -1,8 +1,13 @@
 import type { Node, Tree } from 'web-tree-sitter';
-import { createEL001, createWL001, createWL002, type LanguageDiagnostic } from '../diagnostics';
+import { createWL001, createWL002, type LanguageDiagnostic } from '../diagnostics';
 import type { RangeOrigin } from '../origin';
 import type { SourceDocument } from '../parser/types';
 import type { AstOriginMap } from './origins';
+import {
+  classifyErrorNode,
+  classifyResourceSubtreeError,
+  type RuleContext,
+} from './parse-error-classifier';
 import type {
   AstAttribute,
   AstResource,
@@ -254,14 +259,12 @@ export function buildAst(tree: Tree, source: SourceDocument): BuildAstResult {
         if (headerNode && headerNode.type === 'resource_header' && !headerNode.hasError) {
           salvagedId = headerResourceId(headerNode);
         }
-        diagnostics.push(
-          createEL001({
-            documentName: source.name,
-            nodeType: child.type,
-            resourceId: salvagedId,
-            origin: rangeOriginFromNode(child, source.name),
-          }),
-        );
+        const classifierCtx: RuleContext = {
+          language: tree.language,
+          source,
+          resourceId: salvagedId,
+        };
+        diagnostics.push(classifyResourceSubtreeError(child, salvagedId, classifierCtx));
         continue;
       }
       const built = buildResource(child, source.name, diagnostics, origins);
@@ -270,13 +273,8 @@ export function buildAst(tree: Tree, source: SourceDocument): BuildAstResult {
     }
 
     if (child.isError || child.type === 'ERROR') {
-      diagnostics.push(
-        createEL001({
-          documentName: source.name,
-          nodeType: child.type,
-          origin: rangeOriginFromNode(child, source.name),
-        }),
-      );
+      const classifierCtx: RuleContext = { language: tree.language, source };
+      diagnostics.push(classifyErrorNode(child, classifierCtx));
     }
   }
 

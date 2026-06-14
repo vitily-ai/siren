@@ -4,6 +4,10 @@
  * Formats structured diagnostics into standardized CLI output:
  * `file:line:col: code: message`
  *
+ * Parse errors (EL001/EL002/EL003) additionally render a caret-snippet block
+ * below the header when `source` is supplied and the diagnostic carries a
+ * range `origin`.
+ *
  * Under ADR-0006 core diagnostics (W001/W002/W003) no longer carry source
  * positions — they reference entries by id. The CLI resolves positions by
  * looking up each referenced entry's language-owned `Origin` via an injected
@@ -19,11 +23,15 @@ import type {
 } from '@sirenpm/core';
 import type {
   EL001Diagnostic,
+  EL002Diagnostic,
+  EL003Diagnostic,
   LanguageDiagnostic,
   Origin,
+  RangeOrigin,
   WL001Diagnostic,
   WL002Diagnostic,
 } from '@sirenpm/language';
+import { clamp, renderCaretSnippet, rowStartByte } from './format-parse-error';
 
 /** Resolve a referenced entry's source origin (provided by the project snapshot). */
 export type OriginResolver = (entryId: string) => Origin | undefined;
@@ -33,20 +41,53 @@ export type AnyDiagnostic = Diagnostic | LanguageDiagnostic;
 /**
  * Format a diagnostic for CLI display.
  *
+ * When `source` is provided and the diagnostic has a range `origin`, a caret-
+ * snippet block is appended after the header line for parse errors.
+ *
  * Output format: `file:line:col: code: message`
+ * (with optional caret snippet for parse errors)
  */
-export function formatDiagnostic(diagnostic: AnyDiagnostic, resolveOrigin?: OriginResolver): string {
+export function formatDiagnostic(
+  diagnostic: AnyDiagnostic,
+  resolveOrigin?: OriginResolver,
+  source?: string,
+): string {
   const origin = originForDiagnostic(diagnostic, resolveOrigin);
-  const prefix = formatPrefix(origin);
+  const prefix = formatPrefix(origin, source);
   const message = formatMessage(diagnostic);
-  return `${prefix}: ${diagnostic.code}: ${message}`;
+  const header = `${prefix}: ${diagnostic.code}: ${message}`;
+
+  // Append caret snippet for parse errors when source text is available.
+  if (source && origin?.kind === 'range') {
+    const isParseError =
+      diagnostic.code === 'EL001' || diagnostic.code === 'EL002' || diagnostic.code === 'EL003';
+    if (isParseError) {
+      const snippet = renderCaretSnippet(origin as RangeOrigin, source);
+      return `${header}\n${snippet}`;
+    }
+  }
+
+  return header;
+}
+
+/**
+ * Compute the 1-based column from a byte offset and row.
+ * Falls back to 0 when source is unavailable.
+ */
+function columnFromOrigin(origin: RangeOrigin, source?: string): number {
+  if (!source) return 0;
+  const lineStart = rowStartByte(source, origin.startRow);
+  const lines = source.split(/\r?\n/u);
+  const lineText = lines[origin.startRow] ?? '';
+  return clamp(origin.startByte - lineStart + 1, 1, lineText.length + 1);
 }
 
 /** Convert an `Origin` (or its absence) into a `file:line:col` prefix. */
-function formatPrefix(origin: Origin | undefined): string {
+function formatPrefix(origin: Origin | undefined, source?: string): string {
   const file = origin?.document ?? 'unknown';
   if (origin && origin.kind === 'range') {
-    return `${file}:${origin.startRow + 1}:0`;
+    const col = columnFromOrigin(origin as RangeOrigin, source);
+    return `${file}:${origin.startRow + 1}:${col}`;
   }
   return `${file}:0:0`;
 }
@@ -71,6 +112,8 @@ function originForDiagnostic(
     case 'W003':
       return resolveOrigin?.((diagnostic as DuplicateIdDiagnostic).entryId);
     case 'EL001':
+    case 'EL002':
+    case 'EL003':
     case 'WL001':
     case 'WL002':
       return (diagnostic as EL001Diagnostic | WL001Diagnostic | WL002Diagnostic).origin;
@@ -90,6 +133,10 @@ function formatMessage(diagnostic: AnyDiagnostic): string {
       return formatDuplicateId(diagnostic as DuplicateIdDiagnostic);
     case 'EL001':
       return formatSyntaxExclusion(diagnostic as EL001Diagnostic);
+    case 'EL002':
+      return formatMissingToken(diagnostic as EL002Diagnostic);
+    case 'EL003':
+      return formatUnexpectedToken(diagnostic as EL003Diagnostic);
     case 'WL001':
       return formatUnknownStatus(diagnostic as WL001Diagnostic);
     case 'WL002':
@@ -125,8 +172,24 @@ function formatDuplicateId(diagnostic: DuplicateIdDiagnostic): string {
 
 /** EL001: Resource excluded from the AST due to a parse error in its subtree. */
 function formatSyntaxExclusion(diagnostic: EL001Diagnostic): string {
-  const subject = diagnostic.resourceId ? ` '${diagnostic.resourceId}'` : '';
-  return `Invalid syntax: could not parse ${diagnostic.nodeType}${subject}`;
+  if (diagnostic.resourceId) {
+    return `could not parse resource '${diagnostic.resourceId}'`;
+  }
+  return `could not parse ${diagnostic.nodeType}`;
+}
+
+/** EL002: Missing required token. */
+function formatMissingToken(diagnostic: EL002Diagnostic): string {
+  const subject = diagnostic.resourceId ? ` in resource '${diagnostic.resourceId}'` : '';
+  return `missing '${diagnostic.missingToken}'${subject}`;
+}
+
+/** EL003: Unexpected token with expected alternatives. */
+function formatUnexpectedToken(diagnostic: EL003Diagnostic): string {
+  const list = diagnostic.expected.slice(0, 5).join("', '");
+  const suffix = diagnostic.expected.length > 5 ? '\u2026' : '';
+  const subject = diagnostic.resourceId ? ` in resource '${diagnostic.resourceId}'` : '';
+  return `unexpected token${subject}; expected '${list}'${suffix}`;
 }
 
 /** WL001: Unrecognized status modifier ignored. */

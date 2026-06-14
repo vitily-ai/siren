@@ -64,7 +64,7 @@ describe('parser.parse contract', () => {
     expect(parsed).toBeDefined();
     expect(parsed.ast.resources).toHaveLength(0);
     expect(parsed.diagnostics.length).toBeGreaterThan(0);
-    expect(parsed.diagnostics.some((d) => d.code === 'EL001')).toBe(true);
+    expect(parsed.diagnostics.some((d) => d.code.startsWith('EL'))).toBe(true);
   });
 
   it('does not leak the private tree-sitter Tree on the public ParsedDocument surface', async () => {

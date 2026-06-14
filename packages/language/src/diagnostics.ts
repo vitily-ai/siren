@@ -9,7 +9,10 @@ export type LanguageDiagnostic<S extends 'I' | 'W' | 'E' = 'I' | 'W' | 'E'> = Di
 /**
  * EL001 — Resource excluded from AST due to parse errors in its subtree.
  *
- * Emitted by the AST builder (in `lang-ast-builder`) once per excluded resource.
+ * Default/fallback parse-error diagnostic emitted when no more specific
+ * classification rule matches. See `parse-error-classifier.ts` for the
+ * classification pipeline.
+ *
  * `resourceId` is optional because a resource whose identifier itself failed to
  * parse cannot supply one.
  */
@@ -20,6 +23,41 @@ export interface EL001Diagnostic extends LanguageDiagnostic<'E'> {
   readonly documentName: string;
   readonly nodeType: string;
   readonly origin?: Origin;
+}
+
+/**
+ * EL002 — Missing required token.
+ *
+ * Emitted when tree-sitter inserts a MISSING node — a location where the
+ * grammar requires a token but none was present in source. `missingToken`
+ * carries the CST type of the absent token (e.g. `"{"`, `"}"`, `"="`).
+ */
+export interface EL002Diagnostic extends LanguageDiagnostic<'E'> {
+  readonly code: 'EL002';
+  readonly severity: 'error';
+  readonly documentName: string;
+  readonly resourceId?: string;
+  readonly origin?: Origin;
+  /** The CST type of the token that was expected but absent. */
+  readonly missingToken: string;
+}
+
+/**
+ * EL003 — Unexpected token with known expected alternatives.
+ *
+ * Emitted when tree-sitter encounters an ERROR node and the language's
+ * `lookaheadIterator` at the error position yields a non-empty set of valid
+ * symbols. `origin` is narrowed to the ERROR token rather than the enclosing
+ * resource.
+ */
+export interface EL003Diagnostic extends LanguageDiagnostic<'E'> {
+  readonly code: 'EL003';
+  readonly severity: 'error';
+  readonly documentName: string;
+  readonly resourceId?: string;
+  readonly origin?: Origin;
+  /** Valid grammar symbols at the error position. */
+  readonly expected: readonly string[];
 }
 
 /**
@@ -55,6 +93,8 @@ export interface WL002Diagnostic extends LanguageDiagnostic<'W'> {
 
 type DiagnosticInput<T extends LanguageDiagnostic> = Omit<T, 'code' | 'severity'>;
 export interface EL001Input extends DiagnosticInput<EL001Diagnostic> {}
+export interface EL002Input extends DiagnosticInput<EL002Diagnostic> {}
+export interface EL003Input extends DiagnosticInput<EL003Diagnostic> {}
 export interface WL001Input extends DiagnosticInput<WL001Diagnostic> {}
 export interface WL002Input extends DiagnosticInput<WL002Diagnostic> {}
 
@@ -65,6 +105,28 @@ export function createEL001(input: EL001Input): EL001Diagnostic {
     ...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
     documentName: input.documentName,
     nodeType: input.nodeType,
+    ...(input.origin !== undefined ? { origin: input.origin } : {}),
+  });
+}
+
+export function createEL002(input: EL002Input): EL002Diagnostic {
+  return Object.freeze({
+    code: 'EL002' as const,
+    severity: 'error' as const,
+    ...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
+    documentName: input.documentName,
+    missingToken: input.missingToken,
+    ...(input.origin !== undefined ? { origin: input.origin } : {}),
+  });
+}
+
+export function createEL003(input: EL003Input): EL003Diagnostic {
+  return Object.freeze({
+    code: 'EL003' as const,
+    severity: 'error' as const,
+    ...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
+    documentName: input.documentName,
+    expected: Object.freeze(input.expected),
     ...(input.origin !== undefined ? { origin: input.origin } : {}),
   });
 }
