@@ -3,13 +3,13 @@ import type {
   AstAttribute,
   AstResource,
   AstTupleMember,
-  EL002Diagnostic,
-  EL003Diagnostic,
+  EL002MissingTokenDiagnostic,
+  EL003UnexpectedTokenDiagnostic,
   LanguageDiagnostic,
   ParsedDocument,
   RangeOrigin,
-  WL001Diagnostic,
-  WL002Diagnostic,
+  WL001UnrecognizedModifierDiagnostic,
+  WL002CollapsedModifiersDiagnostic,
 } from '../index';
 import { createParser } from '../index';
 
@@ -109,7 +109,7 @@ describe('buildAst — status modifiers (Decision 10)', () => {
 
     const wl001 = assertDiagnosticCode(parsed.diagnostics, 'WL001');
     expect(wl001).toHaveLength(1);
-    const d: WL001Diagnostic = wl001[0];
+    const d: WL001UnrecognizedModifierDiagnostic = wl001[0];
     expect(d.modifier).toBe('blocked');
     expect(d.resourceId).toBe('foo');
     expect(d.documentName).toBe('doc.siren');
@@ -124,7 +124,7 @@ describe('buildAst — status modifiers (Decision 10)', () => {
 
     const wl002 = assertDiagnosticCode(parsed.diagnostics, 'WL002');
     expect(wl002).toHaveLength(1);
-    const d: WL002Diagnostic = wl002[0];
+    const d: WL002CollapsedModifiersDiagnostic = wl002[0];
     expect(d.recognizedModifiers).toEqual(['complete', 'draft']);
     expect(d.resolvedStatus).toBe('draft');
     expect(d.resourceId).toBe('foo');
@@ -222,7 +222,7 @@ describe('parse-error resource omission', () => {
 
     const diags = assertDiagnosticCode(parsed.diagnostics, 'EL002');
     expect(diags).toHaveLength(1);
-    const d: EL002Diagnostic = diags[0];
+    const d: EL002MissingTokenDiagnostic = diags[0];
     expect(d.documentName).toBe('mixed.siren');
     expect(d.severity).toBe('error');
     expect(d.resourceId).toBe('broken');
@@ -292,7 +292,10 @@ describe('buildAst — top-level ERROR nodes', () => {
     const parsed = await parse('}', 'doc.siren');
     expect(parsed.ast.resources).toEqual([]);
 
-    const el003: EL003Diagnostic[] = assertDiagnosticCode(parsed.diagnostics, 'EL003');
+    const el003: EL003UnexpectedTokenDiagnostic[] = assertDiagnosticCode(
+      parsed.diagnostics,
+      'EL003',
+    );
     expect(el003).toHaveLength(1);
     expect(el003[0].documentName).toBe('doc.siren');
     expect(el003[0].resourceId).toBeUndefined();
@@ -349,7 +352,9 @@ describe('buildAst — top-level ERROR nodes', () => {
     // This particular input may produce EL003 (ERROR node) or EL002 (MISSING
     // node) depending on tree-sitter's recovery. Either is fine — the
     // important assertion is that no diagnostic carries a spurious expected.
-    const el002 = parsed.diagnostics.filter((d) => d.code === 'EL002') as EL002Diagnostic[];
+    const el002 = parsed.diagnostics.filter(
+      (d) => d.code === 'EL002',
+    ) as EL002MissingTokenDiagnostic[];
     el002.forEach((d) => {
       expect(d.missingToken).toBeDefined();
       // Non-keyword missing tokens should not carry expected
@@ -365,7 +370,7 @@ describe('buildAst — origins & diagnostic spans', () => {
 
     const el002 = assertDiagnosticCode(parsed.diagnostics, 'EL002');
     expect(el002).toHaveLength(1);
-    const d: EL002Diagnostic = el002[0];
+    const d: EL002MissingTokenDiagnostic = el002[0];
     expect(d.origin).toBeDefined();
     expect(d.origin?.kind).toBe('range');
 

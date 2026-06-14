@@ -28,9 +28,9 @@ import {
   createEL001,
   createEL002,
   createEL003,
-  type EL001Diagnostic,
-  type EL002Diagnostic,
-  type EL003Diagnostic,
+  type EL001GenericParseErrorDiagnostic,
+  type EL002MissingTokenDiagnostic,
+  type EL003UnexpectedTokenDiagnostic,
   type LanguageDiagnostic,
 } from '../diagnostics';
 import type { RangeOrigin } from '../origin';
@@ -41,7 +41,10 @@ import type { SourceDocument } from '../parser/types';
 // ---------------------------------------------------------------------------
 
 /** Any classified parse-error diagnostic produced by a rule. */
-export type ClassifiedParseError = EL001Diagnostic | EL002Diagnostic | EL003Diagnostic;
+export type ClassifiedParseError =
+  | EL001GenericParseErrorDiagnostic
+  | EL002MissingTokenDiagnostic
+  | EL003UnexpectedTokenDiagnostic;
 
 /** Shared context available to every `ErrorRule.match()` call. */
 export interface RuleContext {

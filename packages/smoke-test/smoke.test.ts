@@ -1,7 +1,7 @@
 import { createParser } from '@sirenpm/language';
 import { describe, expect, it } from 'vitest';
 
-const PARSER = createParser();
+const PARSER = await createParser();
 
 // We don't actually care if this test runs successfully
 // We only care that the package imports properly and that the parser
@@ -13,7 +13,7 @@ describe('Language Package Smoke Test', () => {
       content: 'task my-task { description = "smoke test" }',
     };
 
-    const doc = await (await PARSER).parse(source);
+    const doc = await PARSER.parse(source);
 
     // Check AST
     expect(doc.ast).toBeDefined();

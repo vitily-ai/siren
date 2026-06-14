@@ -16,7 +16,7 @@ export type LanguageDiagnostic<S extends 'I' | 'W' | 'E' = 'I' | 'W' | 'E'> = Di
  * `resourceId` is optional because a resource whose identifier itself failed to
  * parse cannot supply one.
  */
-export interface EL001Diagnostic extends LanguageDiagnostic<'E'> {
+export interface EL001GenericParseErrorDiagnostic extends LanguageDiagnostic<'E'> {
   readonly code: 'EL001';
   readonly severity: 'error';
   readonly resourceId?: string;
@@ -32,7 +32,7 @@ export interface EL001Diagnostic extends LanguageDiagnostic<'E'> {
  * grammar requires a token but none was present in source. `missingToken`
  * carries the CST type of the absent token (e.g. `"{"`, `"}"`, `"="`).
  */
-export interface EL002Diagnostic extends LanguageDiagnostic<'E'> {
+export interface EL002MissingTokenDiagnostic extends LanguageDiagnostic<'E'> {
   readonly code: 'EL002';
   readonly severity: 'error';
   readonly documentName: string;
@@ -50,7 +50,7 @@ export interface EL002Diagnostic extends LanguageDiagnostic<'E'> {
  * symbols. `origin` is narrowed to the ERROR token rather than the enclosing
  * resource.
  */
-export interface EL003Diagnostic extends LanguageDiagnostic<'E'> {
+export interface EL003UnexpectedTokenDiagnostic extends LanguageDiagnostic<'E'> {
   readonly code: 'EL003';
   readonly severity: 'error';
   readonly documentName: string;
@@ -66,7 +66,7 @@ export interface EL003Diagnostic extends LanguageDiagnostic<'E'> {
  * Emitted once per unrecognized modifier token on a resource. The recognized
  * set is `complete` and `draft`; anything else triggers this warning.
  */
-export interface WL001Diagnostic extends LanguageDiagnostic<'W'> {
+export interface WL001UnrecognizedModifierDiagnostic extends LanguageDiagnostic<'W'> {
   readonly code: 'WL001';
   readonly severity: 'warning';
   readonly resourceId: string;
@@ -81,7 +81,7 @@ export interface WL001Diagnostic extends LanguageDiagnostic<'W'> {
  * Emitted when more than one recognized modifier is supplied; last-recognized
  * wins and the surplus modifiers are reported via this diagnostic.
  */
-export interface WL002Diagnostic extends LanguageDiagnostic<'W'> {
+export interface WL002CollapsedModifiersDiagnostic extends LanguageDiagnostic<'W'> {
   readonly code: 'WL002';
   readonly severity: 'warning';
   readonly resourceId: string;
@@ -92,13 +92,13 @@ export interface WL002Diagnostic extends LanguageDiagnostic<'W'> {
 }
 
 type DiagnosticInput<T extends LanguageDiagnostic> = Omit<T, 'code' | 'severity'>;
-export interface EL001Input extends DiagnosticInput<EL001Diagnostic> {}
-export interface EL002Input extends DiagnosticInput<EL002Diagnostic> {}
-export interface EL003Input extends DiagnosticInput<EL003Diagnostic> {}
-export interface WL001Input extends DiagnosticInput<WL001Diagnostic> {}
-export interface WL002Input extends DiagnosticInput<WL002Diagnostic> {}
+export interface EL001Input extends DiagnosticInput<EL001GenericParseErrorDiagnostic> {}
+export interface EL002Input extends DiagnosticInput<EL002MissingTokenDiagnostic> {}
+export interface EL003Input extends DiagnosticInput<EL003UnexpectedTokenDiagnostic> {}
+export interface WL001Input extends DiagnosticInput<WL001UnrecognizedModifierDiagnostic> {}
+export interface WL002Input extends DiagnosticInput<WL002CollapsedModifiersDiagnostic> {}
 
-export function createEL001(input: EL001Input): EL001Diagnostic {
+export function createEL001(input: EL001Input): EL001GenericParseErrorDiagnostic {
   return Object.freeze({
     code: 'EL001' as const,
     severity: 'error' as const,
@@ -109,7 +109,7 @@ export function createEL001(input: EL001Input): EL001Diagnostic {
   });
 }
 
-export function createEL002(input: EL002Input): EL002Diagnostic {
+export function createEL002(input: EL002Input): EL002MissingTokenDiagnostic {
   return Object.freeze({
     code: 'EL002' as const,
     severity: 'error' as const,
@@ -120,7 +120,7 @@ export function createEL002(input: EL002Input): EL002Diagnostic {
   });
 }
 
-export function createEL003(input: EL003Input): EL003Diagnostic {
+export function createEL003(input: EL003Input): EL003UnexpectedTokenDiagnostic {
   return Object.freeze({
     code: 'EL003' as const,
     severity: 'error' as const,
@@ -131,7 +131,7 @@ export function createEL003(input: EL003Input): EL003Diagnostic {
   });
 }
 
-export function createWL001(input: WL001Input): WL001Diagnostic {
+export function createWL001(input: WL001Input): WL001UnrecognizedModifierDiagnostic {
   return Object.freeze({
     code: 'WL001' as const,
     severity: 'warning' as const,
@@ -142,7 +142,7 @@ export function createWL001(input: WL001Input): WL001Diagnostic {
   });
 }
 
-export function createWL002(input: WL002Input): WL002Diagnostic {
+export function createWL002(input: WL002Input): WL002CollapsedModifiersDiagnostic {
   return Object.freeze({
     code: 'WL002' as const,
     severity: 'warning' as const,
