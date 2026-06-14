@@ -1,0 +1,280 @@
+==================
+ERROR: Unclosed resource brace
+==================
+
+task broken {
+  value = "test"
+
+---
+
+(document
+  (resource
+    (resource_header
+      type: (resource_type)
+      id: (identifier
+        (bare_identifier)))
+    body: (block
+      (block_open)
+      (attribute
+        key: (bare_identifier)
+        value: (expression
+          (tuple
+                (literal
+                  (string_literal
+                    (str_open)
+                    (str_body)
+                    (str_close))))))
+      (MISSING block_close))))
+
+==================
+ERROR: Unclosed string literal
+==================
+
+task bad {
+  description = "unclosed
+}
+
+---
+
+(document
+  (resource
+    (resource_header
+      type: (resource_type)
+      id: (identifier
+        (bare_identifier)))
+    body: (block
+      (block_open)
+      (attribute
+        key: (bare_identifier)
+        value: (expression
+          (tuple
+                (literal
+                  (string_literal
+                    (str_open)
+                    (str_body)
+                    (MISSING str_close))))))
+      (block_close))))
+
+==================
+ERROR: Missing attribute value
+Note: the `MISSING bare_identifier` under an `attribute.value` field should probably just map to an `Error: expected value after "="` diagnostic
+==================
+
+task incomplete {
+  key = 
+}
+
+---
+
+(document
+  (resource
+    (resource_header
+      type: (resource_type)
+      id: (identifier
+        (bare_identifier)))
+    body: (block
+      (block_open)
+      (attribute
+        key: (bare_identifier)
+        value: (expression
+          (tuple
+            (MISSING bare_identifier))))
+      (block_close))))
+
+==================
+ERROR: Invalid attribute syntax no key
+==================
+
+task no_key {
+  = "value"
+}
+
+---
+
+(document
+  (resource
+    (resource_header
+      type: (resource_type)
+      id: (identifier
+        (bare_identifier)))
+    body: (block
+      (block_open)
+      (ERROR
+        (str_open)
+            (bare_identifier)
+            (str_open))
+      (block_close))))
+
+==================
+ERROR: Mismatched quotes in identifier
+==================
+
+task "oops {
+}
+
+task "ok" {}
+
+---
+
+(document
+  (ERROR
+        (resource_type)
+        (str_open)
+        (str_body)
+        (block_close))
+      (resource
+        (resource_header
+          type: (resource_type)
+          id: (identifier
+            (string_literal
+              (str_open)
+              (str_body)
+              (str_close))))
+        body: (block
+          (block_open)
+          (block_close))))
+
+==================
+ERROR: Missing equals sign
+==================
+
+task missing_eq {
+  key "value"
+}
+
+---
+
+(document
+  (resource
+    (resource_header
+      type: (resource_type)
+      id: (identifier
+        (bare_identifier)))
+      body: (block
+        (block_open)
+        (ERROR
+          (bare_identifier)
+          (str_open)
+          (bare_identifier)
+          (str_open))
+        (block_close))))
+
+==================
+ERROR: Unclosed tuple
+==================
+
+task partial {
+  deps = [A, B
+}
+
+---
+
+(document
+  (resource
+    (resource_header
+      type: (resource_type)
+      id: (identifier
+        (bare_identifier)))
+    body: (block
+      (block_open)
+      (attribute
+        key: (bare_identifier)
+        value: (expression
+          (tuple
+            (bare_identifier)
+            (bare_identifier)
+            (MISSING "]"))))
+      (block_close))))
+
+==================
+ERROR: Invalid token in resource body
+==================
+
+task invalid {
+  @@@
+  valid = "test"
+}
+
+---
+
+(document
+  (resource
+    (resource_header
+      type: (resource_type)
+      id: (identifier
+        (bare_identifier)))
+    body: (block
+      (block_open)
+      (ERROR
+        (UNEXPECTED '@'))
+      (attribute
+        key: (bare_identifier)
+        value: (expression
+          (tuple
+            (literal
+              (string_literal
+                (str_open)
+                (str_body)
+                (str_close))))))
+      (block_close))))
+
+==================
+Explicit tuple with missing member
+==================
+
+task immediate_comma {
+  list = [ 1, , 2 ]
+}
+
+---
+
+(document
+  (resource
+    (resource_header
+      type: (resource_type)
+      id: (identifier
+        (bare_identifier)))
+    body: (block
+      (block_open)
+      (attribute
+        key: (bare_identifier)
+        value: (expression
+          (tuple
+            (literal
+              (number_literal))
+            (ERROR)
+            (literal
+              (number_literal)))))
+      (block_close))))
+
+==================
+Nonsense
+==================
+
+this is not valid siren syntax!!!
+
+---
+
+(document
+  (ERROR
+    (resource_header
+      type: (resource_type
+        (MISSING "task"))
+      id: (identifier
+        (bare_identifier))
+      status_modifier: (resource_modifier
+        (identifier
+          (bare_identifier)))
+      status_modifier: (resource_modifier
+        (identifier
+          (bare_identifier)))
+      status_modifier: (resource_modifier
+        (identifier
+          (bare_identifier)))
+      status_modifier: (resource_modifier
+        (identifier
+          (bare_identifier)))
+      status_modifier: (resource_modifier
+        (identifier
+          (bare_identifier))))
+  (UNEXPECTED '!')))

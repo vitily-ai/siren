@@ -46,14 +46,19 @@ types that add origin as an opaque property.
 - `Attribute.origin` is removed. Same rationale.
 - `Document` (already unexported) is cleaned up if it still references origin-like fields.
 - `source-attribution.ts` and all its exports are deleted.
-- `DiagnosticBase` is reduced to:
+- `DiagnosticBase` becomes a generic interface parameterised on severity and package char:
   ```typescript
-  export interface DiagnosticBase {
-    readonly code: string;
+  type PackageChar = 'A' | 'B' | ... | 'W' | 'L' | ... | '';
+  type DiagnosticCode<S, P> = `${S}${P}${number}`;
+
+  export interface DiagnosticBase<S extends 'I' | 'W' | 'E', P extends PackageChar> {
+    readonly code: DiagnosticCode<S, P>;
     readonly severity: 'info' | 'warning' | 'error';
   }
   ```
-  No `file`, `line`, `column`.
+  No `file`, `line`, `column`. Language diagnostics use `DiagnosticBase<'E','L'>` and
+  `DiagnosticBase<'W','L'>` — this aligns with the `EL001` / `WL001` / `WL002` code scheme
+  already defined in the ADR-0004 rebuild.
 
 ### Concrete diagnostic changes
 
@@ -129,8 +134,9 @@ Diagnostic formatting becomes a consumer responsibility:
   extracted scalars) enables integrators to do more than just format positions — they can render
   entry excerpts, link to definitions, or group diagnostics by source file.
 - **Origin becomes a proper language abstraction.** It lives in the package that creates it,
-  alongside the CST nodes and decoder that produce it. The re-export from `packages/language/src/parser/cst.ts`
-  becomes a native definition.
+  alongside the CST nodes and decoder that produce it. In the ADR-0004 rebuild, there is no
+  `cst.ts` re-export to replace — origin is defined natively in
+  `packages/language/src/origin.ts` from the start.
 
 ### Negative
 
@@ -142,9 +148,10 @@ Diagnostic formatting becomes a consumer responsibility:
 - **Slightly more ceremony for integrators.** Extracting provenance is no longer a property
   access on the diagnostic — it requires discriminating the diagnostic's payload, retrieving
   the entry, and extracting origin from it.
-- **CST types** that currently re-export `Origin` from core (in `packages/language/src/parser/cst.ts`)
-  will have a brief window where the re-export points at a now-missing export.
-  This is resolved by the language owning its own type in the same release cycle.
+- **CST types** that previously re-exported `Origin` from core (e.g. in the pre-rebuild
+  `packages/language/src/parser/cst.ts`) needed a brief window of coexistence. The ADR-0004
+  rebuild eliminates this concern: the rebuilt language has no `cst.ts` re-export path.
+  Origin is defined natively from the start.
 
 ### Migration
 
@@ -176,6 +183,24 @@ key into it. This is more structured than opaque structural extension but introd
 unnecessary indirection and accepts arbitrary keys with no type safety. The language-owned
 extension pattern (subtype with a typed field) is simpler and preserves type checking within
 language's boundaries.
+
+## Post-Adoption Note for the Rebuilt Language (ADR-0004)
+
+This ADR was written before the ADR-0004 language rebuild (which replaced `decodeSyntaxDocuments`,
+`renderSirenDocument`, `cst.ts`, and `context-factory.ts` with the `SirenAst` / `ParsedDocument`
+architecture). The key design decisions hold, but the implementation surfaces differ:
+
+| ADR-0006 assumption | Rebuilt reality (ADR-0004) |
+|---|---|
+| Origin re-exported at `packages/language/src/parser/cst.ts` | No `cst.ts` exists; origin defined natively at `packages/language/src/origin.ts` |
+| Decoder produces `SirenDocument` with `origin` on `Resource` | Decoder produces flat `SirenEntry[]` with `origin` on `SourcedEntry`/`SourcedAttribute` |
+| Diagnostics import `Origin` from `@sirenpm/core` | Diagnostics must import `Origin` from `packages/language/src/origin` |
+| `DiagnosticBase` with flat `{code, severity}` (no `file`/`line`/`column`) | `DiagnosticBase<'E','L'>` / `DiagnosticBase<'W','L'>` — generic params added |
+| Migrate via `context-factory.ts` | No `context-factory.ts`; migration targets `ParsedDocument.toEntries()` |
+
+The `siren/origin-demotion.siren` language-phase tasks (`origin-demotion-language-red`,
+`origin-demotion-language-green`, `origin-demotion-language-publish`) targeted the pre-rebuild
+surfaces and are superseded by `lang-v060-*` tasks in `siren/language-ast-pipeline.siren`.
 
 ## ADR-0005 Amendment
 

@@ -2,8 +2,9 @@ task milestone-complete-implicit complete {
   description = "a milestone that has dependencies should be implicitly complete if all of its dependencies are complete. orphan milestones should not be implicitly completed."
 }
 
-task array-optional-brackets {
+task array-optional-brackets complete {
   description = "make brackets wrapping arrays optional - treating anything comma-separated as a tuple"
+  note = "effectively tackled by the tuple-first migration and the new tuple grammar with optional braces"
 }
 
 task task-readiness complete {

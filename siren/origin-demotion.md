@@ -2,6 +2,20 @@
 
 **ADR:** [docs/adr/0006-origin-demoted-to-language.md](../docs/adr/0006-origin-demoted-to-language.md)
 
+> **Post-Adoption Note: Rebuilt Language (ADR-0004)**
+>
+> This plan was written before the ADR-0004 language rebuild replaced `decodeSyntaxDocuments`,
+> `cst.ts`, and `context-factory.ts` with the `SirenAst`/`ParsedDocument` architecture.
+> The core-phase work (removing `Origin`/`RangeOrigin`/`SyntheticOrigin` from `@sirenpm/core`,
+> reducing `DiagnosticBase`) was completed in core v0.6.0 and is **published**.
+>
+> The language-phase tasks here target the **pre-rebuild** API and are superseded by
+> `lang-v060-origin`, `lang-v060-diagnostics`, and `lang-v060-exports` in
+> `siren/language-ast-pipeline.siren`. In the rebuild, `Origin` is defined natively at
+> `packages/language/src/origin.ts` (no `cst.ts` re-export to replace), diagnostics use
+> `DiagnosticBase<'E','L'>`/`<'W','L'>`, and the decoder produces flat `SourcedEntry[]`
+> instead of `SirenDocument` with `Resource`.
+
 ## What this is
 
 `Origin` (`RangeOrigin`, `SyntheticOrigin`) and all source-attribution machinery are removed from
@@ -34,14 +48,23 @@ found, not what it means.
 
 ### Phase 2: `@sirenpm/language`
 
+> ⚠️ The pre-rebuild language had a `cst.ts` re-exporting `Origin` from core; the ADR-0004
+> rebuild has no `cst.ts` — `Origin` is defined natively at `packages/language/src/origin.ts`.
+> The decoder and diagnostics must similarly be updated (see `lang-v060-*` tasks in
+> `siren/language-ast-pipeline.siren`).
+
 - Language defines its own `Origin`, `RangeOrigin`, `SyntheticOrigin` types natively
 - `SourcedEntry extends SirenEntry { origin: Origin }` added as a language-owned type
 - `SourcedAttribute extends Attribute { origin: Origin }` added
-- The current re-export of `Origin` from `@sirenpm/core` in `packages/language/src/parser/cst.ts`
-  is replaced by the language-native definition
-- Decoder, exporters, and formatters continue to work without changes — they already use
-  structural typing and never depended on origin being core-owned
-- `@sirenpm/core` dependency pin bumped to the new breaking version
+- In the pre-rebuild: the re-export of `Origin` from `@sirenpm/core` in
+  `packages/language/src/parser/cst.ts` is replaced by the language-native definition.
+  In the ADR-0004 rebuild: Origin is defined in `packages/language/src/origin.ts` from the start
+  — no re-export to replace.
+- Decoder, exporters, and formatters continue to work without changes structurally, but
+  the rebuild's decoder must swap `import { Resource, SirenDocument }` for
+  `import { SirenEntry, Attribute, Tuple, Atom }` from core and import `Origin` from the
+  local `../origin`.
+- `@sirenpm/core` dependency pin bumped to `^0.6.0`.
 
 ### Phase 3: `@sirenpm/cli`
 
@@ -60,8 +83,10 @@ established invariant verified by existing assembly tests.
 
 ## Assumptions
 
-- The parallel CST reimplementation in `@sirenpm/language` is treated as an orthogonal concern;
-  this initiative targets the currently-shipping CST and decoder.
+- ~~The parallel CST reimplementation in `@sirenpm/language` is treated as an orthogonal concern~~.
+  (This assumption was made when the pre-rebuild language was shipping. The ADR-0004 rebuild
+  is now the language package; this plan's language-phase tasks were updated to target the
+  rebuild via `siren/language-ast-pipeline.siren`.)
 - Entries produced without language (test fixtures, CLI-synthesized entries) are valid without
   an origin. The absence of origin is not an error in the new model.
 - Entries vs IDs in diagnostic payloads: the current `entryId` (string) pattern is preferred

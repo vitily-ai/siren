@@ -1,6 +1,6 @@
 {
   "name": "@sirenpm/language",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Parser, decoder, and exporter for the Siren grammar",
   "license": "GPL-3.0",
   "type": "module",
@@ -14,8 +14,7 @@
     }
   },
   "files": [
-    "dist",
-    "grammar/tree-sitter-siren.wasm"
+    "dist"
   ],
   "publishConfig": {
     "access": "public"
@@ -24,27 +23,23 @@
     "build": "tsup",
     "build:quiet": "tsup --silent",
     "prepack": "yarn run build",
-    "test": "vitest run --reporter=dot --passWithNoTests --silent",
+    "test": "vitest run --reporter=dot --passWithNoTests --silent=true",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist *.tsbuildinfo",
-    "grammar:generate": "cd grammar && npx tree-sitter-cli generate",
-    "grammar:build-wasm": "cd grammar && npx tree-sitter-cli build --wasm",
-    "grammar:test": "cd grammar && npx tree-sitter-cli test"
+    "clean": "rm -rf dist .tsbuildinfo"
   },
   "engines": {
     "node": ">=24.0.0"
   },
   "peerDependencies": {
-    "@sirenpm/core": "^0.4.0"
+    "@sirenpm/core": "^0.6.1"
   },
   "dependencies": {
     "web-tree-sitter": "0.26.3"
   },
   "devDependencies": {
-    "@sirenpm/core": "^0.4.0",
+    "@sirenpm/core": "^0.6.1",
     "@types/node": "^25.0.6",
-    "tree-sitter-cli": "^0.23.2",
     "tsup": "^8.3.5",
     "typescript": "^5.7.2",
     "vitest": "^4.0.16"

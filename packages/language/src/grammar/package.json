@@ -1,0 +1,13 @@
+{
+  "name": "@sirenpm/grammar",
+  "private": true,
+  "scripts": {
+    "build": "tree-sitter build --wasm",
+    "generate": "tree-sitter generate",
+    "test": "tree-sitter test --show-fields",
+    "test:fresh": "yarn run generate && yarn run build && tree-sitter test --show-fields"
+  },
+  "devDependencies": {
+    "tree-sitter-cli": "^0.26.8"
+  }
+}
