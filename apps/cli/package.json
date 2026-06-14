@@ -14,7 +14,7 @@
     "build": "tsup",
     "build:quiet": "tsup --silent",
     "prepack": "yarn run build",
-    "test": "npx vitest run --reporter=dot --silent",
+    "test": "vitest run --reporter=dot --silent",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
@@ -26,7 +26,8 @@
   "devDependencies": {
     "@types/node": "^25.6.0",
     "tsup": "^8.3.5",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.16"
   },
   "engines": {
     "node": ">=24.0.0"

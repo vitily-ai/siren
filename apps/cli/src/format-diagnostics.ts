@@ -22,14 +22,14 @@ import type {
   DuplicateIdDiagnostic,
 } from '@sirenpm/core';
 import type {
-  EL001Diagnostic,
-  EL002Diagnostic,
-  EL003Diagnostic,
+  EL001FallbackDiagnostic,
+  EL002MissingTokenDiagnostic,
+  EL003UnexpectedTokenDiagnostic,
   LanguageDiagnostic,
   Origin,
   RangeOrigin,
-  WL001Diagnostic,
-  WL002Diagnostic,
+  WL001UnrecognizedModifierDiagnostic,
+  WL002CollapsedModifiersDiagnostic,
 } from '@sirenpm/language';
 import { clamp, renderCaretSnippet, rowStartByte } from './format-parse-error';
 
@@ -116,7 +116,12 @@ function originForDiagnostic(
     case 'EL003':
     case 'WL001':
     case 'WL002':
-      return (diagnostic as EL001Diagnostic | WL001Diagnostic | WL002Diagnostic).origin;
+      return (
+        diagnostic as
+          | EL001FallbackDiagnostic
+          | WL001UnrecognizedModifierDiagnostic
+          | WL002CollapsedModifiersDiagnostic
+      ).origin;
     default:
       return undefined;
   }
@@ -132,15 +137,15 @@ function formatMessage(diagnostic: AnyDiagnostic): string {
     case 'W003':
       return formatDuplicateId(diagnostic as DuplicateIdDiagnostic);
     case 'EL001':
-      return formatSyntaxExclusion(diagnostic as EL001Diagnostic);
+      return formatSyntaxExclusion(diagnostic as EL001FallbackDiagnostic);
     case 'EL002':
-      return formatMissingToken(diagnostic as EL002Diagnostic);
+      return formatMissingToken(diagnostic as EL002MissingTokenDiagnostic);
     case 'EL003':
-      return formatUnexpectedToken(diagnostic as EL003Diagnostic);
+      return formatUnexpectedToken(diagnostic as EL003UnexpectedTokenDiagnostic);
     case 'WL001':
-      return formatUnknownStatus(diagnostic as WL001Diagnostic);
+      return formatUnknownStatus(diagnostic as WL001UnrecognizedModifierDiagnostic);
     case 'WL002':
-      return formatCollapsedStatus(diagnostic as WL002Diagnostic);
+      return formatCollapsedStatus(diagnostic as WL002CollapsedModifiersDiagnostic);
     default:
       return diagnostic.code;
   }
@@ -171,7 +176,7 @@ function formatDuplicateId(diagnostic: DuplicateIdDiagnostic): string {
 }
 
 /** EL001: Resource excluded from the AST due to a parse error in its subtree. */
-function formatSyntaxExclusion(diagnostic: EL001Diagnostic): string {
+function formatSyntaxExclusion(diagnostic: EL001FallbackDiagnostic): string {
   if (diagnostic.resourceId) {
     return `could not parse resource '${diagnostic.resourceId}'`;
   }
@@ -179,13 +184,13 @@ function formatSyntaxExclusion(diagnostic: EL001Diagnostic): string {
 }
 
 /** EL002: Missing required token. */
-function formatMissingToken(diagnostic: EL002Diagnostic): string {
+function formatMissingToken(diagnostic: EL002MissingTokenDiagnostic): string {
   const subject = diagnostic.resourceId ? ` in resource '${diagnostic.resourceId}'` : '';
   return `missing '${diagnostic.missingToken}'${subject}`;
 }
 
 /** EL003: Unexpected token with expected alternatives. */
-function formatUnexpectedToken(diagnostic: EL003Diagnostic): string {
+function formatUnexpectedToken(diagnostic: EL003UnexpectedTokenDiagnostic): string {
   const list = diagnostic.expected.slice(0, 5).join("', '");
   const suffix = diagnostic.expected.length > 5 ? '\u2026' : '';
   const subject = diagnostic.resourceId ? ` in resource '${diagnostic.resourceId}'` : '';
@@ -193,12 +198,12 @@ function formatUnexpectedToken(diagnostic: EL003Diagnostic): string {
 }
 
 /** WL001: Unrecognized status modifier ignored. */
-function formatUnknownStatus(diagnostic: WL001Diagnostic): string {
+function formatUnknownStatus(diagnostic: WL001UnrecognizedModifierDiagnostic): string {
   return `Unrecognized status modifier '${diagnostic.modifier}' on '${diagnostic.resourceId}' was ignored`;
 }
 
 /** WL002: Multiple recognized status modifiers collapsed (last wins). */
-function formatCollapsedStatus(diagnostic: WL002Diagnostic): string {
+function formatCollapsedStatus(diagnostic: WL002CollapsedModifiersDiagnostic): string {
   const modifiers = diagnostic.recognizedModifiers.join(', ');
   return `Resource '${diagnostic.resourceId}' has multiple status modifiers (${modifiers}); resolved to '${diagnostic.resolvedStatus}'`;
 }

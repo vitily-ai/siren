@@ -977,6 +977,7 @@ __metadata:
     citty: "npm:^0.2.2"
     tsup: "npm:^8.3.5"
     typescript: "npm:^5.7.2"
+    vitest: "npm:^4.0.16"
   bin:
     siren: ./dist/index.js
   languageName: unknown

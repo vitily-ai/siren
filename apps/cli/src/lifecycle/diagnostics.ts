@@ -1,11 +1,11 @@
 import type {
-  EL001Diagnostic,
-  EL002Diagnostic,
-  EL003Diagnostic,
+  EL001FallbackDiagnostic,
+  EL002MissingTokenDiagnostic,
+  EL003UnexpectedTokenDiagnostic,
   Origin,
   SourcedEntry,
-  WL001Diagnostic,
-  WL002Diagnostic,
+  WL001UnrecognizedModifierDiagnostic,
+  WL002CollapsedModifiersDiagnostic,
 } from '@sirenpm/language';
 import { formatDiagnostic, type OriginResolver } from '../format-diagnostics';
 import type { CliContext, DeepReadonly } from './context';
@@ -19,11 +19,11 @@ import type { CliContext, DeepReadonly } from './context';
  * to one of the known codes.
  */
 type ConcreteLanguageDiagnostic =
-  | EL001Diagnostic
-  | EL002Diagnostic
-  | EL003Diagnostic
-  | WL001Diagnostic
-  | WL002Diagnostic;
+  | EL001FallbackDiagnostic
+  | EL002MissingTokenDiagnostic
+  | EL003UnexpectedTokenDiagnostic
+  | WL001UnrecognizedModifierDiagnostic
+  | WL002CollapsedModifiersDiagnostic;
 
 /** The set of diagnostic codes that have a `documentName` field. */
 const LANGUAGE_DIAGNOSTIC_CODES = new Set(['EL001', 'EL002', 'EL003', 'WL001', 'WL002']);

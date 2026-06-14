@@ -4,11 +4,11 @@ import type {
   DuplicateIdDiagnostic,
 } from '@sirenpm/core';
 import type {
-  EL001Diagnostic,
-  EL002Diagnostic,
-  EL003Diagnostic,
-  WL001Diagnostic,
-  WL002Diagnostic,
+  EL001FallbackDiagnostic,
+  EL002MissingTokenDiagnostic,
+  EL003UnexpectedTokenDiagnostic,
+  WL001UnrecognizedModifierDiagnostic,
+  WL002CollapsedModifiersDiagnostic,
 } from '@sirenpm/language';
 import { describe, expect, it } from 'vitest';
 import { formatDiagnostic, type OriginResolver } from './format-diagnostics';
@@ -138,7 +138,7 @@ describe('formatDiagnostic', () => {
 
   describe('WL001: Unrecognized status modifier', () => {
     it('formats unrecognized modifier warning', () => {
-      const diagnostic: WL001Diagnostic = {
+      const diagnostic: WL001UnrecognizedModifierDiagnostic = {
         code: 'WL001',
         severity: 'warning',
         resourceId: 'config',
@@ -164,7 +164,7 @@ describe('formatDiagnostic', () => {
 
   describe('WL002: Multiple recognized status modifiers', () => {
     it('formats collapsed status warning', () => {
-      const diagnostic: WL002Diagnostic = {
+      const diagnostic: WL002CollapsedModifiersDiagnostic = {
         code: 'WL002',
         severity: 'warning',
         resourceId: 'deploy',
@@ -191,7 +191,7 @@ describe('formatDiagnostic', () => {
 
   describe('EL001: Parse error fallback', () => {
     it('formats syntax exclusion', () => {
-      const diagnostic: EL001Diagnostic = {
+      const diagnostic: EL001FallbackDiagnostic = {
         code: 'EL001',
         severity: 'error',
         nodeType: 'ERROR',
@@ -212,7 +212,7 @@ describe('formatDiagnostic', () => {
     });
 
     it('formats syntax exclusion with resource id', () => {
-      const diagnostic: EL001Diagnostic = {
+      const diagnostic: EL001FallbackDiagnostic = {
         code: 'EL001',
         severity: 'error',
         nodeType: 'resource',
@@ -236,7 +236,7 @@ describe('formatDiagnostic', () => {
 
   describe('EL002: Missing token', () => {
     it('formats missing token error', () => {
-      const diagnostic: EL002Diagnostic = {
+      const diagnostic: EL002MissingTokenDiagnostic = {
         code: 'EL002',
         severity: 'error',
         missingToken: '}',
@@ -259,7 +259,7 @@ describe('formatDiagnostic', () => {
 
   describe('EL003: Unexpected token with expected alternatives', () => {
     it('formats unexpected token error with expected set', () => {
-      const diagnostic: EL003Diagnostic = {
+      const diagnostic: EL003UnexpectedTokenDiagnostic = {
         code: 'EL003',
         severity: 'error',
         expected: ['block_open', 'bare_identifier'],
@@ -351,7 +351,7 @@ describe('formatDiagnostic', () => {
 
   describe('Caret snippet rendering (formatDiagnostic with source)', () => {
     it('renders caret snippet for EL002 with source', () => {
-      const diagnostic: EL002Diagnostic = {
+      const diagnostic: EL002MissingTokenDiagnostic = {
         code: 'EL002',
         severity: 'error',
         missingToken: 'task',
@@ -379,7 +379,7 @@ describe('formatDiagnostic', () => {
     });
 
     it('renders caret snippet for EL003 with source', () => {
-      const diagnostic: EL003Diagnostic = {
+      const diagnostic: EL003UnexpectedTokenDiagnostic = {
         code: 'EL003',
         severity: 'error',
         expected: ['task', 'milestone'],
