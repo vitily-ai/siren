@@ -76,7 +76,7 @@ task cli-mutations-mv-command-red {
 task cli-mutations-mv-command {
   description = "Implement the first mutative command `siren mv <entry-id> <complete|draft>` to change an entry's explicit completion status."
   affected_packages = "apps/cli"
-  depends_on = [cli-mutations-mv-command-red, cli-mutations-cli-plumbing, draft-symbol-support-publish]
+  depends_on = [cli-mutations-mv-command-red, cli-mutations-cli-plumbing]
   details = "Add apps/cli/src/commands/mv.ts exporting mvMutate factory and mvCommand citty command. Command defines entryId and target (literal 'complete' or 'draft') positional args, calls runLifecycle with mutate hook. mvMutate searches builder.documents for resource, throws on unknown or synthesized-only id, returns patchResource with new status. Register mv in mainCommand.subCommands and extend printUsage. Update lifecycle/mutation.ts and lifecycle/index.ts to wrap mutate(builder) in try/catch, push errors to ctx.errors, set ctx.aborted, skip downstream runProjectBuild/runQuery/runWrite, still flush diagnostics to stderr. Exit 1 on validation error, 0 on success (including idempotent no-op via lifecycle's rendered===original short-circuit)."
 }
 

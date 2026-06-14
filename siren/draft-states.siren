@@ -93,6 +93,5 @@ task draft-symbol-support-red {
 milestone multiple-statuses-diagnostic complete {
   description = "multiple statuses declared on a resource must resolve to one status (last-wins) and raise a warning diagnostic"
   affected_packages = "language"
-  depends_on = draft-symbol-support
   example = "<example removed> due to multiline string constraint. check git history for this resource"
 }
