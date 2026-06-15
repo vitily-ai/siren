@@ -123,13 +123,13 @@ task cli-mutations-format-lifecycle complete {
   details = "Add a { format: true } option to runLifecycle handled internally: call ParsedDocument.format() on each ctx.parsedDocuments entry and signal all documents. Reduce the format command to runLifecycle(process.cwd(), { format: true, dryRun, verbose }). Delete the fresh-parser path, the semanticKey round-trip check, and the bespoke write/summary logic from format.ts (including the TODO[FORMAT-LIFECYCLE-BYPASS] note). This drops the CLI round-trip comparison entirely (correctness is owned by @sirenpm/language), which resolves the runformat-roundtrip debt — mark it complete when this ships."
 }
 
-task cli-mutations-mv-command-red {
+task cli-mutations-mv-command-red complete {
   description = "Add failing unit tests and minimal goldens for the mv status command."
   affected_packages = "apps/cli"
   details = "Add unit tests for mvMutate(entryId, target) factory covering: patches status:'complete' on statusless task; patches status:'draft' on complete task; idempotent same-target returns a no-op PatchResult (empty changes); throws on unknown id; throws on synthesized-only id (materialization deferred); promotes implicit-complete to explicit complete. Add one or two minimal CLI goldens for UX surface: help output, and one end-to-end happy-path filesystem-state fixture. Defer synthesized materialization and duplicate-id handling to follow-up tasks."
 }
 
-task cli-mutations-mv-command {
+task cli-mutations-mv-command complete {
   description = "Implement the first mutative command `siren mv <entry-id> <complete|draft>` to change an entry's explicit completion status."
   affected_packages = "apps/cli"
   depends_on = [cli-mutations-mv-command-red, cli-mutations-ir-source-bridge]

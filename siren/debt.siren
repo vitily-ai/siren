@@ -14,8 +14,8 @@ task cli-list-long-names {
   description = "Verify that tab-indented task output in 'siren list -t' handles long milestone/task names gracefully in terminals"
 }
 
-task runformat-roundtrip {
-  description = "Address brittle round-trip semantic comparison in apps/cli/src/commands/format.ts. See TODO[RT-COMPARE] in that file. Replace JSON.stringify-based comparison with a deterministic semantic comparator."
+task runformat-roundtrip complete {
+  description = "Addressed by cli-mutations-format-lifecycle: the CLI no longer performs a round-trip semantic comparison. @sirenpm/language owns format correctness via its own unit tests."
 }
 
 task runformat-atomic-backup {
