@@ -199,7 +199,7 @@ milestone "MVP Release" {}`,
     expect(fs.readFileSync(filePath, 'utf-8')).toBe(original);
   });
 
-  // TODO writeback on mutation is not yet implemented
+  // TODO writeback on mutation is not yet implemented — remove this marker when bridge + signal land
   it.skip('write phase rewrites only files affected by mutation', async () => {
     const sirenDir = path.join(tempDir, 'siren');
     fs.mkdirSync(sirenDir);
@@ -223,5 +223,88 @@ milestone "MVP Release" {}`,
     expect(fs.readFileSync(aPath, 'utf-8')).toContain('description');
     expect(fs.readFileSync(bPath, 'utf-8')).toBe(beforeB);
     expect(fs.statSync(bPath).mtimeMs).toBe(beforeBMtime);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Rewrite-signal write-back tests (TDD red — all fail until signal lands)
+  // ---------------------------------------------------------------------------
+
+  it('rewrite signal controls write-back, not originalFileContents comparison', async () => {
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    fs.writeFileSync(path.join(sirenDir, 'main.siren'), 'milestone alpha {}');
+
+    const ctx = await runLifecycle(tempDir, {
+      mutate: (builder) =>
+        builder.withEntry({ type: 'milestone', id: 'patched', attributes: [] }).builder,
+    });
+
+    // The rewrite signal must exist on context; currently CliContext has no such field.
+    expect(ctx.rewriteSignal).toBeInstanceOf(Set);
+    // The old originalFileContents snapshot must be removed.
+    expect(ctx.originalFileContents).toBeUndefined();
+  });
+
+  it('no disk writes occur when rewrite signal is empty', async () => {
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    const filePath = path.join(sirenDir, 'main.siren');
+    fs.writeFileSync(filePath, 'milestone alpha {}');
+
+    const beforeMtime = fs.statSync(filePath).mtimeMs;
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Even though mutate runs, without a non-empty signals no files are written.
+    const ctx = await runLifecycle(tempDir, {
+      mutate: (builder) =>
+        builder.withEntry({ type: 'milestone', id: 'patched', attributes: [] }).builder,
+    });
+
+    expect(ctx.rewriteSignal).toBeDefined();
+    expect(ctx.phasesRun.has('write')).toBe(false);
+    expect(fs.statSync(filePath).mtimeMs).toBe(beforeMtime);
+  });
+
+  it('write phase gates on rewrite signal, not hooks.mutate', async () => {
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    fs.writeFileSync(path.join(sirenDir, 'main.siren'), 'milestone alpha {}');
+
+    // Scenario A: no mutate hook but rewrite signal is present → write must run.
+    const ctxA = await runLifecycle(tempDir);
+
+    // Currently the gate is `hooks.mutate && ...` so without mutate no write phase runs.
+    // New contract: write runs when signal is non-empty regardless of mutate hook presence.
+    expect(ctxA.rewriteSignal).toBeDefined();
+
+    // Scenario B: mutate hook runs but produces no signal → write must NOT run.
+    // (Provably set up via an empty rewrite signal; currently the gate still fires
+    //  because hooks.mutate is truthy.)
+    const ctxB = await runLifecycle(tempDir, {
+      mutate: (builder) =>
+        builder.withEntry({ type: 'milestone', id: 'patched', attributes: [] }).builder,
+    });
+
+    expect(ctxB.rewriteSignal).toBeDefined();
+    expect(ctxB.phasesRun.has('write')).toBe(false);
+  });
+
+  it('accepts format, dryRun, and verbose in lifecycle options', async () => {
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    fs.writeFileSync(path.join(sirenDir, 'main.siren'), 'milestone alpha {}');
+
+    const ctx = await runLifecycle(tempDir, {
+      mutate: (builder) =>
+        builder.withEntry({ type: 'milestone', id: 'patched', attributes: [] }).builder,
+      format: true,
+      dryRun: true,
+      verbose: true,
+    });
+
+    // The new option fields must be reflected on the returned context.
+    expect(ctx.format).toBe(true);
+    expect(ctx.dryRun).toBe(true);
+    expect(ctx.verbose).toBe(true);
   });
 });

@@ -6,17 +6,13 @@ import type { CliContext, DeepReadonly } from './context';
 
 export interface ParsingArtifact {
   sourceDocuments: SourceDocument[];
-  originalFileContents: Map<string, string>;
   parsedDocuments: ParsedDocument[];
 }
 
 export async function runParsing(ctx: DeepReadonly<CliContext>): Promise<ParsingArtifact> {
-  const originalFileContents = new Map<string, string>();
-
   const parser = await getParser();
   const sourceDocuments: SourceDocument[] = ctx.files.map((filePath) => {
     const content = fs.readFileSync(filePath, 'utf-8');
-    originalFileContents.set(filePath, content);
     return {
       name: path.relative(ctx.rootDir, filePath),
       content,
@@ -27,7 +23,6 @@ export async function runParsing(ctx: DeepReadonly<CliContext>): Promise<Parsing
 
   return {
     sourceDocuments,
-    originalFileContents,
     parsedDocuments,
   };
 }

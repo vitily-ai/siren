@@ -21,6 +21,12 @@ export interface LifecycleHooks {
    * `QueryArtifact` describing what to emit; the lifecycle owns presentation.
    */
   query?: QueryFn;
+  /** Whether lifecycle was invoked in format mode. */
+  format?: boolean;
+  /** Whether to skip disk writes. */
+  dryRun?: boolean;
+  /** Whether to list changed files. */
+  verbose?: boolean;
 }
 
 /**
@@ -47,8 +53,10 @@ export async function runLifecycle(cwd: string, hooks: LifecycleHooks = {}): Pro
 
   const parsingArt = await runParsing(ctx);
   ctx.sourceDocuments = parsingArt.sourceDocuments;
-  ctx.originalFileContents = parsingArt.originalFileContents;
   ctx.parsedDocuments = parsingArt.parsedDocuments;
+  ctx.format = hooks.format;
+  ctx.dryRun = hooks.dryRun;
+  ctx.verbose = hooks.verbose;
   ctx.phasesRun.add('parsing');
 
   const decodingArt = runDecoding(ctx.parsedDocuments);
@@ -89,13 +97,8 @@ export async function runLifecycle(cwd: string, hooks: LifecycleHooks = {}): Pro
     ctx.phasesRun.add('query');
   }
 
-  // Instructions state that write should only update relevant files, and that determination needs to be made post-mutate.
-  // This is currently suggesting that the write phase is responsible for calculating the touched file set.
-  // Introduce a new phase that compares before/after `SirenBuilder`
-  // NOTE: requires update to core patch API to return delta
-  if (hooks.mutate && !ctx.aborted && ctx.errors.length === 0 && ctx.builder) {
-    const writeArt = runWrite(ctx);
-    ctx.originalFileContents = writeArt.originalFileContents;
+  if (ctx.rewriteSignal.size > 0 && !ctx.aborted && ctx.errors.length === 0) {
+    runWrite(ctx);
     ctx.phasesRun.add('write');
   }
 

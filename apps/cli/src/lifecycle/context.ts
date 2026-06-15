@@ -62,9 +62,14 @@ export interface CliContext {
   ir?: SirenProject;
   warnings: string[];
   errors: string[];
-  /** Snapshot of `{absoluteFilePath -> original file content}` captured during parsing. */
-  // FIXME: Remove as Unnecessary complexity - write affected files unconditionally
-  originalFileContents: Map<string, string>;
+  /** Absolute file paths whose content should be rewritten to disk. */
+  rewriteSignal: Set<string>;
+  /** Whether lifecycle was invoked in format mode. */
+  format?: boolean;
+  /** Whether to skip disk writes. */
+  dryRun?: boolean;
+  /** Whether to list changed files. */
+  verbose?: boolean;
   query?: QueryArtifact;
   /** True once an error has caused downstream phases (query, write) to abort. */
   aborted: boolean;
@@ -90,7 +95,7 @@ export function createCliContext(cwd: string): CliContext {
     entries: [],
     warnings: [],
     errors: [],
-    originalFileContents: new Map(),
+    rewriteSignal: new Set(),
     aborted: false,
     warningsFlushed: 0,
     errorsFlushed: 0,
