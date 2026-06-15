@@ -108,7 +108,7 @@ task cli-mutations-ir-source-bridge complete {
 
 # De-exceptionalize `siren format`: route it through the shared write-back
 
-task cli-mutations-format-lifecycle-red {
+task cli-mutations-format-lifecycle-red complete {
   description = "TDD red: failing tests/goldens for format routed through the lifecycle write-back."
   affected_packages = "apps/cli"
   depends_on = cli-mutations-writeback-signal
@@ -116,7 +116,7 @@ task cli-mutations-format-lifecycle-red {
   files = "apps/cli/src/commands/format.ts, apps/cli/src/lifecycle/index.ts, apps/cli/test/expected/"
 }
 
-task cli-mutations-format-lifecycle {
+task cli-mutations-format-lifecycle complete {
   description = "De-exceptionalize `siren format`: route it through the shared lifecycle write-back as a format-only (no IR mutation) source mutation."
   affected_packages = "apps/cli"
   depends_on = cli-mutations-format-lifecycle-red

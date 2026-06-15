@@ -1,12 +1,5 @@
 {"fixture":"quoted-identifiers-format","command":"siren format --dry-run"}
 ---
-task "safe_id" {}
-
-milestone "Release 1" {}
-
-task bare_ok {}
-
-task "dash-ok" {}
-
+would update siren/main.siren
 Updated 1 files out of 1
 ---

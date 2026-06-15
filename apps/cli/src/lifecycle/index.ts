@@ -1,3 +1,5 @@
+import * as path from 'node:path';
+import type { ParsedDocument } from '@sirenpm/language';
 import { runBuilderConstruction } from './building';
 import { type CliContext, createCliContext } from './context';
 import { runDecoding } from './decoding';
@@ -92,6 +94,20 @@ export async function runLifecycle(cwd: string, hooks: LifecycleHooks = {}): Pro
   if (presDiagArt.warningsFlushed !== undefined) ctx.warningsFlushed = presDiagArt.warningsFlushed;
   if (presDiagArt.errorsFlushed !== undefined) ctx.errorsFlushed = presDiagArt.errorsFlushed;
   ctx.phasesRun.add('diagnostics-presented');
+
+  // Format phase: canonicalize every parsed document's source content and
+  // signal all files for rewrite. Runs after diagnostics presentation (so
+  // original-content diagnostics reach the user) and before the write gate
+  // (so the rewrite signal is populated in time).
+  if (ctx.format) {
+    for (const parsed of ctx.parsedDocuments as ParsedDocument[]) {
+      if (parsed.diagnostics.some((d) => d.severity === 'error')) continue;
+      parsed.format();
+      const absPath = path.join(ctx.rootDir, parsed.source.name);
+      (ctx.rewriteSignal as Set<string>).add(absPath);
+    }
+    ctx.phasesRun.add('format');
+  }
 
   if (hooks.query) {
     const queryArt = await runQuery(ctx, hooks.query);

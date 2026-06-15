@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import type { PatchResult } from '@sirenpm/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runLifecycle } from './lifecycle';
+import * as parserModule from './parser';
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 const fixturesDir = path.join(
@@ -438,5 +439,99 @@ milestone "MVP Release" {}`,
     expect(ctx.rewriteSignal.size).toBe(0);
     expect(fs.readFileSync(path.join(sirenDir, 'a.siren'), 'utf-8')).not.toContain('description');
     expect(fs.readFileSync(path.join(sirenDir, 'b.siren'), 'utf-8')).not.toContain('description');
+  });
+
+  // ---------------------------------------------------------------------------
+  // Format lifecycle tests (TDD red — all fail until format phase lands)
+  // ---------------------------------------------------------------------------
+
+  it('format: true formats every parsed document and signals all docs for write', async () => {
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    // Non-canonical formatting: extra whitespace that format() normalizes
+    fs.writeFileSync(path.join(sirenDir, 'a.siren'), 'task  foo  { }');
+    fs.writeFileSync(path.join(sirenDir, 'b.siren'), 'milestone  bar  { }');
+
+    const ctx = await runLifecycle(tempDir, { format: true });
+
+    // rewriteSignal must contain ALL discovered files
+    expect(ctx.rewriteSignal).toBeInstanceOf(Set);
+    expect(ctx.rewriteSignal.size).toBe(2);
+    expect(ctx.rewriteSignal.has(path.join(sirenDir, 'a.siren'))).toBe(true);
+    expect(ctx.rewriteSignal.has(path.join(sirenDir, 'b.siren'))).toBe(true);
+
+    // write phase must have run
+    expect(ctx.phasesRun.has('write')).toBe(true);
+
+    // Files on disk must contain canonical formatting (via ParsedDocument.format())
+    const aContent = fs.readFileSync(path.join(sirenDir, 'a.siren'), 'utf-8');
+    const bContent = fs.readFileSync(path.join(sirenDir, 'b.siren'), 'utf-8');
+    expect(aContent).toBe('task foo {}\n');
+    expect(bContent).toBe('milestone bar {}\n');
+  });
+
+  it('format reuses ctx.parsedDocuments (no fresh parser)', async () => {
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    fs.writeFileSync(path.join(sirenDir, 'main.siren'), 'task  foo  { }');
+
+    const getParserSpy = vi.spyOn(parserModule, 'getParser');
+
+    await runLifecycle(tempDir, { format: true });
+
+    // getParser should only have been called once (by runParsing), not again for format
+    expect(getParserSpy).toHaveBeenCalledTimes(1);
+
+    // Files must be canonically formatted (format happened through lifecycle, not a fresh parse)
+    const content = fs.readFileSync(path.join(sirenDir, 'main.siren'), 'utf-8');
+    expect(content).toBe('task foo {}\n');
+
+    getParserSpy.mockRestore();
+  });
+
+  it('parse error anywhere aborts entire format write', async () => {
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    const validPath = path.join(sirenDir, 'valid.siren');
+    const brokenPath = path.join(sirenDir, 'broken.siren');
+    const validContent = 'task  foo  { }';
+    fs.writeFileSync(validPath, validContent);
+    fs.writeFileSync(brokenPath, '!!! invalid');
+
+    const beforeMtime = fs.statSync(validPath).mtimeMs;
+    await new Promise((r) => setTimeout(r, 10));
+
+    const ctx = await runLifecycle(tempDir, { format: true });
+
+    // Parse error accumulates from the broken file
+    expect(ctx.errors.length).toBeGreaterThan(0);
+    expect(ctx.errors[0]).toContain('broken.siren');
+
+    // write phase blocked by errors gate
+    expect(ctx.phasesRun.has('write')).toBe(false);
+
+    // Valid file unchanged on disk (write blocked; no side-effects)
+    expect(fs.readFileSync(validPath, 'utf-8')).toBe(validContent);
+    expect(fs.statSync(validPath).mtimeMs).toBe(beforeMtime);
+
+    // RED SIGNAL: rewriteSignal must contain the valid file path —
+    // format signaled it even though the write gate blocked disk writes.
+    // Currently fails because format:true does nothing: rewriteSignal is empty.
+    expect(ctx.rewriteSignal.has(validPath)).toBe(true);
+  });
+
+  it('format mode does not use semanticKey round-trip check', async () => {
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    fs.writeFileSync(path.join(sirenDir, 'main.siren'), '  task  foo  { }');
+
+    const ctx = await runLifecycle(tempDir, { format: true });
+
+    // Format must work without any CLI-side semanticKey comparison
+    const content = fs.readFileSync(path.join(sirenDir, 'main.siren'), 'utf-8');
+    expect(content).toBe('task foo {}\n');
+
+    // rewriteSignal must be populated
+    expect(ctx.rewriteSignal.size).toBe(1);
   });
 });

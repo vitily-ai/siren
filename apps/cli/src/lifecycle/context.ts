@@ -16,6 +16,7 @@ export const cliPhaseNames = [
   'project-build',
   'diagnostics',
   'diagnostics-presented',
+  'format',
   'query',
   'write',
   'query-presented',

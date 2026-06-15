@@ -79,13 +79,10 @@ describe('format summary and verbose listing', () => {
         logSpy.mockClear();
         await runFormat({ dryRun: true, verbose: true });
         const calls2 = logSpy.mock.calls.map((c) => String(c[0]));
-        expect(calls2[0]).toContain('milestone'); // exported content printed first
+        // Dry-run mode outputs 'would update' lines via the lifecycle write phase
+        expect(calls2[0]).toBe('would update b.siren');
         // summary should appear at end
-        expect(calls2[calls2.length - 2]).toBe('Updated 1 files out of 2');
-        // last line should be the file list entry for the updated file (accept
-        // either 'b.siren' or 'siren/b.siren' depending on fixture layout)
-        const lastLine = String(calls2[calls2.length - 1]);
-        expect(lastLine.endsWith('b.siren')).toBe(true);
+        expect(calls2[calls2.length - 1]).toBe('Updated 1 files out of 2');
       } finally {
         logSpy.mockRestore();
       }
