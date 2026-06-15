@@ -1,10 +1,18 @@
 # CLI mutation support for Siren
 # This initiative defines the first pass at mutative CLI operations, starting with status changes.
+#
+# Reshape (post language-ast-pipeline rebuild): the "literal SirenDocument renderer" shipped in
+# cli-mutations-language-renderer was superseded by per-entry surgical rendering in @sirenpm/language
+# (renderEntry + ParsedDocument.patchEntry/removeEntry/format/source). The CLI write path is now built
+# on an explicit lifecycle rewrite signal that both `format` (no IR mutation) and IR mutations feed.
+# `format` is no longer an exception, and the IR-patch -> source write-back bridge is now its own task.
+# All remaining work is apps/cli-only: core@0.6.1 already returns PatchResult and language@0.5.0 already
+# exposes patchEntry/removeEntry/source, so no further core/language release is required.
 
 milestone cli-mutations {
-  description = "Deliver the first mutative CLI flow: an immutable SirenBuilder patch layer, a literal SirenDocument renderer in language, published package updates, and the mv status command."
+  description = "Deliver the first mutative CLI flow: an immutable SirenBuilder patch layer (core), per-entry source rendering (language), a lifecycle rewrite-signal write-back with an IR-patch-to-source bridge and de-exceptionalized format (apps/cli), and the mv status command."
   affected_packages = "core, language, apps/cli"
-  depends_on = [cli-mutations-remove-core-export-surface, cli-mutations-core-patch-api, cli-mutations-language-renderer, cli-mutations-publish-core-language, cli-mutations-cli-plumbing, cli-mutations-mv-command]
+  depends_on = [cli-mutations-remove-core-export-surface, cli-mutations-core-patch-api, cli-mutations-language-renderer, cli-mutations-publish-core-language, cli-mutations-cli-plumbing, cli-mutations-writeback-signal, cli-mutations-ir-source-bridge, cli-mutations-format-lifecycle, cli-mutations-mv-command]
 }
 
 # Core surface cleanup and mutation primitives
@@ -67,27 +75,79 @@ task cli-mutations-cli-plumbing complete {
   details = "Replace the previous prepare/finalize phase pulls and the global context-store with a single runLifecycle(cwd, { mutate?, query? }) entrypoint. The lifecycle owns discovery, parsing, decoding, builder construction, optional builder mutation, project build, diagnostic accumulation and stderr flushing, optional query execution, write-back of rendered documents that differ from their parse-time snapshot, and query stdout/stderr/exitCode presentation. Commands (`list`, `show`) now return QueryFn closures and never touch fs or stdout directly. `format` remains an intentional exception: it consumes the lifecycle's parsed ctx but performs its own per-file CST rendering — tracked as the `format-bypasses-lifecycle` debt entry."
 }
 
+# Lifecycle write-back substrate: the explicit per-document rewrite signal
+
+task cli-mutations-writeback-signal-red {
+  description = "TDD red: failing lifecycle tests for a per-document rewrite signal that drives write-back."
+  affected_packages = "apps/cli"
+  details = "Cover: the write phase rewrites exactly the documents flagged in an explicit rewrite signal (not a content-divergence diff); the originalFileContents snapshot is gone; signaled documents are written unconditionally; dryRun skips disk writes and reports would-change by comparing ctx.sourceDocuments against parsedDoc.source; verbose lists changed files; a summary line is always emitted. Tests must fail against the current hooks.mutate-gated, content-diffing runWrite."
+  files = "apps/cli/src/lifecycle/write.ts, apps/cli/src/lifecycle/context.ts, apps/cli/src/lifecycle/index.ts"
+}
+
+task cli-mutations-writeback-signal {
+  description = "Replace the content-divergence write gate with an explicit per-document rewrite signal owned by the lifecycle write phase."
+  affected_packages = "apps/cli"
+  depends_on = cli-mutations-writeback-signal-red
+  details = "Introduce a rewrite signal (a set of document names) on CliContext. The write phase writes each signaled document's ParsedDocument.source to disk unconditionally and drops the originalFileContents snapshot (redundant with ctx.sourceDocuments). Move dryRun/verbose/summary into the write phase: dryRun skips disk writes and reports would-change via ctx.sourceDocuments vs parsedDoc.source; verbose lists changed files; the summary always prints. Generalize so any signal producer (the bridge or format) flows through this single path. runLifecycle options become { mutate?, query?, format?, dryRun?, verbose? }."
+}
+
+# IR-patch -> source write-back bridge (stands on its own; was implicit in mv-command)
+
+task cli-mutations-ir-source-bridge-red {
+  description = "TDD red: failing tests for the IR-patch to source write-back bridge."
+  affected_packages = "apps/cli"
+  depends_on = cli-mutations-writeback-signal
+  details = "Cover: the mutate hook returns the core PatchResult (builder + EntryChange[]); the bridge maps each 'updated' change to parsedDoc.patchEntry(id, newEntry) on the document named by the original SourcedEntry.origin.document, sourcing the new entry from the post-mutation builder.entries; touched documents are added to the rewrite signal; 'deleted' and 'created' changes are logged and dropped (not applied); a changed id resolving to more than one origin document refuses with an error and writes nothing. Tests must fail against the current BuilderMutate = (builder) => SirenBuilder hook that discards the delta."
+  files = "apps/cli/src/lifecycle/mutation.ts, apps/cli/src/lifecycle/write.ts, apps/cli/src/lifecycle/index.ts"
+}
+
+task cli-mutations-ir-source-bridge {
+  description = "Implement the standalone bridge that routes core patch deltas back to per-file ParsedDocument source edits."
+  affected_packages = "apps/cli"
+  depends_on = cli-mutations-ir-source-bridge-red
+  details = "Change BuilderMutate to return the core PatchResult. After diagnostics pass (no EL001 errors), the bridge consumes PatchResult.changes: route each 'updated' entryId via its original SourcedEntry.origin.document to parsedDoc.patchEntry(id, newEntryFromBuilder) and add each touched document to the rewrite signal. Log-and-drop 'deleted'/'created' (no command produces them yet; base mv only emits 'updated'). Refuse (error, no write) when a changed id resolves to multiple origin documents — real duplicate-id UX is deferred to cli-mutations-mv-duplicate-id. Remove the now-stale NOTE in write.ts and the 'requires core patch API to return delta' NOTE in index.ts (core@0.6.1 already returns it)."
+}
+
+# De-exceptionalize `siren format`: route it through the shared write-back
+
+task cli-mutations-format-lifecycle-red {
+  description = "TDD red: failing tests/goldens for format routed through the lifecycle write-back."
+  affected_packages = "apps/cli"
+  depends_on = cli-mutations-writeback-signal
+  details = "Cover: runLifecycle(cwd, { format: true }) formats every parsed document in place via ParsedDocument.format() and signals all documents for rewrite; format reuses ctx.parsedDocuments (no fresh parser); the CLI-side semanticKey round-trip check is gone; a parse error (EL001) anywhere aborts the whole write (no per-file skip); dryRun/verbose/summary come from the shared write phase. Update the format goldens to the lifecycle path. Tests must fail against the current self-contained runFormat."
+  files = "apps/cli/src/commands/format.ts, apps/cli/src/lifecycle/index.ts, apps/cli/test/expected/"
+}
+
+task cli-mutations-format-lifecycle {
+  description = "De-exceptionalize `siren format`: route it through the shared lifecycle write-back as a format-only (no IR mutation) source mutation."
+  affected_packages = "apps/cli"
+  depends_on = cli-mutations-format-lifecycle-red
+  details = "Add a { format: true } option to runLifecycle handled internally: call ParsedDocument.format() on each ctx.parsedDocuments entry and signal all documents. Reduce the format command to runLifecycle(process.cwd(), { format: true, dryRun, verbose }). Delete the fresh-parser path, the semanticKey round-trip check, and the bespoke write/summary logic from format.ts (including the TODO[FORMAT-LIFECYCLE-BYPASS] note). This drops the CLI round-trip comparison entirely (correctness is owned by @sirenpm/language), which resolves the runformat-roundtrip debt — mark it complete when this ships."
+}
+
 task cli-mutations-mv-command-red {
   description = "Add failing unit tests and minimal goldens for the mv status command."
   affected_packages = "apps/cli"
-  details = "Add unit tests for mvMutate(entryId, target) factory covering: patches status:'complete' on statusless task; patches status:'draft' on complete task; idempotent same-target returns no-op builder; throws on unknown id; throws on synthesized-only id (materialization deferred); promotes implicit-complete to explicit complete. Add one or two minimal CLI goldens for UX surface: help output, and one end-to-end happy-path filesystem-state fixture. Defer synthesized materialization and duplicate-id handling to follow-up tasks."
+  details = "Add unit tests for mvMutate(entryId, target) factory covering: patches status:'complete' on statusless task; patches status:'draft' on complete task; idempotent same-target returns a no-op PatchResult (empty changes); throws on unknown id; throws on synthesized-only id (materialization deferred); promotes implicit-complete to explicit complete. Add one or two minimal CLI goldens for UX surface: help output, and one end-to-end happy-path filesystem-state fixture. Defer synthesized materialization and duplicate-id handling to follow-up tasks."
 }
 
 task cli-mutations-mv-command {
   description = "Implement the first mutative command `siren mv <entry-id> <complete|draft>` to change an entry's explicit completion status."
   affected_packages = "apps/cli"
-  depends_on = [cli-mutations-mv-command-red, cli-mutations-cli-plumbing]
-  details = "Add apps/cli/src/commands/mv.ts exporting mvMutate factory and mvCommand citty command. Command defines entryId and target (literal 'complete' or 'draft') positional args, calls runLifecycle with mutate hook. mvMutate searches builder.documents for resource, throws on unknown or synthesized-only id, returns patchResource with new status. Register mv in mainCommand.subCommands and extend printUsage. Update lifecycle/mutation.ts and lifecycle/index.ts to wrap mutate(builder) in try/catch, push errors to ctx.errors, set ctx.aborted, skip downstream runProjectBuild/runQuery/runWrite, still flush diagnostics to stderr. Exit 1 on validation error, 0 on success (including idempotent no-op via lifecycle's rendered===original short-circuit)."
+  depends_on = [cli-mutations-mv-command-red, cli-mutations-ir-source-bridge]
+  details = "Add apps/cli/src/commands/mv.ts exporting mvMutate factory and mvCommand citty command. Command defines entryId and target (literal 'complete' or 'draft') positional args and calls runLifecycle with the mutate hook. mvMutate searches builder.entries for the entry, throws on unknown or synthesized-only id, and returns builder.patchEntry(id, e => ({ ...e, status })) (a PatchResult). Register mv in mainCommand.subCommands and extend printUsage. The delta-to-source bridge, error/abort wiring, and write-back are owned by cli-mutations-ir-source-bridge and cli-mutations-writeback-signal — not this task. Exit 1 on validation error, 0 on success (idempotent no-op => empty delta => no document signaled => no write)."
 }
 
 task cli-mutations-mv-materialize-synthesized {
   description = "Allow siren mv against synthesized document milestones by materializing them into their origin document."
   affected_packages = "apps/cli, language"
-  details = "When mv receives a docId matching only a synthesized milestone, construct and insert an explicit milestone resource into that document with the synthesized depends_on dependencies, then apply the status patch. The rendering opinion for materialized milestones belongs to @sirenpm/language (renderSirenDocument placement, formatting). This is a follow-up to the base mv implementation."
+  depends_on = cli-mutations-mv-command
+  details = "When mv receives an id matching only a synthesized milestone, construct and insert an explicit milestone entry into its origin document with the synthesized depends_on dependencies, then apply the status patch. This is the path that produces a 'created' delta change, so it must extend cli-mutations-ir-source-bridge (which logs-and-drops 'created' in the base) to route a synthetic-origin 'created' entry to its document. The rendering opinion for materialized milestones belongs to @sirenpm/language (renderEntry / patchEntry placement and formatting). Follow-up to the base mv implementation."
 }
 
 task cli-mutations-mv-duplicate-id {
   description = "Define and test mv behavior when entry-id is declared in multiple documents."
   affected_packages = "apps/cli"
-  details = "Currently patchResource writes to all matching resources across documents. Design explicit refusal vs. confirmation flow; implement validation and tests. This is a follow-up to the base mv implementation."
+  depends_on = cli-mutations-mv-command
+  details = "The base bridge (cli-mutations-ir-source-bridge) refuses with an error when a changed id resolves to multiple origin documents. This task designs the real UX over that refusal — explicit refusal messaging vs. an interactive confirmation/selection flow — then implements the validation and tests. Follow-up to the base mv implementation."
 }
