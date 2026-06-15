@@ -8,6 +8,7 @@ import { runParsing } from './parsing';
 import { presentDiagnostics, presentQuery } from './presentation';
 import { runProjectBuild } from './project';
 import { type QueryFn, runQuery } from './query';
+import { runSourceBridge } from './source-bridge';
 import { runWrite } from './write';
 
 export interface LifecycleHooks {
@@ -69,8 +70,11 @@ export async function runLifecycle(cwd: string, hooks: LifecycleHooks = {}): Pro
   ctx.phasesRun.add('builder-construction');
 
   const mutationArt = runBuilderMutation(ctx, hooks.mutate);
-  if (mutationArt.builder) {
-    ctx.builder = mutationArt.builder;
+  if (mutationArt.patchResult) {
+    ctx.builder = mutationArt.patchResult.builder;
+    // Wire the bridge: route patch delta back to parsed documents
+    const bridgeArt = runSourceBridge(ctx, mutationArt.patchResult.changes);
+    ctx.errors.push(...bridgeArt.errors);
   }
   ctx.phasesRun.add('builder-mutation');
 

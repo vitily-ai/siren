@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import type { PatchResult } from '@sirenpm/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runLifecycle } from './lifecycle';
 
@@ -145,8 +146,7 @@ milestone "MVP Release" {}`,
     fs.writeFileSync(path.join(sirenDir, 'main.siren'), 'milestone alpha {}');
 
     const ctx = await runLifecycle(tempDir, {
-      mutate: (builder) =>
-        builder.withEntry({ type: 'milestone', id: 'patched', attributes: [] }).builder,
+      mutate: (builder) => builder.withEntry({ type: 'milestone', id: 'patched', attributes: [] }),
     });
 
     expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['alpha', 'patched']);
@@ -173,7 +173,7 @@ milestone "MVP Release" {}`,
         builder.patchEntry('valid', (r) => ({
           ...r,
           attributes: [...r.attributes, { key: 'description', value: ['patched'] as const }],
-        })).builder,
+        })),
       query: queryFn,
     });
 
@@ -199,8 +199,7 @@ milestone "MVP Release" {}`,
     expect(fs.readFileSync(filePath, 'utf-8')).toBe(original);
   });
 
-  // TODO writeback on mutation is not yet implemented — remove this marker when bridge + signal land
-  it.skip('write phase rewrites only files affected by mutation', async () => {
+  it('write phase rewrites only files affected by mutation', async () => {
     const sirenDir = path.join(tempDir, 'siren');
     fs.mkdirSync(sirenDir);
     const aPath = path.join(sirenDir, 'a.siren');
@@ -217,7 +216,7 @@ milestone "MVP Release" {}`,
         builder.patchEntry('target', (r) => ({
           ...r,
           attributes: [...r.attributes, { key: 'description', value: ['patched'] as const }],
-        })).builder,
+        })),
     });
 
     expect(fs.readFileSync(aPath, 'utf-8')).toContain('description');
@@ -235,14 +234,17 @@ milestone "MVP Release" {}`,
     fs.writeFileSync(path.join(sirenDir, 'main.siren'), 'milestone alpha {}');
 
     const ctx = await runLifecycle(tempDir, {
-      mutate: (builder) =>
-        builder.withEntry({ type: 'milestone', id: 'patched', attributes: [] }).builder,
+      mutate: (builder) => builder.withEntry({ type: 'milestone', id: 'patched', attributes: [] }),
     });
 
     // The rewrite signal must exist on context; currently CliContext has no such field.
     expect(ctx.rewriteSignal).toBeInstanceOf(Set);
     // The old originalFileContents snapshot must be removed.
-    expect(ctx.originalFileContents).toBeUndefined();
+    expect(
+      'originalFileContents' in ctx
+        ? (ctx as { originalFileContents?: unknown }).originalFileContents
+        : undefined,
+    ).toBeUndefined();
   });
 
   it('no disk writes occur when rewrite signal is empty', async () => {
@@ -256,8 +258,7 @@ milestone "MVP Release" {}`,
 
     // Even though mutate runs, without a non-empty signals no files are written.
     const ctx = await runLifecycle(tempDir, {
-      mutate: (builder) =>
-        builder.withEntry({ type: 'milestone', id: 'patched', attributes: [] }).builder,
+      mutate: (builder) => builder.withEntry({ type: 'milestone', id: 'patched', attributes: [] }),
     });
 
     expect(ctx.rewriteSignal).toBeDefined();
@@ -281,8 +282,7 @@ milestone "MVP Release" {}`,
     // (Provably set up via an empty rewrite signal; currently the gate still fires
     //  because hooks.mutate is truthy.)
     const ctxB = await runLifecycle(tempDir, {
-      mutate: (builder) =>
-        builder.withEntry({ type: 'milestone', id: 'patched', attributes: [] }).builder,
+      mutate: (builder) => builder.withEntry({ type: 'milestone', id: 'patched', attributes: [] }),
     });
 
     expect(ctxB.rewriteSignal).toBeDefined();
@@ -295,8 +295,7 @@ milestone "MVP Release" {}`,
     fs.writeFileSync(path.join(sirenDir, 'main.siren'), 'milestone alpha {}');
 
     const ctx = await runLifecycle(tempDir, {
-      mutate: (builder) =>
-        builder.withEntry({ type: 'milestone', id: 'patched', attributes: [] }).builder,
+      mutate: (builder) => builder.withEntry({ type: 'milestone', id: 'patched', attributes: [] }),
       format: true,
       dryRun: true,
       verbose: true,
@@ -306,5 +305,138 @@ milestone "MVP Release" {}`,
     expect(ctx.format).toBe(true);
     expect(ctx.dryRun).toBe(true);
     expect(ctx.verbose).toBe(true);
+  });
+
+  // ---------------------------------------------------------------------------
+  // IR-patch to source write-back bridge tests (TDD red — all fail until bridge lands)
+  // ---------------------------------------------------------------------------
+
+  it('mutate hook returns PatchResult with changes', async () => {
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    fs.writeFileSync(path.join(sirenDir, 'main.siren'), 'task target {}');
+
+    let capturedPatchResult: PatchResult | null = null;
+
+    const ctx = await runLifecycle(tempDir, {
+      mutate: (builder) => {
+        const result = builder.patchEntry('target', (r) => ({
+          ...r,
+          attributes: [...r.attributes, { key: 'description', value: ['patched'] as const }],
+        }));
+        capturedPatchResult = result;
+        return result;
+      },
+    });
+
+    // Core API produces PatchResult with changes
+    expect(capturedPatchResult).not.toBeNull();
+    expect(capturedPatchResult!.changes).toHaveLength(1);
+    expect(capturedPatchResult!.changes[0]!.entryId).toBe('target');
+    expect(capturedPatchResult!.changes[0]!.mode).toBe('updated');
+
+    // Bridge routes delta to parsedDoc and populates rewriteSignal
+    expect(ctx.rewriteSignal).toBeInstanceOf(Set);
+    expect(ctx.rewriteSignal.size).toBe(1);
+  });
+
+  it('bridge maps updated changes to parsedDoc.patchEntry and sets rewriteSignal', async () => {
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    const filePath = path.join(sirenDir, 'main.siren');
+    fs.writeFileSync(filePath, 'task target {}');
+
+    const ctx = await runLifecycle(tempDir, {
+      mutate: (builder) =>
+        builder.patchEntry('target', (r) => ({
+          ...r,
+          attributes: [...r.attributes, { key: 'description', value: ['patched'] as const }],
+        })),
+    });
+
+    // Bridge routes delta → source updated, rewriteSignal populated
+    expect(fs.readFileSync(filePath, 'utf-8')).toContain('description');
+
+    expect(ctx.rewriteSignal).toBeInstanceOf(Set);
+    expect(ctx.rewriteSignal.size).toBe(1);
+  });
+
+  it('non-updated documents are untouched after mutation', async () => {
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    const aPath = path.join(sirenDir, 'a.siren');
+    const bPath = path.join(sirenDir, 'b.siren');
+    fs.writeFileSync(aPath, 'task target {}');
+    fs.writeFileSync(bPath, 'milestone other {}');
+
+    const beforeB = fs.readFileSync(bPath, 'utf-8');
+    const beforeBMtime = fs.statSync(bPath).mtimeMs;
+    await new Promise((r) => setTimeout(r, 10));
+
+    const ctx = await runLifecycle(tempDir, {
+      mutate: (builder) =>
+        builder.patchEntry('target', (r) => ({
+          ...r,
+          attributes: [...r.attributes, { key: 'description', value: ['patched'] as const }],
+        })),
+    });
+
+    // b.siren untouched
+    expect(fs.readFileSync(bPath, 'utf-8')).toBe(beforeB);
+    expect(fs.statSync(bPath).mtimeMs).toBe(beforeBMtime);
+
+    // rewriteSignal does not contain b.siren
+    expect(ctx.rewriteSignal.has(bPath)).toBe(false);
+
+    // a.siren updated by bridge
+    expect(fs.readFileSync(aPath, 'utf-8')).toContain('description');
+  });
+
+  it('deleted and created changes are logged and dropped', async () => {
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    const filePath = path.join(sirenDir, 'main.siren');
+    fs.writeFileSync(filePath, 'task existing {}');
+
+    const ctx = await runLifecycle(tempDir, {
+      mutate: (builder) =>
+        builder.patch((entries) => [
+          ...entries,
+          { type: 'task', id: 'created-one', attributes: [] },
+        ]),
+    });
+
+    // No source changes: created entries are logged and dropped by bridge
+    expect(fs.readFileSync(filePath, 'utf-8')).toBe('task existing {}');
+
+    // Bridge logs the dropped created op
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('created'));
+
+    // Signal empty — no updated changes to route
+    expect(ctx.rewriteSignal.size).toBe(0);
+  });
+
+  it('multi-origin entry id refuses with an error', async () => {
+    const sirenDir = path.join(tempDir, 'siren');
+    fs.mkdirSync(sirenDir);
+    fs.writeFileSync(path.join(sirenDir, 'a.siren'), 'task shared {}');
+    fs.writeFileSync(path.join(sirenDir, 'b.siren'), 'milestone shared {}');
+
+    const ctx = await runLifecycle(tempDir, {
+      mutate: (builder) =>
+        builder.patchEntry('shared', (r) => ({
+          ...r,
+          attributes: [...r.attributes, { key: 'description', value: ['patched'] as const }],
+        })),
+    });
+
+    // Bridge detects multi-origin and pushes an error
+    expect(ctx.errors.length).toBeGreaterThan(0);
+    expect(ctx.errors[0]).toContain('shared');
+
+    // No files written (signal empty)
+    expect(ctx.rewriteSignal.size).toBe(0);
+    expect(fs.readFileSync(path.join(sirenDir, 'a.siren'), 'utf-8')).not.toContain('description');
+    expect(fs.readFileSync(path.join(sirenDir, 'b.siren'), 'utf-8')).not.toContain('description');
   });
 });

@@ -91,7 +91,7 @@ task cli-mutations-writeback-signal complete {
   details = "Introduce a rewrite signal (a set of document names) on CliContext. The write phase writes each signaled document's ParsedDocument.source to disk unconditionally and drops the originalFileContents snapshot (redundant with ctx.sourceDocuments). Move dryRun/verbose/summary into the write phase: dryRun skips disk writes and reports would-change via ctx.sourceDocuments vs parsedDoc.source; verbose lists changed files; the summary always prints. Generalize so any signal producer (the bridge or format) flows through this single path. runLifecycle options become { mutate?, query?, format?, dryRun?, verbose? }."
 }
 
-task cli-mutations-ir-source-bridge-red {
+task cli-mutations-ir-source-bridge-red complete {
   description = "TDD red: failing tests for the IR-patch to source write-back bridge."
   affected_packages = "apps/cli"
   depends_on = cli-mutations-writeback-signal
@@ -99,7 +99,7 @@ task cli-mutations-ir-source-bridge-red {
   files = "apps/cli/src/lifecycle/mutation.ts, apps/cli/src/lifecycle/write.ts, apps/cli/src/lifecycle/index.ts"
 }
 
-task cli-mutations-ir-source-bridge {
+task cli-mutations-ir-source-bridge complete {
   description = "Implement the standalone bridge that routes core patch deltas back to per-file ParsedDocument source edits."
   affected_packages = "apps/cli"
   depends_on = cli-mutations-ir-source-bridge-red
@@ -112,7 +112,7 @@ task cli-mutations-format-lifecycle-red {
   description = "TDD red: failing tests/goldens for format routed through the lifecycle write-back."
   affected_packages = "apps/cli"
   depends_on = cli-mutations-writeback-signal
-  details = "Cover: runLifecycle(cwd, { format: true }) formats every parsed document in place via ParsedDocument.format() and signals all documents for rewrite; format reuses ctx.parsedDocuments (no fresh parser); the CLI-side semanticKey round-trip check is gone; a parse error (EL001) anywhere aborts the whole write (no per-file skip); dryRun/verbose/summary come from the shared write phase. Update the format goldens to the lifecycle path. Tests must fail against the current self-contained runFormat."
+  details = "Cover: runLifecycle(cwd, { format: true }) formats every parsed document in place via ParsedDocument.format() and signals all documents for rewrite; format reuses ctx.parsedDocuments (no fresh parser); the CLI-side semanticKey round-trip check is gone; a parse error (EL001) anywhere aborts the whole write (no per-file skip); dryRun/verbose/summary come from the shared write phase; runFormat is greatly reduced to a flag passthrough. Update the format goldens to the lifecycle path. Tests must fail against the current self-contained runFormat."
   files = "apps/cli/src/commands/format.ts, apps/cli/src/lifecycle/index.ts, apps/cli/test/expected/"
 }
 

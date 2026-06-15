@@ -1,17 +1,14 @@
-import type { SirenBuilder } from '@sirenpm/core';
+import type { PatchResult, SirenBuilder } from '@sirenpm/core';
 import type { CliContext, DeepReadonly } from './context';
 
 /**
- * Pure builder transform. Receives the current builder, returns the next builder.
- *
- * Implementations should use `SirenBuilder.patch` (or its convenience layers like
- * `withResource` / `patchResource`) to compose copy-on-write changes. The lifecycle
- * assigns the returned builder back onto the context before the project-build phase.
+ * Pure builder transform. Returns the core PatchResult (builder + entry delta)
+ * so the lifecycle can route changes back to source documents.
  */
-export type BuilderMutate = (builder: SirenBuilder) => SirenBuilder;
+export type BuilderMutate = (builder: SirenBuilder) => PatchResult;
 
 export interface MutationArtifact {
-  builder?: SirenBuilder;
+  patchResult?: PatchResult;
 }
 
 export function runBuilderMutation(
@@ -19,7 +16,7 @@ export function runBuilderMutation(
   mutate?: BuilderMutate,
 ): MutationArtifact {
   if (mutate && ctx.builder) {
-    return { builder: mutate(ctx.builder as SirenBuilder) };
+    return { patchResult: mutate(ctx.builder as SirenBuilder) };
   }
 
   return {};

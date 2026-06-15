@@ -8,14 +8,8 @@ export type WriteArtifact = {};
  * Persist source-preserving edits back to disk using the rewrite signal.
  *
  * The rewrite signal (`ctx.rewriteSignal`) is a set of absolute file paths that
- * should be unconditionally rewritten. It is populated by upstream phases
- * (e.g. the IR-patch bridge or format lifecycle) that determine which documents
- * have changed and need flushing to disk.
- *
- * NOTE (open gap): The bridge that routes builder entry deltas back to
- * originating `ParsedDocument`s via `origin.document` is not yet implemented.
- * Until then, this phase operates on the rewrite signal directly — any phase
- * that mutates documents must add their paths to `ctx.rewriteSignal`.
+ * should be unconditionally rewritten. It is populated by the source-bridge
+ * (for IR patch deltas) or the format lifecycle handler.
  *
  * dryRun mode skips actual writes but still reports what would change.
  * verbose mode logs each relative file path as it's written.
