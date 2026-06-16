@@ -4,7 +4,7 @@ description: Explains how to properly use the tree-sitter-cli in the project, an
 license: Complete terms in LICENSE.txt
 ---
 
-You must be in the `/packages/language/grammar` directory. You will have access to `tree-sitter-cli` from there via `yarn run tree-sitter`, with which you can run the various relevant tree-sitter commands, including:
+You must be in the `/packages/language/src/grammar` directory. You will have access to `tree-sitter-cli` from there via `yarn run tree-sitter`, with which you can run the various relevant tree-sitter commands, including:
 * `yarn generate`
 * `yarn build`
 * `yarn run tree-sitter parse <file>`

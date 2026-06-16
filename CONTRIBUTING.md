@@ -44,7 +44,7 @@ yarn workspace @sirenpm/core test
 Rebuild the Tree-sitter parser (only needed when editing grammar):
 
 ```bash
-cd packages/language/grammar
+cd packages/language/src/grammar
 yarn generate
 yarn build
 yarn test

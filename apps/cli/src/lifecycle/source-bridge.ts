@@ -1,10 +1,11 @@
 import * as path from 'node:path';
-import type { EntryChange, SirenEntry } from '@sirenpm/core';
-import type { ParsedDocument, SourcedEntry } from '@sirenpm/language';
+import type { EntryChange } from '@sirenpm/core';
 import type { CliContext, DeepReadonly } from './context';
 
 export interface SourceBridgeArtifact {
   errors: string[];
+  /** Absolute file paths whose content was patched and should be rewritten. */
+  touchedPaths: string[];
 }
 
 /**
@@ -30,6 +31,7 @@ export function runSourceBridge(
   changes: readonly EntryChange[],
 ): SourceBridgeArtifact {
   const errors: string[] = [];
+  const touchedPaths: string[] = [];
 
   for (const change of changes) {
     if (change.mode !== 'updated') {
@@ -38,9 +40,7 @@ export function runSourceBridge(
     }
 
     // Find originating document(s) from the original entries
-    const originals = (ctx.entries as readonly SourcedEntry[]).filter(
-      (e) => e.id === change.entryId,
-    );
+    const originals = ctx.entries.filter((e) => e.id === change.entryId);
 
     if (originals.length === 0) {
       errors.push(`Entry "${change.entryId}" not found in decoded entries`);
@@ -68,21 +68,19 @@ export function runSourceBridge(
     }
 
     // Find the ParsedDocument for this file
-    const parsedDoc = (ctx.parsedDocuments as ParsedDocument[]).find(
-      (p) => p.source.name === documentName,
-    );
+    const parsedDoc = ctx.parsedDocuments.find((p) => p.source.name === documentName);
     if (!parsedDoc) {
       errors.push(`ParsedDocument not found for document "${documentName}"`);
       continue;
     }
 
     // Surgical source update
-    parsedDoc.patchEntry(change.entryId, newEntry as SirenEntry);
+    parsedDoc.patchEntry(change.entryId, newEntry);
 
-    // Populate the rewrite signal
+    // Collect the touched path for the lifecycle to merge into rewriteSignal
     const absolutePath = path.join(ctx.rootDir, documentName);
-    (ctx.rewriteSignal as Set<string>).add(absolutePath);
+    touchedPaths.push(absolutePath);
   }
 
-  return { errors };
+  return { errors, touchedPaths };
 }

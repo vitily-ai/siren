@@ -77,6 +77,9 @@ export async function runLifecycle(cwd: string, hooks: LifecycleHooks = {}): Pro
     // Wire the bridge: route patch delta back to parsed documents
     const bridgeArt = runSourceBridge(ctx, mutationArt.patchResult.changes);
     ctx.errors.push(...bridgeArt.errors);
+    for (const p of bridgeArt.touchedPaths) {
+      ctx.rewriteSignal.add(p);
+    }
   }
   ctx.phasesRun.add('builder-mutation');
 
