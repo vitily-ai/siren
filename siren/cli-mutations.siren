@@ -135,17 +135,3 @@ task cli-mutations-mv-command complete {
   depends_on = [cli-mutations-mv-command-red, cli-mutations-ir-source-bridge]
   details = "Add apps/cli/src/commands/mv.ts exporting mvMutate factory and mvCommand citty command. Command defines entryId and target (literal 'complete' or 'draft') positional args and calls runLifecycle with the mutate hook. mvMutate searches builder.entries for the entry, throws on unknown or synthesized-only id, and returns builder.patchEntry(id, e => ({ ...e, status })) (a PatchResult). Register mv in mainCommand.subCommands and extend printUsage. The delta-to-source bridge, error/abort wiring, and write-back are owned by cli-mutations-ir-source-bridge and cli-mutations-writeback-signal — not this task. Exit 1 on validation error, 0 on success (idempotent no-op => empty delta => no document signaled => no write)."
 }
-
-task cli-mutations-mv-materialize-synthesized {
-  description = "Allow siren mv against synthesized document milestones by materializing them into their origin document."
-  affected_packages = "apps/cli, language"
-  depends_on = cli-mutations-mv-command
-  details = "When mv receives an id matching only a synthesized milestone, construct and insert an explicit milestone entry into its origin document with the synthesized depends_on dependencies, then apply the status patch. This is the path that produces a 'created' delta change, so it must extend cli-mutations-ir-source-bridge (which logs-and-drops 'created' in the base) to route a synthetic-origin 'created' entry to its document. The rendering opinion for materialized milestones belongs to @sirenpm/language (renderEntry / patchEntry placement and formatting). Follow-up to the base mv implementation."
-}
-
-task cli-mutations-mv-duplicate-id {
-  description = "Define and test mv behavior when entry-id is declared in multiple documents."
-  affected_packages = "apps/cli"
-  depends_on = cli-mutations-mv-command
-  details = "The base bridge (cli-mutations-ir-source-bridge) refuses with an error when a changed id resolves to multiple origin documents. This task designs the real UX over that refusal — explicit refusal messaging vs. an interactive confirmation/selection flow — then implements the validation and tests. Follow-up to the base mv implementation."
-}
