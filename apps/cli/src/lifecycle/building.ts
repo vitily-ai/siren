@@ -1,10 +1,12 @@
 import { SirenBuilder } from '@sirenpm/core';
-import type { CliContext } from './context';
+import type { CliContext, DeepReadonly } from './context';
 
-export function runBuilderConstruction(ctx: CliContext): void {
-  if (ctx.parseResult?.tree) {
-    ctx.builder = SirenBuilder.fromDocuments(ctx.sirenDocuments);
-  }
+export interface BuildingArtifact {
+  builder: SirenBuilder;
+}
 
-  ctx.phasesRun.add('builder-construction');
+export function runBuilderConstruction(ctx: DeepReadonly<CliContext>): BuildingArtifact {
+  return {
+    builder: SirenBuilder.fromEntries(ctx.entries),
+  };
 }

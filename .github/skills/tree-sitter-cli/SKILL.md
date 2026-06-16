@@ -4,13 +4,13 @@ description: Explains how to properly use the tree-sitter-cli in the project, an
 license: Complete terms in LICENSE.txt
 ---
 
-You must be in the `/packages/language/grammar` directory. You will have access to `tree-sitter-cli` from there via `npx tree-sitter-cli`, with which you can run the various relevant tree-sitter commands, including:
-* `npx tree-sitter-cli generate`
-* `npx tree-sitter-cli build --wasm`
-* `npx tree-sitter-cli parse <file>`
-* `npx tree-sitter-cli test`
+You must be in the `/packages/language/src/grammar` directory. You will have access to `tree-sitter-cli` from there via `yarn run tree-sitter`, with which you can run the various relevant tree-sitter commands, including:
+* `yarn generate`
+* `yarn build`
+* `yarn run tree-sitter parse <file>`
+* `yarn test`
 
 For scripted runs from the repo root, prefer the language package scripts:
-* `yarn workspace @sirenpm/language grammar:generate`
-* `yarn workspace @sirenpm/language grammar:build-wasm`
-* `yarn workspace @sirenpm/language grammar:test`
+* `yarn workspace @sirenpm/grammar generate`
+* `yarn workspace @sirenpm/grammar build`
+* `yarn workspace @sirenpm/grammar test`

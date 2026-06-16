@@ -1,0 +1,4 @@
+{"fixture":"mv-single-entry","command":"siren mv my-task complete"}
+---
+Updated 1 files out of 1
+---

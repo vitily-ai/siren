@@ -3,9 +3,41 @@ import type {
   DanglingDependencyDiagnostic,
   DuplicateIdDiagnostic,
 } from '@sirenpm/core';
-import type { ParseDiagnostic } from '@sirenpm/language';
+import type {
+  EL001FallbackDiagnostic,
+  EL002MissingTokenDiagnostic,
+  EL003UnexpectedTokenDiagnostic,
+  WL001UnrecognizedModifierDiagnostic,
+  WL002CollapsedModifiersDiagnostic,
+} from '@sirenpm/language';
 import { describe, expect, it } from 'vitest';
-import { formatDiagnostic } from './format-diagnostics';
+import { formatDiagnostic, type OriginResolver } from './format-diagnostics';
+
+/** An origin resolver that maps entry IDs to origins with predictable positions. */
+function testResolver(): OriginResolver {
+  const origins: Record<string, { doc: string; row: number }> = {
+    a: { doc: 'siren/main.siren', row: 11 },
+    b: { doc: 'siren/main.siren', row: 12 },
+    c: { doc: 'siren/main.siren', row: 13 },
+    'my-task': { doc: 'siren/tasks.siren', row: 14 },
+    'release-v1': { doc: 'milestones.siren', row: 2 },
+    'duplicate-id': { doc: 'siren/dupes.siren', row: 9 },
+    task: { doc: 'very/deeply/nested/path/to/file.siren', row: 99 },
+    'my-complex_task.v2': { doc: 'tasks.siren', row: 4 },
+  };
+  return (id) => {
+    const entry = origins[id];
+    if (!entry) return undefined;
+    return {
+      kind: 'range',
+      startByte: 0,
+      endByte: 1,
+      startRow: entry.row,
+      endRow: entry.row,
+      document: entry.doc,
+    };
+  };
+}
 
 describe('formatDiagnostic', () => {
   describe('W001: Circular dependency', () => {
@@ -14,15 +46,12 @@ describe('formatDiagnostic', () => {
         code: 'W001',
         severity: 'warning',
         nodes: ['a', 'b', 'c', 'a'],
-        file: 'siren/main.siren',
-        line: 12,
-        column: 5,
       };
 
-      const result = formatDiagnostic(diagnostic);
+      const result = formatDiagnostic(diagnostic, testResolver());
 
       expect(result).toBe(
-        'siren/main.siren:12:5: W001: Circular dependency detected: a -> b -> c -> a',
+        'siren/main.siren:12:0: W001: Circular dependency detected: a -> b -> c -> a',
       );
     });
 
@@ -31,31 +60,28 @@ describe('formatDiagnostic', () => {
         code: 'W001',
         severity: 'warning',
         nodes: ['task1', 'task2', 'task1'],
-        file: 'deps.siren',
-        line: 8,
-        column: 0,
       };
 
-      const result = formatDiagnostic(diagnostic);
+      const result = formatDiagnostic(diagnostic, testResolver());
 
+      // No resolver for task1 — falls back to unknown:0:0
       expect(result).toBe(
-        'deps.siren:8:0: W001: Circular dependency detected: task1 -> task2 -> task1',
+        // FIXME: If this is intentionally demonstrating a synthetic fallback, it needs
+        // to be its own test case
+        'unknown:0:0: W001: Circular dependency detected: task1 -> task2 -> task1',
       );
     });
 
-    it('formats self-referential cycle', () => {
+    it('formats self-referential cycle with origin', () => {
       const diagnostic: CircularDependencyDiagnostic = {
         code: 'W001',
         severity: 'warning',
-        nodes: ['self', 'self'],
-        file: 'broken.siren',
-        line: 1,
-        column: 10,
+        nodes: ['a', 'a'],
       };
 
-      const result = formatDiagnostic(diagnostic);
+      const result = formatDiagnostic(diagnostic, testResolver());
 
-      expect(result).toBe('broken.siren:1:10: W001: Circular dependency detected: self -> self');
+      expect(result).toBe('siren/main.siren:12:0: W001: Circular dependency detected: a -> a');
     });
   });
 
@@ -64,18 +90,15 @@ describe('formatDiagnostic', () => {
       const diagnostic: DanglingDependencyDiagnostic = {
         code: 'W002',
         severity: 'warning',
-        resourceId: 'my-task',
-        resourceType: 'task',
+        entryId: 'my-task',
+        entryType: 'task',
         dependencyId: 'missing-dep',
-        file: 'siren/tasks.siren',
-        line: 15,
-        column: 12,
       };
 
-      const result = formatDiagnostic(diagnostic);
+      const result = formatDiagnostic(diagnostic, testResolver());
 
       expect(result).toBe(
-        "siren/tasks.siren:15:12: W002: Dangling dependency: task 'my-task' depends on 'missing-dep'",
+        "siren/tasks.siren:15:0: W002: Dangling dependency: task 'my-task' depends on 'missing-dep'",
       );
     });
 
@@ -83,153 +106,229 @@ describe('formatDiagnostic', () => {
       const diagnostic: DanglingDependencyDiagnostic = {
         code: 'W002',
         severity: 'warning',
-        resourceId: 'release-v1',
-        resourceType: 'milestone',
+        entryId: 'release-v1',
+        entryType: 'milestone',
         dependencyId: 'unfinished-task',
-        file: 'milestones.siren',
-        line: 3,
-        column: 2,
       };
 
-      const result = formatDiagnostic(diagnostic);
+      const result = formatDiagnostic(diagnostic, testResolver());
 
       expect(result).toBe(
-        "milestones.siren:3:2: W002: Dangling dependency: milestone 'release-v1' depends on 'unfinished-task'",
+        "milestones.siren:3:0: W002: Dangling dependency: milestone 'release-v1' depends on 'unfinished-task'",
       );
     });
   });
 
-  describe('W003: Duplicate resource ID', () => {
-    it('formats duplicate ID with second occurrence position', () => {
+  describe('W003: Duplicate entry ID', () => {
+    it('formats duplicate ID with entry identity', () => {
       const diagnostic: DuplicateIdDiagnostic = {
         code: 'W003',
         severity: 'warning',
-        resourceId: 'duplicate-id',
-        resourceType: 'task',
-        file: 'siren/dupes.siren',
-        firstLine: 2,
-        firstColumn: 0,
-        secondLine: 10,
-        secondColumn: 0,
+        entryId: 'duplicate-id',
+        entryType: 'task',
       };
 
-      const result = formatDiagnostic(diagnostic);
+      const result = formatDiagnostic(diagnostic, testResolver());
 
       expect(result).toBe(
-        "siren/dupes.siren:10:0: W003: Duplicate resource ID detected: task 'duplicate-id' first defined at 2:0",
+        "siren/dupes.siren:10:0: W003: Duplicate entry ID detected: task 'duplicate-id'",
       );
     });
   });
 
-  describe('WL001: Complete keyword and attribute conflict', () => {
-    it('formats complete conflict warning', () => {
-      const diagnostic: ParseDiagnostic = {
+  describe('WL001: Unrecognized status modifier', () => {
+    it('formats unrecognized modifier warning', () => {
+      const diagnostic: WL001UnrecognizedModifierDiagnostic = {
         code: 'WL001',
-        message:
-          "Resource has both 'complete' keyword and a 'complete' attribute whose value is not true. The resource will be treated as complete.",
         severity: 'warning',
-        file: 'siren/config.siren',
-        line: 20,
-        column: 3,
+        resourceId: 'config',
+        modifier: 'invalid_status',
+        documentName: 'siren/config.siren',
+        origin: {
+          kind: 'range',
+          startByte: 20,
+          endByte: 34,
+          startRow: 19,
+          endRow: 19,
+          document: 'siren/config.siren',
+        },
       };
 
       const result = formatDiagnostic(diagnostic);
 
       expect(result).toBe(
-        "siren/config.siren:20:3: WL001: Resource has both 'complete' keyword and a 'complete' attribute whose value is not true. The resource will be treated as complete.",
+        "siren/config.siren:20:0: WL001: Unrecognized status modifier 'invalid_status' on 'config' was ignored",
       );
     });
   });
 
-  describe('WL002: Multiple complete keywords', () => {
-    it('formats multiple complete keywords warning', () => {
-      const diagnostic: ParseDiagnostic = {
+  describe('WL002: Multiple recognized status modifiers', () => {
+    it('formats collapsed status warning', () => {
+      const diagnostic: WL002CollapsedModifiersDiagnostic = {
         code: 'WL002',
-        message:
-          "Resource 'deploy' has 'complete' keyword specified more than once. Only one is allowed; resource will be treated as complete: true.",
         severity: 'warning',
-        file: 'tasks.siren',
-        line: 7,
-        column: 0,
+        resourceId: 'deploy',
+        recognizedModifiers: ['complete', 'complete'],
+        resolvedStatus: 'complete',
+        documentName: 'tasks.siren',
+        origin: {
+          kind: 'range',
+          startByte: 5,
+          endByte: 15,
+          startRow: 6,
+          endRow: 6,
+          document: 'tasks.siren',
+        },
       };
 
       const result = formatDiagnostic(diagnostic);
 
       expect(result).toBe(
-        "tasks.siren:7:0: WL002: Resource 'deploy' has 'complete' keyword specified more than once. Only one is allowed; resource will be treated as complete: true.",
+        "tasks.siren:7:0: WL002: Resource 'deploy' has multiple status modifiers (complete, complete); resolved to 'complete'",
       );
     });
   });
 
-  describe('WL003: Complete on unsupported type', () => {
-    it('formats complete on wrong resource type', () => {
-      const diagnostic: ParseDiagnostic = {
-        code: 'WL003',
-        message:
-          "Resource type 'feature' does not support the 'complete' keyword. It will be ignored.",
-        severity: 'warning',
-        file: 'custom.siren',
-        line: 5,
-        column: 8,
-      };
-
-      const result = formatDiagnostic(diagnostic);
-
-      expect(result).toBe(
-        "custom.siren:5:8: WL003: Resource type 'feature' does not support the 'complete' keyword. It will be ignored.",
-      );
-    });
-  });
-
-  describe('EL001: Parse error', () => {
-    it('formats parse error', () => {
-      const diagnostic: ParseDiagnostic = {
+  describe('EL001: Parse error fallback', () => {
+    it('formats syntax exclusion', () => {
+      const diagnostic: EL001FallbackDiagnostic = {
         code: 'EL001',
-        message: 'Invalid syntax: unexpected token',
         severity: 'error',
-        file: 'broken.siren',
-        line: 42,
-        column: 15,
+        nodeType: 'ERROR',
+        documentName: 'broken.siren',
+        origin: {
+          kind: 'range',
+          startByte: 0,
+          endByte: 33,
+          startRow: 41,
+          endRow: 41,
+          document: 'broken.siren',
+        },
       };
 
       const result = formatDiagnostic(diagnostic);
 
-      expect(result).toBe('broken.siren:42:15: EL001: Invalid syntax: unexpected token');
+      expect(result).toBe('broken.siren:42:0: EL001: could not parse ERROR');
+    });
+
+    it('formats syntax exclusion with resource id', () => {
+      const diagnostic: EL001FallbackDiagnostic = {
+        code: 'EL001',
+        severity: 'error',
+        nodeType: 'resource',
+        resourceId: 'my-task',
+        documentName: 'tasks.siren',
+        origin: {
+          kind: 'range',
+          startByte: 0,
+          endByte: 5,
+          startRow: 3,
+          endRow: 3,
+          document: 'tasks.siren',
+        },
+      };
+
+      const result = formatDiagnostic(diagnostic);
+
+      expect(result).toBe("tasks.siren:4:0: EL001: could not parse resource 'my-task'");
+    });
+  });
+
+  describe('EL002: Missing token', () => {
+    it('formats missing token error', () => {
+      const diagnostic: EL002MissingTokenDiagnostic = {
+        code: 'EL002',
+        severity: 'error',
+        missingToken: '}',
+        documentName: 'test.siren',
+        origin: {
+          kind: 'range',
+          startByte: 42,
+          endByte: 43,
+          startRow: 9,
+          endRow: 9,
+          document: 'test.siren',
+        },
+      };
+
+      const result = formatDiagnostic(diagnostic);
+
+      expect(result).toBe("test.siren:10:0: EL002: missing '}'");
+    });
+  });
+
+  describe('EL003: Unexpected token with expected alternatives', () => {
+    it('formats unexpected token error with expected set', () => {
+      const diagnostic: EL003UnexpectedTokenDiagnostic = {
+        code: 'EL003',
+        severity: 'error',
+        expected: ['block_open', 'bare_identifier'],
+        documentName: 'test.siren',
+        origin: {
+          kind: 'range',
+          startByte: 15,
+          endByte: 21,
+          startRow: 4,
+          endRow: 4,
+          document: 'test.siren',
+        },
+      };
+
+      const result = formatDiagnostic(diagnostic);
+
+      expect(result).toBe(
+        "test.siren:5:0: EL003: unexpected token; expected 'block_open', 'bare_identifier'",
+      );
     });
   });
 
   describe('Edge cases', () => {
-    it('handles diagnostic with zero column', () => {
+    it('handles missing origin resolver for core diagnostic', () => {
+      const diagnostic: CircularDependencyDiagnostic = {
+        code: 'W001',
+        severity: 'warning',
+        nodes: ['orphan'],
+      };
+
+      const result = formatDiagnostic(diagnostic); // no resolver
+
+      expect(result).toBe('unknown:0:0: W001: Circular dependency detected: orphan');
+    });
+
+    it('handles diagnostic with zero column via origin', () => {
       const diagnostic: CircularDependencyDiagnostic = {
         code: 'W001',
         severity: 'warning',
         nodes: ['a', 'b', 'a'],
-        file: 'test.siren',
-        line: 1,
-        column: 0,
       };
 
-      const result = formatDiagnostic(diagnostic);
+      const resolver: OriginResolver = () => ({
+        kind: 'range',
+        startByte: 0,
+        endByte: 5,
+        startRow: 0,
+        endRow: 0,
+        document: 'test.siren',
+      });
+
+      const result = formatDiagnostic(diagnostic, resolver);
 
       expect(result).toBe('test.siren:1:0: W001: Circular dependency detected: a -> b -> a');
     });
 
-    it('handles long file paths', () => {
+    it('handles long file paths via resolver', () => {
       const diagnostic: DanglingDependencyDiagnostic = {
         code: 'W002',
         severity: 'warning',
-        resourceId: 'task',
-        resourceType: 'task',
+        entryId: 'task',
+        entryType: 'task',
         dependencyId: 'missing',
-        file: 'very/deeply/nested/path/to/file.siren',
-        line: 100,
-        column: 50,
       };
 
-      const result = formatDiagnostic(diagnostic);
+      const result = formatDiagnostic(diagnostic, testResolver());
 
       expect(result).toBe(
-        "very/deeply/nested/path/to/file.siren:100:50: W002: Dangling dependency: task 'task' depends on 'missing'",
+        "very/deeply/nested/path/to/file.siren:100:0: W002: Dangling dependency: task 'task' depends on 'missing'",
       );
     });
 
@@ -237,18 +336,99 @@ describe('formatDiagnostic', () => {
       const diagnostic: DanglingDependencyDiagnostic = {
         code: 'W002',
         severity: 'warning',
-        resourceId: 'my-complex_task.v2',
-        resourceType: 'task',
+        entryId: 'my-complex_task.v2',
+        entryType: 'task',
         dependencyId: 'other-dep_final',
-        file: 'tasks.siren',
-        line: 5,
-        column: 3,
       };
 
-      const result = formatDiagnostic(diagnostic);
+      const result = formatDiagnostic(diagnostic, testResolver());
 
       expect(result).toBe(
-        "tasks.siren:5:3: W002: Dangling dependency: task 'my-complex_task.v2' depends on 'other-dep_final'",
+        "tasks.siren:5:0: W002: Dangling dependency: task 'my-complex_task.v2' depends on 'other-dep_final'",
+      );
+    });
+  });
+
+  describe('Caret snippet rendering (formatDiagnostic with source)', () => {
+    it('renders caret snippet for EL002 with source', () => {
+      const diagnostic: EL002MissingTokenDiagnostic = {
+        code: 'EL002',
+        severity: 'error',
+        missingToken: 'task',
+        documentName: 'broken.siren',
+        origin: {
+          kind: 'range',
+          startByte: 0,
+          endByte: 1,
+          startRow: 0,
+          endRow: 0,
+          document: 'broken.siren',
+        },
+      };
+
+      const result = formatDiagnostic(diagnostic, undefined, 'this is not valid siren syntax!!!');
+
+      expect(result).toBe(
+        [
+          "broken.siren:1:1: EL002: missing 'task'",
+          '  |',
+          '1 | this is not valid siren syntax!!!',
+          '  | ^',
+        ].join('\n'),
+      );
+    });
+
+    it('renders caret snippet for EL003 with source', () => {
+      const diagnostic: EL003UnexpectedTokenDiagnostic = {
+        code: 'EL003',
+        severity: 'error',
+        expected: ['task', 'milestone'],
+        documentName: 'broken.siren',
+        origin: {
+          kind: 'range',
+          startByte: 0,
+          endByte: 3,
+          startRow: 0,
+          endRow: 0,
+          document: 'broken.siren',
+        },
+      };
+
+      const result = formatDiagnostic(diagnostic, undefined, '!!! syntax error');
+
+      expect(result).toBe(
+        [
+          "broken.siren:1:1: EL003: unexpected token; expected 'task', 'milestone'",
+          '  |',
+          '1 | !!! syntax error',
+          '  | ^^^',
+        ].join('\n'),
+      );
+    });
+
+    it('does NOT append caret snippet for non-parse-error diagnostics', () => {
+      const diagnostic: DanglingDependencyDiagnostic = {
+        code: 'W002',
+        severity: 'warning',
+        entryId: 'my-task',
+        entryType: 'task',
+        dependencyId: 'missing-dep',
+      };
+
+      const resolver: OriginResolver = () => ({
+        kind: 'range',
+        startByte: 0,
+        endByte: 5,
+        startRow: 0,
+        endRow: 0,
+        document: 'test.siren',
+      });
+
+      // Source is provided but diagnostic is not a parse error — no caret.
+      const result = formatDiagnostic(diagnostic, resolver, 'some source text');
+
+      expect(result).toBe(
+        "test.siren:1:1: W002: Dangling dependency: task 'my-task' depends on 'missing-dep'",
       );
     });
   });

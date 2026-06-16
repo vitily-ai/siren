@@ -5,9 +5,7 @@
 ---
 valid
 ---
-error: unexpected token 'this'; expected 'task' or 'milestone'
- --> siren/broken.siren:1:1
+siren/broken.siren:1:1: EL002: missing 'task'
   |
 1 | this is not valid siren syntax!!!
-  | ^^^^
-note: skipping siren/broken.siren due to syntax errors
+  | ^

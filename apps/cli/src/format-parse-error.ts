@@ -1,34 +1,59 @@
-import type { ParseError } from '@sirenpm/language';
+import type { RangeOrigin } from '@sirenpm/language';
 
-function clamp(n: number, min: number, max: number): number {
+export function clamp(n: number, min: number, max: number): number {
   return Math.min(Math.max(n, min), max);
 }
 
-export function formatParseError(err: ParseError, source: string): string {
-  const severity = err.severity ?? 'error';
-  const document = err.document ?? 'unknown';
+/** Byte offset of the start of `row` (0-based) within `source`. */
+export function rowStartByte(source: string, row: number): number {
+  let index = 0;
+  for (let line = 0; line < row; line++) {
+    const next = source.indexOf('\n', index);
+    if (next === -1) return index;
+    index = next + 1;
+  }
+  return index;
+}
 
-  const lineNumber = err.line;
-  const columnNumber = err.column;
+/**
+ * Render a caret-snippet block for a source range origin.
+ *
+ * Returns the gutter separator, numbered source line, and underline carets
+ * (e.g. `"  |\n1 | text\n  | ^^^"`). Does NOT include the diagnostic header
+ * line — callers should produce that separately via `formatDiagnostic()`.
+ */
+export function renderCaretSnippet(origin: RangeOrigin, source: string): string {
+  const isMultiLine = origin.endRow > origin.startRow;
+  const snippet = source.slice(origin.startByte, origin.endByte);
+  const _trimmedSnippet = snippet.endsWith('\n') ? snippet.slice(0, -1) : snippet;
 
   const lines = source.split(/\r?\n/u);
-  const lineText = lines[lineNumber - 1] ?? '';
+  const lineNumber = origin.startRow + 1;
+  const lineText = lines[origin.startRow] ?? '';
 
-  const caretColumn = clamp(columnNumber, 1, lineText.length + 1);
-  const remainingOnLine = Math.max(1, lineText.length - (caretColumn - 1));
-  const desiredUnderline = err.found && err.found.length > 0 ? err.found.length : 1;
-  const underlineLength = clamp(desiredUnderline, 1, remainingOnLine);
+  const lineStart = rowStartByte(source, origin.startRow);
+  const columnNumber = clamp(origin.startByte - lineStart + 1, 1, lineText.length + 1);
+
+  // For single-line spans, underline the exact range.
+  // For multi-line spans (resource-level EL001 fallback), underline to end of first line.
+  const remainingOnLine = Math.max(1, lineText.length - (columnNumber - 1));
+  const spanLength = isMultiLine ? remainingOnLine : Math.max(1, origin.endByte - origin.startByte);
+  const underlineLength = clamp(spanLength, 1, remainingOnLine);
 
   const lineNo = String(lineNumber);
   const gutter = ' '.repeat(lineNo.length);
-  const caretSpaces = ' '.repeat(Math.max(0, caretColumn - 1));
+  const caretSpaces = ' '.repeat(Math.max(0, columnNumber - 1));
   const carets = '^'.repeat(underlineLength);
 
-  return [
-    `${severity}: ${err.message}`,
-    ` --> ${document}:${lineNumber}:${columnNumber}`,
-    `  |`,
-    `${lineNo} | ${lineText}`,
-    `${gutter} | ${caretSpaces}${carets}`,
-  ].join('\n');
+  const parts = [`  |`, `${lineNo} | ${lineText}`, `${gutter} | ${caretSpaces}${carets}`];
+
+  // For multi-line spans, add a note.
+  if (isMultiLine) {
+    parts.push(
+      `${gutter} | ${' '.repeat(lineText.length)}`,
+      `${gutter} = note: the parse error is inside this block`,
+    );
+  }
+
+  return parts.join('\n');
 }

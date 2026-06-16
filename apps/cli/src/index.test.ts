@@ -3,10 +3,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { copyProjectFixture } from '../test/helpers/fixture-utils';
-import { init, list, main } from './index';
-import * as project from './project';
-import { loadProject } from './project';
+import { main } from './index';
+import * as lifecycle from './lifecycle';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(
@@ -28,275 +26,13 @@ function copyFixture(fixtureName: string, targetDir: string) {
   fs.cpSync(fixturePath, targetSirenDir, { recursive: true });
 }
 
-describe('siren init', () => {
-  let tempDir: string;
-
-  beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'siren-test-'));
-  });
-
-  afterEach(() => {
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  });
-
-  it('creates all files on fresh init', () => {
-    const result = init(tempDir);
-
-    expect(result.created).toEqual(['siren', 'siren/siren.config.yaml', 'siren/main.siren']);
-    expect(result.skipped).toEqual([]);
-
-    // Verify files exist with correct contents
-    const sirenDir = path.join(tempDir, 'siren');
-    expect(fs.existsSync(sirenDir)).toBe(true);
-    expect(fs.statSync(sirenDir).isDirectory()).toBe(true);
-
-    const configPath = path.join(sirenDir, 'siren.config.yaml');
-    expect(fs.existsSync(configPath)).toBe(true);
-    expect(fs.readFileSync(configPath, 'utf-8')).toBe('# project_name: Siren Project\n');
-
-    const mainPath = path.join(sirenDir, 'main.siren');
-    expect(fs.existsSync(mainPath)).toBe(true);
-    expect(fs.readFileSync(mainPath, 'utf-8')).toBe('');
-  });
-
-  it('skips existing directory but creates missing files', () => {
-    // Pre-create the siren directory
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-
-    const result = init(tempDir);
-
-    expect(result.created).toEqual(['siren/siren.config.yaml', 'siren/main.siren']);
-    expect(result.skipped).toEqual(['siren']);
-
-    // Verify files were created
-    expect(fs.existsSync(path.join(sirenDir, 'siren.config.yaml'))).toBe(true);
-    expect(fs.existsSync(path.join(sirenDir, 'main.siren'))).toBe(true);
-  });
-
-  it('skips existing config but creates missing main file', () => {
-    // Pre-create siren directory and config
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(path.join(sirenDir, 'siren.config.yaml'), '# custom config\n');
-
-    const result = init(tempDir);
-
-    expect(result.created).toEqual(['siren/main.siren']);
-    expect(result.skipped).toEqual(['siren', 'siren/siren.config.yaml']);
-
-    // Verify original config is preserved
-    expect(fs.readFileSync(path.join(sirenDir, 'siren.config.yaml'), 'utf-8')).toBe(
-      '# custom config\n',
-    );
-  });
-
-  it('skips everything when all files already exist', () => {
-    // Pre-create everything
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(path.join(sirenDir, 'siren.config.yaml'), '# existing\n');
-    fs.writeFileSync(path.join(sirenDir, 'main.siren'), 'milestone "existing" {}');
-
-    const result = init(tempDir);
-
-    expect(result.created).toEqual([]);
-    expect(result.skipped).toEqual(['siren', 'siren/siren.config.yaml', 'siren/main.siren']);
-
-    // Verify original contents are preserved
-    expect(fs.readFileSync(path.join(sirenDir, 'siren.config.yaml'), 'utf-8')).toBe('# existing\n');
-    expect(fs.readFileSync(path.join(sirenDir, 'main.siren'), 'utf-8')).toBe(
-      'milestone "existing" {}',
-    );
-  });
-
-  it('skips main.siren but creates config when only main exists', () => {
-    // Pre-create siren directory and main file only
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(path.join(sirenDir, 'main.siren'), '');
-
-    const result = init(tempDir);
-
-    expect(result.created).toEqual(['siren/siren.config.yaml']);
-    expect(result.skipped).toEqual(['siren', 'siren/main.siren']);
-  });
-});
-
-describe('siren list', () => {
-  let tempDir: string;
-
-  beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'siren-list-test-'));
-  });
-
-  afterEach(() => {
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  });
-
-  it('returns empty when no siren/ directory exists', async () => {
-    await loadProject(tempDir);
-    const result = await list();
-
-    expect(result.milestones).toEqual([]);
-    expect(result.warnings).toEqual([]);
-  });
-
-  it('returns empty when siren/ exists but has no .siren files', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-
-    await loadProject(tempDir);
-    const result = await list();
-
-    expect(result.milestones).toEqual([]);
-    expect(result.warnings).toEqual([]);
-  });
-
-  it('returns empty when siren/ has .siren files but no milestones', async () => {
-    copyFixture('no-milestones-only-tasks', tempDir);
-
-    await loadProject(tempDir);
-    const result = await list();
-
-    expect(result.milestones).toEqual([]);
-    expect(result.warnings).toEqual([]);
-  });
-
-  it('lists milestones from valid .siren files', async () => {
-    const sirenDir = await copyProjectFixture('list-milestones');
-    const cwd = path.basename(sirenDir) === 'siren' ? path.dirname(sirenDir) : sirenDir;
-
-    await loadProject(cwd);
-    const result = await list();
-
-    expect(result.milestones).toEqual(['alpha', 'beta']);
-    expect(result.warnings).toEqual([]);
-  });
-
-  // Output for listing milestones is covered by golden-file tests; keep list() return-value checks above.
-
-  it('lists milestones from multiple .siren files', async () => {
-    copyFixture('multiple-files', tempDir);
-
-    await loadProject(tempDir);
-    const result = await list();
-
-    expect(result.milestones).toContain('alpha');
-    expect(result.milestones).toContain('beta');
-    expect(result.milestones).toHaveLength(2);
-    expect(result.warnings).toEqual([]);
-  });
-
-  it('recursively finds .siren files in subdirectories', async () => {
-    copyFixture('recursive', tempDir);
-
-    await loadProject(tempDir);
-    const result = await list();
-
-    expect(result.milestones).toContain('root');
-    expect(result.milestones).toContain('nested');
-    expect(result.milestones).toHaveLength(2);
-    expect(result.warnings).toEqual([]);
-  });
-
-  it('skips files with parse errors and records syntax errors', async () => {
-    copyFixture('parse-errors', tempDir);
-
-    const ctx = await loadProject(tempDir);
-    const result = await list();
-
-    expect(result.milestones).toEqual(['valid']);
-    expect(result.warnings).toEqual([]);
-    expect(ctx.errors.some((e) => e.includes('--> siren/broken.siren:1:1'))).toBe(true);
-    expect(ctx.errors.some((e) => e.includes('note: skipping siren/broken.siren'))).toBe(true);
-  });
-
-  it('handles quoted milestone identifiers', async () => {
-    copyFixture('quoted-identifiers', tempDir);
-
-    await loadProject(tempDir);
-    const result = await list();
-
-    expect(result.milestones).toEqual(['Q1 Launch', 'MVP Release']);
-    expect(result.warnings).toEqual([]);
-  });
-
-  it('handles empty .siren files gracefully', async () => {
-    copyFixture('empty-files', tempDir);
-
-    await loadProject(tempDir);
-    const result = await list();
-
-    expect(result.milestones).toEqual([]);
-    expect(result.warnings).toEqual([]);
-  });
-
-  it('handles Unicode in milestone names', async () => {
-    copyFixture('unicode', tempDir);
-
-    await loadProject(tempDir);
-    const result = await list();
-
-    expect(result.milestones).toContain('🚀 Launch');
-    expect(result.milestones).toContain('日本語マイルストーン');
-    expect(result.milestones).toContain('émojis-and-accénts');
-    expect(result.milestones).toHaveLength(3);
-    expect(result.warnings).toEqual([]);
-  });
-
-  it('handles deeply nested directories', async () => {
-    copyFixture('deep-nested', tempDir);
-
-    await loadProject(tempDir);
-    const result = await list();
-
-    expect(result.milestones).toContain('root');
-    expect(result.milestones).toContain('level1');
-    expect(result.milestones).toContain('deep');
-    expect(result.milestones).toHaveLength(3);
-    expect(result.warnings).toEqual([]);
-  });
-
-  it('handles multiple files with parse errors', async () => {
-    copyFixture('multiple-parse-errors', tempDir);
-
-    const ctx = await loadProject(tempDir);
-    const result = await list();
-
-    expect(result.milestones).toEqual(['valid']);
-    expect(result.warnings).toEqual([]);
-    expect(ctx.errors.some((e) => e.includes('--> siren/broken1.siren:1:1'))).toBe(true);
-    expect(ctx.errors.some((e) => e.includes('--> siren/broken2.siren:1:1'))).toBe(true);
-  });
-
-  it('uses the loaded project context', async () => {
-    copyFixture('loaded-project', tempDir);
-
-    await loadProject(tempDir);
-    const result = await list();
-
-    expect(result.milestones).toEqual(['test']);
-  });
-
-  it('lists milestones', async () => {
-    copyFixture('multiple-files', tempDir);
-
-    await loadProject(tempDir);
-    const result = await list();
-
-    expect(result.milestones).toEqual(['alpha', 'beta']);
-    expect(result.warnings).toHaveLength(0);
-  });
-});
-
 describe('siren main', () => {
   let tempDir: string;
   let originalCwd: string;
   let originalExitCode: typeof process.exitCode;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
-  let loadProjectSpy: ReturnType<typeof vi.spyOn>;
+  let runLifecycleSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'siren-main-test-'));
@@ -306,7 +42,7 @@ describe('siren main', () => {
     process.chdir(tempDir);
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    loadProjectSpy = vi.spyOn(project, 'loadProject');
+    runLifecycleSpy = vi.spyOn(lifecycle, 'runLifecycle');
   });
 
   afterEach(() => {
@@ -315,7 +51,7 @@ describe('siren main', () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
     consoleLogSpy.mockRestore();
     consoleErrorSpy.mockRestore();
-    loadProjectSpy.mockRestore();
+    runLifecycleSpy.mockRestore();
   });
 
   it('prints version with --version flag', async () => {
@@ -324,7 +60,7 @@ describe('siren main', () => {
     expect(consoleLogSpy).toHaveBeenCalledTimes(2);
     expect(consoleLogSpy.mock.calls[0][0]).toMatch(/^Siren CLI v\d+\.\d+\.\d+/);
     expect(consoleLogSpy.mock.calls[1][0]).toMatch(/^Siren Core v\d+\.\d+\.\d+/);
-    expect(loadProjectSpy).not.toHaveBeenCalled();
+    expect(runLifecycleSpy).not.toHaveBeenCalled();
   });
 
   it('prints usage for unknown command', async () => {
@@ -332,7 +68,7 @@ describe('siren main', () => {
 
     expect(consoleLogSpy).toHaveBeenCalled();
     expect(consoleLogSpy.mock.calls[0][0]).toContain('Usage: siren <command>');
-    expect(loadProjectSpy).toHaveBeenCalledTimes(1);
+    expect(runLifecycleSpy).not.toHaveBeenCalled();
   });
 
   it('prints usage with no arguments', async () => {
@@ -340,83 +76,36 @@ describe('siren main', () => {
 
     expect(consoleLogSpy).toHaveBeenCalled();
     expect(consoleLogSpy.mock.calls[0][0]).toContain('Usage: siren <command>');
-    expect(loadProjectSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('runs init command', async () => {
-    await main(['init']);
-    // Creation side-effect verified below; CLI output string is covered by golden tests.
-    expect(fs.existsSync(path.join(tempDir, 'siren'))).toBe(true);
-    expect(loadProjectSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('init command outputs syntax errors to stderr before command output', async () => {
-    // Setup: create siren dir with broken file
-    copyFixture('broken', tempDir);
-
-    await main(['init']);
-
-    // Check that error is called before log
-    expect(consoleErrorSpy).toHaveBeenCalled();
-    expect(consoleErrorSpy.mock.calls[0][0]).toContain('--> siren/broken.siren:1:1');
-    expect(consoleLogSpy).toHaveBeenCalled();
-    expect(
-      consoleLogSpy.mock.calls.some((call: unknown[]) =>
-        (call[0] as string).includes('Skipped siren'),
-      ),
-    ).toBe(true);
-    // Since error is called in main before runInit, and runInit calls log
-    expect(consoleErrorSpy.mock.invocationCallOrder[0]).toBeLessThan(
-      consoleLogSpy.mock.invocationCallOrder[0],
-    );
-    expect(loadProjectSpy).toHaveBeenCalledTimes(1);
+    expect(runLifecycleSpy).not.toHaveBeenCalled();
   });
 
   it('runs list command', async () => {
-    // Setup: create siren dir with milestones
     copyFixture('list-single-milestone', tempDir);
 
     await main(['list']);
-    // Output content is covered by golden tests; here we ensure the project was loaded.
-    expect(loadProjectSpy).toHaveBeenCalledTimes(1);
-    expect(project.getLoadedContext()?.phasesRun.has('presentation')).toBe(true);
+
+    expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
+    expect(consoleLogSpy).toHaveBeenCalled();
   });
 
   it('list command outputs warnings to stderr', async () => {
-    // Setup: create siren dir with broken file
     copyFixture('broken', tempDir);
 
     await main(['list']);
 
     expect(consoleErrorSpy).toHaveBeenCalled();
-    expect(consoleErrorSpy.mock.calls[0][0]).toContain('--> siren/broken.siren:1:1');
-    expect(loadProjectSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('list command outputs warnings before milestones', async () => {
-    // Setup: create siren dir with broken and valid files
-    copyFixture('list-with-broken-and-valid', tempDir);
-
-    await main(['list']);
-
-    expect(consoleErrorSpy).toHaveBeenCalled();
-    expect(consoleErrorSpy.mock.calls[0][0]).toContain('--> siren/broken.siren:1:1');
-    expect(consoleLogSpy).toHaveBeenCalledWith('test');
-    // Since main prints syntax errors to stderr, then milestones to stdout
-    expect(consoleErrorSpy.mock.invocationCallOrder[0]).toBeLessThan(
-      consoleLogSpy.mock.invocationCallOrder[0],
-    );
-    expect(loadProjectSpy).toHaveBeenCalledTimes(1);
+    const errOutput = consoleErrorSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
+    expect(errOutput).toContain('siren/broken.siren:1:1: EL003: unexpected token');
+    expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
   });
 
   it('runs list -t command', async () => {
-    // Setup: create siren dir with milestones and tasks
     copyFixture('tasks-by-milestone', tempDir);
 
     await main(['list', '-t']);
-    // Detailed output assertions covered by golden tests; ensure CLI invoked project loading and emitted output.
+
     expect(consoleLogSpy).toHaveBeenCalled();
-    expect(loadProjectSpy).toHaveBeenCalledTimes(1);
+    expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
   });
 
   it('show command sets exit code when entry id is missing', async () => {
@@ -424,7 +113,8 @@ describe('siren main', () => {
 
     expect(consoleErrorSpy).toHaveBeenCalledWith('missing entry id — usage: siren show <entry-id>');
     expect(process.exitCode).toBe(1);
-    expect(loadProjectSpy).toHaveBeenCalledTimes(1);
+    // The command throws before invoking the lifecycle.
+    expect(runLifecycleSpy).not.toHaveBeenCalled();
   });
 
   it('show command sets exit code on runtime error', async () => {
@@ -432,38 +122,36 @@ describe('siren main', () => {
 
     await main(['show', 'missing']);
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith('Resource with id missing not found');
+    const errOutput = consoleErrorSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
+    expect(errOutput).toContain('SirenEntry with id missing not found');
     expect(process.exitCode).toBe(1);
-    expect(loadProjectSpy).toHaveBeenCalledTimes(1);
+    expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
   });
 
   it('runs list --tasks command', async () => {
-    // Setup: create siren dir with milestones and tasks
     copyFixture('list-tasks-alpha-only', tempDir);
 
     await main(['list', '--tasks']);
-    // Detailed output assertions covered by golden tests; ensure CLI invoked project loading and emitted output.
+
     expect(consoleLogSpy).toHaveBeenCalled();
-    expect(loadProjectSpy).toHaveBeenCalledTimes(1);
+    expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
   });
 
   it('list command outputs multiple circular dependency warnings', async () => {
-    // Setup: create siren dir with overlapping cycles
     copyFixture('overlapping-cycles', tempDir);
 
     await main(['list']);
 
-    expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
-    expect(consoleErrorSpy).toHaveBeenNthCalledWith(
-      1,
-      'siren/main.siren:1:0: W001: Circular dependency detected: a -> b -> c -> a',
-    );
-    expect(consoleErrorSpy).toHaveBeenNthCalledWith(
-      2,
-      'siren/main.siren:1:0: W001: Circular dependency detected: a -> c -> a',
-    );
-    // The milestone output itself is validated by golden tests; ensure something was logged.
+    const errCalls = consoleErrorSpy.mock.calls.map((c: unknown[]) => String(c[0]));
+    expect(
+      errCalls.some((e: string) =>
+        e.includes('W001: Circular dependency detected: a -> b -> c -> a'),
+      ),
+    ).toBe(true);
+    expect(
+      errCalls.some((e: string) => e.includes('W001: Circular dependency detected: a -> c -> a')),
+    ).toBe(true);
     expect(consoleLogSpy).toHaveBeenCalled();
-    expect(loadProjectSpy).toHaveBeenCalledTimes(1);
+    expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
   });
 });

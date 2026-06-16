@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { CliContext } from './context';
+import type { CliContext, DeepReadonly } from './context';
 
 const SIREN_DIR = 'siren';
 
@@ -24,8 +24,13 @@ function findSirenFiles(dir: string): string[] {
   return results.sort();
 }
 
-export function runDiscovery(ctx: CliContext): void {
+export interface DiscoveryArtifact {
+  files: string[];
+}
+
+export function runDiscovery(ctx: DeepReadonly<CliContext>): DiscoveryArtifact {
   const sirenDir = path.join(ctx.rootDir, SIREN_DIR);
+  let files: string[];
 
   if (fs.existsSync(sirenDir)) {
     const nestedFiles = findSirenFiles(sirenDir);
@@ -38,16 +43,16 @@ export function runDiscovery(ctx: CliContext): void {
         }
       });
       if (hasNonEmpty) {
-        ctx.files = nestedFiles;
+        files = nestedFiles;
       } else {
-        ctx.files = findSirenFiles(ctx.rootDir);
+        files = findSirenFiles(ctx.rootDir);
       }
     } else {
-      ctx.files = findSirenFiles(ctx.rootDir);
+      files = findSirenFiles(ctx.rootDir);
     }
   } else {
-    ctx.files = findSirenFiles(ctx.rootDir);
+    files = findSirenFiles(ctx.rootDir);
   }
 
-  ctx.phasesRun.add('discovery');
+  return { files };
 }

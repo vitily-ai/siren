@@ -1,50 +1,48 @@
 # Core draft status support
 # Core-only clean break: Resource.status replaces Resource.complete, drafts stay explicit, implicit completion still resolves milestones, and downstream package updates are deferred.
-
 milestone draft-states {
-	description = "Add draft status support to core resources"
-	details = "Optional status replaces complete:boolean. Explicit draft wins over implicit completion. No implicit draft propagation or new diagnostics in this change."
-	depends_on = [draft-states-types, draft-states-status-helpers, draft-states-snapshot, draft-states-implicit-completion, draft-states-dependency-tree, draft-states-milestone-tasks, draft-states-tests-port, draft-states-tests-draft]
+  description = "Add draft status support to core resources"
+  details = "Optional status replaces complete:boolean. Explicit draft wins over implicit completion. No implicit draft propagation or new diagnostics in this change."
+  depends_on = [draft-states-types, draft-states-status-helpers, draft-states-snapshot, draft-states-implicit-completion, draft-states-dependency-tree, draft-states-milestone-tasks, draft-states-tests-port, draft-states-tests-draft]
 }
 
 task draft-states-types complete {
-	description = "Replace Resource.complete with optional Resource.status and update the IR type docs"
+  description = "Replace Resource.complete with optional Resource.status and update the IR type docs"
 }
 
 task draft-states-status-helpers complete {
-	description = "Add isComplete and isDraft helpers and export them from core"
-	depends_on = draft-states-types
+  description = "Add isComplete and isDraft helpers and export them from core"
+  depends_on = draft-states-types
 }
 
 task draft-states-snapshot complete {
-	description = "Carry status through IR snapshots and cloned resources"
-	depends_on = draft-states-types
+  description = "Carry status through IR snapshots and cloned resources"
+  depends_on = draft-states-types
 }
 
 task draft-states-implicit-completion complete {
-	description = "Update implicit completion to read status, preserve explicit drafts, and write status = 'complete'"
-	depends_on = [draft-states-types, draft-states-status-helpers, draft-states-snapshot]
+  description = "Update implicit completion to read status, preserve explicit drafts, and write status = 'complete'"
+  depends_on = [draft-states-types, draft-states-status-helpers, draft-states-snapshot]
 }
 
 task draft-states-dependency-tree complete {
-	description = "Update dependency-tree filtering to use status helpers and keep drafts visible"
-	depends_on = draft-states-status-helpers
+  description = "Update dependency-tree filtering to use status helpers and keep drafts visible"
+  depends_on = draft-states-status-helpers
 }
 
 task draft-states-milestone-tasks complete {
-	description = "Update milestone task lookup to use status helpers and keep drafts visible"
-	depends_on = draft-states-status-helpers
+  description = "Update milestone task lookup to use status helpers and keep drafts visible"
+  depends_on = draft-states-status-helpers
 }
-
-// Note - goldens must not churn - if they do, this suggests something is wrong
+# Note - goldens must not churn - if they do, this suggests something is wrong
 task draft-states-tests-port complete {
-	description = "Port existing core tests to the new status shape, including resource-graph and completion coverage"
-	depends_on = [draft-states-types, draft-states-status-helpers, draft-states-snapshot, draft-states-implicit-completion, draft-states-dependency-tree, draft-states-milestone-tasks]
+  description = "Port existing core tests to the new status shape, including resource-graph and completion coverage"
+  depends_on = [draft-states-types, draft-states-status-helpers, draft-states-snapshot, draft-states-implicit-completion, draft-states-dependency-tree, draft-states-milestone-tasks]
 }
 
 task draft-states-tests-draft complete {
-	description = "Add draft-specific core coverage for explicit-draft precedence and helper behavior"
-	depends_on = draft-states-tests-port
+  description = "Add draft-specific core coverage for explicit-draft precedence and helper behavior"
+  depends_on = draft-states-tests-port
 }
 
 milestone implicit-draft-milestones {
@@ -72,27 +70,28 @@ task implicit-draft-milestones-module complete {
   depends_on = [implicit-draft-milestones-fixture, implicit-draft-milestones-core-tests]
 }
 
-milestone implicit-draft-tasks { // draft
+milestone implicit-draft-tasks {
+  # draft
   description = "a task with no attributes other than dependencies and no explicit status is implied to be in `draft` status"
   affected_packages = "core"
   depends_on = [draft-states]
 }
 
-milestone contradictory-completion-diagnostic { // draft
+milestone contradictory-completion-diagnostic {
+  # draft
   description = "a resource that is `complete` while also having a direct dependency that is `draft` results in a warning diagnostic"
   affected_packages = "core"
   depends_on = [draft-states]
 }
 
-milestone draft-symbol-support { // draft
-  description = "the `complete` symbol in the grammar needs to be promoted to a more generic `status` symbol, to support declaring `draft` and future statuses"
+task draft-symbol-support-red {
+  description = "Add failing fixtures and tests for draft keyword support in the grammar and decoder"
   affected_packages = "language"
-  depends_on = [draft-states]
+  details = "Add snippet fixture status-modifier-draft.txt proving task/milestone draft {} parse with status_modifier field; rename existing complete-modifier snippet to new field name; add project fixture draft-modifier/ with decode-IR snapshot asserting status: 'draft'; add round-trip test for renderSirenDocument with status: 'draft'."
 }
 
 milestone multiple-statuses-diagnostic complete {
   description = "multiple statuses declared on a resource must resolve to one status (last-wins) and raise a warning diagnostic"
   affected_packages = "language"
-  depends_on = draft-symbol-support
   example = "<example removed> due to multiline string constraint. check git history for this resource"
 }

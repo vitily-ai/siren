@@ -1,4 +1,4 @@
-// NEXT
+# NEXT
 milestone readiness {}
 
 milestone task-mutex {}
@@ -22,6 +22,20 @@ task document-scoped-entries {
   description = "enable disambiguation of tasks with the same id but in different documents"
 }
 
-task superseded-link {
+task superseded-link draft {
   description = "an entry supersedes another via `supersedes` attribute. this marks the superseded entries as complete while also redirecting any dependencies on the original to the new entry"
+}
+# CLI mutations follow-ups (moved from cli-mutations.siren)
+task cli-mutations-mv-materialize-synthesized {
+  description = "Allow siren mv against synthesized document milestones by materializing them into their origin document."
+  affected_packages = "apps/cli, language"
+  depends_on = cli-mutations-mv-command
+  details = "When mv receives an id matching only a synthesized milestone, construct and insert an explicit milestone entry into its origin document with the synthesized depends_on dependencies, then apply the status patch. This is the path that produces a 'created' delta change, so it must extend cli-mutations-ir-source-bridge (which logs-and-drops 'created' in the base) to route a synthetic-origin 'created' entry to its document. The rendering opinion for materialized milestones belongs to @sirenpm/language (renderEntry / patchEntry placement and formatting). Follow-up to the base mv implementation."
+}
+
+task cli-mutations-mv-duplicate-id {
+  description = "Define and test mv behavior when entry-id is declared in multiple documents."
+  affected_packages = "apps/cli"
+  depends_on = cli-mutations-mv-command
+  details = "The base bridge (cli-mutations-ir-source-bridge) refuses with an error when a changed id resolves to multiple origin documents. This task designs the real UX over that refusal — explicit refusal messaging vs. an interactive confirmation/selection flow — then implements the validation and tests. Follow-up to the base mv implementation."
 }

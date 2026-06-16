@@ -1,0 +1,5 @@
+{"fixture":"mv-single-entry","command":"siren mv my-task complete --dry-run"}
+---
+would update siren/main.siren
+Updated 1 files out of 1
+---

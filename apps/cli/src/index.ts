@@ -4,17 +4,9 @@ import { version as coreVersion } from '@sirenpm/core';
 import { defineCommand, runCommand } from 'citty';
 import { buildMetadata } from './build-metadata';
 import { formatCommand } from './commands/format';
-import {
-  type InitResult as CommandInitResult,
-  initCommand,
-  init as initProject,
-  runInit as runInitCommand,
-} from './commands/init';
-import type { ListResult as CommandListResult } from './commands/list';
-import { listCommand, list as listMilestones, runList as runListCommand } from './commands/list';
-import { runShow as runShowCommand, showCommand } from './commands/show';
-import { surfaceDiagnostics } from './lifecycle/presentation';
-import { loadProject } from './project';
+import { listCommand } from './commands/list';
+import { mvCommand } from './commands/mv';
+import { showCommand } from './commands/show';
 import { cliVersion } from './version';
 
 const cliSuffix = buildMetadata ? `-${buildMetadata}` : '';
@@ -27,20 +19,15 @@ function printUsage(): void {
 Usage: siren <command>
 
 Commands:
-  init    Initialize a new Siren project in the current directory
   list    List all milestone IDs from .siren files
     -t, --tasks    Show incomplete tasks under each milestone
   show    Show a single entry's dependency tree (milestone or task)
+  mv      Change an entry's explicit completion status
   format  Format .siren files in-place or print formatted output
-    --dry-run    Print formatted output to stdout without writing files
-    --verbose    Print list of files that would be updated or were updated
 
 Options:
   --version    Show version number`);
 }
-
-export type InitResult = CommandInitResult;
-export type ListResult = CommandListResult;
 
 export const mainCommand = defineCommand({
   meta: {
@@ -49,14 +36,10 @@ export const mainCommand = defineCommand({
     description: 'Siren command-line interface',
   },
   subCommands: {
-    init: initCommand,
     list: listCommand,
     show: showCommand,
     format: formatCommand,
-  },
-  async setup() {
-    const ctx = await loadProject(process.cwd());
-    surfaceDiagnostics(ctx);
+    mv: mvCommand,
   },
 });
 
@@ -93,26 +76,6 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
     console.error(getErrorMessage(error));
     process.exitCode = 1;
   }
-}
-
-export function init(cwd: string) {
-  return initProject(cwd);
-}
-
-export function runInit(cwd: string): void {
-  runInitCommand(cwd);
-}
-
-export function list(showTasks = false) {
-  return listMilestones(showTasks);
-}
-
-export function runList(showTasks = false): Promise<void> {
-  return runListCommand(showTasks);
-}
-
-export function runShow(entryId: string): Promise<void> {
-  return runShowCommand(entryId);
 }
 
 const isMainModule =

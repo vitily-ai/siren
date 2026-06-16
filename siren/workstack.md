@@ -1,4 +1,1 @@
 - `siren mv` - cli lifecycle and mutation step
-- `draft` status support
-- `draft` symbol support in lang
-- lang total refactor

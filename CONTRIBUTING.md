@@ -44,10 +44,10 @@ yarn workspace @sirenpm/core test
 Rebuild the Tree-sitter parser (only needed when editing grammar):
 
 ```bash
-cd packages/language/grammar
-npx tree-sitter-cli generate
-npx tree-sitter-cli build --wasm
-npx tree-sitter-cli test
+cd packages/language/src/grammar
+yarn generate
+yarn build
+yarn test
 ```
 
 How to add features

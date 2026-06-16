@@ -1,7 +1,16 @@
 This directory contains golden expectations for the CLI tests.
 
-Format for combined expectation files
-----------------------------------
+Two golden file patterns are supported:
+
+1. **Per-file golden** (plain `.txt`): A single file with JSON frontmatter and
+   expected stdout or stderr content.
+2. **Directory-level golden** (`.out.txt` inside a subdirectory): A combined
+   stdout/stderr expectation file accompanied by sibling files that represent
+   the expected filesystem state after the command runs.
+
+---
+
+## Pattern 1: Combined stdout/stderr expectation files (`*.out.txt`)
 
 We use a single file with the extension `.out.txt` to contain the expected
 metadata, stdout, and stderr for a scenario. This keeps a golden scenario
@@ -39,3 +48,63 @@ Notes
 - When writing new golden scenarios, prefer `*.out.txt` with both sections even if one is empty.
 - The test harness will only assert stdout/stderr if the corresponding section contains non-comment content.
 - Use the `scripts/create-golden.sh` helper to generate `.out.txt` files consistently.
+
+---
+
+## Pattern 2: Directory-level golden (disk output + stdio)
+
+When a golden file is named `.out.txt` and placed **inside a subdirectory** of
+`expected/`, the harness checks not only stdout and stderr but also that the
+working directory's **filesystem state matches the contents of that subdirectory**.
+
+This is useful for commands that generate or modify files (e.g. `siren init`,
+`siren update`, etc.). The sibling files and directories alongside `.out.txt`
+serve as the expected disk state.
+
+### Structure
+
+```
+expected/
+  my-scenario/                     # subdirectory name is the scenario name
+    .out.txt                       # metadata + expected stdout / stderr
+    generated-file.txt             # expected on-disk file (compared by content)
+    some-dir/                      # expected on-disk directory
+      nested-output.md             # expected file inside the directory
+```
+
+The `.out.txt` file follows the same format as Pattern 1 (JSON frontmatter,
+then `---`, stdout, `---`, stderr).
+
+### How it works
+
+1. The test runs the command described in the JSON frontmatter.
+2. stdout and stderr are asserted against the content in `.out.txt` (same as Pattern 1).
+3. The harness calls `assertDirMatchesExpected()` to recursively compare every
+   file in the working directory against the files in `expected/my-scenario/`,
+   excluding `.out.txt` itself from the comparison.
+
+Files matched by the `ignoreGlobs` option (currently only `.out.txt`) are
+skipped during the filesystem comparison.
+
+### Example
+
+```
+expected/
+  init-project/
+    .out.txt
+    siren/
+      init.siren
+```
+
+`.out.txt` contents:
+
+```
+{
+  "fixture": "my-project",
+  "command": "siren init init.siren"
+}
+---
+Created siren/init.siren
+---
+
+```
