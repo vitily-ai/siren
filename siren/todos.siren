@@ -22,7 +22,7 @@ task document-scoped-entries {
   description = "enable disambiguation of tasks with the same id but in different documents"
 }
 
-task superseded-link {
+task superseded-link draft {
   description = "an entry supersedes another via `supersedes` attribute. this marks the superseded entries as complete while also redirecting any dependencies on the original to the new entry"
 }
 

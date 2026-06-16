@@ -102,9 +102,14 @@ export async function runLifecycle(cwd: string, hooks: LifecycleHooks = {}): Pro
   if (ctx.format) {
     for (const parsed of ctx.parsedDocuments as ParsedDocument[]) {
       if (parsed.diagnostics.some((d) => d.severity === 'error')) continue;
-      parsed.format();
-      const absPath = path.join(ctx.rootDir, parsed.source.name);
-      (ctx.rewriteSignal as Set<string>).add(absPath);
+      const before = parsed.source.content;
+      const after = parsed.format();
+      // TODO ugly string comparison
+      // needs something less jank - like a hash or something
+      if (after !== before) {
+        const absPath = path.join(ctx.rootDir, parsed.source.name);
+        (ctx.rewriteSignal as Set<string>).add(absPath);
+      }
     }
     ctx.phasesRun.add('format');
   }
