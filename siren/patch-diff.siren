@@ -1,24 +1,19 @@
 # patch-diff — SirenBuilder.patch() returns PatchResult with change delta
 # See patch-diff.md for full technical specification and design decisions.
-
 milestone patch-diff {
   description = "Update SirenBuilder mutation methods to return a structured PatchResult carrying a document/resource-level change delta alongside the new builder. Enables downstream consumers to determine exactly which files need rewriting after a mutation without performing their own before/after comparison. Breaking change to @sirenpm/core public API; CLI and language consumers require a follow-up milestone."
   affected_packages = "core"
   context = "patch-diff.md"
   depends_on = [patch-diff-red, patch-diff-core, patch-diff-publish]
 }
-
 # TDD red — tests land first and fail
-
 task patch-diff-red complete {
   description = "Write failing unit tests in packages/core/test/assembly-patch.test.ts covering the full PatchResult API: all change modes (created/updated/deleted) at document and resource level; cross-document resource moves; directive-only document changes; no-op patch; eph-id preservation through unchanged passthrough; all convenience wrappers (withDocument, patchDocument, withResource, patchResource) returning correct PatchResult; construction throw on duplicate resource object reference; and JSON round-trip losing eph-id resulting in an updated classification."
   affected_packages = "core"
   context = "patch-diff.md"
   files = "packages/core/test/assembly-patch.test.ts"
 }
-
 # TDD green — implementation
-
 task patch-diff-core complete {
   description = "Implement the PatchResult delta infrastructure in packages/core. Introduce a new eph-id.ts with a module-internal non-enumerable symbol (EPH_ID), stampEphId/getEphId helpers, and a monotonic counter. Update cloneAndFreezeResources in snapshot.ts to stamp fresh eph ids on ingestion, preserve existing eph ids on passthrough, and throw on duplicate resource object references across documents. Add a new patch-result.ts with the PatchResult, DocumentChange, ResourceChange, and ChangeMode types plus the computeDelta implementation (document-keyed by documentId, resource-keyed by resourceId within matched doc pairs, eph-id mismatch = updated). Rewrite patch, withDocument, patchDocument, withResource, and patchResource in assembly.ts to return PatchResult. Export the four public types from index.ts without exposing EPH_ID."
   affected_packages = "core"
@@ -26,9 +21,7 @@ task patch-diff-core complete {
   depends_on = patch-diff-red
   files = "packages/core/src/ir/eph-id.ts, packages/core/src/ir/patch-result.ts, packages/core/src/ir/assembly.ts, packages/core/src/ir/snapshot.ts, packages/core/src/index.ts"
 }
-
 # Publication boundary
-
 task patch-diff-publish {
   description = "Publish an updated @sirenpm/core package version capturing the PatchResult API. Downstream packages @sirenpm/cli and @sirenpm/language will fail to compile after consuming this version until they are updated in a follow-up milestone that wires the delta into the CLI write phase."
   affected_packages = "core"

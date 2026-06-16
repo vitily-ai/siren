@@ -1,15 +1,9 @@
 # entry-terminology — Adopt Entry / SirenEntry as the code-facing term across public packages
 # `Resource` remains a documentation-only conventional term and should stay out of code.
-
 milestone entry-terminology complete {
   description = "Adopt Entry / SirenEntry as the code-facing term across core, language, and CLI while keeping Resource as documentation-only terminology."
   affected_packages = ["@sirenpm/core", "@sirenpm/language", "@sirenpm/cli"]
-  depends_on = [
-    entry-terminology-core,
-    entry-terminology-language,
-    entry-terminology-cli,
-    entry-terminology-backlog,
-  ]
+  depends_on = [entry-terminology-core, entry-terminology-language, entry-terminology-cli, entry-terminology-backlog]
 }
 
 task entry-terminology-core complete {
@@ -30,5 +24,5 @@ task entry-terminology-cli complete {
 }
 
 task entry-terminology-backlog complete {
-    description = "Update siren backlog to reflect new terminology"
+  description = "Update siren backlog to reflect new terminology"
 }

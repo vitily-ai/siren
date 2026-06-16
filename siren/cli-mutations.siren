@@ -1,6 +1,6 @@
 # CLI mutation support for Siren
 # This initiative defines the first pass at mutative CLI operations, starting with status changes.
-#
+# 
 # Reshape (post language-ast-pipeline rebuild): the "literal SirenDocument renderer" shipped in
 # cli-mutations-language-renderer was superseded by per-entry surgical rendering in @sirenpm/language
 # (renderEntry + ParsedDocument.patchEntry/removeEntry/format/source). The CLI write path is now built
@@ -8,15 +8,12 @@
 # `format` is no longer an exception, and the IR-patch -> source write-back bridge is now its own task.
 # All remaining work is apps/cli-only: core@0.6.1 already returns PatchResult and language@0.5.0 already
 # exposes patchEntry/removeEntry/source, so no further core/language release is required.
-
 milestone cli-mutations {
   description = "Deliver the first mutative CLI flow: an immutable SirenBuilder patch layer (core), per-entry source rendering (language), a lifecycle rewrite-signal write-back with an IR-patch-to-source bridge and de-exceptionalized format (apps/cli), and the mv status command."
   affected_packages = "core, language, apps/cli"
   depends_on = [cli-mutations-remove-core-export-surface, cli-mutations-core-patch-api, cli-mutations-language-renderer, cli-mutations-publish-core-language, cli-mutations-cli-plumbing, cli-mutations-writeback-signal, cli-mutations-ir-source-bridge, cli-mutations-format-lifecycle, cli-mutations-mv-command]
 }
-
 # Core surface cleanup and mutation primitives
-
 task cli-mutations-remove-core-export-surface complete {
   description = "Remove the current export surface from core so the package only owns IR and semantic validation."
   affected_packages = "core"
@@ -35,9 +32,7 @@ task cli-mutations-core-patch-api complete {
   depends_on = cli-mutations-core-patch-api-red
   details = "Add `.patch(documents => newDocuments)` as the primitive copy-on-write transform, then implement `.withDocument`, `.withResource`, `.patchDocument`, and `.patchResource` as helper layers that compose pure document and resource transforms while preserving the existing build path."
 }
-
 # Language renderer replacement
-
 task cli-mutations-language-renderer-red complete {
   description = "Add failing language tests for a literal SirenDocument-to-source renderer."
   affected_packages = "language"
@@ -50,18 +45,14 @@ task cli-mutations-language-renderer complete {
   depends_on = [cli-mutations-language-renderer-red, cli-mutations-remove-core-export-surface]
   details = "Introduce `renderSirenDocument(document)` as a one-way renderer from literal document IR to Siren source text, delete SirenExporter, exportToSiren, and exportWithComments, and keep any low-level formatting helpers internal to the package."
 }
-
 # Package publication boundary
-
 task cli-mutations-publish-core-language complete {
   description = "Publish refreshed core and language package versions so downstream CLI work can consume the new mutation and rendering surfaces."
   affected_packages = "core, language"
   depends_on = [cli-mutations-core-patch-api, cli-mutations-language-renderer]
   details = "Publish new `@sirenpm/core` and `@sirenpm/language` versions after the patch API and renderer land because `@sirenpm/cli` consumes pinned registry packages rather than transparent workspace links."
 }
-
 # CLI plumbing and command surface
-
 task cli-mutations-cli-plumbing-red complete {
   description = "Add failing CLI tests for the inverted lifecycle: a single runLifecycle entrypoint that accepts mutate and query hooks and owns all CLI side effects."
   affected_packages = "apps/cli"
@@ -74,9 +65,7 @@ task cli-mutations-cli-plumbing complete {
   depends_on = [cli-mutations-cli-plumbing-red, cli-mutations-publish-core-language]
   details = "Replace the previous prepare/finalize phase pulls and the global context-store with a single runLifecycle(cwd, { mutate?, query? }) entrypoint. The lifecycle owns discovery, parsing, decoding, builder construction, optional builder mutation, project build, diagnostic accumulation and stderr flushing, optional query execution, write-back of rendered documents that differ from their parse-time snapshot, and query stdout/stderr/exitCode presentation. Commands (`list`, `show`) now return QueryFn closures and never touch fs or stdout directly. `format` remains an intentional exception: it consumes the lifecycle's parsed ctx but performs its own per-file CST rendering — tracked as the `format-bypasses-lifecycle` debt entry."
 }
-
 # Lifecycle write-back substrate: the explicit per-document rewrite signal
-
 task cli-mutations-writeback-signal-red complete {
   description = "TDD red: failing lifecycle tests for a per-document rewrite signal that drives write-back."
   affected_packages = "apps/cli"
@@ -105,9 +94,7 @@ task cli-mutations-ir-source-bridge complete {
   depends_on = cli-mutations-ir-source-bridge-red
   details = "Change BuilderMutate to return the core PatchResult. After diagnostics pass (no EL001 errors), the bridge consumes PatchResult.changes: route each 'updated' entryId via its original SourcedEntry.origin.document to parsedDoc.patchEntry(id, newEntryFromBuilder) and add each touched document to the rewrite signal. Log-and-drop 'deleted'/'created' (no command produces them yet; base mv only emits 'updated'). Refuse (error, no write) when a changed id resolves to multiple origin documents — real duplicate-id UX is deferred to cli-mutations-mv-duplicate-id. Remove the now-stale NOTE in write.ts and the 'requires core patch API to return delta' NOTE in index.ts (core@0.6.1 already returns it)."
 }
-
 # De-exceptionalize `siren format`: route it through the shared write-back
-
 task cli-mutations-format-lifecycle-red complete {
   description = "TDD red: failing tests/goldens for format routed through the lifecycle write-back."
   affected_packages = "apps/cli"

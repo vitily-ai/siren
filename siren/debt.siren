@@ -84,9 +84,7 @@ task comment-export-performance {
 }
 
 task bad-golden {
-
   description = "the format-dry-run cli test is erroneously leaving space before comments after ast refactor"
-
 }
 
 task diagnostic-base-trivia-slot {
