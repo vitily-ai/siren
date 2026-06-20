@@ -304,11 +304,13 @@ describe('buildAst — top-level ERROR nodes', () => {
       // TODO come up with a way to reduce this to terminals only
       'task',
       'milestone',
+      'document',
       'comment',
       'document', // what is document?
       'resource_type',
       'resource_header',
       'resource',
+      'doc_header',
       'ERROR',
     ]);
   });
@@ -360,6 +362,23 @@ describe('buildAst — top-level ERROR nodes', () => {
       // Non-keyword missing tokens should not carry expected
       expect(d.expected).toBeUndefined();
     });
+  });
+});
+
+describe('buildAst — document directives', () => {
+  it('document { noMilestone = true } + resources → directives.noMilestone = true', async () => {
+    const parsed = await parse('document {\n  noMilestone = true\n}\ntask a {}', 'doc.siren');
+    expect(parsed.ast.directives.noMilestone).toBe(true);
+  });
+
+  it('document {} with empty block → directives.noMilestone defaults to false', async () => {
+    const parsed = await parse('document {}\ntask a {}', 'doc.siren');
+    expect(parsed.ast.directives.noMilestone).toBe(false);
+  });
+
+  it('no document header → directives.noMilestone defaults to false', async () => {
+    const parsed = await parse('task a {}', 'doc.siren');
+    expect(parsed.ast.directives.noMilestone).toBe(false);
   });
 });
 

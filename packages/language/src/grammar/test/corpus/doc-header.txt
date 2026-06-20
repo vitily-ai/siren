@@ -49,7 +49,7 @@ Document block followed by resource
 ==================
 
 document {
-  milestone = False
+  milestone = false
 }
 
 task example {
@@ -66,7 +66,8 @@ task example {
         key: (bare_identifier)
         value: (expression
           (tuple
-            (bare_identifier))))
+            (literal
+              (boolean_literal)))))
       (block_close)))
   (resource
     (resource_header

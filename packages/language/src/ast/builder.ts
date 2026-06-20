@@ -15,6 +15,7 @@ import type {
   AstStatusModifier,
   AstTuple,
   AstTupleMember,
+  DocumentDirective,
   SirenAst,
 } from './types';
 
@@ -231,6 +232,65 @@ function buildResource(
 }
 
 /**
+ * Extract document-level directives from the `doc_header` CST subtree.
+ *
+ * Looks inside the header's `block` for a `noMilestone` boolean attribute.
+ * Returns `{ noMilestone: false }` when no doc_header is provided or no
+ * milestone attribute is present.
+ */
+function buildDirectives(docHeader: Node | undefined): DocumentDirective {
+  if (!docHeader) return { noMilestone: false };
+
+  // Find the block child of the doc_header.
+  let blockNode: Node | undefined;
+  for (let j = 0; j < docHeader.namedChildCount; j++) {
+    const c = docHeader.namedChild(j);
+    if (c?.type === 'block') {
+      blockNode = c;
+      break;
+    }
+  }
+  if (!blockNode) return { noMilestone: false };
+
+  // Iterate attributes in the block looking for `noMilestone = <bool>`.
+  for (let k = 0; k < blockNode.namedChildCount; k++) {
+    const attrNode = blockNode.namedChild(k);
+    if (attrNode?.type !== 'attribute') continue;
+
+    const keyNode = attrNode.childForFieldName('key');
+    if (!keyNode || keyNode.text !== 'noMilestone') continue;
+
+    // Extract boolean value from the attribute's tuple.
+    const valueNode = attrNode.childForFieldName('value');
+    if (!valueNode) continue;
+
+    // value is an `expression` wrapping a `tuple`.
+    let tupleNode: Node | undefined;
+    if (valueNode.type === 'expression') {
+      const inner = valueNode.namedChild(0);
+      if (inner && inner.type === 'tuple') tupleNode = inner;
+    } else if (valueNode.type === 'tuple') {
+      tupleNode = valueNode;
+    }
+    if (!tupleNode) continue;
+
+    const firstMember = tupleNode.namedChild(0);
+    if (!firstMember) continue;
+
+    // The member is a `literal` wrapping a `boolean_literal`.
+    if (firstMember.type === 'literal') {
+      const inner = firstMember.namedChild(0);
+      if (inner?.type === 'boolean_literal') {
+        return { noMilestone: inner.text === 'true' };
+      }
+    }
+  }
+
+  // doc_header exists but no milestone attribute found.
+  return { noMilestone: false };
+}
+
+/**
  * CST → AST builder. Pure: deterministic, no I/O.
  *
  * Top-level walk over `document`'s children:
@@ -246,6 +306,7 @@ export function buildAst(tree: Tree, source: SourceDocument): BuildAstResult {
   const root = tree.rootNode;
   const resources: AstResource[] = [];
   const diagnostics: LanguageDiagnostic[] = [];
+  let docHeader: Node | undefined;
 
   for (let i = 0; i < root.namedChildCount; i++) {
     const child = root.namedChild(i);
@@ -272,12 +333,18 @@ export function buildAst(tree: Tree, source: SourceDocument): BuildAstResult {
       continue;
     }
 
+    if (child.type === 'doc_header') {
+      docHeader = child;
+      continue;
+    }
+
     if (child.isError || child.type === 'ERROR') {
       const classifierCtx: RuleContext = { language: tree.language, source };
       diagnostics.push(classifyErrorNode(child, classifierCtx));
     }
   }
 
-  const ast: SirenAst = Object.freeze({ resources: Object.freeze(resources) });
+  const directives = buildDirectives(docHeader);
+  const ast: SirenAst = Object.freeze({ directives, resources: Object.freeze(resources) });
   return { ast, diagnostics: Object.freeze(diagnostics), origins };
 }
