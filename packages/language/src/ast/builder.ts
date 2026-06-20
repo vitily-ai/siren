@@ -1,5 +1,5 @@
 import type { Node, Tree } from 'web-tree-sitter';
-import { createWL001, createWL002, type LanguageDiagnostic } from '../diagnostics';
+import { createWL001, createWL002, createWL003, type LanguageDiagnostic } from '../diagnostics';
 import type { RangeOrigin } from '../origin';
 import type { SourceDocument } from '../parser/types';
 import type { AstOriginMap } from './origins';
@@ -217,8 +217,10 @@ function buildResource(
   return resource;
 }
 
-function buildDirectives(docHeader: Node | undefined): DocumentDirective {
-  if (!docHeader) return { noMilestone: false };
+const RECOGNIZED_DIRECTIVES: ReadonlySet<string> = new Set(['noMilestone']);
+
+function buildDirectives(docHeader: Node | undefined): [DocumentDirective, string[]] {
+  if (!docHeader) return [{ noMilestone: false }, []];
 
   // Find the block child of the doc_header.
   let blockNode: Node | undefined;
@@ -229,44 +231,55 @@ function buildDirectives(docHeader: Node | undefined): DocumentDirective {
       break;
     }
   }
-  if (!blockNode) return { noMilestone: false };
+  if (!blockNode) return [{ noMilestone: false }, []];
 
-  // Iterate attributes in the block looking for `noMilestone = <bool>`.
+  let noMilestone = false;
+  const unrecognizedDirectives: string[] = [];
+
+  // Iterate attributes in the block.
   for (let k = 0; k < blockNode.namedChildCount; k++) {
     const attrNode = blockNode.namedChild(k);
     if (attrNode?.type !== 'attribute') continue;
 
     const keyNode = attrNode.childForFieldName('key');
-    if (keyNode?.text !== 'noMilestone') continue;
+    if (!keyNode) continue;
 
-    // Extract boolean value from the attribute's tuple.
-    const valueNode = attrNode.childForFieldName('value');
-    if (!valueNode) continue;
+    const key = keyNode.text;
 
-    // value is an `expression` wrapping a `tuple`.
-    let tupleNode: Node | undefined;
-    if (valueNode.type === 'expression') {
-      const inner = valueNode.namedChild(0);
-      if (inner && inner.type === 'tuple') tupleNode = inner;
-    } else if (valueNode.type === 'tuple') {
-      tupleNode = valueNode;
-    }
-    if (!tupleNode) continue;
+    if (key === 'noMilestone') {
+      // Extract boolean value from the attribute's tuple.
+      const valueNode = attrNode.childForFieldName('value');
+      if (!valueNode) continue;
 
-    const firstMember = tupleNode.namedChild(0);
-    if (!firstMember) continue;
-
-    // The member is a `literal` wrapping a `boolean_literal`.
-    if (firstMember.type === 'literal') {
-      const inner = firstMember.namedChild(0);
-      if (inner?.type === 'boolean_literal') {
-        return { noMilestone: inner.text === 'true' };
+      // value is an `expression` wrapping a `tuple`.
+      let tupleNode: Node | undefined;
+      if (valueNode.type === 'expression') {
+        const inner = valueNode.namedChild(0);
+        if (inner && inner.type === 'tuple') tupleNode = inner;
+      } else if (valueNode.type === 'tuple') {
+        tupleNode = valueNode;
       }
+      if (!tupleNode) continue;
+
+      const firstMember = tupleNode.namedChild(0);
+      if (!firstMember) continue;
+
+      // The member is a `literal` wrapping a `boolean_literal`.
+      if (firstMember.type === 'literal') {
+        const inner = firstMember.namedChild(0);
+        if (inner?.type === 'boolean_literal') {
+          noMilestone = inner.text === 'true';
+        }
+      }
+      continue;
+    }
+
+    if (!RECOGNIZED_DIRECTIVES.has(key)) {
+      unrecognizedDirectives.push(key);
     }
   }
 
-  // doc_header exists but no milestone attribute found.
-  return { noMilestone: false };
+  return [{ noMilestone }, unrecognizedDirectives];
 }
 
 /**
@@ -323,7 +336,12 @@ export function buildAst(tree: Tree, source: SourceDocument): BuildAstResult {
     }
   }
 
-  const directives = buildDirectives(docHeader);
+  const [directives, unrecognizedDirectives] = buildDirectives(docHeader);
+
+  for (const directiveName of unrecognizedDirectives) {
+    diagnostics.push(createWL003({ documentName: source.name, directiveName }));
+  }
+
   const ast: SirenAst = { directives, resources };
   return { ast, diagnostics, origins };
 }

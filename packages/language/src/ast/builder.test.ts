@@ -380,6 +380,31 @@ describe('buildAst — document directives', () => {
     const parsed = await parse('task a {}', 'doc.siren');
     expect(parsed.ast.directives.noMilestone).toBe(false);
   });
+
+  it('unrecognized directive produces WL003 warning', async () => {
+    const parsed = await parse(
+      'document {\n  unknownDirective = "value"\n}\ntask a {}',
+      'doc.siren',
+    );
+    const wl003 = assertDiagnosticCode(parsed.diagnostics, 'WL003');
+    expect(wl003).toHaveLength(1);
+    expect(wl003[0].directiveName).toBe('unknownDirective');
+    expect(wl003[0].documentName).toBe('doc.siren');
+    expect(parsed.ast.directives.noMilestone).toBe(false);
+  });
+
+  it('multiple unrecognized directives produce separate WL003 warnings', async () => {
+    const parsed = await parse('document {\n  foo = 1\n  bar = true\n}\ntask a {}', 'doc.siren');
+    const wl003 = assertDiagnosticCode(parsed.diagnostics, 'WL003');
+    expect(wl003).toHaveLength(2);
+    expect(wl003[0].directiveName).toBe('foo');
+    expect(wl003[1].directiveName).toBe('bar');
+  });
+
+  it('recognized noMilestone does not produce WL003', async () => {
+    const parsed = await parse('document {\n  noMilestone = true\n}\ntask a {}', 'doc.siren');
+    assertDiagnosticCode(parsed.diagnostics, 'WL003', false);
+  });
 });
 
 describe('buildAst — origins & diagnostic spans', () => {

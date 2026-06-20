@@ -91,12 +91,27 @@ export interface WL002CollapsedModifiersDiagnostic extends LanguageDiagnostic<'W
   readonly origin?: Origin;
 }
 
+/**
+ * WL003 — Unrecognized document directive.
+ *
+ * Emitted when a doc_header block contains an attribute whose key is not a
+ * recognized directive name. Currently only `noMilestone` is recognized.
+ */
+export interface WL003UnrecognizedDirectiveDiagnostic extends LanguageDiagnostic<'W'> {
+  readonly code: 'WL003';
+  readonly severity: 'warning';
+  readonly directiveName: string;
+  readonly documentName: string;
+  readonly origin?: Origin;
+}
+
 type DiagnosticInput<T extends LanguageDiagnostic> = Omit<T, 'code' | 'severity'>;
 export interface EL001Input extends DiagnosticInput<EL001GenericParseErrorDiagnostic> {}
 export interface EL002Input extends DiagnosticInput<EL002MissingTokenDiagnostic> {}
 export interface EL003Input extends DiagnosticInput<EL003UnexpectedTokenDiagnostic> {}
 export interface WL001Input extends DiagnosticInput<WL001UnrecognizedModifierDiagnostic> {}
 export interface WL002Input extends DiagnosticInput<WL002CollapsedModifiersDiagnostic> {}
+export interface WL003Input extends DiagnosticInput<WL003UnrecognizedDirectiveDiagnostic> {}
 
 export function createEL001(input: EL001Input): EL001GenericParseErrorDiagnostic {
   return Object.freeze({
@@ -149,6 +164,16 @@ export function createWL002(input: WL002Input): WL002CollapsedModifiersDiagnosti
     resourceId: input.resourceId,
     recognizedModifiers: input.recognizedModifiers,
     resolvedStatus: input.resolvedStatus,
+    documentName: input.documentName,
+    ...(input.origin !== undefined ? { origin: input.origin } : {}),
+  });
+}
+
+export function createWL003(input: WL003Input): WL003UnrecognizedDirectiveDiagnostic {
+  return Object.freeze({
+    code: 'WL003' as const,
+    severity: 'warning' as const,
+    directiveName: input.directiveName,
     documentName: input.documentName,
     ...(input.origin !== undefined ? { origin: input.origin } : {}),
   });
