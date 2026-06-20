@@ -52,20 +52,6 @@ function unexpected(detail: string): Error {
 }
 
 /**
- * Freeze an AstResource and its nested `readonly` arrays so the public AST is
- * immutable at runtime in addition to its compile-time `readonly` typing.
- */
-function freezeResource(r: AstResource): AstResource {
-  for (const attr of r.attributes) {
-    Object.freeze(attr.value.members);
-    Object.freeze(attr.value);
-    Object.freeze(attr);
-  }
-  Object.freeze(r.attributes);
-  return Object.freeze(r);
-}
-
-/**
  * Extract the bare identifier text from an `identifier` node, which is either
  * a `bare_identifier` or a `string_literal`. Quoted strings are unwrapped via
  * the `str_body` child; the grammar does not currently permit escape sequences
@@ -228,16 +214,9 @@ function buildResource(
   const resource: AstResource =
     status !== undefined ? { kind, id, status, attributes } : { kind, id, attributes };
   origins.set(resource, rangeOriginFromNode(resourceNode, documentName));
-  return freezeResource(resource);
+  return resource;
 }
 
-/**
- * Extract document-level directives from the `doc_header` CST subtree.
- *
- * Looks inside the header's `block` for a `noMilestone` boolean attribute.
- * Returns `{ noMilestone: false }` when no doc_header is provided or no
- * milestone attribute is present.
- */
 function buildDirectives(docHeader: Node | undefined): DocumentDirective {
   if (!docHeader) return { noMilestone: false };
 
@@ -258,7 +237,7 @@ function buildDirectives(docHeader: Node | undefined): DocumentDirective {
     if (attrNode?.type !== 'attribute') continue;
 
     const keyNode = attrNode.childForFieldName('key');
-    if (!keyNode || keyNode.text !== 'noMilestone') continue;
+    if (keyNode?.text !== 'noMilestone') continue;
 
     // Extract boolean value from the attribute's tuple.
     const valueNode = attrNode.childForFieldName('value');
@@ -345,6 +324,6 @@ export function buildAst(tree: Tree, source: SourceDocument): BuildAstResult {
   }
 
   const directives = buildDirectives(docHeader);
-  const ast: SirenAst = Object.freeze({ directives, resources: Object.freeze(resources) });
-  return { ast, diagnostics: Object.freeze(diagnostics), origins };
+  const ast: SirenAst = { directives, resources };
+  return { ast, diagnostics, origins };
 }

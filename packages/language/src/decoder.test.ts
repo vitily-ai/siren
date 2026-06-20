@@ -1,9 +1,9 @@
-import { isReference, type SirenEntry } from '@sirenpm/core';
+import { isReference } from '@sirenpm/core';
 import { describe, expect, it } from 'vitest';
 import { Language, Parser as TsParser } from 'web-tree-sitter';
 import { buildAst } from './ast/builder';
 import type { SirenAst } from './ast/types';
-import { type DecodeDirectives, decodeAstToEntries } from './decoder';
+import { decodeAstToEntries } from './decoder';
 import type { LanguageDiagnostic } from './diagnostics';
 import { getWasmUrl } from './grammar/loadHandle';
 import type { SourcedEntry } from './origin';
@@ -45,11 +45,7 @@ interface BuildAndDecodeResult {
  * Parse, build AST, and decode in one shot — bypasses the stateful
  * `ParsedDocument` class and calls `decodeAstToEntries` directly.
  */
-async function buildAndDecode(
-  name: string,
-  content: string,
-  options?: DecodeDirectives,
-): Promise<BuildAndDecodeResult> {
+async function buildAndDecode(name: string, content: string): Promise<BuildAndDecodeResult> {
   const lang = await getSirenLanguage();
   const tsParser = new TsParser();
   tsParser.setLanguage(lang);
@@ -57,7 +53,7 @@ async function buildAndDecode(
   if (!tree) throw new Error('Parse failed');
   const source: SourceDocument = { name, content };
   const built = buildAst(tree, source);
-  const entries = decodeAstToEntries(built.ast, source, built.origins, options);
+  const entries = decodeAstToEntries(built.ast, source, built.origins);
   return {
     entries,
     ast: built.ast,
@@ -65,7 +61,7 @@ async function buildAndDecode(
   };
 }
 
-/** Decode with default options (no synthesis). */
+/** Shorthand: decode via buildAndDecode, return only entries. */
 async function decode(name: string, content: string): Promise<readonly SourcedEntry[]> {
   const { entries } = await buildAndDecode(name, content);
   return entries;
@@ -74,14 +70,14 @@ async function decode(name: string, content: string): Promise<readonly SourcedEn
 describe('decodeAstToEntries', () => {
   describe('empty document', () => {
     it('decodes an empty document into zero entries', async () => {
-      const entries = await decode('doc.siren', '');
+      const entries = await decode('doc.siren', 'document { noMilestone = true }\n');
       expect(entries).toEqual([]);
     });
   });
 
   describe('entry shape', () => {
     it('decodes a single empty task with no status and no attributes', async () => {
-      const entries = await decode('doc.siren', 'task foo {}');
+      const entries = await decode('doc.siren', 'document { noMilestone = true }\ntask foo {}');
       expect(entries).toHaveLength(1);
       const r = entries[0];
       expect(r.type).toBe('task');
@@ -92,16 +88,19 @@ describe('decodeAstToEntries', () => {
 
     it('passes through `complete` status from the AST', async () => {
       const entries = await decode('doc.siren', 'task foo complete {}');
-      expect(entries[0].status).toBe('complete');
+      expect(entries[0]?.status).toBe('complete');
     });
 
     it('passes through `draft` status from the AST', async () => {
       const entries = await decode('doc.siren', 'task foo draft {}');
-      expect(entries[0].status).toBe('draft');
+      expect(entries[0]?.status).toBe('draft');
     });
 
     it('decodes a milestone and a task in the same document in source order', async () => {
-      const entries = await decode('doc.siren', 'task t {}\nmilestone m {}');
+      const entries = await decode(
+        'doc.siren',
+        'document { noMilestone = true }\ntask t {}\nmilestone m {}',
+      );
       expect(entries.map((r) => [r.type, r.id])).toEqual([
         ['task', 't'],
         ['milestone', 'm'],
@@ -114,7 +113,7 @@ describe('decodeAstToEntries', () => {
       // The well-formed `task ok {}` must survive.
       const { entries, diagnostics } = await buildAndDecode(
         'doc.siren',
-        'task broken @\ntask ok {}',
+        'document { noMilestone = true }\ntask broken @\ntask ok {}',
       );
       const ids = entries.map((r) => r.id);
       expect(ids).not.toContain('broken');
@@ -130,30 +129,30 @@ describe('decodeAstToEntries', () => {
   describe('attribute values', () => {
     it('decodes a string scalar as a one-element tuple of string', async () => {
       const entries = await decode('doc.siren', 'task t { description = "hi" }');
-      const attr = entries[0].attributes[0];
-      expect(attr.key).toBe('description');
-      expect(attr.value).toEqual(['hi']);
+      const attr = entries[0]!.attributes[0];
+      expect(attr!.key).toBe('description');
+      expect(attr!.value).toEqual(['hi']);
     });
 
     it('decodes a number scalar as a one-element tuple', async () => {
       const entries = await decode('doc.siren', 'task t { count = 42 }');
-      expect(entries[0].attributes[0].value).toEqual([42]);
+      expect(entries[0]!.attributes[0]!.value).toEqual([42]);
     });
 
     it('decodes a boolean scalar as a one-element tuple', async () => {
       const entries = await decode('doc.siren', 'task t { active = true }');
-      expect(entries[0].attributes[0].value).toEqual([true]);
+      expect(entries[0]!.attributes[0]!.value).toEqual([true]);
     });
 
     it('decodes a bare identifier as a ResourceReference atom', async () => {
       const entries = await decode('doc.siren', 'task t { owner = alice }');
-      const tuple = entries[0].attributes[0].value;
+      const tuple = entries[0]!.attributes[0]!.value;
       expect(tuple).toEqual([{ kind: 'reference', id: 'alice' }]);
     });
 
     it('decodes a list of bare identifiers in depends_on as references', async () => {
       const entries = await decode('doc.siren', 'milestone m { depends_on = [a, b] }');
-      expect(entries[0].attributes[0].value).toEqual([
+      expect(entries[0]!.attributes[0]!.value).toEqual([
         { kind: 'reference', id: 'a' },
         { kind: 'reference', id: 'b' },
       ]);
@@ -161,22 +160,22 @@ describe('decodeAstToEntries', () => {
 
     it('decodes a quoted string inside depends_on as a ResourceReference', async () => {
       const entries = await decode('doc.siren', 'milestone m { depends_on = ["x"] }');
-      expect(entries[0].attributes[0].value).toEqual([{ kind: 'reference', id: 'x' }]);
+      expect(entries[0]!.attributes[0]!.value).toEqual([{ kind: 'reference', id: 'x' }]);
     });
 
     it('decodes a quoted string outside depends_on as a plain string atom', async () => {
       const entries = await decode('doc.siren', 'task t { note = "hi" }');
-      expect(entries[0].attributes[0].value).toEqual(['hi']);
+      expect(entries[0]!.attributes[0]!.value).toEqual(['hi']);
     });
 
     it('only rewrites quoted strings to references inside depends_on (mixed non-depends_on)', async () => {
       const entries = await decode('doc.siren', 'task t { mixed = [a, "b"] }');
-      expect(entries[0].attributes[0].value).toEqual([{ kind: 'reference', id: 'a' }, 'b']);
+      expect(entries[0]!.attributes[0]!.value).toEqual([{ kind: 'reference', id: 'a' }, 'b']);
     });
 
     it('rewrites quoted strings to references inside a mixed depends_on list', async () => {
       const entries = await decode('doc.siren', 'milestone m { depends_on = [a, "b"] }');
-      expect(entries[0].attributes[0].value).toEqual([
+      expect(entries[0]!.attributes[0]!.value).toEqual([
         { kind: 'reference', id: 'a' },
         { kind: 'reference', id: 'b' },
       ]);
@@ -190,7 +189,7 @@ describe('decodeAstToEntries', () => {
       const content = 'task t {}';
       const entries = await decode('doc.siren', content);
       const r = entries[0];
-      expect(r.origin).toEqual({
+      expect(r!.origin).toEqual({
         kind: 'range',
         document: 'doc.siren',
         startByte: 0,
@@ -208,7 +207,7 @@ describe('decodeAstToEntries', () => {
       // The `attribute` node spans from `description` (col 2, byte 11)
       // through the closing quote of `"hi"` (byte 29 exclusive).
       const entries = await decode('doc.siren', 'task t {\n  description = "hi"\n}\n');
-      const a = entries[0].attributes[0];
+      const a: any = entries[0]!.attributes[0]!;
       expect(a.origin).toEqual({
         kind: 'range',
         document: 'doc.siren',
@@ -224,7 +223,7 @@ describe('decodeAstToEntries', () => {
       //   row 0: 'task a {}\n'  bytes 0..9 (newline at 9)
       //   row 1: 'task b {}'    bytes 10..18
       const entries = await decode('doc.siren', 'task a {}\ntask b {}');
-      const [a, b] = entries;
+      const [a, b] = entries as [SourcedEntry, SourcedEntry];
       expect(a.origin).toEqual({
         kind: 'range',
         document: 'doc.siren',
@@ -245,12 +244,13 @@ describe('decodeAstToEntries', () => {
 
     it('each SourcedEntry has an origin field', async () => {
       const entries = await decode('doc.siren', 'task foo {}');
-      expect(entries[0].origin).toBeDefined();
-      expect(entries[0].origin.kind).toBe('range');
+      expect(entries[0]!.origin).toBeDefined();
+      expect(entries[0]!.origin.kind).toBe('range');
     });
 
     it('each SourcedAttribute has an origin field', async () => {
       const entries = await decode('doc.siren', 'task foo { desc = "bar" }');
+      // @ts-expect-error
       const attrOrigin = entries[0].attributes[0].origin;
       expect(attrOrigin).toBeDefined();
       expect(attrOrigin.kind).toBe('range');
@@ -258,7 +258,7 @@ describe('decodeAstToEntries', () => {
 
     it('SourcedEntry structural shape matches SourcedEntry interface', async () => {
       const entries = await decode('doc.siren', 'task foo {}');
-      const e: SourcedEntry = entries[0];
+      const e: SourcedEntry = entries[0]!;
       // Verify structural fields
       expect(e.type).toBe('task');
       expect(e.id).toBe('foo');
@@ -270,74 +270,55 @@ describe('decodeAstToEntries', () => {
   describe('core integration', () => {
     it('produces atoms recognized by core `isReference`', async () => {
       const entries = await decode('doc.siren', 'milestone m { depends_on = [a, "b"] }');
+      // @ts-expect-error
       const tuple = entries[0].attributes[0].value;
       expect(tuple.every((atom) => isReference(atom))).toBe(true);
-    });
-
-    it('returns entries assignable to readonly SirenEntry[]', async () => {
-      // Type-only assertion: this line must compile.
-      const entries: readonly SirenEntry[] = await decode('doc.siren', 'task t {}');
-      expect(entries[0].id).toBe('t');
     });
   });
 
   describe('synthesis', () => {
-    it('does NOT synthesize a milestone by default (synthesizeMilestones omitted)', async () => {
-      const entries = await decode('doc.siren', 'task t {}');
+    it('does NOT synthesize when document directive sets noMilestone = true', async () => {
+      const { entries } = await buildAndDecode(
+        'doc.siren',
+        'document { noMilestone = true }\ntask t {}',
+      );
       expect(entries.some((e) => e.origin.kind === 'synthetic')).toBe(false);
       expect(entries.length).toBe(1);
+      expect(entries[0]!.id).toBe('t');
     });
 
-    it('does NOT synthesize when synthesizeMilestones is false', async () => {
-      const { entries } = await buildAndDecode('doc.siren', 'task t {}', {
-        synthesizeMilestones: false,
-      });
-      expect(entries.length).toBe(1);
-      expect(entries[0].id).toBe('t');
-    });
-
-    it('synthesizes a milestone when synthesizeMilestones is true', async () => {
-      const { entries } = await buildAndDecode('doc.siren', 'task t {}', {
-        synthesizeMilestones: true,
-      });
+    it('synthesizes a milestone by default', async () => {
+      const { entries } = await buildAndDecode('doc.siren', 'task t {}');
       expect(entries.length).toBe(2); // task + synthetic milestone
       const milestone = entries[1];
-      expect(milestone.type).toBe('milestone');
-      expect(milestone.id).toBe('doc');
+      expect(milestone!.type).toBe('milestone');
+      expect(milestone!.id).toBe('doc');
     });
 
     it('synthetic milestone id strips .siren suffix from source name', async () => {
-      const { entries } = await buildAndDecode('my-project.siren', 'task t {}', {
-        synthesizeMilestones: true,
-      });
-      expect(entries[1].id).toBe('my-project');
+      const { entries } = await buildAndDecode('my-project.siren', 'task t {}');
+      expect(entries[1]!.id).toBe('my-project');
     });
 
     it('synthetic milestone id uses source name verbatim when no .siren suffix', async () => {
-      const { entries } = await buildAndDecode('myfile', 'task t {}', {
-        synthesizeMilestones: true,
-      });
-      expect(entries[1].id).toBe('myfile');
+      const { entries } = await buildAndDecode('myfile', 'task t {}');
+      expect(entries[1]!.id).toBe('myfile');
     });
 
     it('synthetic milestone has SyntheticOrigin with document = source name', async () => {
-      const { entries } = await buildAndDecode('proj.siren', 'task t {}', {
-        synthesizeMilestones: true,
-      });
+      const { entries } = await buildAndDecode('proj.siren', 'task t {}');
       const milestone = entries[1];
-      expect(milestone.origin).toEqual({
+      expect(milestone!.origin).toEqual({
         kind: 'synthetic',
         document: 'proj.siren',
       });
     });
 
     it('synthetic milestone depends_on references all decoded entries in order', async () => {
-      const { entries } = await buildAndDecode('doc.siren', 'task a {}\ntask b {}\ntask c {}', {
-        synthesizeMilestones: true,
-      });
+      const { entries } = await buildAndDecode('doc.siren', 'task a {}\ntask b {}\ntask c {}');
       const milestone = entries[3]; // last entry
-      expect(milestone.attributes[0].key).toBe('depends_on');
-      expect(milestone.attributes[0].value).toEqual([
+      expect(milestone!.attributes[0]!.key).toBe('depends_on');
+      expect(milestone!.attributes[0]!.value).toEqual([
         { kind: 'reference', id: 'a' },
         { kind: 'reference', id: 'b' },
         { kind: 'reference', id: 'c' },
@@ -345,10 +326,9 @@ describe('decodeAstToEntries', () => {
     });
 
     it('synthetic milestone depends_on attribute has SyntheticOrigin with document = source name', async () => {
-      const { entries } = await buildAndDecode('doc.siren', 'task t {}', {
-        synthesizeMilestones: true,
-      });
+      const { entries } = await buildAndDecode('doc.siren', 'task t {}');
       const milestone = entries[1];
+      // @ts-expect-error
       expect(milestone.attributes[0].origin).toEqual({
         kind: 'synthetic',
         document: 'doc.siren',
@@ -356,50 +336,40 @@ describe('decodeAstToEntries', () => {
     });
 
     it('empty document synthesizes a milestone with empty attributes', async () => {
-      const { entries } = await buildAndDecode('doc.siren', '', {
-        synthesizeMilestones: true,
-      });
+      const { entries } = await buildAndDecode('doc.siren', '');
       expect(entries.length).toBe(1);
       const milestone = entries[0];
-      expect(milestone.type).toBe('milestone');
-      expect(milestone.id).toBe('doc');
-      expect(milestone.attributes).toEqual([]);
+      expect(milestone!.type).toBe('milestone');
+      expect(milestone!.id).toBe('doc');
+      expect(milestone!.attributes).toEqual([]);
     });
 
     it('explicit milestone with same id suppresses synthesis', async () => {
-      const { entries } = await buildAndDecode('doc.siren', 'milestone doc {}', {
-        synthesizeMilestones: true,
-      });
+      const { entries } = await buildAndDecode('doc.siren', 'milestone doc {}');
       expect(entries.length).toBe(1);
-      expect(entries[0].type).toBe('milestone');
-      expect(entries[0].id).toBe('doc');
+      expect(entries[0]!.type).toBe('milestone');
+      expect(entries[0]!.id).toBe('doc');
       // The origin should be a range origin (from the AST), not synthetic.
-      expect(entries[0].origin.kind).toBe('range');
+      expect(entries[0]!.origin.kind).toBe('range');
     });
 
     it('explicit milestone with different id does NOT suppress synthesis', async () => {
-      const { entries } = await buildAndDecode('doc.siren', 'milestone other {}', {
-        synthesizeMilestones: true,
-      });
+      const { entries } = await buildAndDecode('doc.siren', 'milestone other {}');
       expect(entries.length).toBe(2);
-      expect(entries[0].id).toBe('other');
-      expect(entries[1].id).toBe('doc');
+      expect(entries[0]!.id).toBe('other');
+      expect(entries[1]!.id).toBe('doc');
     });
 
     it('synthetic milestone is appended after all decoded entries', async () => {
-      const { entries } = await buildAndDecode('doc.siren', 'task a {}\ntask b {}', {
-        synthesizeMilestones: true,
-      });
+      const { entries } = await buildAndDecode('doc.siren', 'task a {}\ntask b {}');
       expect(entries.map((e) => e.id)).toEqual(['a', 'b', 'doc']);
     });
 
     it('synthesis works with multiple entry types (tasks and milestones)', async () => {
-      const { entries } = await buildAndDecode('doc.siren', 'task t {}\nmilestone m {}', {
-        synthesizeMilestones: true,
-      });
+      const { entries } = await buildAndDecode('doc.siren', 'task t {}\nmilestone m {}');
       expect(entries.length).toBe(3);
-      expect(entries[2].id).toBe('doc');
-      expect(entries[2].attributes[0].value).toEqual([
+      expect(entries[2]!.id).toBe('doc');
+      expect(entries[2]!.attributes[0]!.value).toEqual([
         { kind: 'reference', id: 't' },
         { kind: 'reference', id: 'm' },
       ]);
@@ -410,14 +380,12 @@ describe('decodeAstToEntries', () => {
       // Synthesis must not create a duplicate — the explicit milestone already
       // covers the document.
       const withoutSynthesis = await buildAndDecode('doc.siren', 'milestone doc {}');
-      const withSynthesis = await buildAndDecode('doc.siren', 'milestone doc {}', {
-        synthesizeMilestones: true,
-      });
+      const withSynthesis = await buildAndDecode('doc.siren', 'milestone doc {}');
 
       // Synthesis adds nothing: both calls return the same single entry.
       expect(withSynthesis.entries).toHaveLength(1);
       expect(withSynthesis.entries).toEqual(withoutSynthesis.entries);
-      expect(withSynthesis.entries[0].origin.kind).toBe('range');
+      expect(withSynthesis!.entries![0]!.origin.kind).toBe('range');
 
       // No synthetic-origin entry should appear anywhere.
       expect(withSynthesis.entries.some((e) => e.origin.kind === 'synthetic')).toBe(false);
@@ -426,9 +394,7 @@ describe('decodeAstToEntries', () => {
     it('synthesizes a milestone when all entries are dropped by parse errors', async () => {
       // 'task broken @' is entirely malformed — the AST builder drops every
       // resource via EL001, leaving zero surviving entries.
-      const { entries, ast, diagnostics } = await buildAndDecode('doc.siren', 'task broken @', {
-        synthesizeMilestones: true,
-      });
+      const { entries, ast, diagnostics } = await buildAndDecode('doc.siren', 'task broken @');
 
       // Verify the AST has zero resources (all dropped by EL001).
       expect(ast.resources).toHaveLength(0);
@@ -438,11 +404,11 @@ describe('decodeAstToEntries', () => {
       expect(entries).toHaveLength(1);
 
       const milestone = entries[0];
-      expect(milestone.type).toBe('milestone');
-      expect(milestone.id).toBe('doc');
+      expect(milestone!.type).toBe('milestone');
+      expect(milestone!.id).toBe('doc');
       // No surviving entries → empty attributes (no depends_on).
-      expect(milestone.attributes).toEqual([]);
-      expect(milestone.origin).toEqual({ kind: 'synthetic', document: 'doc.siren' });
+      expect(milestone!.attributes).toEqual([]);
+      expect(milestone!.origin).toEqual({ kind: 'synthetic', document: 'doc.siren' });
     });
   });
 });

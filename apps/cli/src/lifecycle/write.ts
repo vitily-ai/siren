@@ -2,7 +2,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { CliContext, DeepReadonly } from './context';
 
-export type WriteArtifact = {};
+export type WriteArtifact = {
+  [k: keyof any]: unknown;
+};
 
 /**
  * Persist source-preserving edits back to disk using the rewrite signal.

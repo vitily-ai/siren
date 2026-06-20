@@ -472,27 +472,6 @@ task ok {}`;
   });
 });
 
-describe('buildAst — runtime immutability (Object.freeze)', () => {
-  it('freezes the AST, resources array, each resource, attributes, and tuple members', async () => {
-    const parsed = await parse('task t complete {\n  description = "hi"\n  depends_on = [a, b]\n}');
-    expect(parsed.diagnostics).toEqual([]);
-
-    const ast = parsed.ast;
-    expect(Object.isFrozen(ast)).toBe(true);
-    expect(Object.isFrozen(ast.resources)).toBe(true);
-
-    const r = ast.resources[0];
-    expect(Object.isFrozen(r)).toBe(true);
-    expect(Object.isFrozen(r.attributes)).toBe(true);
-
-    for (const attr of r.attributes) {
-      expect(Object.isFrozen(attr)).toBe(true);
-      expect(Object.isFrozen(attr.value)).toBe(true);
-      expect(Object.isFrozen(attr.value.members)).toBe(true);
-    }
-  });
-});
-
 describe('AstTupleMember type-narrowing', () => {
   it('discriminates by kind', () => {
     expectTypeOf<AstTupleMember>().toMatchTypeOf<

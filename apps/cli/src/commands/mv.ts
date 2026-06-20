@@ -1,4 +1,5 @@
 import type { PatchResult, SirenBuilder } from '@sirenpm/core';
+import type { SourcedEntry } from '@sirenpm/language';
 import { defineCommand } from 'citty';
 import { runLifecycle } from '../lifecycle';
 
@@ -20,7 +21,8 @@ export function mvMutate(
   return (builder: SirenBuilder): PatchResult => {
     const entries = builder.entries;
     const nonSynthetic = entries.filter(
-      (e) => e.id === entryId && !('origin' in e && (e as any).origin?.kind === 'synthetic'),
+      (e) =>
+        e.id === entryId && !('origin' in e && (e as SourcedEntry).origin?.kind === 'synthetic'),
     );
     const syntheticOnly =
       entries.filter((e) => e.id === entryId).length > 0 && nonSynthetic.length === 0;

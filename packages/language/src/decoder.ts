@@ -5,20 +5,6 @@ import type { Origin, SourcedAttribute, SourcedEntry } from './origin';
 import type { SourceDocument } from './parser/types';
 
 /**
- * Decode-time directives.
- *
- * Currently a flat options bag. In the future these will be derived from
- * in-grammar document-scoped directives (e.g. `@synthesize true`).
- */
-export interface DecodeDirectives {
-  /**
-   * When true, append a synthetic milestone per source document.
-   * Default false — synthesis is opt-in per ADR-0005.
-   */
-  readonly synthesizeMilestones?: boolean;
-}
-
-/**
  * Decode the language-layer AST into flat core `SirenEntry[]`.
  *
  * Each AstResource maps directly to `{ type, id, status?, attributes }` — no
@@ -30,7 +16,6 @@ export function decodeAstToEntries(
   ast: SirenAst,
   source: SourceDocument,
   origins: AstOriginMap,
-  options?: DecodeDirectives,
 ): readonly SourcedEntry[] {
   const entries: SourcedEntry[] = ast.resources.map((astResource) => {
     const attributes: SourcedAttribute[] = astResource.attributes.map((astAttr) => {
@@ -60,7 +45,7 @@ export function decodeAstToEntries(
     };
   });
 
-  if (options?.synthesizeMilestones) {
+  if (!ast.directives.noMilestone) {
     return appendSyntheticMilestone(entries, source.name);
   }
   return entries;

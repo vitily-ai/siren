@@ -180,7 +180,7 @@ describe('format idempotency — partial update', () => {
     // b.siren is left untouched (has original non-canonical content)
 
     await runFormat({});
-    const calls = consoleLogSpy.mock.calls.map((c) => String(c[0]));
+    const calls = consoleLogSpy.mock.calls.map((c: any[]) => String(c[0]));
     const summary = calls[calls.length - 1];
     expect(summary).toBe('Updated 1 files out of 2');
   });
@@ -195,7 +195,7 @@ describe('format idempotency — partial update', () => {
     fs.writeFileSync(aPath, 'milestone alpha {}\n', 'utf-8');
 
     await runFormat({ verbose: true });
-    const calls = consoleLogSpy.mock.calls.map((c) => String(c[0]));
+    const calls = consoleLogSpy.mock.calls.map((c: any[]) => String(c[0]));
     // First line should be the updated file name
     expect(calls[0]).toBe('b.siren');
     // Last line should be the summary

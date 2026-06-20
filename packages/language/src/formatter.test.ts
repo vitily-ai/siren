@@ -124,21 +124,21 @@ task b {}
       const parsed = await parser.parse({ name: 'messy.siren', content: input });
 
       const entriesBefore = parsed.toEntries();
-      expect(entriesBefore).toHaveLength(1);
-      expect(entriesBefore[0].type).toBe('task');
-      expect(entriesBefore[0].id).toBe('a');
+      expect(entriesBefore).toHaveLength(2);
+      expect(entriesBefore[0]!.type).toBe('task');
+      expect(entriesBefore[0]!.id).toBe('a');
 
       parsed.format();
 
       // Entries should still decode correctly after format() mutates state.
       // This is a regression guard — may already pass, but must not regress.
       const entriesAfter = parsed.toEntries();
-      expect(entriesAfter).toHaveLength(1);
-      expect(entriesAfter[0].type).toBe('task');
-      expect(entriesAfter[0].id).toBe('a');
+      expect(entriesAfter).toHaveLength(2);
+      expect(entriesAfter[0]!.type).toBe('task');
+      expect(entriesAfter[0]!.id).toBe('a');
       // Semantic content is preserved; origins naturally shift after reformat.
-      expect(entriesAfter[0].attributes.map((a) => ({ key: a.key, value: a.value }))).toEqual(
-        entriesBefore[0].attributes.map((a) => ({ key: a.key, value: a.value })),
+      expect(entriesAfter[0]!.attributes.map((a) => ({ key: a.key, value: a.value }))).toEqual(
+        entriesBefore[0]!.attributes.map((a) => ({ key: a.key, value: a.value })),
       );
     });
 
