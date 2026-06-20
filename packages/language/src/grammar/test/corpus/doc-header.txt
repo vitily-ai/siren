@@ -49,7 +49,7 @@ Document block followed by resource
 ==================
 
 document {
-  milestone = false
+  noMilestone = false
 }
 
 task example {
