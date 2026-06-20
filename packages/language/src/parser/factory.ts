@@ -121,10 +121,7 @@ class ParsedDocumentImpl implements ParsedDocument {
     // TODO: buildAst should return empty diags by default
     this.#diagnostics = built.diagnostics ?? EMPTY_DIAGNOSTICS;
     this.#origins = built.origins;
-    // TODO: directives should come from the document, instead of being hardcoded here. Requires grammar support.
-    this.#entries = decodeAstToEntries(this.#ast, source, this.#origins, {
-      synthesizeMilestones: false,
-    });
+    this.#entries = decodeAstToEntries(this.#ast, source, this.#origins);
   }
 
   get source(): SourceDocument {

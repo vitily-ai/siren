@@ -304,11 +304,13 @@ describe('buildAst — top-level ERROR nodes', () => {
       // TODO come up with a way to reduce this to terminals only
       'task',
       'milestone',
+      'document',
       'comment',
       'document', // what is document?
       'resource_type',
       'resource_header',
       'resource',
+      'doc_header',
       'ERROR',
     ]);
   });
@@ -360,6 +362,48 @@ describe('buildAst — top-level ERROR nodes', () => {
       // Non-keyword missing tokens should not carry expected
       expect(d.expected).toBeUndefined();
     });
+  });
+});
+
+describe('buildAst — document directives', () => {
+  it('document { noMilestone = true } + resources → directives.noMilestone = true', async () => {
+    const parsed = await parse('document {\n  noMilestone = true\n}\ntask a {}', 'doc.siren');
+    expect(parsed.ast.directives.noMilestone).toBe(true);
+  });
+
+  it('document {} with empty block → directives.noMilestone defaults to false', async () => {
+    const parsed = await parse('document {}\ntask a {}', 'doc.siren');
+    expect(parsed.ast.directives.noMilestone).toBe(false);
+  });
+
+  it('no document header → directives.noMilestone defaults to false', async () => {
+    const parsed = await parse('task a {}', 'doc.siren');
+    expect(parsed.ast.directives.noMilestone).toBe(false);
+  });
+
+  it('unrecognized directive produces WL003 warning', async () => {
+    const parsed = await parse(
+      'document {\n  unknownDirective = "value"\n}\ntask a {}',
+      'doc.siren',
+    );
+    const wl003 = assertDiagnosticCode(parsed.diagnostics, 'WL003');
+    expect(wl003).toHaveLength(1);
+    expect(wl003[0].directiveName).toBe('unknownDirective');
+    expect(wl003[0].documentName).toBe('doc.siren');
+    expect(parsed.ast.directives.noMilestone).toBe(false);
+  });
+
+  it('multiple unrecognized directives produce separate WL003 warnings', async () => {
+    const parsed = await parse('document {\n  foo = 1\n  bar = true\n}\ntask a {}', 'doc.siren');
+    const wl003 = assertDiagnosticCode(parsed.diagnostics, 'WL003');
+    expect(wl003).toHaveLength(2);
+    expect(wl003[0].directiveName).toBe('foo');
+    expect(wl003[1].directiveName).toBe('bar');
+  });
+
+  it('recognized noMilestone does not produce WL003', async () => {
+    const parsed = await parse('document {\n  noMilestone = true\n}\ntask a {}', 'doc.siren');
+    assertDiagnosticCode(parsed.diagnostics, 'WL003', false);
   });
 });
 
@@ -450,27 +494,6 @@ task ok {}`;
     // Since origins is private on ParsedDocumentImpl, we verified
     // its existence in the builder implementation but won't pin
     // its private storage here.
-  });
-});
-
-describe('buildAst — runtime immutability (Object.freeze)', () => {
-  it('freezes the AST, resources array, each resource, attributes, and tuple members', async () => {
-    const parsed = await parse('task t complete {\n  description = "hi"\n  depends_on = [a, b]\n}');
-    expect(parsed.diagnostics).toEqual([]);
-
-    const ast = parsed.ast;
-    expect(Object.isFrozen(ast)).toBe(true);
-    expect(Object.isFrozen(ast.resources)).toBe(true);
-
-    const r = ast.resources[0];
-    expect(Object.isFrozen(r)).toBe(true);
-    expect(Object.isFrozen(r.attributes)).toBe(true);
-
-    for (const attr of r.attributes) {
-      expect(Object.isFrozen(attr)).toBe(true);
-      expect(Object.isFrozen(attr.value)).toBe(true);
-      expect(Object.isFrozen(attr.value.members)).toBe(true);
-    }
   });
 });
 

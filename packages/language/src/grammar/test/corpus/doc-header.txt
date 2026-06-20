@@ -1,0 +1,88 @@
+==================
+Document block with attributes
+==================
+
+document {
+  noMilestone = true
+  unknownDirective = "value"
+}
+
+---
+
+(document
+  (doc_header
+    (block
+      (block_open)
+      (attribute
+        key: (bare_identifier)
+        value: (expression
+          (tuple
+            (literal
+              (boolean_literal)))))
+      (attribute
+        key: (bare_identifier)
+        value: (expression
+          (tuple
+            (literal
+              (string_literal
+                (str_open)
+                (str_body)
+                (str_close))))))
+      (block_close))))
+
+==================
+Empty document block
+==================
+
+document {}
+
+---
+
+(document
+  (doc_header
+    (block
+      (block_open)
+      (block_close))))
+
+==================
+Document block followed by resource
+==================
+
+document {
+  noMilestone = false
+}
+
+task example {
+  description = "hello"
+}
+
+---
+
+(document
+  (doc_header
+    (block
+      (block_open)
+      (attribute
+        key: (bare_identifier)
+        value: (expression
+          (tuple
+            (literal
+              (boolean_literal)))))
+      (block_close)))
+  (resource
+    (resource_header
+      type: (resource_type)
+      id: (identifier
+        (bare_identifier)))
+    body: (block
+      (block_open)
+      (attribute
+        key: (bare_identifier)
+        value: (expression
+          (tuple
+            (literal
+              (string_literal
+                (str_open)
+                (str_body)
+                (str_close))))))
+      (block_close))))

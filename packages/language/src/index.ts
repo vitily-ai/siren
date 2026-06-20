@@ -20,6 +20,7 @@ export type {
   LanguageDiagnostic,
   WL001UnrecognizedModifierDiagnostic,
   WL002CollapsedModifiersDiagnostic,
+  WL003UnrecognizedDirectiveDiagnostic,
 } from './diagnostics';
 export type {
   Origin,

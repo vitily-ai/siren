@@ -31,13 +31,13 @@ describe('lang-render-integration', async () => {
     doc.patchEntry('foo', patch);
 
     const entries = doc.toEntries();
-    expect(entries).toHaveLength(1);
+    expect(entries).toHaveLength(2);
 
     const entry = entries[0];
-    expect(entry.id).toBe('foo');
-    expect(entry.type).toBe('task');
+    expect(entry!.id).toBe('foo');
+    expect(entry!.type).toBe('task');
 
-    const descAttr = entry.attributes.find((a) => a.key === 'description');
+    const descAttr = entry!.attributes.find((a) => a.key === 'description');
     expect(descAttr).toBeDefined();
     expect(descAttr!.value).toEqual(['new']);
 
@@ -89,10 +89,10 @@ describe('lang-render-integration', async () => {
     doc.removeEntry('b');
 
     const entries = doc.toEntries();
-    expect(entries).toHaveLength(2);
+    expect(entries).toHaveLength(3);
 
     const ids = entries.map((e) => e.id).sort();
-    expect(ids).toEqual(['a', 'c']);
+    expect(ids).toEqual(['a', 'c', 'three']);
 
     // Source must not contain removed entry's id.
     expect(doc.source.content).not.toContain('task b');
@@ -119,8 +119,8 @@ describe('lang-render-integration', async () => {
     doc.patchEntry('bar', synthetic);
 
     let entries = doc.toEntries();
-    expect(entries).toHaveLength(2);
-    expect(entries.map((e) => e.id).sort()).toEqual(['bar', 'foo']);
+    expect(entries).toHaveLength(3);
+    expect(entries.map((e) => e.id).sort()).toEqual(['bar', 'foo', 'single']);
 
     // Now patch the synthetic entry with an attribute.
     const patched: SirenEntry = {
@@ -161,10 +161,10 @@ describe('lang-render-integration', async () => {
     doc.format();
 
     const entries = doc.toEntries();
-    expect(entries).toHaveLength(2);
+    expect(entries).toHaveLength(3);
 
     const ids = entries.map((e) => e.id).sort();
-    expect(ids).toEqual(['alpha', 'gamma']);
+    expect(ids).toEqual(['alpha', 'gamma', 'multi']);
 
     // Alpha should have the patched description.
     const alpha = entries.find((e) => e.id === 'alpha')!;

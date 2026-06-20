@@ -24,10 +24,10 @@ module.exports = grammar({
   conflicts: ($) => [[$._implicit_tuple]],
 
   rules: {
-    // Top-level document: zero or more resources
-    document: ($) => repeat($.resource),
+    // Top-level document: optional document header block followed by zero or more resources
+    document: ($) => seq(optional($.doc_header), repeat($.resource)),
 
-    resource_type: ($) => choice('task', 'milestone'),
+    resource_type: () => choice('task', 'milestone'),
     resource_modifier: ($) => $.identifier,
 
     resource_header: ($) =>
@@ -37,13 +37,15 @@ module.exports = grammar({
         field('status_modifier', repeat($.resource_modifier)),
       ),
 
-    block_open: ($) => '{',
-    block_close: ($) => '}',
+    block_open: () => '{',
+    block_close: () => '}',
 
     block: ($) => seq($.block_open, repeat($.attribute), $.block_close),
 
     // Resource block: task/milestone + identifier + optional 'complete' + body
     resource: ($) => seq($.resource_header, field('body', $.block)),
+
+    doc_header: ($) => seq('document', $.block),
 
     // Identifier: bare or quoted
     identifier: ($) => choice($.bare_identifier, $.string_literal),

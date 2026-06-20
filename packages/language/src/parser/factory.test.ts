@@ -112,9 +112,9 @@ describe('parser.parseBatch contract', () => {
       expect(result).toBeDefined();
       expect(typeof result.format).toBe('function');
     }
-    expect(results[0].format()).toBe('task a {}\n');
-    expect(results[1].format()).toBe('task b {}\n');
-    expect(results[2].format()).toBe('');
+    expect(results[0]!.format()).toBe('task a {}\n');
+    expect(results[1]!.format()).toBe('task b {}\n');
+    expect(results[2]!.format()).toBe('');
   });
 
   it('is equivalent to mapping parse per document', async () => {
@@ -129,8 +129,8 @@ describe('parser.parseBatch contract', () => {
 
     expect(batched).toHaveLength(mapped.length);
     for (let i = 0; i < batched.length; i++) {
-      expect(batched[i].format()).toBe(mapped[i].format());
-      expect(batched[i].toEntries().length).toBe(mapped[i].toEntries().length);
+      expect(batched[i]!.format()).toBe(mapped[i]!.format());
+      expect(batched[i]!.toEntries().length).toBe(mapped[i]!.toEntries().length);
     }
   });
 });
@@ -155,10 +155,10 @@ describe('patchEntry', () => {
     parsed.patchEntry('foo', updatedEntry);
 
     const entries = parsed.toEntries();
-    expect(entries).toHaveLength(1);
-    expect(entries[0].id).toBe('foo');
-    expect(entries[0].attributes[0].key).toBe('description');
-    expect(entries[0].attributes[0].value[0]).toBe('new');
+    expect(entries).toHaveLength(2);
+    expect(entries[0]!.id).toBe('foo');
+    expect(entries[0]!.attributes[0]!.key).toBe('description');
+    expect(entries[0]!.attributes[0]!.value[0]).toBe('new');
   });
 
   // 3. patchEntry updates .source.content after mutation
@@ -199,9 +199,9 @@ describe('patchEntry', () => {
     parsed.patchEntry('bar', syntheticEntry);
 
     const entries = parsed.toEntries();
-    expect(entries).toHaveLength(2);
-    expect(entries[0].id).toBe('foo');
-    expect(entries[1].id).toBe('bar');
+    expect(entries).toHaveLength(3);
+    expect(entries[0]!.id).toBe('foo');
+    expect(entries[1]!.id).toBe('bar');
 
     // Source content should include the appended entry
     const rendered = renderEntry(syntheticEntry);
@@ -273,12 +273,12 @@ describe('ParsedDocument.removeEntry', () => {
     });
 
     // Precondition: two entries exist.
-    expect(parsed.toEntries()).toHaveLength(2);
+    expect(parsed.toEntries()).toHaveLength(3);
     parsed.removeEntry('foo');
 
     const remaining = parsed.toEntries();
-    expect(remaining).toHaveLength(1);
-    expect(remaining[0].id).toBe('bar');
+    expect(remaining).toHaveLength(2);
+    expect(remaining[0]!.id).toBe('bar');
   });
 
   it('removeEntry updates .source.content', async () => {
@@ -316,21 +316,21 @@ describe('ParsedDocument.removeEntry', () => {
     });
 
     // Precondition: three entries.
-    expect(parsed.toEntries()).toHaveLength(3);
+    expect(parsed.toEntries()).toHaveLength(4);
 
     parsed.removeEntry('b');
 
     const remaining = parsed.toEntries();
-    expect(remaining).toHaveLength(2);
-    expect(remaining[0].id).toBe('a');
-    expect(remaining[1].id).toBe('c');
+    expect(remaining).toHaveLength(3);
+    expect(remaining[0]!.id).toBe('a');
+    expect(remaining[1]!.id).toBe('c');
   });
 
   it('removeEntry of last entry leaves empty entries', async () => {
     const parser = await createParserFromFactory();
     const parsed = await parser.parse({
       name: 'doc.siren',
-      content: 'task only {}',
+      content: 'document { noMilestone = true } task only {}',
     });
 
     // Precondition: one entry.

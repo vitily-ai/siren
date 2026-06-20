@@ -4,11 +4,28 @@
   "word": "bare_identifier",
   "rules": {
     "document": {
-      "type": "REPEAT",
-      "content": {
-        "type": "SYMBOL",
-        "name": "resource"
-      }
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "doc_header"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "resource"
+          }
+        }
+      ]
     },
     "resource_type": {
       "type": "CHOICE",
@@ -101,6 +118,19 @@
             "type": "SYMBOL",
             "name": "block"
           }
+        }
+      ]
+    },
+    "doc_header": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "document"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "block"
         }
       ]
     },

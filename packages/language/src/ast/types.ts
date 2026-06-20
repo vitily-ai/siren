@@ -54,6 +54,11 @@ export interface AstResource {
   readonly attributes: readonly AstAttribute[];
 }
 
+export interface DocumentDirective {
+  readonly noMilestone: boolean;
+}
+
 export interface SirenAst {
+  readonly directives: DocumentDirective;
   readonly resources: readonly AstResource[];
 }

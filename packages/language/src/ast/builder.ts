@@ -1,5 +1,5 @@
 import type { Node, Tree } from 'web-tree-sitter';
-import { createWL001, createWL002, type LanguageDiagnostic } from '../diagnostics';
+import { createWL001, createWL002, createWL003, type LanguageDiagnostic } from '../diagnostics';
 import type { RangeOrigin } from '../origin';
 import type { SourceDocument } from '../parser/types';
 import type { AstOriginMap } from './origins';
@@ -15,6 +15,7 @@ import type {
   AstStatusModifier,
   AstTuple,
   AstTupleMember,
+  DocumentDirective,
   SirenAst,
 } from './types';
 
@@ -48,20 +49,6 @@ function isRecognizedStatus(text: string): text is AstStatusModifier {
 
 function unexpected(detail: string): Error {
   return new Error(`lang-ast-builder: unexpected node shape: ${detail}`);
-}
-
-/**
- * Freeze an AstResource and its nested `readonly` arrays so the public AST is
- * immutable at runtime in addition to its compile-time `readonly` typing.
- */
-function freezeResource(r: AstResource): AstResource {
-  for (const attr of r.attributes) {
-    Object.freeze(attr.value.members);
-    Object.freeze(attr.value);
-    Object.freeze(attr);
-  }
-  Object.freeze(r.attributes);
-  return Object.freeze(r);
 }
 
 /**
@@ -227,7 +214,72 @@ function buildResource(
   const resource: AstResource =
     status !== undefined ? { kind, id, status, attributes } : { kind, id, attributes };
   origins.set(resource, rangeOriginFromNode(resourceNode, documentName));
-  return freezeResource(resource);
+  return resource;
+}
+
+const RECOGNIZED_DIRECTIVES: ReadonlySet<string> = new Set(['noMilestone']);
+
+function buildDirectives(docHeader: Node | undefined): [DocumentDirective, string[]] {
+  if (!docHeader) return [{ noMilestone: false }, []];
+
+  // Find the block child of the doc_header.
+  let blockNode: Node | undefined;
+  for (let j = 0; j < docHeader.namedChildCount; j++) {
+    const c = docHeader.namedChild(j);
+    if (c?.type === 'block') {
+      blockNode = c;
+      break;
+    }
+  }
+  if (!blockNode) return [{ noMilestone: false }, []];
+
+  let noMilestone = false;
+  const unrecognizedDirectives: string[] = [];
+
+  // Iterate attributes in the block.
+  for (let k = 0; k < blockNode.namedChildCount; k++) {
+    const attrNode = blockNode.namedChild(k);
+    if (attrNode?.type !== 'attribute') continue;
+
+    const keyNode = attrNode.childForFieldName('key');
+    if (!keyNode) continue;
+
+    const key = keyNode.text;
+
+    if (key === 'noMilestone') {
+      // Extract boolean value from the attribute's tuple.
+      const valueNode = attrNode.childForFieldName('value');
+      if (!valueNode) continue;
+
+      // value is an `expression` wrapping a `tuple`.
+      let tupleNode: Node | undefined;
+      if (valueNode.type === 'expression') {
+        const inner = valueNode.namedChild(0);
+        if (inner && inner.type === 'tuple') tupleNode = inner;
+      } else if (valueNode.type === 'tuple') {
+        tupleNode = valueNode;
+      }
+      if (!tupleNode) continue;
+
+      const firstMember = tupleNode.namedChild(0);
+      if (!firstMember) continue;
+
+      // The member is a `literal` wrapping a `boolean_literal`.
+      if (firstMember.type === 'literal') {
+        const inner = firstMember.namedChild(0);
+        if (inner?.type === 'boolean_literal') {
+          noMilestone = inner.text === 'true';
+        }
+      }
+      continue;
+    }
+
+    if (!RECOGNIZED_DIRECTIVES.has(key)) {
+      unrecognizedDirectives.push(key);
+    }
+  }
+
+  return [{ noMilestone }, unrecognizedDirectives];
 }
 
 /**
@@ -246,6 +298,7 @@ export function buildAst(tree: Tree, source: SourceDocument): BuildAstResult {
   const root = tree.rootNode;
   const resources: AstResource[] = [];
   const diagnostics: LanguageDiagnostic[] = [];
+  let docHeader: Node | undefined;
 
   for (let i = 0; i < root.namedChildCount; i++) {
     const child = root.namedChild(i);
@@ -272,12 +325,23 @@ export function buildAst(tree: Tree, source: SourceDocument): BuildAstResult {
       continue;
     }
 
+    if (child.type === 'doc_header') {
+      docHeader = child;
+      continue;
+    }
+
     if (child.isError || child.type === 'ERROR') {
       const classifierCtx: RuleContext = { language: tree.language, source };
       diagnostics.push(classifyErrorNode(child, classifierCtx));
     }
   }
 
-  const ast: SirenAst = Object.freeze({ resources: Object.freeze(resources) });
-  return { ast, diagnostics: Object.freeze(diagnostics), origins };
+  const [directives, unrecognizedDirectives] = buildDirectives(docHeader);
+
+  for (const directiveName of unrecognizedDirectives) {
+    diagnostics.push(createWL003({ documentName: source.name, directiveName }));
+  }
+
+  const ast: SirenAst = { directives, resources };
+  return { ast, diagnostics, origins };
 }
