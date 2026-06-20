@@ -2,31 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { Language, Parser as TsParser } from 'web-tree-sitter';
-import { getWasmUrl } from '../../src/grammar/loadHandle';
 import { createParser } from '../../src/index';
-
-// ---------------------------------------------------------------------------
-// Module-level cached tree-sitter initialisation (shared by all tests)
-// ---------------------------------------------------------------------------
-let initPromise: Promise<void> | undefined;
-async function ensureRuntimeInit(): Promise<void> {
-  if (!initPromise) {
-    initPromise = TsParser.init();
-  }
-  await initPromise;
-}
-
-let langPromise: Promise<Language> | undefined;
-async function _getSirenLanguage(): Promise<Language> {
-  if (!langPromise) {
-    langPromise = (async () => {
-      await ensureRuntimeInit();
-      return Language.load(getWasmUrl().pathname);
-    })();
-  }
-  return langPromise;
-}
 
 const FIXTURE_PROJECTS_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
