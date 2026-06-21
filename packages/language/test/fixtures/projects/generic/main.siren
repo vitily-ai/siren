@@ -1,2 +1,7 @@
-milestone alpha {}
-milestone beta {}
+# main file
+# contains the majority of the stuff
+
+milestone alpha {} // alpha milestone
+milestone beta {} // beta milestone
+
+// those were the milestones
