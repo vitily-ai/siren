@@ -39,3 +39,8 @@ task cli-mutations-mv-duplicate-id {
   depends_on = cli-mutations-mv-command
   details = "The base bridge (cli-mutations-ir-source-bridge) refuses with an error when a changed id resolves to multiple origin documents. This task designs the real UX over that refusal — explicit refusal messaging vs. an interactive confirmation/selection flow — then implements the validation and tests. Follow-up to the base mv implementation."
 }
+
+milestone path-normalization draft {
+  description = "Language package adopts a contract for expecting posix-style paths and operating internally under that assumption. Responsibility is on clients to normalize paths before invoking parse pipeline."
+  affected_packages = "language", "cli"
+}
