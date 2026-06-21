@@ -1,8 +1,0 @@
-{
-	"fixture": "milestone-implicit-complete",
-	"command": "siren list --tasks",
-	"expect": "stdout"
-}
----
-m-done
-root

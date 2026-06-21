@@ -5,7 +5,7 @@ import { IR_CONTEXT_FACTORY } from './context-internal';
 import type { Diagnostic } from './diagnostics';
 import type { EntryGraph } from './entry-graph';
 import { type IRBuildEnvelope, runIRBuildPipeline } from './pipeline';
-import type { SirenEntry } from './types';
+import { isReference, type EntryReference, type SirenEntry } from './types';
 
 export type {
   CircularDependencyDiagnostic,
@@ -13,6 +13,24 @@ export type {
   Diagnostic,
   DuplicateIdDiagnostic,
 } from './diagnostics';
+
+interface EntryStats {
+  readonly deps: {
+    readonly total: number;
+    readonly closed: number;
+    // TODO tree stats
+  }
+}
+
+type EntryWithStats = SirenEntry & {
+  readonly stats: EntryStats;
+};
+
+interface ProjectStatus {
+  open: readonly EntryWithStats[];
+  closed: readonly EntryWithStats[];
+  draft: readonly EntryWithStats[];
+}
 
 /**
  * Immutable IR context that exposes semantic snapshot data and query helpers.
@@ -35,20 +53,10 @@ export class SirenProject {
     return new SirenProject(entries);
   }
 
-  /**
-   * Get deduplicated entries with implicit milestone completeness resolved.
-   * Milestones whose every dependency is complete are promoted to `status: 'complete'`.
-   * First occurrence of each ID is kept, duplicates are dropped.
-   */
   get entries(): readonly SirenEntry[] {
     return this.envelope.graph.entries;
   }
 
-  /**
-   * Cached dependency graph built once during pipeline construction. Exposed
-   * so consumers (LSP, exporters, advanced queries) can reuse the same graph
-   * instance instead of rebuilding it.
-   */
   get graph(): EntryGraph {
     return this.envelope.graph;
   }
@@ -92,5 +100,64 @@ export class SirenProject {
   /** Get semantic diagnostics computed from IR analysis */
   get diagnostics(): readonly Diagnostic[] {
     return this.envelope.diagnostics;
+  }
+
+  public getEntryStats(entry: string | SirenEntry): EntryStats {
+    let it: SirenEntry;
+    if (typeof entry === 'string') {
+      it = this.findEntryById(entry);
+    } else {
+      it = entry;
+    }
+
+    const deps = it.attributes.find(a => a.key === 'depends_on')?.value ?? [];
+
+    const total = deps.length;
+    const closed = deps.filter(
+      (value) => isReference(value)
+        && this.findEntryById(value.id).status === 'complete'
+    ).length;
+
+    return {
+      deps: {
+        total,
+        closed,
+      }
+    };
+  }
+
+  public getStatus(): ProjectStatus {
+
+    const milestones: EntryWithStats[] = this.entries
+      .filter(({type}) => type === 'milestone')
+      // map to EntryWithStats
+      .map(entry => ({
+        ...entry,
+        stats: this.getEntryStats(entry)
+      }));
+
+    let open = [] as EntryWithStats[];
+    let closed = [] as EntryWithStats[];
+    let draft = [] as EntryWithStats[];
+
+    milestones.forEach(m => {
+      switch (m.status) {
+        case 'complete':
+          closed.push(m);
+          break;
+        case 'draft':
+          draft.push(m);
+          break;
+        default:
+          open.push(m);
+          break;
+      }
+    })
+
+    return {
+      open,
+      closed,
+      draft
+    }
   }
 }

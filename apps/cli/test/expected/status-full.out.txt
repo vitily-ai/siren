@@ -1,0 +1,17 @@
+{
+	"fixture": "generic",
+	"command": "siren status --full"
+}
+---
+3 open milestones:
+* longer milestone name       3/7     ganon
+  milestone-a                 0/5
+  milestone-b                 0/4     Frank Userman
+
+2 closed milestones:
+  milestone-c                 2/2     ganon
+  milestone-d                 2/3     ganon
+
+1 draft milestone:
+  milestone-e                 0/0
+---
