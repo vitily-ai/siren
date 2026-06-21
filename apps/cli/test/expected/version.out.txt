@@ -1,5 +1,5 @@
 {
-  "fixture": "empty-files",
+  "fixture": "generic",
   "command": "siren --version"
 }
 ---

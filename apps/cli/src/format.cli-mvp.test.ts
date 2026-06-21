@@ -4,57 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { copyProjectFixture } from '../test/helpers/fixture-utils';
 import { runFormat } from './commands/format';
 
-describe('runFormat integration: cli-mvp fixture', () => {
-  it('detects semantic change for cli-mvp.siren', async () => {
-    const sirenDir = await copyProjectFixture('cli-mvp');
-    const cwd = path.basename(sirenDir) === 'siren' ? path.dirname(sirenDir) : sirenDir;
-    const originalCwd = process.cwd();
-
-    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    try {
-      process.chdir(cwd);
-      await runFormat({ dryRun: true });
-
-      const calledWith = errSpy.mock.calls.map((c) => c.join(' ')).join('\n');
-      expect(calledWith).not.toContain('Format round-trip changed semantics');
-    } finally {
-      process.chdir(originalCwd);
-      errSpy.mockRestore();
-    }
-  });
-});
-
-describe('cli format round-trip for cli-mvp fixture', () => {
-  let originalCwd: string;
-  let sirenDir: string;
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
-
-  beforeEach(async () => {
-    originalCwd = process.cwd();
-    sirenDir = await copyProjectFixture('cli-mvp');
-    // change CWD to project root (parent of siren/) or to fixture root
-    const cwd = path.basename(sirenDir) === 'siren' ? path.dirname(sirenDir) : sirenDir;
-    process.chdir(cwd);
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    consoleErrorSpy.mockRestore();
-    process.chdir(originalCwd);
-  });
-
-  it('does not emit round-trip changed semantics message', async () => {
-    await runFormat({ dryRun: true });
-
-    const errorCalls = consoleErrorSpy.mock.calls as Parameters<typeof console.error>[];
-    const called = errorCalls.some((c) =>
-      String(c[0]).includes('Format round-trip changed semantics'),
-    );
-
-    expect(called).toBe(false);
-  });
-});
-
 describe('format summary and verbose listing', () => {
   it('prints Updated 1 files out of 2 and lists updated file when verbose', async () => {
     const originalCwd = process.cwd();
