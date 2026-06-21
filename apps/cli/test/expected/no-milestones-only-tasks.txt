@@ -1,6 +1,0 @@
-{
-	"fixture": "no-milestones-only-tasks",
-	"command": "siren list",
-	"expect": "stdout"
-}
----

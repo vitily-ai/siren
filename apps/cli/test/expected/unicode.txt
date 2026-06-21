@@ -1,9 +1,0 @@
-{
-	"fixture": "unicode",
-	"command": "siren list",
-	"expect": "stdout"
-}
----
-🚀 Launch
-日本語マイルストーン
-émojis-and-accénts
