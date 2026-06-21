@@ -67,10 +67,19 @@ function decodeMember(member: AstTupleMember, attributeName: string): Atom {
 }
 
 /**
- * Strip `.siren` suffix from a source name to derive the document id.
+ * Strip `.siren` suffix and optional `siren/` directory prefix from a source
+ * name to derive the document id.
+ *
+ * The CLI passes source names as paths relative to the project root (e.g.
+ * `siren/main.siren`). The `siren/` prefix is a directory convention, not
+ * part of the document identity, so it is removed.
  */
 function documentIdFromSourceName(name: string): string {
-  return name.endsWith('.siren') ? name.slice(0, -'.siren'.length) : name;
+  let id = name.endsWith('.siren') ? name.slice(0, -'.siren'.length) : name;
+  if (id.startsWith('siren/')) {
+    id = id.slice('siren/'.length);
+  }
+  return id;
 }
 
 /**
