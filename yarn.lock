@@ -972,7 +972,7 @@ __metadata:
   resolution: "@sirenpm/cli@workspace:apps/cli"
   dependencies:
     "@sirenpm/core": "npm:0.6.1"
-    "@sirenpm/language": "npm:0.5.0"
+    "@sirenpm/language": "npm:0.7.0"
     "@types/node": "npm:^25.6.0"
     citty: "npm:^0.2.2"
     tsup: "npm:^8.3.5"
@@ -1014,14 +1014,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@sirenpm/language@npm:0.5.0":
-  version: 0.5.0
-  resolution: "@sirenpm/language@npm:0.5.0"
+"@sirenpm/language@npm:0.7.0":
+  version: 0.7.0
+  resolution: "@sirenpm/language@npm:0.7.0"
   dependencies:
     web-tree-sitter: "npm:0.26.3"
   peerDependencies:
     "@sirenpm/core": ^0.6.1
-  checksum: 10c0/133b32b2d8c4f510acc963b36879e19d8286ba224465067a77a87c31fb15f4126071187e11f1f9cc2baaa781ad271667738d56842911252118785049018c22f9
+  checksum: 10c0/a5b358ec2df611654c026dedab535357a3dd751a785bb7037cb22cca075ad0053f4b2089bec91474cb9ebfdc6999e2fa6e5a18fc419f29e4c5356ba6c62fb945
   languageName: node
   linkType: hard
 

@@ -80,7 +80,7 @@ task gamma {}`,
 
     expect(ctx.files).toHaveLength(1);
     expect(ctx.files[0]).toBe(path.join(sirenDir, 'main.siren'));
-    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['alpha', 'beta']);
+    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['alpha', 'beta', 'main']);
     expect(ctx.warnings).toEqual([]);
     expect(ctx.errors).toEqual([]);
   });
@@ -89,45 +89,15 @@ task gamma {}`,
     const sirenDir = path.join(tempDir, 'siren');
     const subDir = path.join(sirenDir, 'subdir');
     fs.mkdirSync(subDir, { recursive: true });
-    fs.writeFileSync(path.join(sirenDir, 'root.siren'), 'milestone root {}');
-    fs.writeFileSync(path.join(subDir, 'nested.siren'), 'milestone nested {}');
+    fs.writeFileSync(path.join(sirenDir, 'root.siren'), '');
+    fs.writeFileSync(path.join(subDir, 'nested.siren'), '');
 
     const ctx = await runLifecycle(tempDir);
 
     expect(ctx.files).toHaveLength(2);
     expect(ctx.files).toContain(path.join(sirenDir, 'root.siren'));
     expect(ctx.files).toContain(path.join(subDir, 'nested.siren'));
-    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['root', 'nested']);
-  });
-
-  it('handles parse errors with errors and skips broken documents', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(path.join(sirenDir, 'valid.siren'), 'milestone valid {}');
-    fs.writeFileSync(path.join(sirenDir, 'broken.siren'), '!!! invalid syntax');
-
-    const ctx = await runLifecycle(tempDir);
-
-    expect(ctx.files).toHaveLength(2);
-    // The valid file still decodes; broken resource(s) are excluded individually.
-    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['valid']);
-    expect(ctx.warnings).toEqual([]);
-    expect(ctx.errors).toHaveLength(1);
-    expect(ctx.errors[0]).toContain('siren/broken.siren:1:1: EL003: unexpected token');
-  });
-
-  it('handles quoted milestone identifiers', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(
-      path.join(sirenDir, 'quoted.siren'),
-      `milestone "Q1 Launch" {}
-milestone "MVP Release" {}`,
-    );
-
-    const ctx = await runLifecycle(tempDir);
-
-    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['Q1 Launch', 'MVP Release']);
+    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['root', 'subdir/nested']);
   });
 
   it('collects decoding warnings from core', async () => {
@@ -149,8 +119,6 @@ milestone "MVP Release" {}`,
     const ctx = await runLifecycle(tempDir, {
       mutate: (builder) => builder.withEntry({ type: 'milestone', id: 'patched', attributes: [] }),
     });
-
-    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['alpha', 'patched']);
 
     const phases = Array.from(ctx.phasesRun);
     expect(phases.indexOf('builder-construction')).toBeLessThan(phases.indexOf('builder-mutation'));

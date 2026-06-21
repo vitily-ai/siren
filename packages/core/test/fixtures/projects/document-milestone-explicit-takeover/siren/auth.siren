@@ -1,7 +1,0 @@
-task login {
-  description = "Authenticate the user"
-}
-
-milestone auth {
-  depends_on = login
-}

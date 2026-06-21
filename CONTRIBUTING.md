@@ -246,7 +246,7 @@ Follow this pattern when creating new test files: declare what the file tests �
 When contributing a change, verify each applicable item:
 
 - [ ] Grammar/parser change → new corpus scenario added to `packages/language/src/grammar/test/corpus`
-- [ ] Decoder/IR change → project fixture added under `packages/language/test/fixtures/projects/` (and `packages/core/test/fixtures/projects/`)
+- [ ] Decoder/IR change → project fixture added under `packages/language/test/fixtures/projects/`
 - [ ] CLI behavior change → golden file added under `apps/cli/test/expected/`
 - [ ] Core semantic change → core unit test(s) added in `packages/core/test/`
 - [ ] Bug fix → test that reproduces the bug added before the fix
@@ -260,12 +260,10 @@ Fixtures
 - Common locations:
 	- `packages/language/src/grammar/test/corpus/` — small focused grammar examples and CST snapshots for observability into parser behavior
 	- `packages/language/test/fixtures/projects/` — full project fixtures used by decoder, integration, and CLI tests
-	- `packages/core/test/fixtures/projects/` — duplicate of `packages/language/test/fixtures/projects/` (see duplication note below)
 	- `apps/cli/test/expected/` — golden stdout/stderr outputs for CLI tests
 	- `apps/cli/test/helpers/` — shared test utilities (`fixture-utils.ts`, `fs-assert.ts`)
 - Usage: When adding a grammar/decoder change, add a small, focused fixture that reproduces the case and a test referencing it. For golden file changes, update the expected output and ensure tests reflect the new behavior.
 - Best practices: keep fixtures minimal and well-named, include comments when needed, add a matching test, and prefer multiple small fixtures over one large file.
-- Duplication note: project fixtures are duplicated between `packages/core/test/fixtures/projects/` and `packages/language/test/fixtures/projects/` (not symlinked, for cross-platform compatibility). The language tree is canonical. **Edits to a fixture must be applied in both trees** until the duplication is eliminated.
 
 Public API Policy (SirenBuilder / SirenProject)
 ----------------------------------------------

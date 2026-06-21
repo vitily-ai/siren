@@ -21,7 +21,7 @@ fi
 slug="$1"
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
-projects_root="$repo_root/packages/core/test/fixtures/projects"
+projects_root="$repo_root/packages/language/test/fixtures/projects"
 fixture_siren_dir="$projects_root/$slug/siren"
 
 mkdir -p "$fixture_siren_dir"
