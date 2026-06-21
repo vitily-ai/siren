@@ -410,5 +410,25 @@ describe('decodeAstToEntries', () => {
       expect(milestone!.attributes).toEqual([]);
       expect(milestone!.origin).toEqual({ kind: 'synthetic', document: 'doc.siren' });
     });
+
+    it('strips siren/ directory prefix from source name for synthetic milestone id', async () => {
+      const { entries } = await buildAndDecode('siren/main.siren', 'task t {}');
+      expect(entries[1]!.id).toBe('main');
+    });
+
+    it('strips siren/ prefix for nested paths too', async () => {
+      const { entries } = await buildAndDecode('siren/subdir/deep.siren', 'task t {}');
+      expect(entries[1]!.id).toBe('subdir/deep');
+    });
+
+    it('only strips leading siren/ prefix, not arbitrary occurrences', async () => {
+      const { entries } = await buildAndDecode('project-siren/main.siren', 'task t {}');
+      expect(entries[1]!.id).toBe('project-siren/main');
+    });
+
+    it('strips siren/ prefix when present without .siren suffix', async () => {
+      const { entries } = await buildAndDecode('siren/myfile', 'task t {}');
+      expect(entries[1]!.id).toBe('myfile');
+    });
   });
 });
