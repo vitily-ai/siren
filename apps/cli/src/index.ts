@@ -7,6 +7,7 @@ import { formatCommand } from './commands/format';
 import { listCommand } from './commands/list';
 import { mvCommand } from './commands/mv';
 import { showCommand } from './commands/show';
+import { statusCommand } from './commands/status';
 import { cliVersion } from './version';
 
 const cliSuffix = buildMetadata ? `-${buildMetadata}` : '';
@@ -23,6 +24,9 @@ Commands:
     -t, --tasks    Show incomplete tasks under each milestone
   show    Show a single entry's dependency tree (milestone or task)
   mv      Change an entry's explicit completion status
+  status  Display facts about project or entry status
+    -f, --full    Show full details including closed and draft milestones
+  
   format  Format .siren files in-place or print formatted output
 
 Options:
@@ -40,6 +44,7 @@ export const mainCommand = defineCommand({
     show: showCommand,
     format: formatCommand,
     mv: mvCommand,
+    status: statusCommand,
   },
 });
 

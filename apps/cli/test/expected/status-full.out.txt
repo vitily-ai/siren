@@ -3,15 +3,20 @@
 	"command": "siren status --full"
 }
 ---
-3 open milestones:
-* longer milestone name       3/7     ganon
-  milestone-a                 0/5
-  milestone-b                 0/4     Frank Userman
+5 open milestones:
+  beta         0/1    Frank Userman
+  full         1/3    ganon
+  main         1/6
+  nested/a     0/1
+  🚀 launch    0/2
 
-2 closed milestones:
-  milestone-c                 2/2     ganon
-  milestone-d                 2/3     ganon
+1 closed milestone:
+  implicit-complete    3/3
 
-1 draft milestone:
-  milestone-e                 0/0
+5 draft milestones:
+  empty                 0/0
+  alpha                 0/0
+  nested/deeply/b       0/0
+  日本語マイルストーン            0/0
+  émojis-and-accénts    0/0
 ---

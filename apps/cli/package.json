@@ -19,7 +19,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@sirenpm/core": "0.6.1",
+    "@sirenpm/core": "workspace:*",
     "@sirenpm/language": "0.7.0",
     "citty": "^0.2.2"
   },

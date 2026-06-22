@@ -1,0 +1,3 @@
+task implicit-a complete {}
+task implicit-b complete {}
+task implicit-c complete {}

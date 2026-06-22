@@ -2,6 +2,19 @@
 # contains the majority of the stuff
 
 milestone alpha {} // alpha milestone
-milestone beta {} // beta milestone
+milestone beta {
+    assignee = "Frank Userman"
+    depends_on = openmaintask
+} // beta milestone
+
+milestone full {
+    description = "not implicitly draft"
+    assignee    = "ganon"
+    depends_on = draftmaintask, openmaintask, closedmaintask
+}
+
+task draftmaintask draft {}
+task openmaintask {}
+task closedmaintask complete {}
 
 // those were the milestones
