@@ -1,11 +1,15 @@
 import type { DependencyTree } from '../utilities/dependency-tree';
 import { isComplete } from '../utilities/entry';
-import { getMilestoneIds, getTasksByMilestone } from '../utilities/milestone';
 import { IR_CONTEXT_FACTORY } from './context-internal';
 import type { Diagnostic } from './diagnostics';
-import type { EntryGraph } from './entry-graph';
 import { type IRBuildEnvelope, runIRBuildPipeline } from './pipeline';
-import { isReference, type EntryReference, type SirenEntry } from './types';
+import {
+  type EntryStats,
+  type EntryWithStats,
+  isReference,
+  type ProjectStatus,
+  type SirenEntry,
+} from './types';
 
 export type {
   CircularDependencyDiagnostic,
@@ -13,24 +17,6 @@ export type {
   Diagnostic,
   DuplicateIdDiagnostic,
 } from './diagnostics';
-
-interface EntryStats {
-  readonly deps: {
-    readonly total: number;
-    readonly closed: number;
-    // TODO tree stats
-  }
-}
-
-type EntryWithStats = SirenEntry & {
-  readonly stats: EntryStats;
-};
-
-interface ProjectStatus {
-  open: readonly EntryWithStats[];
-  closed: readonly EntryWithStats[];
-  draft: readonly EntryWithStats[];
-}
 
 /**
  * Immutable IR context that exposes semantic snapshot data and query helpers.
@@ -57,24 +43,12 @@ export class SirenProject {
     return this.envelope.graph.entries;
   }
 
-  get graph(): EntryGraph {
-    return this.envelope.graph;
-  }
-
   findEntryById(id: string): SirenEntry {
     const entry = this.envelope.graph.getEntry(id);
     if (!entry) {
       throw new Error(`Entry with ID '${id}' not found`);
     }
     return entry;
-  }
-
-  getMilestoneIds(): string[] {
-    return getMilestoneIds(this.entries);
-  }
-
-  getTasksByMilestone(): Map<string, SirenEntry[]> {
-    return getTasksByMilestone(this.envelope.graph);
   }
 
   // TODO currently implemented with a sensible default traverse
@@ -110,37 +84,35 @@ export class SirenProject {
       it = entry;
     }
 
-    const deps = it.attributes.find(a => a.key === 'depends_on')?.value ?? [];
+    const deps = it.attributes.find((a) => a.key === 'depends_on')?.value ?? [];
 
     const total = deps.length;
     const closed = deps.filter(
-      (value) => isReference(value)
-        && this.findEntryById(value.id).status === 'complete'
+      (value) => isReference(value) && this.findEntryById(value.id).status === 'complete',
     ).length;
 
     return {
       deps: {
         total,
         closed,
-      }
+      },
     };
   }
 
   public getStatus(): ProjectStatus {
-
     const milestones: EntryWithStats[] = this.entries
-      .filter(({type}) => type === 'milestone')
+      .filter(({ type }) => type === 'milestone')
       // map to EntryWithStats
-      .map(entry => ({
+      .map((entry) => ({
         ...entry,
-        stats: this.getEntryStats(entry)
+        stats: this.getEntryStats(entry),
       }));
 
-    let open = [] as EntryWithStats[];
-    let closed = [] as EntryWithStats[];
-    let draft = [] as EntryWithStats[];
+    const open = [] as EntryWithStats[];
+    const closed = [] as EntryWithStats[];
+    const draft = [] as EntryWithStats[];
 
-    milestones.forEach(m => {
+    milestones.forEach((m) => {
       switch (m.status) {
         case 'complete':
           closed.push(m);
@@ -152,12 +124,12 @@ export class SirenProject {
           open.push(m);
           break;
       }
-    })
+    });
 
     return {
       open,
       closed,
-      draft
-    }
+      draft,
+    };
   }
 }

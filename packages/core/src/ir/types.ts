@@ -95,3 +95,21 @@ export interface Cycle {
 export function isReference(atom: Atom): atom is EntryReference {
   return typeof atom === 'object' && atom !== null && 'kind' in atom && atom.kind === 'reference';
 }
+
+export interface EntryStats {
+  readonly deps: {
+    readonly total: number;
+    readonly closed: number;
+    // TODO tree stats
+  };
+}
+
+export type EntryWithStats = SirenEntry & {
+  readonly stats: EntryStats;
+};
+
+export interface ProjectStatus {
+  open: readonly EntryWithStats[];
+  closed: readonly EntryWithStats[];
+  draft: readonly EntryWithStats[];
+}

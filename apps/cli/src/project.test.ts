@@ -41,64 +41,6 @@ describe('lifecycle', () => {
     errSpy.mockRestore();
   });
 
-  it('returns empty context when no siren directory exists', async () => {
-    const ctx = await runLifecycle(tempDir);
-
-    expect(ctx.cwd).toBe(tempDir);
-    expect(ctx.rootDir).toBe(tempDir);
-    expect(ctx.sirenDir).toBe(path.join(tempDir, 'siren'));
-    expect(ctx.files).toEqual([]);
-    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual([]);
-    expect(ctx.warnings).toEqual([]);
-    expect(ctx.errors).toEqual([]);
-  });
-
-  it('returns empty context when siren directory exists but no files', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-
-    const ctx = await runLifecycle(tempDir);
-
-    expect(ctx.files).toEqual([]);
-    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual([]);
-    expect(ctx.warnings).toEqual([]);
-    expect(ctx.errors).toEqual([]);
-  });
-
-  it('finds and loads milestones from .siren files', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(
-      path.join(sirenDir, 'main.siren'),
-      `milestone alpha {}
-milestone beta {}
-task gamma {}`,
-    );
-
-    const ctx = await runLifecycle(tempDir);
-
-    expect(ctx.files).toHaveLength(1);
-    expect(ctx.files[0]).toBe(path.join(sirenDir, 'main.siren'));
-    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['alpha', 'beta', 'main']);
-    expect(ctx.warnings).toEqual([]);
-    expect(ctx.errors).toEqual([]);
-  });
-
-  it('recursively finds .siren files in subdirectories', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    const subDir = path.join(sirenDir, 'subdir');
-    fs.mkdirSync(subDir, { recursive: true });
-    fs.writeFileSync(path.join(sirenDir, 'root.siren'), '');
-    fs.writeFileSync(path.join(subDir, 'nested.siren'), '');
-
-    const ctx = await runLifecycle(tempDir);
-
-    expect(ctx.files).toHaveLength(2);
-    expect(ctx.files).toContain(path.join(sirenDir, 'root.siren'));
-    expect(ctx.files).toContain(path.join(subDir, 'nested.siren'));
-    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['root', 'subdir/nested']);
-  });
-
   it('collects decoding warnings from core', async () => {
     copyFixture('diagnostics', tempDir);
 

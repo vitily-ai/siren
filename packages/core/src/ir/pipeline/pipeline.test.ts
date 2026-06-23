@@ -91,7 +91,6 @@ describe('IR pipeline redundancy regression', () => {
 
       // Cached graph is reused for query helpers — no additional builds.
       ctx.getDependencyTree('release');
-      ctx.getTasksByMilestone();
       expect(buildSpy).toHaveBeenCalledTimes(2);
     } finally {
       buildSpy.mockRestore();
