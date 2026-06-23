@@ -972,7 +972,7 @@ __metadata:
   resolution: "@sirenpm/cli@workspace:apps/cli"
   dependencies:
     "@sirenpm/core": "workspace:*"
-    "@sirenpm/language": "npm:0.7.0"
+    "@sirenpm/language": "workspace:*"
     "@types/node": "npm:^25.6.0"
     citty: "npm:^0.2.2"
     tsup: "npm:^8.3.5"
@@ -1014,7 +1014,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@sirenpm/language@npm:0.7.0, @sirenpm/language@workspace:*, @sirenpm/language@workspace:packages/language":
+"@sirenpm/language@workspace:*, @sirenpm/language@workspace:packages/language":
   version: 0.0.0-use.local
   resolution: "@sirenpm/language@workspace:packages/language"
   dependencies:

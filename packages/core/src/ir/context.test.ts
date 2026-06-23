@@ -216,9 +216,7 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
 
   describe('getEntryStats', () => {
     it('returns zero total and closed for entry without depends_on', () => {
-      const context = buildContext([
-        { type: 'milestone', id: 'm1', attributes: [] },
-      ]);
+      const context = buildContext([{ type: 'milestone', id: 'm1', attributes: [] }]);
 
       const stats = context.getEntryStats('m1');
       expect(stats).toEqual({ deps: { total: 0, closed: 0 } });
@@ -336,12 +334,7 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
           attributes: [
             {
               key: 'depends_on',
-              value: [
-                'string-value',
-                42,
-                true,
-                { kind: 'reference', id: 'done-task' },
-              ],
+              value: ['string-value', 42, true, { kind: 'reference', id: 'done-task' }],
             },
           ],
         },
@@ -417,9 +410,7 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
     });
 
     it('returns empty arrays when there are no milestones', () => {
-      const context = buildContext([
-        { type: 'task', id: 't1', attributes: [] },
-      ]);
+      const context = buildContext([{ type: 'task', id: 't1', attributes: [] }]);
 
       const status = context.getStatus();
       expect(status.open).toHaveLength(0);

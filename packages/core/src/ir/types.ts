@@ -109,7 +109,7 @@ export type EntryWithStats = SirenEntry & {
 };
 
 export interface ProjectStatus {
-  open: readonly EntryWithStats[];
-  closed: readonly EntryWithStats[];
-  draft: readonly EntryWithStats[];
+  readonly open: readonly EntryWithStats[];
+  readonly closed: readonly EntryWithStats[];
+  readonly draft: readonly EntryWithStats[];
 }
