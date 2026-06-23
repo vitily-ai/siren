@@ -1,0 +1,8 @@
+# Valid file — no parse warnings, used to verify that valid syntax alongside
+# warning-triggering files does not produce false positives
+task normal-task complete {}
+task another-task draft {}
+document {
+    noMilestone = true
+}
+milestone valid {}

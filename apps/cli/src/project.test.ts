@@ -20,9 +20,8 @@ const fixturesDir = path.join(
 );
 
 function copyFixture(fixtureName: string, targetDir: string) {
-  const fixturePath = path.join(fixturesDir, fixtureName, 'siren');
-  const targetSirenDir = path.join(targetDir, 'siren');
-  fs.cpSync(fixturePath, targetSirenDir, { recursive: true });
+  const fixturePath = path.join(fixturesDir, fixtureName);
+  fs.cpSync(fixturePath, targetDir, { recursive: true });
 }
 
 describe('lifecycle', () => {
@@ -101,14 +100,13 @@ task gamma {}`,
   });
 
   it('collects decoding warnings from core', async () => {
-    copyFixture('circular-depends', tempDir);
+    copyFixture('diagnostics', tempDir);
 
     const ctx = await runLifecycle(tempDir);
 
-    expect(ctx.warnings).toHaveLength(1);
-    expect(ctx.warnings[0]).toContain(
-      'siren/main.siren:1:0: W001: Circular dependency detected: task1 -> task2 -> task3 -> task1',
-    );
+    const circularWarning = ctx.warnings.find((w: string) => w.includes('W001'));
+    expect(circularWarning).toBeDefined();
+    expect(circularWarning).toContain('W001: Circular dependency detected: a -> b -> c -> a');
   });
 
   it('applies builder mutation before project build', async () => {

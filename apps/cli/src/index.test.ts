@@ -127,7 +127,7 @@ describe('siren main', () => {
   });
 
   it('list command outputs multiple circular dependency warnings', async () => {
-    copyFixture('overlapping-cycles', tempDir);
+    copyFixture('diagnostics/core-warnings', tempDir);
 
     await main(['list']);
 

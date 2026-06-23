@@ -1,0 +1,4 @@
+# EL003 / EL002 — Missing '=' token in attribute
+task my-task {
+    description "missing equals sign"
+}

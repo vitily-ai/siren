@@ -1,0 +1,6 @@
+# WL003 — Multiple unrecognized directives (two separate WL003 diagnostics)
+document {
+    foo = 1
+    bar = true
+}
+task a {}

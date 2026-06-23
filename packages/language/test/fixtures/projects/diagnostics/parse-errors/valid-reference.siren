@@ -1,0 +1,3 @@
+# Valid file — no parse errors, used to verify that the parser still handles valid
+# content when co-located with error files in the same fixture directory
+milestone valid {}
