@@ -346,6 +346,70 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
       // closed = only the reference whose target is complete (1)
       expect(stats).toEqual({ deps: { total: 4, closed: 1 } });
     });
+
+    it('gracefully handles dangling dependencies (references to missing entries)', () => {
+      const context = buildContext([
+        {
+          type: 'milestone',
+          id: 'm1',
+          attributes: [
+            {
+              key: 'depends_on',
+              value: [
+                { kind: 'reference', id: 'missing-dep' },
+                { kind: 'reference', id: 'done-task' },
+              ],
+            },
+          ],
+        },
+        { type: 'task', id: 'done-task', status: 'complete', attributes: [] },
+      ]);
+
+      const stats = context.getEntryStats('m1');
+      // total counts all atoms in depends_on (including the dangling reference)
+      // closed only counts references whose target entry exists and is complete
+      expect(stats).toEqual({ deps: { total: 2, closed: 1 } });
+    });
+
+    it('gracefully handles entry with only dangling dependencies (all deps missing)', () => {
+      const context = buildContext([
+        {
+          type: 'milestone',
+          id: 'm1',
+          attributes: [
+            {
+              key: 'depends_on',
+              value: [
+                { kind: 'reference', id: 'missing-a' },
+                { kind: 'reference', id: 'missing-b' },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      const stats = context.getEntryStats('m1');
+      // Both deps are dangling (missing), so total=2 and closed=0
+      expect(stats).toEqual({ deps: { total: 2, closed: 0 } });
+    });
+
+    it('gracefully handles task entry with dangling dependency', () => {
+      const context = buildContext([
+        {
+          type: 'task',
+          id: 't1',
+          attributes: [
+            {
+              key: 'depends_on',
+              value: [{ kind: 'reference', id: 'never-defined' }],
+            },
+          ],
+        },
+      ]);
+
+      const stats = context.getEntryStats('t1');
+      expect(stats).toEqual({ deps: { total: 1, closed: 0 } });
+    });
   });
 
   describe('getStatus', () => {

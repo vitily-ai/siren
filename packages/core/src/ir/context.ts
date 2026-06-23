@@ -43,10 +43,13 @@ export class SirenProject {
     return this.envelope.graph.entries;
   }
 
-  findEntryById(id: string): SirenEntry {
+  findEntryById(id: string): SirenEntry;
+  findEntryById(id: string, opts?: { expect?: false }): SirenEntry | undefined;
+  findEntryById(id: string, opts: { expect?: boolean } = { expect: true }): SirenEntry | undefined {
     const entry = this.envelope.graph.getEntry(id);
     if (!entry) {
-      throw new Error(`Entry with ID '${id}' not found`);
+      if (opts?.expect) throw new Error(`Entry with ID '${id}' not found`);
+      return undefined;
     }
     return entry;
   }
@@ -88,7 +91,9 @@ export class SirenProject {
 
     const total = deps.length;
     const closed = deps.filter(
-      (value) => isReference(value) && this.findEntryById(value.id).status === 'complete',
+      (value) =>
+        isReference(value) &&
+        this.findEntryById(value.id, { expect: false })?.status === 'complete',
     ).length;
 
     return {
