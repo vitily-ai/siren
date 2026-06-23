@@ -1,0 +1,3 @@
+task sometask complete {
+  description = "sole task in the project"
+}
