@@ -1,11 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { copyProjectFixture } from '../test/helpers/fixture-utils';
-import { runFormat } from './commands/format';
+import { runFormat } from '../src/commands/format';
+import { copyProjectFixture } from './helpers/fixture-utils';
 
 // TODO the below should be integration tests
-describe.skip('format idempotency — non-dry-run two-pass', () => {
+describe('format idempotency — non-dry-run two-pass', () => {
   let originalCwd: string;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
 
@@ -19,14 +19,14 @@ describe.skip('format idempotency — non-dry-run two-pass', () => {
     process.chdir(originalCwd);
   });
 
-  it('first pass updates some files, second pass shows Updated 0 files out of 2', async () => {
-    const sirenDir = await copyProjectFixture('multiple-files');
+  it('first pass updates some files, second pass no updates', async () => {
+    const sirenDir = await copyProjectFixture('generic');
     const cwd = path.basename(sirenDir) === 'siren' ? path.dirname(sirenDir) : sirenDir;
     process.chdir(cwd);
 
     // First pass: non-dry-run format with raw fixture
     await runFormat({});
-    expect(consoleLogSpy).toHaveBeenCalledExactlyOnceWith('Updated 2 files out of 2');
+    expect(consoleLogSpy).toHaveBeenCalledExactlyOnceWith('Updated 1 files out of 7');
 
     // Clear spy to capture second pass output only
     consoleLogSpy.mockClear();
@@ -37,6 +37,7 @@ describe.skip('format idempotency — non-dry-run two-pass', () => {
   });
 });
 
+// TODO needs a 'canonical' fixture
 describe.skip('format idempotency — pre-canonical content', () => {
   let originalCwd: string;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
@@ -67,7 +68,7 @@ describe.skip('format idempotency — pre-canonical content', () => {
   });
 });
 
-describe.skip('format idempotency — partial update', () => {
+describe('format idempotency — partial update', () => {
   let originalCwd: string;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
 
@@ -82,7 +83,7 @@ describe.skip('format idempotency — partial update', () => {
   });
 
   it('updates only the non-canonical file (b.siren) when a.siren is pre-canonical', async () => {
-    const sirenDir = await copyProjectFixture('multiple-files');
+    const sirenDir = await copyProjectFixture('generic');
     const cwd = path.basename(sirenDir) === 'siren' ? path.dirname(sirenDir) : sirenDir;
     process.chdir(cwd);
 
@@ -94,11 +95,11 @@ describe.skip('format idempotency — partial update', () => {
     await runFormat({});
     const calls = consoleLogSpy.mock.calls.map((c: any[]) => String(c[0]));
     const summary = calls[calls.length - 1];
-    expect(summary).toBe('Updated 1 files out of 2');
+    expect(summary).toBe('Updated 1 files out of 8');
   });
 
   it('lists updated file name when verbose and only one file changed', async () => {
-    const sirenDir = await copyProjectFixture('multiple-files');
+    const sirenDir = await copyProjectFixture('generic');
     const cwd = path.basename(sirenDir) === 'siren' ? path.dirname(sirenDir) : sirenDir;
     process.chdir(cwd);
 
@@ -109,8 +110,8 @@ describe.skip('format idempotency — partial update', () => {
     await runFormat({ verbose: true });
     const calls = consoleLogSpy.mock.calls.map((c: any[]) => String(c[0]));
     // First line should be the updated file name
-    expect(calls[0]).toBe('b.siren');
+    expect(calls[0]).toBe('unformatted.siren');
     // Last line should be the summary
-    expect(calls[calls.length - 1]).toBe('Updated 1 files out of 2');
+    expect(calls[calls.length - 1]).toBe('Updated 1 files out of 8');
   });
 });
