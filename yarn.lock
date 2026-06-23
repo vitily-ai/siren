@@ -983,16 +983,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@sirenpm/core@npm:^0.6.1":
-  version: 0.6.1
-  resolution: "@sirenpm/core@npm:0.6.1"
-  dependencies:
-    deep-freeze-es6: "npm:^5.0.0"
-    klona: "npm:^2.0.6"
-  checksum: 10c0/f8179019f07c6d24a27eab5b5418e5619698f2aa3ed6ec96b380c3f2605a7f43f137c4eda0b724bdbdeb46977b79b4c7ff455eb2830321b920594549afff022a
-  languageName: node
-  linkType: hard
-
 "@sirenpm/core@workspace:*, @sirenpm/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@sirenpm/core@workspace:packages/core"
@@ -1018,14 +1008,12 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@sirenpm/language@workspace:packages/language"
   dependencies:
-    "@sirenpm/core": "npm:^0.6.1"
+    "@sirenpm/core": "workspace:*"
     "@types/node": "npm:^25.0.6"
     tsup: "npm:^8.3.5"
     typescript: "npm:^5.7.2"
     vitest: "npm:^4.0.16"
     web-tree-sitter: "npm:0.26.3"
-  peerDependencies:
-    "@sirenpm/core": ^0.6.1
   languageName: unknown
   linkType: soft
 
