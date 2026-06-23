@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@sirenpm/core": "workspace:*",
-    "@sirenpm/language": "0.7.0",
+    "@sirenpm/language": "workspace:*",
     "citty": "^0.2.2"
   },
   "devDependencies": {
