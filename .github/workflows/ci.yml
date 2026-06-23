@@ -43,6 +43,9 @@ jobs:
 
       - name: Build
         run: yarn build
+      
+      - name: Type Check
+        run: yarn typecheck
 
       - name: CLI smoke test
         run: node ./apps/cli/dist/index.js --version
