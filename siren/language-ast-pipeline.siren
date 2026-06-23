@@ -183,7 +183,7 @@ task lang-render-integration complete {
   depends_on = lang-interface-update
 }
 # Phase 5 — CLI consumer adoption and test coverage (parallel)
-task lang-cli {
+task lang-cli complete {
   description = "Update the CLI lifecycle to consume the rebuilt @sirenpm/language API. Replace any batch parser.parse(docs[]) calls with per-document loops using parse() or parseBatch(). Replace syntaxDocuments/decodeSyntaxDocuments usage with parsedDoc.toEntries() per document followed by SirenBuilder.fromEntries(). Replace old formatter calls with parsedDoc.format() and use parsedDoc.source to write mutated content to disk. Thread LanguageDiagnostic results into the CLI diagnostic display alongside core semantic diagnostics. The CLI must not call tree-sitter APIs directly. Note: CLI also needs eod-cli-bridge (SirenBuilder.fromDocuments → fromEntries, sirenDocuments → sirenEntries) and origin-demotion-cli (diagnostic position resolution via entry references) — tracked in siren/entries-over-documents.siren and siren/origin-demotion.siren."
   context = "language-ast-pipeline.md"
   files = "apps/cli/src/lifecycle/parsing.ts, apps/cli/src/lifecycle/decoding.ts, apps/cli/src/lifecycle/diagnostics.ts, apps/cli/src/commands/format.ts"
@@ -197,7 +197,7 @@ task lang-tests complete {
   depends_on = [lang-decode, lang-format]
 }
 # Phase 6 — Publication
-task lang-publish {
+task lang-publish complete {
   description = "Publish updated @sirenpm/language (new public API) and @sirenpm/cli (updated consumer). Both must compile cleanly against the published @sirenpm/core v0.6.0 that removes Origin, SirenDocument, and Resource. Update package versions. Ensure the WASM artifact is included in the @sirenpm/language npm bundle."
   context = "language-ast-pipeline.md"
   depends_on = [lang-cli, lang-tests, lang-render-integration]

@@ -1,3 +1,7 @@
+document {
+  noMilestone = true
+}
+
 task attribute-structure {
   description = "Currently entry attributes are registered in ir under an `attributes` list. Should we just treat it as a TS Record instead, optimizing for key looup?"
 }
