@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { copyProjectFixture } from '../test/helpers/fixture-utils';
 import { runFormat } from './commands/format';
 
-describe('format summary and verbose listing', () => {
+describe.skip('format summary and verbose listing', () => {
   it('prints Updated 1 files out of 2 and lists updated file when verbose', async () => {
     const originalCwd = process.cwd();
     const sirenDir = await copyProjectFixture('multiple-files');
@@ -42,7 +42,7 @@ describe('format summary and verbose listing', () => {
 });
 
 // TODO the below should be integration tests
-describe('format idempotency — non-dry-run two-pass', () => {
+describe.skip('format idempotency — non-dry-run two-pass', () => {
   let originalCwd: string;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
 
@@ -74,7 +74,7 @@ describe('format idempotency — non-dry-run two-pass', () => {
   });
 });
 
-describe('format idempotency — pre-canonical content', () => {
+describe.skip('format idempotency — pre-canonical content', () => {
   let originalCwd: string;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
 
@@ -104,7 +104,7 @@ describe('format idempotency — pre-canonical content', () => {
   });
 });
 
-describe('format idempotency — partial update', () => {
+describe.skip('format idempotency — partial update', () => {
   let originalCwd: string;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
 

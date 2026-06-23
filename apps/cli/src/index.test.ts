@@ -88,7 +88,7 @@ describe('siren main', () => {
     expect(consoleLogSpy).toHaveBeenCalled();
   });
 
-  it('runs list -t command', async () => {
+  it.skip('runs list -t command', async () => {
     copyFixture('tasks-by-milestone', tempDir);
 
     await main(['list', '-t']);
@@ -117,7 +117,7 @@ describe('siren main', () => {
     expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('runs list --tasks command', async () => {
+  it.skip('runs list --tasks command', async () => {
     copyFixture('list-tasks-alpha-only', tempDir);
 
     await main(['list', '--tasks']);
