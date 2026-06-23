@@ -35,7 +35,7 @@ Example (`example.out.txt`):
 ```
 {
   "fixture": "my-project",
-  "command": "siren list -t"
+  "command": "siren show <entry-id>"
 }
 ---
 some expected stdout line

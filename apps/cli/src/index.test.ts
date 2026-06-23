@@ -79,25 +79,7 @@ describe('siren main', () => {
     expect(runLifecycleSpy).not.toHaveBeenCalled();
   });
 
-  it.skip('runs list command', async () => {
-    copyFixture('list-single-milestone', tempDir);
-
-    await main(['list']);
-
-    expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
-    expect(consoleLogSpy).toHaveBeenCalled();
-  });
-
-  it.skip('runs list -t command', async () => {
-    copyFixture('tasks-by-milestone', tempDir);
-
-    await main(['list', '-t']);
-
-    expect(consoleLogSpy).toHaveBeenCalled();
-    expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it.skip('show command sets exit code when entry id is missing', async () => {
+  it('show command sets exit code when entry id is missing', async () => {
     await main(['show']);
 
     expect(consoleErrorSpy).toHaveBeenCalledWith('missing entry id — usage: siren show <entry-id>');
@@ -106,41 +88,14 @@ describe('siren main', () => {
     expect(runLifecycleSpy).not.toHaveBeenCalled();
   });
 
-  it.skip('show command sets exit code on runtime error', async () => {
-    copyFixture('list-single-milestone', tempDir);
+  it('show command sets exit code on runtime error', async () => {
+    copyFixture('generic-thin', tempDir);
 
     await main(['show', 'missing']);
 
     const errOutput = consoleErrorSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
     expect(errOutput).toContain('SirenEntry with id missing not found');
     expect(process.exitCode).toBe(1);
-    expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it.skip('runs list --tasks command', async () => {
-    copyFixture('list-tasks-alpha-only', tempDir);
-
-    await main(['list', '--tasks']);
-
-    expect(consoleLogSpy).toHaveBeenCalled();
-    expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('list command outputs multiple circular dependency warnings', async () => {
-    copyFixture('diagnostics/core-warnings', tempDir);
-
-    await main(['list']);
-
-    const errCalls = consoleErrorSpy.mock.calls.map((c: unknown[]) => String(c[0]));
-    expect(
-      errCalls.some((e: string) =>
-        e.includes('W001: Circular dependency detected: a -> b -> c -> a'),
-      ),
-    ).toBe(true);
-    expect(
-      errCalls.some((e: string) => e.includes('W001: Circular dependency detected: a -> c -> a')),
-    ).toBe(true);
-    expect(consoleLogSpy).toHaveBeenCalled();
     expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
   });
 });

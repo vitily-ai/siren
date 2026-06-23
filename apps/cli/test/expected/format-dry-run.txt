@@ -1,0 +1,8 @@
+{
+  "fixture": "generic",
+  "command": "siren format --dry-run"
+}
+---
+[90mDry run results:
+    Would update unformatted.siren[0m
+Updated 1 files out of 7

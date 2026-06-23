@@ -4,43 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { copyProjectFixture } from '../test/helpers/fixture-utils';
 import { runFormat } from './commands/format';
 
-describe.skip('format summary and verbose listing', () => {
-  it('prints Updated 1 files out of 2 and lists updated file when verbose', async () => {
-    const originalCwd = process.cwd();
-    const sirenDir = await copyProjectFixture('multiple-files');
-    try {
-      // change CWD to project root (parent of siren/) or to fixture root
-      const cwd = path.basename(sirenDir) === 'siren' ? path.dirname(sirenDir) : sirenDir;
-      process.chdir(cwd);
-
-      // Make a.siren already match exported form (no attributes -> formatted block)
-      const aPath = path.join(sirenDir, 'a.siren');
-      fs.writeFileSync(aPath, 'milestone alpha {}\n', 'utf-8');
-
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      try {
-        await runFormat({ dryRun: true, verbose: false });
-        const calls = logSpy.mock.calls.map((c) => String(c[0]));
-        // Last summary line should be 'Updated 1 files out of 2'
-        expect(calls[calls.length - 1]).toBe('Updated 1 files out of 2');
-
-        // Verbose run lists the updated file
-        logSpy.mockClear();
-        await runFormat({ dryRun: true, verbose: true });
-        const calls2 = logSpy.mock.calls.map((c) => String(c[0]));
-        // Dry-run mode outputs 'would update' lines via the lifecycle write phase
-        expect(calls2[0]).toBe('would update b.siren');
-        // summary should appear at end
-        expect(calls2[calls2.length - 1]).toBe('Updated 1 files out of 2');
-      } finally {
-        logSpy.mockRestore();
-      }
-    } finally {
-      process.chdir(originalCwd);
-    }
-  });
-});
-
 // TODO the below should be integration tests
 describe.skip('format idempotency — non-dry-run two-pass', () => {
   let originalCwd: string;

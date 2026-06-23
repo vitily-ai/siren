@@ -8,8 +8,6 @@ Siren CLI v{{cliVersion}}
 Usage: siren <command>
 
 Commands:
-  list    List all milestone IDs from .siren files
-    -t, --tasks    Show incomplete tasks under each milestone
   show    Show a single entry's dependency tree (milestone or task)
   mv      Change an entry's explicit completion status
   status  Display facts about project or entry status

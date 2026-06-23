@@ -4,7 +4,6 @@ import { version as coreVersion } from '@sirenpm/core';
 import { defineCommand, runCommand } from 'citty';
 import { buildMetadata } from './build-metadata';
 import { formatCommand } from './commands/format';
-import { listCommand } from './commands/list';
 import { mvCommand } from './commands/mv';
 import { showCommand } from './commands/show';
 import { statusCommand } from './commands/status';
@@ -20,8 +19,6 @@ function printUsage(): void {
 Usage: siren <command>
 
 Commands:
-  list    List all milestone IDs from .siren files
-    -t, --tasks    Show incomplete tasks under each milestone
   show    Show a single entry's dependency tree (milestone or task)
   mv      Change an entry's explicit completion status
   status  Display facts about project or entry status
@@ -40,7 +37,6 @@ export const mainCommand = defineCommand({
     description: 'Siren command-line interface',
   },
   subCommands: {
-    list: listCommand,
     show: showCommand,
     format: formatCommand,
     mv: mvCommand,
