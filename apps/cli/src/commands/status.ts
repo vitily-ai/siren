@@ -35,6 +35,7 @@ function renderMilestoneLines(
   const statsWidth = Math.max(...rows.map((r) => r[1].length));
 
   return rows.map(([id, stats, assignee]) => {
+    // TODO debt.cli-wide-char-alignment
     const idPadded = id.padEnd(idWidth);
     const statsPadded = stats.padStart(statsWidth);
     let line = `  ${idPadded}    ${statsPadded}`;
