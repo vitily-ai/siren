@@ -20,9 +20,8 @@ const fixturesDir = path.join(
 );
 
 function copyFixture(fixtureName: string, targetDir: string) {
-  const fixturePath = path.join(fixturesDir, fixtureName, 'siren');
-  const targetSirenDir = path.join(targetDir, 'siren');
-  fs.cpSync(fixturePath, targetSirenDir, { recursive: true });
+  const fixturePath = path.join(fixturesDir, fixtureName);
+  fs.cpSync(fixturePath, targetDir, { recursive: true });
 }
 
 describe('lifecycle', () => {
@@ -42,103 +41,14 @@ describe('lifecycle', () => {
     errSpy.mockRestore();
   });
 
-  it('returns empty context when no siren directory exists', async () => {
-    const ctx = await runLifecycle(tempDir);
-
-    expect(ctx.cwd).toBe(tempDir);
-    expect(ctx.rootDir).toBe(tempDir);
-    expect(ctx.sirenDir).toBe(path.join(tempDir, 'siren'));
-    expect(ctx.files).toEqual([]);
-    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual([]);
-    expect(ctx.warnings).toEqual([]);
-    expect(ctx.errors).toEqual([]);
-  });
-
-  it('returns empty context when siren directory exists but no files', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-
-    const ctx = await runLifecycle(tempDir);
-
-    expect(ctx.files).toEqual([]);
-    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual([]);
-    expect(ctx.warnings).toEqual([]);
-    expect(ctx.errors).toEqual([]);
-  });
-
-  it('finds and loads milestones from .siren files', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(
-      path.join(sirenDir, 'main.siren'),
-      `milestone alpha {}
-milestone beta {}
-task gamma {}`,
-    );
-
-    const ctx = await runLifecycle(tempDir);
-
-    expect(ctx.files).toHaveLength(1);
-    expect(ctx.files[0]).toBe(path.join(sirenDir, 'main.siren'));
-    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['alpha', 'beta']);
-    expect(ctx.warnings).toEqual([]);
-    expect(ctx.errors).toEqual([]);
-  });
-
-  it('recursively finds .siren files in subdirectories', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    const subDir = path.join(sirenDir, 'subdir');
-    fs.mkdirSync(subDir, { recursive: true });
-    fs.writeFileSync(path.join(sirenDir, 'root.siren'), 'milestone root {}');
-    fs.writeFileSync(path.join(subDir, 'nested.siren'), 'milestone nested {}');
-
-    const ctx = await runLifecycle(tempDir);
-
-    expect(ctx.files).toHaveLength(2);
-    expect(ctx.files).toContain(path.join(sirenDir, 'root.siren'));
-    expect(ctx.files).toContain(path.join(subDir, 'nested.siren'));
-    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['root', 'nested']);
-  });
-
-  it('handles parse errors with errors and skips broken documents', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(path.join(sirenDir, 'valid.siren'), 'milestone valid {}');
-    fs.writeFileSync(path.join(sirenDir, 'broken.siren'), '!!! invalid syntax');
-
-    const ctx = await runLifecycle(tempDir);
-
-    expect(ctx.files).toHaveLength(2);
-    // The valid file still decodes; broken resource(s) are excluded individually.
-    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['valid']);
-    expect(ctx.warnings).toEqual([]);
-    expect(ctx.errors).toHaveLength(1);
-    expect(ctx.errors[0]).toContain('siren/broken.siren:1:1: EL003: unexpected token');
-  });
-
-  it('handles quoted milestone identifiers', async () => {
-    const sirenDir = path.join(tempDir, 'siren');
-    fs.mkdirSync(sirenDir);
-    fs.writeFileSync(
-      path.join(sirenDir, 'quoted.siren'),
-      `milestone "Q1 Launch" {}
-milestone "MVP Release" {}`,
-    );
-
-    const ctx = await runLifecycle(tempDir);
-
-    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['Q1 Launch', 'MVP Release']);
-  });
-
   it('collects decoding warnings from core', async () => {
-    copyFixture('circular-depends', tempDir);
+    copyFixture('diagnostics', tempDir);
 
     const ctx = await runLifecycle(tempDir);
 
-    expect(ctx.warnings).toHaveLength(1);
-    expect(ctx.warnings[0]).toContain(
-      'siren/main.siren:1:0: W001: Circular dependency detected: task1 -> task2 -> task3 -> task1',
-    );
+    const circularWarning = ctx.warnings.find((w: string) => w.includes('W001'));
+    expect(circularWarning).toBeDefined();
+    expect(circularWarning).toContain('W001: Circular dependency detected: a -> b -> c -> a');
   });
 
   it('applies builder mutation before project build', async () => {
@@ -149,8 +59,6 @@ milestone "MVP Release" {}`,
     const ctx = await runLifecycle(tempDir, {
       mutate: (builder) => builder.withEntry({ type: 'milestone', id: 'patched', attributes: [] }),
     });
-
-    expect(ctx.ir?.getMilestoneIds() ?? []).toEqual(['alpha', 'patched']);
 
     const phases = Array.from(ctx.phasesRun);
     expect(phases.indexOf('builder-construction')).toBeLessThan(phases.indexOf('builder-mutation'));

@@ -105,8 +105,6 @@ Note that, when iterating across packages, downstream consumers must be rebuilt 
 
 - The core package (`packages/core`, `@sirenpm/core`) is bundled with tsup into a single ESM module (`dist/index.js`) plus types (`dist/index.d.ts`). Core source must remain environment-agnostic (no DOM or Node APIs) so the bundle runs in both browser and Node hosts. Core has **no** parser/decoder/export code.
 - The language package (`packages/language`, `@sirenpm/language`) owns the tree-sitter grammar (with the committed `tree-sitter-siren.wasm`), parser factory (`createParser()`), decoder, and exporters. `web-tree-sitter` is a direct runtime dep. Depends on `@sirenpm/core` as a peer dep.
-- The CLI (`apps/cli`, `@sirenpm/cli`) depends on `@sirenpm/core` and `@sirenpm/language` from the npm registry, not via workspace links. Normal builds consume the published packages. `enableTransparentWorkspaces: false` in `.yarnrc.yml` enforces this: only deps declared with the `workspace:` protocol resolve locally.
-- Developers iterating across packages must link manually (e.g. `yarn link` or temporarily swap a dep to `workspace:*`).
 - CLI builds live under `apps/cli/` and use tsup (`apps/cli/tsup.config.ts`).
 
 ## Security & Secrets

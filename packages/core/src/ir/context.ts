@@ -1,11 +1,15 @@
 import type { DependencyTree } from '../utilities/dependency-tree';
 import { isComplete } from '../utilities/entry';
-import { getMilestoneIds, getTasksByMilestone } from '../utilities/milestone';
 import { IR_CONTEXT_FACTORY } from './context-internal';
 import type { Diagnostic } from './diagnostics';
-import type { EntryGraph } from './entry-graph';
 import { type IRBuildEnvelope, runIRBuildPipeline } from './pipeline';
-import type { SirenEntry } from './types';
+import {
+  type EntryStats,
+  type EntryWithStats,
+  isReference,
+  type ProjectStatus,
+  type SirenEntry,
+} from './types';
 
 export type {
   CircularDependencyDiagnostic,
@@ -35,38 +39,21 @@ export class SirenProject {
     return new SirenProject(entries);
   }
 
-  /**
-   * Get deduplicated entries with implicit milestone completeness resolved.
-   * Milestones whose every dependency is complete are promoted to `status: 'complete'`.
-   * First occurrence of each ID is kept, duplicates are dropped.
-   */
   get entries(): readonly SirenEntry[] {
     return this.envelope.graph.entries;
   }
 
-  /**
-   * Cached dependency graph built once during pipeline construction. Exposed
-   * so consumers (LSP, exporters, advanced queries) can reuse the same graph
-   * instance instead of rebuilding it.
-   */
-  get graph(): EntryGraph {
-    return this.envelope.graph;
-  }
-
-  findEntryById(id: string): SirenEntry {
+  findEntryById(id: string): SirenEntry;
+  findEntryById(id: string, opts: { expect: false }): SirenEntry | undefined;
+  findEntryById(id: string, opts: { expect: true }): SirenEntry;
+  findEntryById(id: string, opts?: { expect?: boolean }): SirenEntry | undefined;
+  findEntryById(id: string, opts: { expect?: boolean } = { expect: true }) {
     const entry = this.envelope.graph.getEntry(id);
     if (!entry) {
-      throw new Error(`Entry with ID '${id}' not found`);
+      if (opts?.expect ?? true) throw new Error(`Entry with ID '${id}' not found`);
+      return undefined;
     }
     return entry;
-  }
-
-  getMilestoneIds(): string[] {
-    return getMilestoneIds(this.entries);
-  }
-
-  getTasksByMilestone(): Map<string, SirenEntry[]> {
-    return getTasksByMilestone(this.envelope.graph);
   }
 
   // TODO currently implemented with a sensible default traverse
@@ -92,5 +79,64 @@ export class SirenProject {
   /** Get semantic diagnostics computed from IR analysis */
   get diagnostics(): readonly Diagnostic[] {
     return this.envelope.diagnostics;
+  }
+
+  public getEntryStats(entry: string | SirenEntry): EntryStats {
+    let it: SirenEntry;
+    if (typeof entry === 'string') {
+      it = this.findEntryById(entry);
+    } else {
+      it = entry;
+    }
+
+    const deps = it.attributes.find((a) => a.key === 'depends_on')?.value ?? [];
+
+    const total = deps.length;
+    const closed = deps.filter(
+      (value) =>
+        isReference(value) &&
+        this.findEntryById(value.id, { expect: false })?.status === 'complete',
+    ).length;
+
+    return {
+      deps: {
+        total,
+        closed,
+      },
+    };
+  }
+
+  public getStatus(): ProjectStatus {
+    const milestones: EntryWithStats[] = this.entries
+      .filter(({ type }) => type === 'milestone')
+      // map to EntryWithStats
+      .map((entry) => ({
+        ...entry,
+        stats: this.getEntryStats(entry),
+      }));
+
+    const open = [] as EntryWithStats[];
+    const closed = [] as EntryWithStats[];
+    const draft = [] as EntryWithStats[];
+
+    milestones.forEach((m) => {
+      switch (m.status) {
+        case 'complete':
+          closed.push(m);
+          break;
+        case 'draft':
+          draft.push(m);
+          break;
+        default:
+          open.push(m);
+          break;
+      }
+    });
+
+    return {
+      open,
+      closed,
+      draft,
+    };
   }
 }

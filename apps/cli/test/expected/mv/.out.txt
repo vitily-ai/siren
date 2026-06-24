@@ -1,0 +1,4 @@
+{"fixture":"generic-thin","command":"siren mv sometask complete"}
+---
+Updated 1 files out of 1
+---

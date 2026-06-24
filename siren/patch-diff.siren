@@ -22,7 +22,7 @@ task patch-diff-core complete {
   files = "packages/core/src/ir/eph-id.ts, packages/core/src/ir/patch-result.ts, packages/core/src/ir/assembly.ts, packages/core/src/ir/snapshot.ts, packages/core/src/index.ts"
 }
 # Publication boundary
-task patch-diff-publish {
+task patch-diff-publish complete {
   description = "Publish an updated @sirenpm/core package version capturing the PatchResult API. Downstream packages @sirenpm/cli and @sirenpm/language will fail to compile after consuming this version until they are updated in a follow-up milestone that wires the delta into the CLI write phase."
   affected_packages = "core"
   context = "patch-diff.md"

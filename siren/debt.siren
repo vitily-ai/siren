@@ -1,3 +1,7 @@
+document {
+  noMilestone = true
+}
+
 task attribute-structure {
   description = "Currently entry attributes are registered in ir under an `attributes` list. Should we just treat it as a TS Record instead, optimizing for key looup?"
 }
@@ -8,10 +12,6 @@ task getTasksByMilestone-single-pass {
 
 task getDependsOn-comment {
   description = "Update getDependsOn function to emit warnings when encountering non-reference elements in depends_on arrays, while still processing valid references (error tolerance with diagnostics)"
-}
-
-task cli-list-long-names {
-  description = "Verify that tab-indented task output in 'siren list -t' handles long milestone/task names gracefully in terminals"
 }
 
 task runformat-roundtrip complete {
@@ -36,10 +36,6 @@ task sourceindex-assumptions {
 
 task show-complete-short-circuit-bug {
   description = "marking a leaf task as complete short-circuits `siren show`"
-}
-
-task list-deps-not-tasks {
-  description = "`siren list -d` not `siren list -t`"
 }
 
 task parser-wasm-packaging {
@@ -90,4 +86,12 @@ task bad-golden {
 task diagnostic-base-trivia-slot {
   description = "Rework @sirenpm/core's DiagnosticBase to provide a generic slot (e.g. structured `context` or `trivia` field, or a type parameter) for diagnostic-specific contextual data, instead of forcing every concrete diagnostic to extend the base interface and bolt on its own fields. Today both core's semantic diagnostics and the new @sirenpm/language diagnostics (EL001/WL001/WL002) extend DiagnosticBase with ad-hoc top-level properties; this couples the base to every diagnostic's payload shape. A generic trivia slot would let diagnostics carry typed context without widening the base, simplify discriminated-union narrowing, and let frontends format display text from a uniform shape."
   affected_packages = ["@sirenpm/core"]
+}
+
+task istty-nocolor-guard draft {
+  description = "Ensure that CLI respects istty and no-color flags, avoiding color output when not appropriate."
+}
+
+task cli-wide-char-alignment draft {
+  description = "Columns are aligned by couting string lengths, which doesn't account for wide chars"
 }

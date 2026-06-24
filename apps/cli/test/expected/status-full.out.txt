@@ -1,0 +1,22 @@
+{
+	"fixture": "generic",
+	"command": "siren status --full"
+}
+---
+5 open milestones:
+  beta         0/1    Frank Userman
+  full         1/3    ganon
+  main         1/6
+  nested/a     0/1
+  🚀 launch    0/2
+
+1 closed milestone:
+  implicit-complete    3/3
+
+5 draft milestones:
+  empty                 0/0
+  alpha                 0/0
+  nested/deeply/b       0/0
+  日本語マイルストーン            0/0
+  émojis-and-accénts    0/0
+---

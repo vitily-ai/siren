@@ -38,4 +38,8 @@ export default defineConfig({
     'import.meta.env.PACKAGE_VERSION': JSON.stringify(pkg.version),
     'import.meta.env.BUILD_METADATA': JSON.stringify(getBuildMetadata()),
   },
+  noExternal: [
+    '@sirenpm/core',
+    '@sirenpm/language'
+  ]
 });

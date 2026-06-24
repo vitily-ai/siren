@@ -59,7 +59,7 @@ task origin-demotion-language-publish complete {
   note = "superseded by lang-v060-exports, lang-publish"
 }
 # ── Phase 3: CLI (deferred) ───────────────────────────────────────────────────
-task origin-demotion-cli {
+task origin-demotion-cli complete {
   description = "Update @sirenpm/cli formatDiagnostics to extract source provenance from entry IDs carried by each diagnostic type rather than from DiagnosticBase.file/line/column. Requires graph or project context at format time. Details to be scoped at implementation. Blocked on lang-v060-exports in siren/language-ast-pipeline.siren (language must publish with v0.6.0 adoption first)."
   affected_packages = ["@sirenpm/cli"]
   context = "origin-demotion.md"

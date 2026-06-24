@@ -1,0 +1,4 @@
+# EL002 — Missing required token: closing brace
+# The parser will insert a MISSING '}' node
+task my-task {
+    description = "missing closing brace"

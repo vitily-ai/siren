@@ -1,4 +1,0 @@
-milestone alpha {
-  depends_on = task1
-}
-task task1 {}

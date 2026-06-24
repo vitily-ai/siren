@@ -1,0 +1,13 @@
+# W001 — Circular dependency
+# Contains overlapping cycles: a -> b -> c -> a and a -> c -> a
+milestone a {
+    depends_on = [b, c]
+}
+
+task b {
+    depends_on = [c]
+}
+
+task c {
+    depends_on = a
+}

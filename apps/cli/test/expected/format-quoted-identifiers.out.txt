@@ -1,5 +1,0 @@
-{"fixture":"quoted-identifiers-format","command":"siren format --dry-run"}
----
-would update siren/main.siren
-Updated 1 files out of 1
----

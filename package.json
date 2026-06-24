@@ -11,8 +11,8 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "yarn workspaces foreach --all --topological run build",
-    "build:quiet": "yarn workspaces foreach --all --topological run build:quiet > /dev/null && echo 'Silent build successful!' || echo 'Silent build failed - run `yarn build` for full output'",
+    "build": "yarn workspaces foreach --all --topological-dev run build",
+    "build:quiet": "yarn workspaces foreach --all --topological-dev run build:quiet > /dev/null && echo 'Silent build successful!' || echo 'Silent build failed - run `yarn build` for full output'",
     "changeset": "changeset",
     "clean": "yarn workspaces foreach -Ap run clean",
     "cli:link": "cd apps/cli && npm link",

@@ -31,14 +31,11 @@
   "engines": {
     "node": ">=24.0.0"
   },
-  "peerDependencies": {
-    "@sirenpm/core": "^0.6.1"
-  },
   "dependencies": {
+    "@sirenpm/core": "workspace:*",
     "web-tree-sitter": "0.26.3"
   },
   "devDependencies": {
-    "@sirenpm/core": "^0.6.1",
     "@types/node": "^25.0.6",
     "tsup": "^8.3.5",
     "typescript": "^5.7.2",

@@ -1,9 +1,0 @@
-{
-	"fixture": "tasks-by-milestone",
-	"command": "siren list --tasks",
-	"expect": "stdout"
-}
----
-alpha
-└─ task1
-beta
