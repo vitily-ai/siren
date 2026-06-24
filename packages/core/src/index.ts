@@ -12,12 +12,16 @@ export type {
   DiagnosticBase,
   DuplicateIdDiagnostic,
 } from './ir/diagnostics';
-// IR types (intermediate representation), SirenBuilder, SirenProject, and SirenCoreError
 export * from './ir/index';
-// Atom/Tuple types and reference guard
-export type { Atom, SirenEntry, Tuple } from './ir/types';
+export type {
+  Atom,
+  EntryStats,
+  EntryWithStats,
+  ProjectStatus,
+  SirenEntry,
+  Tuple,
+} from './ir/types';
 export { isReference } from './ir/types';
-// Dependency tree utilities
 export type { DependencyTree } from './utilities/dependency-tree';
 export { isComplete, isDraft } from './utilities/entry';
 export { version } from './version';

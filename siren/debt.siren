@@ -87,3 +87,7 @@ task diagnostic-base-trivia-slot {
   description = "Rework @sirenpm/core's DiagnosticBase to provide a generic slot (e.g. structured `context` or `trivia` field, or a type parameter) for diagnostic-specific contextual data, instead of forcing every concrete diagnostic to extend the base interface and bolt on its own fields. Today both core's semantic diagnostics and the new @sirenpm/language diagnostics (EL001/WL001/WL002) extend DiagnosticBase with ad-hoc top-level properties; this couples the base to every diagnostic's payload shape. A generic trivia slot would let diagnostics carry typed context without widening the base, simplify discriminated-union narrowing, and let frontends format display text from a uniform shape."
   affected_packages = ["@sirenpm/core"]
 }
+
+task istty-nocolor-guard {
+  description = "Ensure that CLI respects istty and no-color flags, avoiding color output when not appropriate."
+}
