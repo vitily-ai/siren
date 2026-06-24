@@ -60,6 +60,9 @@ jobs:
             exit 1
           fi
           echo "All packages to be published have prerelease versions - OK."
+      
+      - name: Topological build
+        run: yarn build
 
       - name: Publish changed packages
         run: yarn changeset publish
