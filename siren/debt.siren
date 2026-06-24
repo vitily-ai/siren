@@ -88,6 +88,6 @@ task diagnostic-base-trivia-slot {
   affected_packages = ["@sirenpm/core"]
 }
 
-task istty-nocolor-guard {
+task istty-nocolor-guard draft {
   description = "Ensure that CLI respects istty and no-color flags, avoiding color output when not appropriate."
 }
