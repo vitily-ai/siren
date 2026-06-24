@@ -5,13 +5,48 @@ on:
     tags:
       - "@sirenpm/*@*"
   workflow_dispatch:
+    inputs:
+      target-package:
+        description: >
+          Package to validate before publishing (e.g. @sirenpm/language).
+          Required for manual dispatch — tag-triggered releases extract
+          this from the tag automatically.
+        required: true
+        type: string
 
 
 permissions:
   contents: write # needed to create git tags for published packages
 
 jobs:
+  determine-target:
+    name: Determine target package
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    outputs:
+      package: ${{ steps.resolve.outputs.package }}
+    steps:
+      - id: resolve
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "package=${{ inputs.target-package }}" >> "$GITHUB_OUTPUT"
+          else
+            # Tag format: @sirenpm/name@version — strip the last @version part
+            PACKAGE="${GITHUB_REF_NAME%@*}"
+            echo "package=$PACKAGE" >> "$GITHUB_OUTPUT"
+          fi
+
+  pack-validation:
+    name: Post-pack validation
+    needs: [determine-target]
+    uses: ./.github/workflows/post-pack-validation.yml
+    with:
+      target-package: ${{ needs.determine-target.outputs.package }}
+      fail-on-error: true
+
   release:
+    needs: [pack-validation]
     name: Publish to npm
     runs-on: ubuntu-latest
     steps:
