@@ -214,6 +214,37 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
     });
   });
 
+  describe('findEntryById', () => {
+    // finds an entry
+    it('finds an entry by id', () => {
+      const context = buildContext([{ type: 'task', id: 't1', attributes: [] }]);
+      const entry = context.findEntryById('t1');
+      expect(entry).toBeDefined();
+      expect(entry?.id).toBe('t1');
+    });
+
+    // it.each throws when no entry and expect = true (default)
+    // cases
+    //   no opts
+    //   opts = {}
+    //   opts = expect: true
+    it.each([
+      [undefined],
+      [{}],
+      [{ expect: true }],
+    ])('throws when no entry and opts: %s', (opts) => {
+      const context = buildContext([{ type: 'task', id: 't1', attributes: [] }]);
+      expect(() => context.findEntryById('non-existent', opts)).toThrow();
+    });
+
+    // it does not throw when expect = false
+    it('does not throw when expect = false', () => {
+      const context = buildContext([{ type: 'task', id: 't1', attributes: [] }]);
+      const entry = context.findEntryById('non-existent', { expect: false });
+      expect(entry).toBeUndefined();
+    });
+  });
+
   describe('getEntryStats', () => {
     it('returns zero total and closed for entry without depends_on', () => {
       const context = buildContext([{ type: 'milestone', id: 'm1', attributes: [] }]);

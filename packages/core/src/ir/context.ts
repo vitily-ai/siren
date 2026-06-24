@@ -48,7 +48,7 @@ export class SirenProject {
   findEntryById(id: string, opts: { expect?: boolean } = { expect: true }): SirenEntry | undefined {
     const entry = this.envelope.graph.getEntry(id);
     if (!entry) {
-      if (opts?.expect) throw new Error(`Entry with ID '${id}' not found`);
+      if (opts?.expect ?? true) throw new Error(`Entry with ID '${id}' not found`);
       return undefined;
     }
     return entry;
