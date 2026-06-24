@@ -52,9 +52,13 @@ jobs:
         run: bash .github/workflow-utils/simulate-published-deps.sh "${{ inputs.target-package }}"
 
       - name: Install with resolved versions (workspace protocol disabled)
-        run: YARN_ENABLE_TRANSPARENT_WORKSPACES=false yarn install
+        run: yarn install
         env:
-          YARN_ENABLE_IMMUTABLE_INSTALLS: "false"
+          YARN_ENABLE_IMMUTABLE_INSTALLS: false
+          YARN_ENABLE_TRANSPARENT_WORKSPACES: false
+      
+      - name: Show package tree
+        run: yarn workspace "${{ inputs.target-package }}" info --name-only
 
       - name: Build ${{ inputs.target-package }}
         run: YARN_ENABLE_TRANSPARENT_WORKSPACES=false yarn workspace "${{ inputs.target-package }}" build
