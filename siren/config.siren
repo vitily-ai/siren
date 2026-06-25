@@ -1,6 +1,4 @@
-milestone config draft {
-
-}
+milestone config draft {}
 
 task project-config {
   description = "Allow setting project-level maxDepth for dependency traversal"

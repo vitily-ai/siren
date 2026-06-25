@@ -1,11 +1,13 @@
 # main file
 # contains the majority of the stuff
 milestone alpha {}
+
 # alpha milestone
 milestone beta {
   assignee = "Frank Userman"
   depends_on = openmaintask
 }
+
 # beta milestone
 milestone full {
   description = "not implicitly draft"
@@ -18,4 +20,5 @@ task draftmaintask draft {}
 task openmaintask {}
 
 task closedmaintask complete {}
+
 # those were the milestones
