@@ -7,15 +7,6 @@ interface FormatElement {
   row: number;
 }
 
-function getNamedChildren(node: Node): Node[] {
-  const children: Node[] = [];
-  for (let i = 0; i < node.namedChildCount; i++) {
-    const child = node.namedChild(i);
-    if (child) children.push(child);
-  }
-  return children;
-}
-
 function formatCommentText(text: string): string {
   const match = text.match(/^(\/\/|#)\s?(.*)$/);
   const clean = match ? (match[2] ?? '') : text;
@@ -32,13 +23,13 @@ function formatAttribute(keyNode: Node, valueNode: Node): string {
     }
   }
   const isExplicit = tupleNode.children.some((c) => c.type === '[');
-  const memberTexts = getNamedChildren(tupleNode).map((child) => child.text.trim());
+  const memberTexts = tupleNode.namedChildren.map((child) => child.text.trim());
   const membersStr = memberTexts.join(', ');
   const valueStr = isExplicit ? `[${membersStr}]` : membersStr;
   return `${key} = ${valueStr}`;
 }
 
-function collectResourceElements(node: Node, elements: FormatElement[]) {
+function collectResourceElements(node: Node, elements: FormatElement[]): void {
   if (node.type === 'comment') {
     elements.push({
       type: 'comment',
@@ -57,12 +48,10 @@ function collectResourceElements(node: Node, elements: FormatElement[]) {
     });
     return;
   }
-  for (let i = 0; i < node.childCount; i++) {
-    const child = node.child(i);
-    if (child) {
-      collectResourceElements(child, elements);
-    }
-  }
+
+  node.children.forEach((c) => {
+    collectResourceElements(c, elements);
+  });
 }
 
 /** Build a sorted list of block-content elements (attributes + comments) from a node. */
@@ -79,11 +68,12 @@ function collectAndSortBlockElements(node: Node): FormatElement[] {
 }
 
 function findChildByType(node: Node, type: string): Node | undefined {
-  for (let i = 0; i < node.childCount; i++) {
-    const child = node.child(i);
-    if (child && child.type === type) return child;
-  }
-  return undefined;
+  return node.children.find((c) => c.type === type);
+}
+
+/** Whether a top-level node has a `block` child (i.e., will produce `{ … }` in output). */
+function hasBlockChild(node: Node): boolean {
+  return node.children.some((c) => c.type === 'block');
 }
 
 /**
@@ -96,20 +86,44 @@ function formatNode(node: Node, indent = 0): string[] {
 
   switch (node.type) {
     case 'document': {
-      // Root node: format children, insert blank lines between sibling resources.
+      // Root node: format children, insert blank lines between top-level entries.
       const lines: string[] = [];
-      let lastChildType: string | undefined;
+      let lastHadBlock = false;
+      let lastNodeEndRow = -1;
       for (let i = 0; i < node.childCount; i++) {
         const child = node.child(i);
         if (!child) continue;
+
+        // Trailing inline comment: a comment on the same row as the closing
+        // brace of the previous block-having node should be treated as part
+        // of that block (injected before the closing `}` line).
+        if (
+          child.type === 'comment' &&
+          lastHadBlock &&
+          child.startPosition.row === lastNodeEndRow &&
+          lines.length > 1 &&
+          lines[lines.length - 1]!.trim() === '}'
+        ) {
+          const commentLine = `${'  '.repeat(indent + 1)}${formatCommentText(child.text)}`;
+          lines.splice(lines.length - 1, 0, commentLine);
+          lastNodeEndRow = child.endPosition.row;
+          continue;
+        }
+
         const childLines = formatNode(child, indent);
         if (childLines.length === 0) continue;
-        if (child.type === 'resource' && lastChildType === 'resource') {
-          lines.push(''); // blank line between resources
+
+        const hasBlock = hasBlockChild(child);
+        // Blank line between consecutive block-having entries, or between a
+        // block-having entry and a following top-level comment.
+        if (lastHadBlock && (hasBlock || child.type === 'comment')) {
+          lines.push('');
         }
         lines.push(...childLines);
-        lastChildType = child.type;
+        lastHadBlock = hasBlock;
+        lastNodeEndRow = child.endPosition.row;
       }
+
       return lines;
     }
 
@@ -135,11 +149,9 @@ function formatNode(node: Node, indent = 0): string[] {
     case 'resource_header': {
       const typeName = node.childForFieldName('type')?.text ?? '';
       const id = node.childForFieldName('id')?.text ?? '';
-      const modifiers: string[] = [];
-      for (let i = 0; i < node.childCount; i++) {
-        const c = node.child(i);
-        if (c?.type === 'resource_modifier') modifiers.push(c.text);
-      }
+      const modifiers: string[] = node.children
+        .filter((c) => c.type === 'resource_modifier')
+        .map((c) => c.text);
       const modStr = modifiers.length > 0 ? ` ${modifiers.join(' ')}` : '';
       return [`${pad}${typeName} ${id}${modStr}`];
     }

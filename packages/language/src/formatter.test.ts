@@ -25,83 +25,11 @@ describe('Siren Formatter (CST-backed)', () => {
     expect(doc.format()).toBe('task my-task foo {}\n');
   });
 
-  it('re-formats dirty spacing to canonical spacing', async () => {
-    const parser = await createParser();
-    const input = 'task  a  {   depends_on  =  b   }';
-    const parsed = await parser.parse({ name: 'spacing.siren', content: input });
-
-    // Canonical representation of task a with attribute:
-    // task a {
-    //   depends_on = b
-    // }
-    const expected = 'task a {\n  depends_on = b\n}\n';
-    expect(parsed.format()).toBe(expected);
-  });
-
-  it('formats multiple attributes to key = value with canonical indentation', async () => {
-    const parser = await createParser();
-    const input = `
-task my-task {
-description="A task description"
-depends_on=[other-task]
-}
-`;
-    const parsed = await parser.parse({ name: 'attributes.siren', content: input });
-    const expected =
-      'task my-task {\n  description = "A task description"\n  depends_on = [other-task]\n}\n';
-    expect(parsed.format()).toBe(expected);
-  });
-
   it('emits all metadata, status modifiers and blocks cleanly', async () => {
     const parser = await createParser();
     const input = 'milestone release-1 draft complete { description = "Groups tasks" }';
     const parsed = await parser.parse({ name: 'milestone.siren', content: input });
     const expected = 'milestone release-1 draft complete {\n  description = "Groups tasks"\n}\n';
-    expect(parsed.format()).toBe(expected);
-  });
-
-  it('converts comments to canonical standalone lines with proper indentation, in lexical order', async () => {
-    const parser = await createParser();
-    const input = `
-# Top-level comment
-task a {
-  # Nested comment
-  depends_on = b // Inline trailing comment
-} // Another trailing comment
-`;
-    // Trailing/inline comments and standalone comments are all reformatted
-    // as standalone lines under their logical hierarchical block indentation.
-    // They are emitted in their exact lexical order of appearance.
-    const parsed = await parser.parse({ name: 'comments.siren', content: input });
-    const expected = [
-      '# Top-level comment',
-      'task a {',
-      '  # Nested comment',
-      '  # Inline trailing comment',
-      '  depends_on = b',
-      '}',
-      '# Another trailing comment',
-      '',
-    ].join('\n');
-    expect(parsed.format()).toBe(expected);
-  });
-
-  it('does NOT preserve blank-line counts', async () => {
-    const parser = await createParser();
-    const input = `
-task a {
-
-
-  depends_on = b
-
-
-}
-
-
-task b {}
-`;
-    const parsed = await parser.parse({ name: 'blank-lines.siren', content: input });
-    const expected = 'task a {\n  depends_on = b\n}\n\ntask b {}\n';
     expect(parsed.format()).toBe(expected);
   });
 
@@ -179,17 +107,175 @@ task b {}
 
       expect(parsed.source.content).toBe(canonical);
     });
+  });
 
-    it('formats document header', async () => {
+  describe('canonical format scenarios', () => {
+    it('re-formats dirty spacing to canonical spacing', async () => {
       const parser = await createParser();
-      const input = 'document { noMilestone = true }';
-      const parsed = await parser.parse({ name: 'doc-header.siren', content: input });
+      const input = 'task  a  {   depends_on  =  b   }';
+      const parsed = await parser.parse({ name: 'spacing.siren', content: input });
 
-      const formatted = parsed.format();
-      const expected = 'document {\n  noMilestone = true\n}\n';
-      expect(formatted).toBe(expected);
+      // Canonical representation of task a with attribute:
+      // task a {
+      //   depends_on = b
+      // }
+      const expected = 'task a {\n  depends_on = b\n}\n';
+      expect(parsed.format()).toBe(expected);
+    });
 
-      expect(parsed.source.content).toBe(expected);
+    it('does NOT preserve blank-line counts', async () => {
+      const parser = await createParser();
+      const input = `
+  task a {
+
+
+    depends_on = b
+
+
+  }
+
+
+  task b {}
+  `;
+      const parsed = await parser.parse({ name: 'blank-lines.siren', content: input });
+      const expected = 'task a {\n  depends_on = b\n}\n\ntask b {}\n';
+      expect(parsed.format()).toBe(expected);
+    });
+
+    describe('doc_header', () => {
+      it('formats document header', async () => {
+        const parser = await createParser();
+        const input = 'document { noMilestone = true }';
+        const parsed = await parser.parse({ name: 'doc-header.siren', content: input });
+
+        const formatted = parsed.format();
+        const expected = 'document {\n  noMilestone = true\n}\n';
+        expect(formatted).toBe(expected);
+
+        expect(parsed.source.content).toBe(expected);
+      });
+
+      it('formats document header followed by an entry', async () => {
+        const parser = await createParser();
+        const input = 'document { noMilestone = true } task foo {}';
+        const parsed = await parser.parse({ name: 'doc-header-entry.siren', content: input });
+
+        const formatted = parsed.format();
+        const expected = `document {
+  noMilestone = true
+}
+
+task foo {}
+`;
+        expect(formatted).toBe(expected);
+
+        expect(parsed.source.content).toBe(expected);
+      });
+    });
+
+    describe('entry', () => {
+      it('formats consecutive entries', async () => {
+        const parser = await createParser();
+        const input = `
+          task my-task {
+          description="A task description"
+          }
+          task other-task{}
+          `;
+        const parsed = await parser.parse({ name: 'attributes.siren', content: input });
+        const expected = `task my-task {
+  description = "A task description"
+}
+
+task other-task {}
+`;
+        expect(parsed.format()).toBe(expected);
+      });
+
+      it('formats multiple attributes to key = value with canonical indentation', async () => {
+        const parser = await createParser();
+        const input = `
+          task my-task {
+          description="A task description"
+          depends_on=[other-task]
+          }
+          `;
+        const parsed = await parser.parse({ name: 'attributes.siren', content: input });
+        const expected =
+          'task my-task {\n  description = "A task description"\n  depends_on = [other-task]\n}\n';
+        expect(parsed.format()).toBe(expected);
+      });
+    });
+
+    describe('comments', () => {
+      it('formats comments according to indentation and context', async () => {
+        const parser = await createParser();
+        const input = `
+    # Top-level comment
+    task a {
+      # Nested comment
+      depends_on = b // Inline comment
+    } // Block-end inline comment
+    // Trailing comment
+    `;
+        // Trailing/inline comments and standalone comments are all reformatted
+        // as standalone lines under their logical hierarchical block indentation.
+        // They are emitted in their exact lexical order of appearance.
+        const parsed = await parser.parse({ name: 'comments.siren', content: input });
+        const expected = [
+          '# Top-level comment',
+          'task a {',
+          '  # Nested comment',
+          '  # Inline comment',
+          '  depends_on = b',
+          '  # Block-end inline comment',
+          '}',
+          '',
+          '# Trailing comment',
+          '',
+        ].join('\n');
+        expect(parsed.format()).toBe(expected);
+      });
+    });
+
+    it('formats a comment between two blocks (entry/entry)', async () => {
+      const parser = await createParser();
+      const input = `
+        task a {}
+        # Comment between blocks is treated as before latter
+        task b {}
+      `;
+      const parsed = await parser.parse({ name: 'comments.siren', content: input });
+      const expected = [
+        'task a {}',
+        '',
+        '# Comment between blocks is treated as before latter',
+        'task b {}',
+        '',
+      ].join('\n');
+      expect(parsed.format()).toBe(expected);
+    });
+
+    it('formats a comment between two blocks (header/entry)', async () => {
+      const parser = await createParser();
+      const input = `
+        document {
+          noMilestone = true
+        }
+        # Comment between blocks is treated as before latter
+        task b {}
+      `;
+      const parsed = await parser.parse({ name: 'comments.siren', content: input });
+      const expected = [
+        'document {',
+        '  noMilestone = true',
+        '}',
+        '',
+        '# Comment between blocks is treated as before latter',
+        'task b {}',
+        '',
+      ].join('\n');
+      expect(parsed.format()).toBe(expected);
     });
   });
 });

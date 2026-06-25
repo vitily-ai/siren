@@ -34,6 +34,7 @@ task draft-states-milestone-tasks complete {
   description = "Update milestone task lookup to use status helpers and keep drafts visible"
   depends_on = draft-states-status-helpers
 }
+
 # Note - goldens must not churn - if they do, this suggests something is wrong
 task draft-states-tests-port complete {
   description = "Port existing core tests to the new status shape, including resource-graph and completion coverage"

@@ -6,12 +6,14 @@ milestone tuple-first-core complete {
   affected_packages = ["@sirenpm/core"]
   depends_on = tuple-first-core-publish
 }
+
 # TDD red — write the tests first and confirm they fail against the current shape
 task tuple-first-core-tests complete {
   description = "TDD red: update packages/core/src/ir/types.test.ts and packages/core/src/utilities/dependency-tree.test.ts to assert the new tuple-first shape. Attribute.value must be typed as readonly Atom[] where Atom = string | number | boolean | ResourceReference. Scalars are represented as single-element tuples. isReference operates on Atom. Tests must fail against the current core before any type changes are made."
   affected_packages = ["@sirenpm/core"]
   files = "packages/core/src/ir/types.test.ts, packages/core/src/utilities/dependency-tree.test.ts"
 }
+
 # TDD green — migrate types and internal consumers to make the red tests pass
 task tuple-first-core-types complete {
   description = "TDD green: rewrite packages/core/src/ir/types.ts — introduce Atom (string | number | boolean | ResourceReference) and Tuple (readonly Atom[]), delete ArrayValue, PrimitiveValue, isArray, and isPrimitive, retype isReference to discriminate Atom, and drop Attribute.raw. Migrate internal consumers: cloneAndFreezeAttributeValue in snapshot.ts and depends_on extraction in utilities/entry.ts. Update index.ts public exports. All core tests must pass."
@@ -19,6 +21,7 @@ task tuple-first-core-types complete {
   files = "packages/core/src/ir/types.ts, packages/core/src/ir/snapshot.ts, packages/core/src/utilities/entry.ts, packages/core/src/index.ts"
   depends_on = tuple-first-core-tests
 }
+
 # CONTEXT.md — update glossary to reflect the new type surface
 task tuple-first-core-context complete {
   description = "Update CONTEXT.md core model glossary: introduce Atom and Tuple as canonical terms, mark AttributeValue, PrimitiveValue, and ArrayValue as superseded, drop references to isArray and isPrimitive as public guards, and add a note that empty tuple is the absence value replacing null in attribute positions."
@@ -26,6 +29,7 @@ task tuple-first-core-context complete {
   files = "CONTEXT.md"
   depends_on = tuple-first-core-tests
 }
+
 # Publication — bump version, add changeset, and publish
 task tuple-first-core-publish complete {
   description = "Add a changeset bumping @sirenpm/core to the next 0.x release (0.5.0) documenting the breaking AttributeValue → Tuple migration: deleted types (ArrayValue, PrimitiveValue), deleted guards (isArray, isPrimitive), deleted fields (Attribute.raw), and the new Atom / Tuple surface. Tag and publish via the existing release workflow. This task is the synchronization point that unblocks lang-decode in language-ast-pipeline."
