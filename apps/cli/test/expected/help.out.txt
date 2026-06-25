@@ -9,7 +9,7 @@ Usage: siren <command>
 
 Commands:
   show    Show a single entry's dependency tree (milestone or task)
-  mv      Change an entry's explicit completion status
+  mv      Change an entry's explicit status
   status  Display facts about project or entry status
     -f, --full    Show full details including closed and draft milestones
   

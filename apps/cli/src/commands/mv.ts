@@ -53,7 +53,7 @@ export function mvMutate(
 export const mvCommand = defineCommand({
   meta: {
     name: 'mv',
-    description: "Change an entry's explicit completion status",
+    description: "Change an entry's explicit status",
   },
   args: {
     entryId: {
