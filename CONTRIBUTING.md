@@ -73,22 +73,25 @@ Continuous integration
 
 CI runs three baseline jobs against the registry-pinned dependency graph (the
 same graph end users install): `test`, `lint`, and `grammar-drift`. Once those
-pass, an `integration` job re-runs the build and full test suite with every
-`@sirenpm/*` dependency rewritten to the `workspace:*` protocol so sibling
-packages resolve to local sources. This catches breaking API or type changes
-between `core`, `language`, and `cli` that the registry-pinned baseline would
-silently mask.
+pass, `post-pack-validation` jobs simulate what consumers experience after
+`yarn pack` strips `workspace:*` from published packages. One job runs per
+changed `@sirenpm/*` package (excluding `@sirenpm/core`, which has no
+workspace cross-dependencies). Each job packs the target package, replaces
+`workspace:*` deps with the resolved version numbers, then
+installs/builds/tests that package with transparent workspaces disabled.
+This catches missing files, incorrect exports, or broken dependency chains
+that would only surface post-publish.
 
-To reproduce the integration job locally:
+To reproduce the post-pack validation for a single package locally:
 
 ```bash
-bash .github/workflow-utils/swap-to-workspace-protocol.sh
-yarn install   # lockfile will diverge; do not commit
-yarn build
-yarn test
+bash .github/workflow-utils/simulate-published-deps.sh @sirenpm/language
+YARN_ENABLE_TRANSPARENT_WORKSPACES=false yarn install
+YARN_ENABLE_TRANSPARENT_WORKSPACES=false yarn workspace @sirenpm/language build
+YARN_ENABLE_TRANSPARENT_WORKSPACES=false yarn workspace @sirenpm/language test
 ```
 
-Restore the originals with `git checkout -- apps/cli/package.json packages/language/package.json yarn.lock` when done.
+Restore the originals with `git checkout -- packages/language/package.json yarn.lock` when done.
 
 Testing Standards & Conventions
 -------------------------------

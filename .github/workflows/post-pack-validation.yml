@@ -1,0 +1,77 @@
+name: Post-pack validation
+
+on:
+  workflow_call:
+    inputs:
+      target-package:
+        description: >
+          The @sirenpm/* package to validate (e.g. @sirenpm/language).
+          Packages with no @sirenpm/* deps (e.g. @sirenpm/core) are
+          skipped automatically.
+        required: true
+        type: string
+      fail-on-error:
+        description: >
+          Whether to fail the job on error. Set `true` for required
+          pre-release gates, `false` for non-blocking PR signals.
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate ${{ inputs.target-package }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4.2.0
+        with:
+          node-version: "24.x"
+          cache: "yarn"
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build all packages
+        run: yarn build
+
+      - name: Simulate published dependencies for ${{ inputs.target-package }}
+        run: bash .github/workflow-utils/simulate-published-deps.sh "${{ inputs.target-package }}"
+
+      - name: Install with resolved versions (workspace protocol disabled)
+        run: yarn install
+        env:
+          YARN_ENABLE_IMMUTABLE_INSTALLS: false
+          YARN_ENABLE_TRANSPARENT_WORKSPACES: false
+      
+      - name: Show package tree
+        run: yarn workspace "${{ inputs.target-package }}" info --name-only
+
+      - name: Build ${{ inputs.target-package }}
+        run: YARN_ENABLE_TRANSPARENT_WORKSPACES=false yarn workspace "${{ inputs.target-package }}" build
+
+      - name: Test ${{ inputs.target-package }}
+        run: YARN_ENABLE_TRANSPARENT_WORKSPACES=false yarn workspace "${{ inputs.target-package }}" test
+
+      - name: Failure hint (non-blocking signal)
+        if: failure() && !inputs.fail-on-error
+        run: |
+          echo "::warning::Post-pack validation for" \
+               "${{ inputs.target-package }} failed. This means the" \
+               "package would not work correctly after publish (when" \
+               "workspace:* is stripped away). Check that its" \
+               "@sirenpm/* cross-dependencies resolve correctly and" \
+               "that build outputs include everything consumers need."

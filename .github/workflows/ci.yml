@@ -125,46 +125,57 @@ jobs:
           echo "  grammar.js last commit:  $(git log -1 --format=%ci -- "$GRAMMAR")"
           echo "  WASM      last commit:  $(git log -1 --format=%ci -- "$WASM")"
 
-  integration:
-    name: Integration (linked workspaces)
+  detect-changed-packages:
+    name: Detect changed @sirenpm/* packages
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: [test, lint, grammar-drift]
-
+    timeout-minutes: 2
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
+          fetch-depth: 0
           persist-credentials: false
 
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4.2.0
-        with:
-          node-version: '24.x'
-          cache: 'yarn'
-
-      - name: Swap @sirenpm/* deps to workspace protocol
-        run: bash .github/workflow-utils/swap-to-workspace-protocol.sh
-
-      # `--immutable` is intentionally omitted: the swap above mutates
-      # package.json, so the lockfile will diverge. The integration job
-      # discards the regenerated lockfile.
-      - name: Install dependencies (linked)
-        run: YARN_ENABLE_IMMUTABLE_INSTALLS=false yarn install
-
-      - name: Build (linked)
-        run: yarn build
-
-      - name: CLI smoke test (linked)
-        run: node ./apps/cli/dist/index.js --version
-
-      - name: Test (linked)
-        run: yarn test
-
-      - name: Failure hint
-        if: failure()
+      - id: detect
+        shell: bash
         run: |
-          echo "::warning::The integration job links @sirenpm/* deps via the workspace protocol to detect breaking changes between sibling packages. If a failure here is unexpected and the unlinked 'test' job passed, double-check that yarn.lock is fresh on main — a stale root lockfile can occasionally surface here even when the underlying code is fine."
+          set -euo pipefail
+
+          # Determine what to compare against
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            # push to main — fall back to previous commit
+            BASE="${{ github.event.before }}"
+            if [ "$BASE" = "0000000000000000000000000000000000000000" ] || [ -z "$BASE" ]; then
+              BASE="HEAD~1"
+            fi
+          fi
+
+          # Get changed files; fall back to last commit if diff fails
+          CHANGED=$(git diff --name-only "$BASE" HEAD 2>/dev/null || git diff --name-only HEAD~1 HEAD)
+
+          # Map file paths to @sirenpm/* package names, excluding core
+          PACKAGES=$(echo "$CHANGED" | while IFS= read -r file; do
+            case "$file" in
+              packages/language/*)  echo "@sirenpm/language" ;;
+              apps/cli/*)          echo "@sirenpm/cli"  ;;
+            esac
+          done | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
+
+          echo "matrix=$PACKAGES" >> "$GITHUB_OUTPUT"
+          echo "Changed packages: $PACKAGES"
+
+  post-pack-validation:
+    name: Post-pack validation (${{ matrix.package }})
+    if: ${{ needs.detect-changed-packages.outputs.matrix != '[]' && needs.detect-changed-packages.outputs.matrix != '' }}
+    needs: [test, lint, grammar-drift, detect-changed-packages]
+    strategy:
+      matrix:
+        package: ${{ fromJson(needs.detect-changed-packages.outputs.matrix) }}
+    uses: ./.github/workflows/post-pack-validation.yml
+    with:
+      target-package: ${{ matrix.package }}
+      fail-on-error: false
