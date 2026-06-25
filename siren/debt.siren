@@ -63,3 +63,7 @@ task istty-nocolor-guard draft {
 task cli-wide-char-alignment draft {
   description = "Columns are aligned by couting string lengths, which doesn't account for wide chars"
 }
+
+task "noMilestone to no-milestone" {
+  description = "Rename `noMilestone` directive to `no_milestone` for consistency with snake_case attribute key convention"
+}

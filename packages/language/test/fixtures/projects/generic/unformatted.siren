@@ -2,7 +2,7 @@ document {
 
 
 
-noMilestone =     true }
+no_milestone =     true }
 
 task braces {
 }

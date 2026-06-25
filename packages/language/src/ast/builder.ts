@@ -217,7 +217,7 @@ function buildResource(
   return resource;
 }
 
-const RECOGNIZED_DIRECTIVES: ReadonlySet<string> = new Set(['noMilestone']);
+const RECOGNIZED_DIRECTIVES: ReadonlySet<string> = new Set(['no_milestone']);
 
 function buildDirectives(docHeader: Node | undefined): [DocumentDirective, string[]] {
   if (!docHeader) return [{ noMilestone: false }, []];
@@ -246,7 +246,7 @@ function buildDirectives(docHeader: Node | undefined): [DocumentDirective, strin
 
     const key = keyNode.text;
 
-    if (key === 'noMilestone') {
+    if (key === 'no_milestone') {
       // Extract boolean value from the attribute's tuple.
       const valueNode = attrNode.childForFieldName('value');
       if (!valueNode) continue;

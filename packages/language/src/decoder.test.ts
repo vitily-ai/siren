@@ -70,14 +70,14 @@ async function decode(name: string, content: string): Promise<readonly SourcedEn
 describe('decodeAstToEntries', () => {
   describe('empty document', () => {
     it('decodes an empty document into zero entries', async () => {
-      const entries = await decode('doc.siren', 'document { noMilestone = true }\n');
+      const entries = await decode('doc.siren', 'document { no_milestone = true }\n');
       expect(entries).toEqual([]);
     });
   });
 
   describe('entry shape', () => {
     it('decodes a single empty task with no status and no attributes', async () => {
-      const entries = await decode('doc.siren', 'document { noMilestone = true }\ntask foo {}');
+      const entries = await decode('doc.siren', 'document { no_milestone = true }\ntask foo {}');
       expect(entries).toHaveLength(1);
       const r = entries[0];
       expect(r.type).toBe('task');
@@ -99,7 +99,7 @@ describe('decodeAstToEntries', () => {
     it('decodes a milestone and a task in the same document in source order', async () => {
       const entries = await decode(
         'doc.siren',
-        'document { noMilestone = true }\ntask t {}\nmilestone m {}',
+        'document { no_milestone = true }\ntask t {}\nmilestone m {}',
       );
       expect(entries.map((r) => [r.type, r.id])).toEqual([
         ['task', 't'],
@@ -113,7 +113,7 @@ describe('decodeAstToEntries', () => {
       // The well-formed `task ok {}` must survive.
       const { entries, diagnostics } = await buildAndDecode(
         'doc.siren',
-        'document { noMilestone = true }\ntask broken @\ntask ok {}',
+        'task broken @\ntask ok {}',
       );
       const ids = entries.map((r) => r.id);
       expect(ids).not.toContain('broken');
@@ -277,10 +277,10 @@ describe('decodeAstToEntries', () => {
   });
 
   describe('synthesis', () => {
-    it('does NOT synthesize when document directive sets noMilestone = true', async () => {
+    it('does NOT synthesize when document directive sets no_milestone = true', async () => {
       const { entries } = await buildAndDecode(
         'doc.siren',
-        'document { noMilestone = true }\ntask t {}',
+        'document { no_milestone = true }\ntask t {}',
       );
       expect(entries.some((e) => e.origin.kind === 'synthetic')).toBe(false);
       expect(entries.length).toBe(1);

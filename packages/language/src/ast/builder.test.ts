@@ -59,7 +59,7 @@ describe('buildAst — resource kind & id normalization', () => {
     const parsed = await parse('task foo {}');
     expect(parsed.diagnostics).toEqual([]);
     expect(parsed.ast.resources).toHaveLength(1);
-    const r = parsed.ast.resources[0];
+    const r = parsed.ast.resources[0]!;
     expect(r.kind).toBe('task');
     expect(r.id).toBe('foo');
     expect(r.status).toBeUndefined();
@@ -69,16 +69,16 @@ describe('buildAst — resource kind & id normalization', () => {
   it('milestone bar {} → milestone kind', async () => {
     const parsed = await parse('milestone bar {}');
     expect(parsed.diagnostics).toEqual([]);
-    expect(parsed.ast.resources).toHaveLength(1);
-    expect(parsed.ast.resources[0].kind).toBe('milestone');
-    expect(parsed.ast.resources[0].id).toBe('bar');
+    expect(parsed.ast.resources!).toHaveLength(1);
+    expect(parsed.ast.resources[0]!.kind).toBe('milestone');
+    expect(parsed.ast.resources[0]!.id).toBe('bar');
   });
 
   it('task "has spaces" {} → id normalized to bare string "has spaces"', async () => {
     const parsed = await parse('task "has spaces" {}');
     expect(parsed.diagnostics).toEqual([]);
     expect(parsed.ast.resources).toHaveLength(1);
-    expect(parsed.ast.resources[0].id).toBe('has spaces');
+    expect(parsed.ast.resources[0]!.id).toBe('has spaces');
   });
 
   it('multiple resources are emitted in source order', async () => {
@@ -93,19 +93,19 @@ describe('buildAst — status modifiers (Decision 10)', () => {
   it('task foo complete {} → status complete, no diagnostics', async () => {
     const parsed = await parse('task foo complete {}');
     expect(parsed.diagnostics).toEqual([]);
-    expect(parsed.ast.resources[0].status).toBe('complete');
+    expect(parsed.ast.resources[0]!.status).toBe('complete');
   });
 
   it('task foo draft {} → status draft, no diagnostics', async () => {
     const parsed = await parse('task foo draft {}');
     expect(parsed.diagnostics).toEqual([]);
-    expect(parsed.ast.resources[0].status).toBe('draft');
+    expect(parsed.ast.resources[0]!.status).toBe('draft');
   });
 
   it('task foo blocked {} → status undefined, one WL001(modifier="blocked")', async () => {
     const parsed = await parse('task foo blocked {}');
     expect(parsed.ast.resources).toHaveLength(1);
-    expect(parsed.ast.resources[0].status).toBeUndefined();
+    expect(parsed.ast.resources[0]!.status).toBeUndefined();
 
     const wl001 = assertDiagnosticCode(parsed.diagnostics, 'WL001');
     expect(wl001).toHaveLength(1);
@@ -120,7 +120,7 @@ describe('buildAst — status modifiers (Decision 10)', () => {
 
   it('task foo complete draft {} → status draft (last wins), one WL002', async () => {
     const parsed = await parse('task foo complete draft {}');
-    expect(parsed.ast.resources[0].status).toBe('draft');
+    expect(parsed.ast.resources[0]!.status).toBe('draft');
 
     const wl002 = assertDiagnosticCode(parsed.diagnostics, 'WL002');
     expect(wl002).toHaveLength(1);
@@ -366,8 +366,8 @@ describe('buildAst — top-level ERROR nodes', () => {
 });
 
 describe('buildAst — document directives', () => {
-  it('document { noMilestone = true } + resources → directives.noMilestone = true', async () => {
-    const parsed = await parse('document {\n  noMilestone = true\n}\ntask a {}', 'doc.siren');
+  it('document { no_milestone = true } + resources → directives.noMilestone = true', async () => {
+    const parsed = await parse('document {\n  no_milestone = true\n}\ntask a {}', 'doc.siren');
     expect(parsed.ast.directives.noMilestone).toBe(true);
   });
 
@@ -401,8 +401,8 @@ describe('buildAst — document directives', () => {
     expect(wl003[1].directiveName).toBe('bar');
   });
 
-  it('recognized noMilestone does not produce WL003', async () => {
-    const parsed = await parse('document {\n  noMilestone = true\n}\ntask a {}', 'doc.siren');
+  it('recognized no_milestone does not produce WL003', async () => {
+    const parsed = await parse('document {\n  no_milestone = true\n}\ntask a {}', 'doc.siren');
     assertDiagnosticCode(parsed.diagnostics, 'WL003', false);
   });
 });

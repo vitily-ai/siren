@@ -330,7 +330,7 @@ describe('ParsedDocument.removeEntry', () => {
     const parser = await createParserFromFactory();
     const parsed = await parser.parse({
       name: 'doc.siren',
-      content: 'document { noMilestone = true } task only {}',
+      content: 'document { no_milestone = true } task only {}',
     });
 
     // Precondition: one entry.

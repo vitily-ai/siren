@@ -145,11 +145,11 @@ describe('Siren Formatter (CST-backed)', () => {
     describe('doc_header', () => {
       it('formats document header', async () => {
         const parser = await createParser();
-        const input = 'document { noMilestone = true }';
+        const input = 'document { no_milestone = true }';
         const parsed = await parser.parse({ name: 'doc-header.siren', content: input });
 
         const formatted = parsed.format();
-        const expected = 'document {\n  noMilestone = true\n}\n';
+        const expected = 'document {\n  no_milestone = true\n}\n';
         expect(formatted).toBe(expected);
 
         expect(parsed.source.content).toBe(expected);
@@ -157,12 +157,12 @@ describe('Siren Formatter (CST-backed)', () => {
 
       it('formats document header followed by an entry', async () => {
         const parser = await createParser();
-        const input = 'document { noMilestone = true } task foo {}';
+        const input = 'document { no_milestone = true } task foo {}';
         const parsed = await parser.parse({ name: 'doc-header-entry.siren', content: input });
 
         const formatted = parsed.format();
         const expected = `document {
-  noMilestone = true
+  no_milestone = true
 }
 
 task foo {}
@@ -260,7 +260,7 @@ task other-task {}
       const parser = await createParser();
       const input = `
         document {
-          noMilestone = true
+          no_milestone = true
         }
         # Comment between blocks is treated as before latter
         task b {}
@@ -268,7 +268,7 @@ task other-task {}
       const parsed = await parser.parse({ name: 'comments.siren', content: input });
       const expected = [
         'document {',
-        '  noMilestone = true',
+        '  no_milestone = true',
         '}',
         '',
         '# Comment between blocks is treated as before latter',

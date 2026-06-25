@@ -3,7 +3,7 @@ Document block with attributes
 ==================
 
 document {
-  noMilestone = true
+  no_milestone = true
   unknownDirective = "value"
 }
 
