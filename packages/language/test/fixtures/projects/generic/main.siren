@@ -12,12 +12,24 @@ milestone beta {
 milestone full {
   description = "not implicitly draft"
   assignee = "ganon"
+  string_attribute = "string value"
+  numer_attribute = 42
+  boolean_attribute = false
+  multi_attribute = "another string", 67, true
+  empty_attribute = []
   depends_on = draftmaintask, openmaintask, closedmaintask
 }
 
 task draftmaintask draft {}
 
-task openmaintask {}
+task openmaintask {
+  description = "this is an open task"
+  depends_on = opensubtask, closedsubtask
+}
+
+task opensubtask {}
+
+task closedsubtask complete {}
 
 task closedmaintask complete {}
 
