@@ -67,14 +67,16 @@ if [ ${#RESOLVED_DEPS[@]} -eq 0 ]; then
 fi
 
 # --- Step 2: Replace workspace:* deps in the target's package.json ---
+# Uses jq (JSON-aware) instead of regex to avoid escaping pitfalls.
 echo ""
 echo "Replacing workspace:* deps in $TARGET_LOCATION/package.json ..."
+JQ_FILTER="."
 for dep_name in "${!RESOLVED_DEPS[@]}"; do
   resolved="${RESOLVED_DEPS[$dep_name]}"
-  escaped_name=$(printf '%s\n' "$dep_name" | sed 's/[\/@\\]/\\&/g')
-  perl -i -pe "s#\"${escaped_name}\"\s*:\s*\"workspace:\*\"#\"${dep_name}\": \"${resolved}\"#g" "$TARGET_PKG_JSON"
+  JQ_FILTER="$JQ_FILTER | .dependencies[\"$dep_name\"] = \"$resolved\""
   echo "  $TARGET_PACKAGE: $dep_name -> $resolved"
 done
+jq "$JQ_FILTER" "$TARGET_PKG_JSON" > "${TARGET_PKG_JSON}.tmp" && mv "${TARGET_PKG_JSON}.tmp" "$TARGET_PKG_JSON"
 
 echo ""
 echo "Done. Run the following to verify post-pack behavior for $TARGET_PACKAGE:"
