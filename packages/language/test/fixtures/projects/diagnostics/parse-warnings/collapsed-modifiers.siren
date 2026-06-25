@@ -1,0 +1,6 @@
+# WL002 — Multiple recognized status modifiers
+# When both 'complete' and 'draft' are specified, the last one wins
+# and the surplus modifiers are reported via this diagnostic
+task my-task complete draft {
+    description = "has multiple recognized modifiers"
+}

@@ -1,0 +1,6 @@
+# WL003 — Unrecognized document directive
+# The document block only recognizes 'noMilestone'; 'author' triggers a warning
+document {
+    author = "unknown"
+}
+task a {}

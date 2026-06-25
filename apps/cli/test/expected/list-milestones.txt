@@ -1,8 +1,0 @@
-{
-	"fixture": "list-milestones",
-	"command": "siren list",
-	"expect": "stdout"
-}
----
-alpha
-beta

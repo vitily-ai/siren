@@ -1,0 +1,6 @@
+# Multiple parse errors in one file (EL001, EL002, EL003)
+!!! first error
+
+@@@ second error
+
+task valid-task {}

@@ -79,35 +79,6 @@ describe('siren main', () => {
     expect(runLifecycleSpy).not.toHaveBeenCalled();
   });
 
-  it('runs list command', async () => {
-    copyFixture('list-single-milestone', tempDir);
-
-    await main(['list']);
-
-    expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
-    expect(consoleLogSpy).toHaveBeenCalled();
-  });
-
-  it('list command outputs warnings to stderr', async () => {
-    copyFixture('broken', tempDir);
-
-    await main(['list']);
-
-    expect(consoleErrorSpy).toHaveBeenCalled();
-    const errOutput = consoleErrorSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
-    expect(errOutput).toContain('siren/broken.siren:1:1: EL003: unexpected token');
-    expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('runs list -t command', async () => {
-    copyFixture('tasks-by-milestone', tempDir);
-
-    await main(['list', '-t']);
-
-    expect(consoleLogSpy).toHaveBeenCalled();
-    expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
-  });
-
   it('show command sets exit code when entry id is missing', async () => {
     await main(['show']);
 
@@ -118,40 +89,13 @@ describe('siren main', () => {
   });
 
   it('show command sets exit code on runtime error', async () => {
-    copyFixture('list-single-milestone', tempDir);
+    copyFixture('generic-thin', tempDir);
 
     await main(['show', 'missing']);
 
     const errOutput = consoleErrorSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
     expect(errOutput).toContain('SirenEntry with id missing not found');
     expect(process.exitCode).toBe(1);
-    expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('runs list --tasks command', async () => {
-    copyFixture('list-tasks-alpha-only', tempDir);
-
-    await main(['list', '--tasks']);
-
-    expect(consoleLogSpy).toHaveBeenCalled();
-    expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('list command outputs multiple circular dependency warnings', async () => {
-    copyFixture('overlapping-cycles', tempDir);
-
-    await main(['list']);
-
-    const errCalls = consoleErrorSpy.mock.calls.map((c: unknown[]) => String(c[0]));
-    expect(
-      errCalls.some((e: string) =>
-        e.includes('W001: Circular dependency detected: a -> b -> c -> a'),
-      ),
-    ).toBe(true);
-    expect(
-      errCalls.some((e: string) => e.includes('W001: Circular dependency detected: a -> c -> a')),
-    ).toBe(true);
-    expect(consoleLogSpy).toHaveBeenCalled();
     expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
   });
 });

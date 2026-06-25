@@ -1,8 +1,0 @@
-{
-	"fixture": "multiple-files",
-	"command": "siren list",
-	"expect": "stdout"
-}
----
-alpha
-beta

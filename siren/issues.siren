@@ -1,0 +1,3 @@
+task format-document complete {
+  description = "`siren format` drops `document {}` clauses"
+}

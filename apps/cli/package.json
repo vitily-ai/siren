@@ -1,6 +1,6 @@
 {
   "name": "@sirenpm/cli",
-  "version": "0.3.0",
+  "version": "0.4.4",
   "description": "Siren command-line interface",
   "license": "GPL-3.0",
   "type": "module",
@@ -10,6 +10,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "build:quiet": "tsup --silent",
@@ -19,8 +22,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@sirenpm/core": "0.6.1",
-    "@sirenpm/language": "0.5.0",
+    "@sirenpm/core": "workspace:*",
+    "@sirenpm/language": "workspace:*",
     "citty": "^0.2.2"
   },
   "devDependencies": {

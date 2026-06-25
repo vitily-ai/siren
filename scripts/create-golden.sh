@@ -24,7 +24,7 @@ cli_cmd="$3"
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 expected_dir="$repo_root/apps/cli/test/expected"
-fixture_dir="$repo_root/packages/core/test/fixtures/projects/$fixture_name"
+fixture_dir="$repo_root/packages/language/test/fixtures/projects/$fixture_name"
 
 if [ ! -d "$fixture_dir" ]; then
   echo "Fixture '$fixture_name' does not exist at $fixture_dir" >&2

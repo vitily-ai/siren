@@ -1,0 +1,20 @@
+# W003 — Duplicate entry ID (first file)
+# First occurrence of duplicate IDs — these are kept by the builder
+task duplicate-task {
+    description = "First occurrence - this one is kept"
+}
+
+milestone duplicate-milestone {
+    description = "First milestone occurrence"
+    depends_on = duplicate-task
+}
+
+# Unique resource — no conflict
+task unique-task {
+    description = "No conflict"
+}
+
+# Third occurrence of duplicate-milestone (will be dropped)
+milestone duplicate-milestone {
+    description = "Third milestone occurrence - dropped"
+}

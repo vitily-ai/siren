@@ -1,4 +1,7 @@
-# NEXT
+document {
+  noMilestone = true
+}
+
 milestone readiness {}
 
 milestone task-mutex {}
@@ -25,6 +28,7 @@ task document-scoped-entries {
 task superseded-link draft {
   description = "an entry supersedes another via `supersedes` attribute. this marks the superseded entries as complete while also redirecting any dependencies on the original to the new entry"
 }
+
 # CLI mutations follow-ups (moved from cli-mutations.siren)
 task cli-mutations-mv-materialize-synthesized {
   description = "Allow siren mv against synthesized document milestones by materializing them into their origin document."

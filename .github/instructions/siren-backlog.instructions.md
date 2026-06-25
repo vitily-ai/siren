@@ -35,6 +35,8 @@ task feature-area-tests complete {
 
 ## Siren Issue Field Requirements
 
+These requirements apply to any entry that is not explicitly marked as `draft` or `complete`.
+
 Every issue in the siren backlog must have the following fields:
 - `description`: a clear, concise summary of the issue or work item.
 - `affected_packages`: the packages impacted by the issue or work item.

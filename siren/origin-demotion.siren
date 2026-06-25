@@ -7,6 +7,7 @@ milestone origin-demotion {
   context = "origin-demotion.md"
   depends_on = [origin-demotion-core-publish, origin-demotion-cli]
 }
+
 # ── Phase 1: core ─────────────────────────────────────────────────────────────
 task origin-demotion-core-types complete {
   description = "Remove RangeOrigin, SyntheticOrigin, and Origin from types.ts. Remove SirenEntry.origin and Attribute.origin. Reduce DiagnosticBase to {code, severity} — strip file, line, column. Update W001/W002/W003 diagnostic interfaces to carry entry IDs instead of extracted position fields. These type changes break existing analysis.ts producers and tests, establishing the red state for downstream tasks."
@@ -33,6 +34,7 @@ task origin-demotion-core-publish complete {
   affected_packages = ["@sirenpm/core"]
   context = "origin-demotion.md"
 }
+
 # ── Phase 2: language — SUPERSEDED ─────────────────────────────────────────────
 # The ADR-0004 rebuild of @sirenpm/language replaced the API surfaces that these
 # tasks target (cst.ts re-export, context-factory.ts). The language-native Origin
@@ -58,8 +60,9 @@ task origin-demotion-language-publish complete {
   context = "origin-demotion.md"
   note = "superseded by lang-v060-exports, lang-publish"
 }
+
 # ── Phase 3: CLI (deferred) ───────────────────────────────────────────────────
-task origin-demotion-cli {
+task origin-demotion-cli complete {
   description = "Update @sirenpm/cli formatDiagnostics to extract source provenance from entry IDs carried by each diagnostic type rather than from DiagnosticBase.file/line/column. Requires graph or project context at format time. Details to be scoped at implementation. Blocked on lang-v060-exports in siren/language-ast-pipeline.siren (language must publish with v0.6.0 adoption first)."
   affected_packages = ["@sirenpm/cli"]
   context = "origin-demotion.md"

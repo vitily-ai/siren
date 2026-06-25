@@ -5,20 +5,55 @@ on:
     tags:
       - "@sirenpm/*@*"
   workflow_dispatch:
+    inputs:
+      target-package:
+        description: >
+          Package to validate before publishing (e.g. @sirenpm/language).
+          Required for manual dispatch — tag-triggered releases extract
+          this from the tag automatically.
+        required: true
+        type: string
 
 
 permissions:
   contents: write # needed to create git tags for published packages
 
 jobs:
+  determine-target:
+    name: Determine target package
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    outputs:
+      package: ${{ steps.resolve.outputs.package }}
+    steps:
+      - id: resolve
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "package=${{ inputs.target-package }}" >> "$GITHUB_OUTPUT"
+          else
+            # Tag format: @sirenpm/name@version — strip the last @version part
+            PACKAGE="${GITHUB_REF_NAME%@*}"
+            echo "package=$PACKAGE" >> "$GITHUB_OUTPUT"
+          fi
+
+  pack-validation:
+    name: Post-pack validation
+    needs: [determine-target]
+    uses: ./.github/workflows/post-pack-validation.yml
+    with:
+      target-package: ${{ needs.determine-target.outputs.package }}
+      fail-on-error: true
+
   release:
+    needs: [determine-target, pack-validation]
     name: Publish to npm
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # changesets needs full history to compare versions
+          fetch-depth: 0 # needed for git tag detection in build-metadata
 
       - name: Enable Corepack
         run: corepack enable
@@ -47,7 +82,7 @@ jobs:
             name=$(jq -r '.name // ""' "$pkg_json")
             version=$(jq -r '.version // ""' "$pkg_json")
             [ -z "$name" ] || [ -z "$version" ] && continue
-            # If this exact version is already on npm, changeset publish will skip it
+            # If this exact version is already on npm, the publish step will skip it
             npm view "${name}@${version}" version > /dev/null 2>&1 && continue
             # This version would be published — it must be a prerelease
             if ! echo "$version" | grep -q '-'; then
@@ -60,8 +95,16 @@ jobs:
             exit 1
           fi
           echo "All packages to be published have prerelease versions - OK."
+      
+      - name: Topological build
+        run: yarn build
 
-      - name: Publish changed packages
-        run: yarn changeset publish
+      - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          YARN_NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Override .yarnrc.yml's registry proxy — publish directly to npm
+          YARN_NPM_REGISTRY_SERVER: "https://registry.npmjs.org"
+          TARGET: ${{ needs.determine-target.outputs.package }}
+        run: |
+          yarn workspace "$TARGET" npm publish

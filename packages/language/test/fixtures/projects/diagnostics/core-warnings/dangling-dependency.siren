@@ -1,0 +1,15 @@
+# W002 — Dangling dependency
+# References task IDs that don't exist anywhere in the project
+task present {
+    description = "a present task"
+}
+
+milestone with-dangling {
+    description = "depends on a missing task"
+    depends_on = [missing-task, present]
+}
+
+# Should emit two separate W002 diagnostics
+milestone with-two-dangling {
+    depends_on = [missing1, missing2]
+}

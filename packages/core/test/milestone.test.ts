@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { EntryGraph } from '../src/ir/entry-graph';
 import { ImplicitCompletionModule } from '../src/ir/pipeline/modules/completion';
 import type { EntryStatus, EntryType, SirenEntry } from '../src/ir/types';
-import { getTasksByMilestone } from '../src/utilities/milestone';
 
 /** Build a minimal SirenEntry for testing */
 function entry(
@@ -123,47 +122,5 @@ describe('ImplicitCompletionModule', () => {
     const result = resolveCompletion(m1, m2);
     expect(statusOf(result, 'm1')).toBeUndefined();
     expect(statusOf(result, 'm2')).toBeUndefined();
-  });
-});
-
-describe('getTasksByMilestone status semantics', () => {
-  it('excludes tasks with explicit complete status', () => {
-    const milestone = entry('milestone', 'release', {
-      dependsOn: ['done-task'],
-    });
-    const completeTask = entry('task', 'done-task', {
-      status: 'complete',
-    });
-
-    const graph = EntryGraph.fromEntries([milestone, completeTask]);
-    const tasksByMilestone = getTasksByMilestone(graph);
-
-    expect(tasksByMilestone.get('release')).toEqual([]);
-  });
-
-  it('includes tasks with explicit draft status', () => {
-    const milestone = entry('milestone', 'release', {
-      dependsOn: ['draft-task'],
-    });
-    const draftTask = entry('task', 'draft-task', {
-      status: 'draft',
-    });
-
-    const graph = EntryGraph.fromEntries([milestone, draftTask]);
-    const tasksByMilestone = getTasksByMilestone(graph);
-
-    expect(tasksByMilestone.get('release')).toEqual([draftTask]);
-  });
-
-  it('includes tasks with no explicit status', () => {
-    const milestone = entry('milestone', 'release', {
-      dependsOn: ['todo-task'],
-    });
-    const todoTask = entry('task', 'todo-task');
-
-    const graph = EntryGraph.fromEntries([milestone, todoTask]);
-    const tasksByMilestone = getTasksByMilestone(graph);
-
-    expect(tasksByMilestone.get('release')).toEqual([todoTask]);
   });
 });

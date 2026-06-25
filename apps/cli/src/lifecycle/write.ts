@@ -23,6 +23,8 @@ export function runWrite(ctx: DeepReadonly<CliContext>): WriteArtifact {
   const totalDocs = parsedDocuments.length;
   let written = 0;
 
+  let dryRunOutput = '';
+
   for (const absolutePath of signalArray) {
     const relPath = path.relative(rootDir, absolutePath);
     const parsedDoc = parsedDocuments.find((p) => p.source.name === relPath);
@@ -34,7 +36,7 @@ export function runWrite(ctx: DeepReadonly<CliContext>): WriteArtifact {
       // In dry-run mode, compare current content vs source document original
       const srcDoc = sourceDocuments.find((s) => s.name === relPath);
       if (srcDoc && srcDoc.content !== content) {
-        console.log(`would update ${relPath}`);
+        dryRunOutput += `    Would update ${relPath}\n`;
         written++;
       }
     } else {
@@ -44,6 +46,12 @@ export function runWrite(ctx: DeepReadonly<CliContext>): WriteArtifact {
       }
       written++;
     }
+  }
+
+  if (dryRun && dryRunOutput.length > 0) {
+    const dim = '\x1b[90m';
+    const reset = '\x1b[0m';
+    console.log(`${dim}Dry run results:\n${dryRunOutput.trimEnd()}${reset}`);
   }
 
   console.log(`Updated ${written} files out of ${totalDocs}`);

@@ -54,10 +54,9 @@ apps/
 1. **Core stays portable**: No DOM or Node APIs in `packages/core` — must run in both environments. "Portable" means environment-agnostic code, not unbundled distribution.
 2. **Core is bundled**: `packages/core` builds to a single bundled ESM module + `.d.ts` via tsup.
 3. **Strict layering**: `@sirenpm/core` must not import from `@sirenpm/language`. Parser, decoder, and export logic belong in language, not core.
-4. **Registry resolution by default**: Published packages depend on each other via the npm registry (not `workspace:*`). `@sirenpm/cli` pins `@sirenpm/core` and `@sirenpm/language`; `@sirenpm/language` pins `@sirenpm/core`. `enableTransparentWorkspaces: false` in `.yarnrc.yml` enforces this. To iterate locally, link manually (`yarn link`) or temporarily swap to `workspace:*`.
-5. **Diagnostic codes**: Core owns semantic codes `W001` (circular), `W002` (dangling), `W003` (duplicate id). Language owns parse-phase codes `WL001`–`WL003` and `EL001`. `DiagnosticBase` carries no `message` — frontends assemble display text from structured fields.
-6. **Zero-config parser**: `createParser()` in `@sirenpm/language` owns `web-tree-sitter` initialization and resolves the grammar WASM via `new URL(...)` package-relative — consumers do not configure paths.
-7. **Maximum core**: Core contains high-level utility logic (e.g. listing milestones) in addition to `SirenBuilder`, `SirenProject`, IR types, and validation. A utility useful for one frontend is likely useful for others.
+4. **Diagnostic codes**: Core owns semantic codes `W001` (circular), `W002` (dangling), `W003` (duplicate id). Language owns parse-phase codes `WL001`–`WL003` and `EL001`. `DiagnosticBase` carries no `message` — frontends assemble display text from structured fields.
+5. **Zero-config parser**: `createParser()` in `@sirenpm/language` owns `web-tree-sitter` initialization and resolves the grammar WASM via `new URL(...)` package-relative — consumers do not configure paths.
+6. **Maximum core**: Core contains high-level utility logic (e.g. listing milestones) in addition to `SirenBuilder`, `SirenProject`, IR types, and validation. A utility useful for one frontend is likely useful for others.
 
 ## Testing
 - **Vitest** repo-wide for unit tests

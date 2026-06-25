@@ -1,8 +1,0 @@
-{
-	"fixture": "recursive",
-	"command": "siren list",
-	"expect": "stdout"
-}
----
-root
-nested

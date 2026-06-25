@@ -6,12 +6,14 @@ milestone language-ast-pipeline {
   context = "language-ast-pipeline.md"
   depends_on = [lang-docs, lang-parser, lang-ast-builder, lang-diagnostics, lang-decode, lang-format, lang-v060-origin, lang-v060-decode-entries, lang-v060-synthesis, lang-v060-diagnostics, lang-v060-exports, lang-v060-tests, lang-render-entry, lang-greedy-decode, lang-format-mutate, lang-source-getter, lang-patch-entry, lang-remove-entry, lang-interface-update, lang-render-integration, lang-cli, lang-tests, lang-publish]
 }
+
 # Phase 1 — Documentation (complete)
 task lang-docs complete {
   description = "Update CONTEXT.md glossary to replace Parsed Document Model terms with Siren AST and ParsedDocument. Create docs/adr/0004-siren-ast-language-boundary.md superseding ADR 0001. Create packages/language/README.md documenting the public API shape, ParsedDocument services, diagnostics table (EL001, WL001, WL002), and formatting policy. No source changes — architecture documented before any implementation begins."
   context = "language-ast-pipeline.md"
   files = "CONTEXT.md, docs/adr/0004-siren-ast-language-boundary.md, packages/language/README.md"
 }
+
 # Phase 2 — Parser factory and public API scaffold
 task lang-parser complete {
   description = "Implement createParser() with zero-config WASM loading via package-relative new URL() resolution (no consumer-supplied paths). Define SourceDocument input shape ({ name, content }), the ParsedDocument public wrapper, and the parser object. Expose parse(document) returning ParsedDocument and parseBatch(documents) as a per-document loop convenience. ParsedDocument service methods (.ast, .diagnostics, .toSirenDocument(), .format()) may return stub values at this stage; the goal is to establish the public API contract and WASM loading."
@@ -19,6 +21,7 @@ task lang-parser complete {
   files = "packages/language/src/index.ts, packages/language/src/parser/factory.ts, packages/language/src/parser/types.ts"
   depends_on = lang-docs
 }
+
 # Non-blocking follow-ups identified during lang-parser review
 task lang-parser-cst-leak-test complete {
   description = "Add a runtime test asserting the private CST does not leak on the ParsedDocument surface (e.g. expect((parsed as any).tree).toBeUndefined() and that Object.keys does not include a tree property). Currently privacy is only enforced by #-private class fields; this test pins the contract."
@@ -47,6 +50,7 @@ task lang-parser-drop-directive-undefined complete {
   files = "packages/language/src/parser/factory.ts"
   depends_on = lang-parser
 }
+
 # Phase 3 — AST types, CST-to-AST builder, and diagnostic types (parallel)
 task lang-diagnostics complete {
   description = "Define the structured language diagnostic taxonomy with no embedded display message. Initial codes: EL001 (error — syntax error or malformed resource omitted from AST), WL001 (warning — unrecognized status modifier ignored), WL002 (warning — multiple recognized status modifiers collapsed, last wins). Each type carries contextual fields (resourcePath (fileName -> resourceId), modifier, recognizedModifiers, resolvedStatus, documentName) so frontends can assemble display text. Export a LanguageDiagnostic discriminated union. Base fields (code, severity, origin) from DiagnosticBase in @sirenpm/core. Note: core v0.6.0 makes DiagnosticBase generic (DiagnosticBase<'E','L'>, DiagnosticBase<'W','L'>) and removes the Origin import — see lang-v060-diagnostics for the reconciliation."
@@ -61,6 +65,7 @@ task lang-ast-builder complete {
   files = "packages/language/src/ast/types.ts, packages/language/src/ast/builder.ts"
   depends_on = [lang-parser, lang-diagnostics]
 }
+
 # Phase 4 — ParsedDocument services (decode gated on tuple-first-core; format independent)
 task lang-decode complete {
   description = "Implement ParsedDocument.toSirenDocument() per decode rules in ADR 0004. Every AST tuple decodes to the tuple-first core value shape (bare readonly atom array). Bare identifier tuple members decode as unresolved ResourceReference everywhere. Quoted string tuple members decode as strings, except inside depends_on where they decode as unresolved references. Resolved status from last-recognized modifier populates Resource.status. Document directive is omitted; core absent-directive default enables synthesis. Private CST backreferences may populate origin metadata; the AST stays span-free. Assumes the tuple-first @sirenpm/core AttributeValue contract is in place; use an explicit shim if not yet published. Note: core v0.6.0 removes SirenDocument and Resource types — this method must be renamed to toEntries() and return flat SirenEntry[]. See lang-v060-decode-entries."
@@ -82,6 +87,7 @@ task lang-format complete {
   files = "packages/language/src/format/formatter.ts"
   depends_on = lang-ast-builder
 }
+
 # Phase 4B — Adopt @sirenpm/core v0.6.0 breaking changes
 # ADR-0005: flat SirenEntry[] replaces SirenDocument/Resource
 # ADR-0006: Origin owned by language, not core; DiagnosticBase is generic <S,P>
@@ -126,6 +132,7 @@ task lang-v060-tests complete {
   files = "packages/language/src/decoder/index.test.ts, packages/language/src/diagnostics/types.test.ts, packages/language/test/"
   depends_on = [lang-v060-exports, lang-tests]
 }
+
 # Phase 5B — Entry render-to-source (blocks CLI mutation commands)
 # Canonical rendering of arbitrary SirenEntry values back to .siren source text.
 # Enables ParsedDocument.patchEntry() for mutation commands (siren edit/set).
@@ -182,8 +189,9 @@ task lang-render-integration complete {
   files = "packages/language/test/, apps/cli/test/expected/"
   depends_on = lang-interface-update
 }
+
 # Phase 5 — CLI consumer adoption and test coverage (parallel)
-task lang-cli {
+task lang-cli complete {
   description = "Update the CLI lifecycle to consume the rebuilt @sirenpm/language API. Replace any batch parser.parse(docs[]) calls with per-document loops using parse() or parseBatch(). Replace syntaxDocuments/decodeSyntaxDocuments usage with parsedDoc.toEntries() per document followed by SirenBuilder.fromEntries(). Replace old formatter calls with parsedDoc.format() and use parsedDoc.source to write mutated content to disk. Thread LanguageDiagnostic results into the CLI diagnostic display alongside core semantic diagnostics. The CLI must not call tree-sitter APIs directly. Note: CLI also needs eod-cli-bridge (SirenBuilder.fromDocuments → fromEntries, sirenDocuments → sirenEntries) and origin-demotion-cli (diagnostic position resolution via entry references) — tracked in siren/entries-over-documents.siren and siren/origin-demotion.siren."
   context = "language-ast-pipeline.md"
   files = "apps/cli/src/lifecycle/parsing.ts, apps/cli/src/lifecycle/decoding.ts, apps/cli/src/lifecycle/diagnostics.ts, apps/cli/src/commands/format.ts"
@@ -196,8 +204,9 @@ task lang-tests complete {
   files = "packages/language/test/, apps/cli/test/expected/"
   depends_on = [lang-decode, lang-format]
 }
+
 # Phase 6 — Publication
-task lang-publish {
+task lang-publish complete {
   description = "Publish updated @sirenpm/language (new public API) and @sirenpm/cli (updated consumer). Both must compile cleanly against the published @sirenpm/core v0.6.0 that removes Origin, SirenDocument, and Resource. Update package versions. Ensure the WASM artifact is included in the @sirenpm/language npm bundle."
   context = "language-ast-pipeline.md"
   depends_on = [lang-cli, lang-tests, lang-render-integration]

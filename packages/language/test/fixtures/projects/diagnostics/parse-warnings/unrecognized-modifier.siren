@@ -1,0 +1,5 @@
+# WL001 — Unrecognized status modifier
+# Only 'complete' and 'draft' are recognized; 'pending' triggers a warning
+task my-task pending {
+    description = "has unrecognized modifier"
+}
