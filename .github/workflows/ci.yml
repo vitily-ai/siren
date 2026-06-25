@@ -173,6 +173,7 @@ jobs:
     if: ${{ needs.detect-changed-packages.outputs.matrix != '[]' && needs.detect-changed-packages.outputs.matrix != '' }}
     needs: [test, lint, grammar-drift, detect-changed-packages]
     strategy:
+      fail-fast: false
       matrix:
         package: ${{ fromJson(needs.detect-changed-packages.outputs.matrix) }}
     uses: ./.github/workflows/post-pack-validation.yml
