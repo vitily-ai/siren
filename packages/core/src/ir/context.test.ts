@@ -3,7 +3,7 @@ import { SirenBuilder } from './assembly';
 import type { SirenEntry } from './types';
 
 function buildContext(entries: readonly SirenEntry[]) {
-  return SirenBuilder.fromEntries(entries, 'adhoc').build();
+  return SirenBuilder.fromEntries(entries).build();
 }
 
 describe('SirenProject (builder-built semantic snapshot)', () => {
@@ -487,14 +487,14 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
       expect(status.closed).toHaveLength(1);
       expect(status.draft).toHaveLength(1);
 
-      expect(status.open[0].id).toBe('open-m');
-      expect(status.open[0].stats).toEqual({ deps: { total: 2, closed: 1 } });
+      expect(status.open[0]!.id).toBe('open-m');
+      expect(status.open[0]!.stats).toEqual({ deps: { total: 2, closed: 1 } });
 
-      expect(status.closed[0].id).toBe('done-m');
-      expect(status.closed[0].stats).toEqual({ deps: { total: 1, closed: 1 } });
+      expect(status.closed[0]!.id).toBe('done-m');
+      expect(status.closed[0]!.stats).toEqual({ deps: { total: 1, closed: 1 } });
 
-      expect(status.draft[0].id).toBe('draft-m');
-      expect(status.draft[0].stats).toEqual({ deps: { total: 2, closed: 1 } });
+      expect(status.draft[0]!.id).toBe('draft-m');
+      expect(status.draft[0]!.stats).toEqual({ deps: { total: 2, closed: 1 } });
     });
 
     it('returns empty arrays when there are no milestones', () => {
@@ -525,9 +525,9 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
       const status = context.getStatus();
       expect(status.closed).toHaveLength(0);
       expect(status.open).toHaveLength(1);
-      expect(status.open[0].id).toBe('m1');
+      expect(status.open[0]!.id).toBe('m1');
       // Task 't1' is complete but is not a milestone, so it should not appear
-      expect(status.open[0].stats).toEqual({ deps: { total: 1, closed: 0 } });
+      expect(status.open[0]!.stats).toEqual({ deps: { total: 1, closed: 0 } });
     });
 
     it('considers milestones implicitly completed by the pipeline as closed', () => {
@@ -549,8 +549,8 @@ describe('SirenProject (builder-built semantic snapshot)', () => {
       // all deps are complete
       const status = context.getStatus();
       expect(status.closed).toHaveLength(1);
-      expect(status.closed[0].id).toBe('implicitly-done');
-      expect(status.closed[0].stats).toEqual({ deps: { total: 1, closed: 1 } });
+      expect(status.closed[0]!.id).toBe('implicitly-done');
+      expect(status.closed[0]!.stats).toEqual({ deps: { total: 1, closed: 1 } });
     });
   });
 });
