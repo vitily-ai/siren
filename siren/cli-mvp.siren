@@ -2,8 +2,8 @@ task cli-new-milestone {
   description = "cli tool to create milestone"
 }
 
-task recursive-search-up {
-  description = "invoking siren cli looks up directory tree until a project root has been identified, and uses that as the basis for discovery"
+task determine-root {
+  description = "when cli starts, determine the root and boundaries of the project for discovery."
 }
 
 task cli-add-task-basic {
@@ -17,7 +17,7 @@ task cli-add-task-no-milestone {
 
 milestone cli-mvp {
   description = "Minimum features to make the cli usable"
-  depends_on = [cli-new-milestone, recursive-search-up, cli-add-task-basic, cli-add-task-no-milestone, query-complete, complete-duplicates]
+  depends_on = [cli-new-milestone, determine-root, cli-add-task-basic, cli-add-task-no-milestone, query-complete, complete-duplicates]
 }
 
 task query-complete {

@@ -1,5 +1,5 @@
 document {
-  noMilestone = true
+  no_milestone = true
 }
 
 task attribute-structure {
