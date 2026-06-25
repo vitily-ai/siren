@@ -7,15 +7,16 @@ task array-optional-brackets complete {
   note = "effectively tackled by the tuple-first migration and the new tuple grammar with optional braces"
 }
 
-task task-readiness complete {
+// TODO this a core feature not a language one
+task task-readiness draft {
   description = "during ir construction, determine if an entry is 'ready' - meaning it has no incomplete dependencies"
 }
 
-task multiline-strings {
+task multiline-strings draft {
   description = "support for multiline strings. consider heredoc syntax and alternatives"
 }
 
-task naked-description {
+task naked-description draft {
   description = "entries may begin with an unquoted or naked multiline string as a standin for `description = ...`. Naked in this sense means it would not necessarily be restricted to the multiline syntax (heredoc or otherwise), but be 'bare'."
   depends_on = multiline-strings
 }
