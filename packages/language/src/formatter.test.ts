@@ -179,5 +179,17 @@ task b {}
 
       expect(parsed.source.content).toBe(canonical);
     });
+
+    it('formats document header', async () => {
+      const parser = await createParser();
+      const input = 'document { noMilestone = true }';
+      const parsed = await parser.parse({ name: 'doc-header.siren', content: input });
+
+      const formatted = parsed.format();
+      const expected = 'document {\n  noMilestone = true\n}\n';
+      expect(formatted).toBe(expected);
+
+      expect(parsed.source.content).toBe(expected);
+    });
   });
 });

@@ -7,12 +7,6 @@ interface FormatElement {
   row: number;
 }
 
-interface TopLevelElement {
-  type: 'comment' | 'resource';
-  node: Node;
-  startIndex: number;
-}
-
 function getNamedChildren(node: Node): Node[] {
   const children: Node[] = [];
   for (let i = 0; i < node.namedChildCount; i++) {
@@ -44,19 +38,6 @@ function formatAttribute(keyNode: Node, valueNode: Node): string {
   return `${key} = ${valueStr}`;
 }
 
-function hasAttributesOrComments(node: Node): boolean {
-  if (node.type === 'attribute' || node.type === 'comment') {
-    return true;
-  }
-  for (let i = 0; i < node.childCount; i++) {
-    const child = node.child(i);
-    if (child && hasAttributesOrComments(child)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 function collectResourceElements(node: Node, elements: FormatElement[]) {
   if (node.type === 'comment') {
     elements.push({
@@ -84,60 +65,112 @@ function collectResourceElements(node: Node, elements: FormatElement[]) {
   }
 }
 
-function compareElements(a: FormatElement, b: FormatElement): number {
-  if (a.row !== b.row) {
-    return a.row - b.row;
-  }
-  if (a.type === 'comment' && b.type !== 'comment') {
-    return -1;
-  }
-  if (b.type === 'comment' && a.type !== 'comment') {
-    return 1;
-  }
-  return a.startIndex - b.startIndex;
+/** Build a sorted list of block-content elements (attributes + comments) from a node. */
+function collectAndSortBlockElements(node: Node): FormatElement[] {
+  const elements: FormatElement[] = [];
+  collectResourceElements(node, elements);
+  elements.sort((a, b) => {
+    if (a.row !== b.row) return a.row - b.row;
+    if (a.type === 'comment' && b.type !== 'comment') return -1;
+    if (b.type === 'comment' && a.type !== 'comment') return 1;
+    return a.startIndex - b.startIndex;
+  });
+  return elements;
 }
 
-function formatResource(resourceNode: Node): string[] {
-  const headerNode = resourceNode.children.find((c) => c.type === 'resource_header');
-  if (!headerNode) {
-    return [];
+function findChildByType(node: Node, type: string): Node | undefined {
+  for (let i = 0; i < node.childCount; i++) {
+    const child = node.child(i);
+    if (child && child.type === type) return child;
   }
-  const typeNode = headerNode.childForFieldName('type');
-  const type = typeNode ? typeNode.text : '';
-  const idNode = headerNode.childForFieldName('id');
-  const idText = idNode ? idNode.text : '';
-  const modifierNodes = headerNode.children.filter((c) => c.type === 'resource_modifier');
-  const modifierTexts = modifierNodes.map((m) => m.text);
-  const modifierStr = modifierTexts.length > 0 ? ` ${modifierTexts.join(' ')}` : '';
+  return undefined;
+}
 
-  const bodyNode = resourceNode.childForFieldName('body');
-  const isEmpty = !bodyNode || !hasAttributesOrComments(bodyNode);
+/**
+ * Recursive CST formatter. Dispatches on node type to the appropriate
+ * formatting logic. Unknown node types throw loudly so the compiler or
+ * grammar author is immediately aware of missing coverage.
+ */
+function formatNode(node: Node, indent = 0): string[] {
+  const pad = '  '.repeat(indent);
 
-  if (isEmpty) {
-    return [`${type} ${idText}${modifierStr} {}`];
-  }
-
-  const lines: string[] = [];
-  lines.push(`${type} ${idText}${modifierStr} {`);
-
-  const innerElements: FormatElement[] = [];
-  collectResourceElements(bodyNode, innerElements);
-  innerElements.sort(compareElements);
-
-  for (const element of innerElements) {
-    if (element.type === 'attribute') {
-      const keyNode = element.node.childForFieldName('key');
-      const valueNode = element.node.childForFieldName('value');
-      if (keyNode && valueNode) {
-        lines.push(`  ${formatAttribute(keyNode, valueNode)}`);
+  switch (node.type) {
+    case 'document': {
+      // Root node: format children, insert blank lines between sibling resources.
+      const lines: string[] = [];
+      let lastChildType: string | undefined;
+      for (let i = 0; i < node.childCount; i++) {
+        const child = node.child(i);
+        if (!child) continue;
+        const childLines = formatNode(child, indent);
+        if (childLines.length === 0) continue;
+        if (child.type === 'resource' && lastChildType === 'resource') {
+          lines.push(''); // blank line between resources
+        }
+        lines.push(...childLines);
+        lastChildType = child.type;
       }
-    } else if (element.type === 'comment') {
-      lines.push(`  ${formatCommentText(element.node.text)}`);
+      return lines;
     }
-  }
 
-  lines.push('}');
-  return lines;
+    case 'doc_header': {
+      // "document" keyword followed by a block node.
+      const block = findChildByType(node, 'block');
+      if (!block) return [`${pad}document {}`];
+      const blockLines = formatNode(block, indent);
+      return [`${pad}document${blockLines[0]}`, ...blockLines.slice(1)];
+    }
+
+    case 'resource': {
+      // resource_header child + body (block) child.
+      const header = findChildByType(node, 'resource_header');
+      if (!header) return [];
+      const headerLines = formatNode(header, indent);
+      const body = node.childForFieldName('body');
+      if (!body) return headerLines;
+      const blockLines = formatNode(body, indent);
+      return [`${headerLines[0]}${blockLines[0]}`, ...blockLines.slice(1)];
+    }
+
+    case 'resource_header': {
+      const typeName = node.childForFieldName('type')?.text ?? '';
+      const id = node.childForFieldName('id')?.text ?? '';
+      const modifiers: string[] = [];
+      for (let i = 0; i < node.childCount; i++) {
+        const c = node.child(i);
+        if (c?.type === 'resource_modifier') modifiers.push(c.text);
+      }
+      const modStr = modifiers.length > 0 ? ` ${modifiers.join(' ')}` : '';
+      return [`${pad}${typeName} ${id}${modStr}`];
+    }
+
+    case 'block': {
+      // Collect and sort content children (comments before attributes on same row).
+      const elements = collectAndSortBlockElements(node);
+      if (elements.length === 0) return [' {}'];
+      const lines: string[] = [' {'];
+      for (const el of elements) {
+        const elLines = formatNode(el.node, indent + 1);
+        lines.push(...elLines);
+      }
+      lines.push(`${pad}}`);
+      return lines;
+    }
+
+    case 'attribute': {
+      const key = node.childForFieldName('key');
+      const value = node.childForFieldName('value');
+      if (!key || !value) return [];
+      return [`${pad}${formatAttribute(key, value)}`];
+    }
+
+    case 'comment': {
+      return [`${pad}${formatCommentText(node.text)}`];
+    }
+
+    default:
+      throw new Error(`Formatter: unhandled CST node type "${node.type}"`);
+  }
 }
 
 /**
@@ -151,39 +184,8 @@ export function formatCst(tree: Tree, _content: string): string {
     throw new Error('Cannot format a document with parse errors');
   }
 
-  const root = tree.rootNode;
-  const topElements: TopLevelElement[] = [];
+  const lines = formatNode(tree.rootNode);
 
-  for (let i = 0; i < root.childCount; i++) {
-    const child = root.child(i);
-    if (!child) continue;
-
-    if (child.type === 'comment') {
-      topElements.push({ type: 'comment', node: child, startIndex: child.startIndex });
-    } else if (child.type === 'resource') {
-      topElements.push({ type: 'resource', node: child, startIndex: child.startIndex });
-    }
-  }
-
-  // topElements are already sorted by child index (lexical order)
-  const lines: string[] = [];
-  let lastWasResource = false;
-
-  for (const element of topElements) {
-    if (element.type === 'comment') {
-      lines.push(formatCommentText(element.node.text));
-      lastWasResource = false;
-    } else if (element.type === 'resource') {
-      if (lastWasResource) {
-        lines.push(''); // blank line separation
-      }
-      const resourceLines = formatResource(element.node);
-      lines.push(...resourceLines);
-      lastWasResource = true;
-    }
-  }
-
-  // File ends with a trailing newline if it has any statements.
   if (lines.length > 0) {
     return `${lines.join('\n')}\n`;
   }

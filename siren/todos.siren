@@ -1,7 +1,6 @@
 document {
   noMilestone = true
 }
-
 milestone readiness {}
 
 milestone task-mutex {}

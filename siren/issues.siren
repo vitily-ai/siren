@@ -1,3 +1,3 @@
-task format-document {
-    description = "`siren format` drops `document {}` clauses"
+task complete format-document {
+  description = "`siren format` drops `document {}` clauses"
 }

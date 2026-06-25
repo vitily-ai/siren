@@ -1,7 +1,6 @@
 document {
   noMilestone = true
 }
-
 task complete-before-dependencies {
   description = "an entry that is explicitly marked 'complete' while having dependencies that are not complete should surface a warning during IR construction"
 }
