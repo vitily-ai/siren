@@ -1,6 +1,6 @@
 {
   "name": "@sirenpm/cli",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Siren command-line interface",
   "license": "GPL-3.0",
   "type": "module",
@@ -10,6 +10,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "build:quiet": "tsup --silent",

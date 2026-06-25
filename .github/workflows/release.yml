@@ -46,14 +46,14 @@ jobs:
       fail-on-error: true
 
   release:
-    needs: [pack-validation]
+    needs: [determine-target, pack-validation]
     name: Publish to npm
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # changesets needs full history to compare versions
+          fetch-depth: 0 # needed for git tag detection in build-metadata
 
       - name: Enable Corepack
         run: corepack enable
@@ -82,7 +82,7 @@ jobs:
             name=$(jq -r '.name // ""' "$pkg_json")
             version=$(jq -r '.version // ""' "$pkg_json")
             [ -z "$name" ] || [ -z "$version" ] && continue
-            # If this exact version is already on npm, changeset publish will skip it
+            # If this exact version is already on npm, the publish step will skip it
             npm view "${name}@${version}" version > /dev/null 2>&1 && continue
             # This version would be published — it must be a prerelease
             if ! echo "$version" | grep -q '-'; then
@@ -99,7 +99,12 @@ jobs:
       - name: Topological build
         run: yarn build
 
-      - name: Publish changed packages
-        run: yarn changeset publish
+      - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          YARN_NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Override .yarnrc.yml's registry proxy — publish directly to npm
+          YARN_NPM_REGISTRY_SERVER: "https://registry.npmjs.org"
+          TARGET: ${{ needs.determine-target.outputs.package }}
+        run: |
+          yarn workspace "$TARGET" npm publish
