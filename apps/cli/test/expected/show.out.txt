@@ -1,0 +1,25 @@
+{
+	"fixture": "generic",
+	"command": "siren show full"
+}
+---
+milestone full
+  
+  description:
+    not implicitly draft
+
+  status:             
+  assigned to:        ganon
+
+  string_attribute:   "string value"
+  numer_attribute:    42
+  boolean_attribute:  false
+  multi_attribute:    "another string" [3;90mand 2 more[0m
+  empty_attribute:    [90mempty[0m 
+
+  depends on                                            1/4
+  ├─ draftmaintask                                      (draft)
+  ├─ openmaintask                                       1/2
+  ├─ reallreallyreallyreallyreallyreallyreallylongname  
+  └─ 1 closed entry
+---

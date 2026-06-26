@@ -5,8 +5,8 @@
 ---
 5 open milestones:
   beta         0/1    Frank Userman
-  full         1/3    ganon
-  main         1/6
+  full         1/4    ganon
+  main         2/9
   nested/a     0/1
   🚀 launch    0/2
 

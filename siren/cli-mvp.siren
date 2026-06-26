@@ -44,5 +44,14 @@ task get-next-core-api {
 
 task show-next {
   description = "`siren show` also includes the results of `next`"
-  depends_on = [get-next]
+  depends_on = [get-next, improve-show]
+}
+
+task improve-show complete {
+  description = "improve the `siren show` output to include entry stats and attributes"
+  affected_packages = "cli"
+}
+
+milestone adopt-ink draft {
+  description = "adopt the ink library for cli output formatting"
 }

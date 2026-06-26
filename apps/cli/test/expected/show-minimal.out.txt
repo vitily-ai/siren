@@ -1,0 +1,13 @@
+{
+	"fixture": "generic",
+	"command": "siren show closedmaintask"
+}
+---
+task closedmaintask
+  
+  description:  [90mno description[0m
+  status:       complete
+  assigned to:  [90munassigned[0m
+
+  no dependencies
+---

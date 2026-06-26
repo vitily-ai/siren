@@ -94,7 +94,7 @@ describe('siren main', () => {
     await main(['show', 'missing']);
 
     const errOutput = consoleErrorSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
-    expect(errOutput).toContain('SirenEntry with id missing not found');
+    expect(errOutput).toContain("Entry with ID 'missing' not found");
     expect(process.exitCode).toBe(1);
     expect(runLifecycleSpy).toHaveBeenCalledTimes(1);
   });
