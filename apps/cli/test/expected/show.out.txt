@@ -17,8 +17,9 @@ milestone full
   multi_attribute:    "another string" [3;90mand 2 more[0m
   empty_attribute:    [90mempty[0m 
 
-  depends on          1/3
-  ├─ draftmaintask    0/0 (draft)
-  ├─ openmaintask     1/2
+  depends on                                            1/4
+  ├─ draftmaintask                                      (draft)
+  ├─ openmaintask                                       1/2
+  ├─ reallreallyreallyreallyreallyreallyreallylongname  
   └─ 1 closed entry
 ---

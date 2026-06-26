@@ -17,7 +17,7 @@ milestone full {
   boolean_attribute = false
   multi_attribute = "another string", 67, true
   empty_attribute = []
-  depends_on = draftmaintask, openmaintask, closedmaintask
+  depends_on = draftmaintask, openmaintask, closedmaintask, reallreallyreallyreallyreallyreallyreallylongname
 }
 
 task draftmaintask draft {}
@@ -32,5 +32,7 @@ task opensubtask {}
 task closedsubtask complete {}
 
 task closedmaintask complete {}
+
+task reallreallyreallyreallyreallyreallyreallylongname {}
 
 # those were the milestones

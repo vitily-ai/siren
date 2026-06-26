@@ -47,7 +47,7 @@ task show-next {
   depends_on = [get-next, improve-show]
 }
 
-task improve-show {
+task improve-show complete {
   description = "improve the `siren show` output to include entry stats and attributes"
   affected_packages = "cli"
 }
